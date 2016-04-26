@@ -28,8 +28,8 @@ The system was initially developed for the segmentation of brain lesions in MRI 
   * [3.2 Training](#32-training)
   * [3.3 Testing](#33-testing)
 * [4. How to run DeepMedic on your data](#4-how-to-run-deepmedic-on-your-data)
-* [5. Concluding](#4-concluding)
-* [6. Licenses](#5-licenses)
+* [5. Concluding](#5-concluding)
+* [6. Licenses](#6-licenses)
 
 ### 1. Installation and Requirements
 
