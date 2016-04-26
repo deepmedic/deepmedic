@@ -10,14 +10,14 @@ def read(fname):
 
 setup(
     name = "deepmedic",
-    version = "0.5006",
+    version = "0.5.1",
     author = "Konstantinos Kamnitsas",
     author_email = "konstantinos.kamnitsas12@ic.ac.uk",
     description = "Efficient Multi-Scale 3D Convolutional Neural Network for Brain Lesion Segmentation",
     license = "BSD",
     keywords = "CNN convolutional neural network brain lesion segmentation",
     url = "https://github.com/Kamnitsask/deepmedic",
-    download_url = 'https://github.com/Kamnitsask/deepmedic/tarball/0.5006',
+    download_url = 'https://github.com/Kamnitsask/deepmedic/tarball/0.5.1',
     packages=find_packages(),
     scripts = ['deepMedicRun'],
     long_description=read('README.md'),
@@ -30,7 +30,7 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python",
     ],
-    install_requires=['numpy', 'scipy', 'nibabel', 'six>=1.9.0', 'nose>=1.3.0', 'theano>=0.8.0'],
+    install_requires=['nibabel', 'numpy>=1.7.1', 'six>=1.9.0', 'nose>=1.3.0', 'theano>=0.8.0'],
     dependency_links=[
 	"http://www.parallelpython.com/downloads/pp/pp-1.6.4.tar.gz",
     ]

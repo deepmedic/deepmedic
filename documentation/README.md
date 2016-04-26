@@ -9,9 +9,9 @@ This document describes how to install and run the software. Accompanying data a
 
 The system was initially developed for the segmentation of brain lesions in MRI scans. It was employed for our research presented in [1],[2], where a 3D network architecture with two convolutional pathways was presented for the efficient multi-scale processing of multi-modal MRI volumes. If the use of the software positively influences your endeavours, please cite [1].
 
-[1] **Konstantinos Kamnitsas**, Christian Ledig, Virginia F.J. Newcombe, Joanna P. Simpson, Andrew D. Kane, David K. Menon, Daniel Rueckert, and Ben Glocker, “[Efficient Multi-Scale 3D CNN with Fully Connected CRF for Accurate Brain Lesion Segmentation][myPaper1]”, *arxiv preprint arxiv:1603.05959, 2016*.
+[1] **Konstantinos Kamnitsas**, Christian Ledig, Virginia F.J. Newcombe, Joanna P. Simpson, Andrew D. Kane, David K. Menon, Daniel Rueckert, and Ben Glocker, “[Efficient Multi-Scale 3D CNN with Fully Connected CRF for Accurate Brain Lesion Segmentation][paper1]”, *arxiv preprint arxiv:1603.05959, 2016*.
 
-[2] **Konstantinos Kamnitsas**, Liang Chen, Christian Ledig, Daniel Rueckert, and Ben Glocker, “[Multi-Scale 3D CNNs for segmentation of brain Lesions in multi-modal MRI][myPaper2]”, *in proceeding of ISLES challenge, MICCAI 2015*.
+[2] **Konstantinos Kamnitsas**, Liang Chen, Christian Ledig, Daniel Rueckert, and Ben Glocker, “[Multi-Scale 3D CNNs for segmentation of brain Lesions in multi-modal MRI][paper2]”, *in proceeding of ISLES challenge, MICCAI 2015*.
 
 
 ### Table of Contents
@@ -108,9 +108,9 @@ setenv LD_LIBRARY_PATH '/path-to/cuda/7.0.28/lib64'
 
 ### 2. Running the Software
 
-The source code of the DeepMedic is provided in the folder [deepmedic](deepmedic/). Users should not need to touch this folder. The software comes with a command line interface, [deepMedicRun.py](deepMedicRun.py). Running it with the help option:
+The source code of the DeepMedic is provided in the folder [deepmedic](deepmedic/). Users should not need to touch this folder. The software comes with a command line interface, [deepMedicRun](deepMedicRun). Running it with the help option:
 ```cshell
-python deepMedicRun.py -h
+./deepMedicRun -h
 ```
 brings up the available actions for the creation, training and testing of CNN models. All actions require a large number of configuration parameters, which are read from configuration files. 
 
@@ -127,14 +127,14 @@ NOTE: First see [Section 1.2](#12-installation) for installation of the required
 
 Lets **create** a model :
 ```cshell
-python deepMedicRun.py -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
+./deepMedicRun -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
 ```
 
 This command parses the given configuration file, creates a CNN model with the specified architecture, initializes and saves it. The folder `./examples/output/` should have been created by the process, where all output is saved. When the process finishes (roughly after a couple of minutes) a new and untrained model should be saved using [cPickle](https://docs.python.org/2/library/pickle.html) at `./examples/output/cnnModels/tinyCnn.initial.DATE+TIME.save`. All output of the process is logged for later reference. This should be found at `examples/output/logs/tinyCnn.txt`. Please make sure that the process finishes normally, the model and the logs created. If everything looks fine, briefly rejoice and continue... 
 
 Lets **train** the model with the command (replace *DATE+TIME*):
 ```cshell
-python deepMedicRun.py -train examples/configFiles/tinyCnn/train/trainConfigWithValidation.cfg \
+./deepMedicRun -train examples/configFiles/tinyCnn/train/trainConfigWithValidation.cfg \
                        -model examples/output/cnnModels/tinyCnn.initial.DATE+TIME.save
 ```
 
@@ -147,7 +147,7 @@ python plotTrainingProgress.py -logs examples/output/logs/trainSessionWithValidT
 
 Now lets **test** with the trained model (replace *DATE+TIME*):
 ```cshell
-python deepMedicRun.py -test examples/configFiles/tinyCnn/test/testConfig.cfg \
+./deepMedicRun -test examples/configFiles/tinyCnn/test/testConfig.cfg \
                        -model examples/output/cnnModels/trainSessionWithValidTinyCnn/tinyCnn.trainSessionWithValidTinyCnn.final.DATE+TIME.save
 ```
 
@@ -158,7 +158,7 @@ Now lets check the important part... If using the **DeepMedic on the GPU** is al
 You need to perform the steps we did before for creating a model, training it and testing with it, but on the GPU. To do this, repeat the previous commands and pass the additional option `-dev gpu`. For example: 
 
 ```cshell
-python deepMedicRun.py -dev gpu -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
+./deepMedicRun -dev gpu -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
 ```
 The processes should result in similar outputs as before. If all processes finish as normal and you get no errors, amazing. **Now it seems that really everything works :)** Continue to the next section and find more details about the DeepMedic and how to use the large version of our network!
 
@@ -186,11 +186,8 @@ or something like:
 ```
 Exception: ('The following error happened while compiling the node', GpuCAReduce{add}{1}(<CudaNdarrayType(float32, vector)>), '\n', 'nvcc return status', 1, 'for cmd', 'nvcc -shared -O3 -arch=sm_52 -m64 
 -Xcompiler -fno-math-errno,-Wno-unused-label,-Wno-unused-variable,-Wno-write-strings,-DCUDA_NDARRAY_CUH=c72d035fdf91890f3b36710688069b2e,-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION,-fPIC,-fvisibility=hidden 
--Xlinker -rpath,/homes/kk2412/.theano/compiledir_Linux-3.13--generic-x86_64-with-Ubuntu-14.04-trusty-x86_64-2.7.6-64/cuda_ndarray 
--I/homes/kk2412/.theano/compiledir_Linux-3.13--generic-x86_64-with-Ubuntu-14.04-trusty-x86_64-2.7.6-64/cuda_ndarray -I/vol/cuda/6.5.14/include -I/usr/lib/python2.7/dist-packages/numpy/core/include 
--I/usr/include/python2.7 -I/vol/medic01/users/kk2412/software/python/theanoBleedingEdge/Theano/theano/gof -I/vol/medic01/users/kk2412/software/python/theanoBleedingEdge/Theano/theano/sandbox/cuda 
--o /homes/kk2412/.theano/compiledir_Linux-3.13--generic-x86_64-with-Ubuntu-14.04-trusty-x86_64-2.7.6-64/tmpk0aOUa/97496c4d3cf9a06dc4082cc141f918d2.so mod.cu 
--L/homes/kk2412/.theano/compiledir_Linux-3.13--generic-x86_64-with-Ubuntu-14.04-trusty-x86_64-2.7.6-64/cuda_ndarray -L/usr/lib -lcudart -lcublas -lcuda_ndarray -lpython2.7', '[GpuCAReduce{add}{1}(<CudaNdarrayType(float32, vector)>)]')
+...
+-L/usr/lib -lcudart -lcublas -lcuda_ndarray -lpython2.7', '[GpuCAReduce{add}{1}(<CudaNdarrayType(float32, vector)>)]')
 ```
 may be thrown because you are using a version of CUDA that is not compatible with your GPU's drivers. *Note: On March 2016, I ve been using v7.0 for NVIDIA Titans, K40s, GTX 980s, and v6.5 for anything older.*
 
@@ -207,7 +204,7 @@ The **configuration files** in `examples/configFiles/deepMedicLess/` display the
 
 To create a new CNN model, you need to point to a config file with the parameters of a model:
 ```
-python deepMedicRun.py -dev gpu -newModel ./examples/configFiles/deepMedicLess/model/modelConfig.cfg
+./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedicLess/model/modelConfig.cfg
 ```
 
 After reading the parameters given in modelConfig.cfg, a CNN-model will be created and saved with cPickle in the output folder. The session prints all the parameters that are used for the model-creation on the screen and to a log.txt file. 
@@ -249,18 +246,18 @@ After a model is created, it is pickled and saved. You can then train it using y
 
 a) By adding the `-model` option and specifying the file with a saved/pickled model (created by a -newModel process or half trained from a previous training-session).
 ```
-python deepMedicRun.sh -dev gpu -train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg \
+./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg \
                                 -model ./path-to-saved-model
 ```
 
 b) The path to the saved model to train can be specified in the config file. In this case, the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
 ```
-python deepMedicRun.sh -dev gpu -train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg
+./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg
 ```
 
 c) The model created from a model-creation session can be passed straight to a training session, after it is saved. **Note:** If a path to another model is specified in the config-file, it is disregarded.
 ```
-python deepMedicRun.sh -dev gpu -newModel ./examples/configFiles/deepMedicLess/model/modelConfig.cfg \
+./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedicLess/model/modelConfig.cfg \
                        		-train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg
 ```
 
@@ -340,13 +337,13 @@ When a training epoch is finished, the model’s state is saved. These pickled m
 
 a) A model is specified straight from the command line.
 ```
-python deepMedicRun.sh -dev gpu -test ./examples/configFiles/deepMedicBratsClean/ test/testConfig.cfg \
+./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedicBratsClean/ test/testConfig.cfg \
                        		-model ./path-to-saved-model
 ```
 
 b) The path to a saved model can be instead specified in the testing config file, and then the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
 ```
-python deepMedicRun.sh -dev gpu -test ./examples/configFiles/deepMedicBratsClean/test/testConfig.cfg
+./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedicBratsClean/test/testConfig.cfg
 ```
 
 After the model is loaded, inference will be performed on the testing subjects. Predicted segmentation masks, posterior probability maps for each class,  as well as the feature maps of any layer can be saved. If ground-truth is provided, DeepMedic will also report DSC metrics for its predictions.
@@ -421,8 +418,8 @@ License for the DeepMedic software: BSD 3-Clause License. A copy of this license
 License for the data provided for the examples: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Switzerland License. http://creativecommons.org/licenses/by-nc-sa/3.0/ch/deed.en
 
 
-[//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job.)
+[//]: # (reference links)
 
-   [myPaper1]: <http://arxiv.org/abs/1603.05959> 
+   [paper1]: <http://arxiv.org/abs/1603.05959> 
 
-   [myPaper2]: <http://www.isles-challenge.org/ISLES2015/articles/kamnk1.pdf>
+   [paper2]: <http://www.isles-challenge.org/ISLES2015/articles/kamnk1.pdf>
