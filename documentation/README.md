@@ -48,7 +48,7 @@ The system is written in python. The following libraries are required:
 
 #### 1.2. Installation
 
-After cloning the project, **all the above required libraries can be installed by** running the following command on the root directory:
+The software can be found at `https://github.com/Kamnitsask/deepmedic/`. After cloning the project, all the dependencies can be installed by running the following command in the root directory:
 
 ```python
 python setup.py install
