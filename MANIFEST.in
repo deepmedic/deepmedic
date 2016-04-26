@@ -1,0 +1,5 @@
+include deepMedicRun
+include *.md *.txt
+recursive-include documentation *.txt *.png *.md *.pdf
+recursive-include examples/configFiles *.cfg 
+recursive-include examples/dataForExamples *.txt *.nii.gz

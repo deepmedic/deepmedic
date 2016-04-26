@@ -1,0 +1,22 @@
+# DeepMedic needs certain libraries (see documentation). The libraries should have been installed by a "python setup.py install" command.
+# This file gives the flexibility to add the libraries manually to the path. Useful if they are installed in an arbitrary place in the filesystem.
+  
+# This file will be parsed by "deepMedicRun.py" as a python script. The specified paths are pre-pended to the path. Thus they take priority over other installed versions.
+
+# Usage: 
+# To manually add the path to a library, un-comment the corresponding line (remove #) and add the path.
+# Note-1: Python grammar and structure must be followed in this file.
+# Note-2: Leave the naming of the variables unchanged.
+
+#=============== LIBRARIES ====================
+#Theano is the main deep-learning library used. Version >= 0.8 required. Link: http://deeplearning.net/software/theano/
+#path_to_theano = '/path/to/Theano/'
+
+#Nose is needed by Theano for its unit tests. Link: https://pypi.python.org/pypi/nose/
+#path_to_nose = '/path/to/nose_installation'
+
+#NiBabel is used for loading/saving NIFTIs. Link: http://nipy.org/nibabel/
+#path_to_nibabel = '/path/to/nibabel'
+
+#Parallel-Python library is required, as we extract training samples in parallel with gpu training. Link: http://www.parallelpython.com/
+#path_to_parallelPython = '/path/to/ppBuild'
