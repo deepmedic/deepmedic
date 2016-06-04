@@ -127,7 +127,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 	roiMaskData = reflectImageArrayIfNeeded(reflectFlags, roiMaskData)
         roiMask = roiMaskData #np.asarray(roiMaskData, dtype="float32") #the .get_data returns a nparray but it is not a float64
         img_proxy.uncache()
-	[roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else roiMask
+	[roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [roiMask, tupleOfPaddingPerAxesLeftRight]
     else :
         roiMask = "placeholderNothing"
 
@@ -145,7 +145,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 
 	channelData = smoothImageWithGaussianFilterIfNeeded(smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage[0], channelData)
 	channelData = reflectImageArrayIfNeeded(reflectFlags, channelData) #reflect if flag ==1 .
-	[channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else channelData    
+	[channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
 
 	if allChannelsOfPatientInNpArray == None :
             #Initialize the array in which all the channels for the patient will be placed.
@@ -193,7 +193,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         gtLabelsData = reflectImageArrayIfNeeded(reflectFlags, gtLabelsData) #reflect if flag ==1 .
         imageGtLabels = gtLabelsData
         imgGtLabels_proxy.uncache()
-	[imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else imageGtLabels    
+	[imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
 
@@ -205,7 +205,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 	maskWhereToGetPositiveSamplesData = reflectImageArrayIfNeeded(reflectFlags, maskWhereToGetPositiveSamplesData)
         maskWhereToGetPositiveSamples = maskWhereToGetPositiveSamplesData #np.asarray(maskWhereToGetPositiveSamplesData, dtype="float32") #the .get_data returns a nparray but it is not a float64
         img_proxy.uncache()
-	[maskWhereToGetPositiveSamples, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(maskWhereToGetPositiveSamples, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else maskWhereToGetPositiveSamples
+	[maskWhereToGetPositiveSamples, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(maskWhereToGetPositiveSamples, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [maskWhereToGetPositiveSamples, tupleOfPaddingPerAxesLeftRight]
     else :
         maskWhereToGetPositiveSamples = "placeholderNothing"
 
@@ -216,7 +216,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 	maskWhereToGetNegativeSamplesData = reflectImageArrayIfNeeded(reflectFlags, maskWhereToGetNegativeSamplesData)
         maskWhereToGetNegativeSamples = maskWhereToGetNegativeSamplesData #np.asarray(maskWhereToGetNegativeSamplesData, dtype="float32") #the .get_data returns a nparray but it is not a float64
         img_proxy.uncache()
-	[maskWhereToGetNegativeSamples, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(maskWhereToGetNegativeSamples, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else maskWhereToGetNegativeSamples
+	[maskWhereToGetNegativeSamples, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(maskWhereToGetNegativeSamples, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [maskWhereToGetNegativeSamples, tupleOfPaddingPerAxesLeftRight]
     else :
         maskWhereToGetNegativeSamples = "placeholderNothing"
         
@@ -238,7 +238,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 		channelData = channelData[:,:,:,0]
             channelData = smoothImageWithGaussianFilterIfNeeded(smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage[1], channelData)
             channelData = reflectImageArrayIfNeeded(reflectFlags, channelData)
-            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else channelData
+            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
 
             allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData
             """
