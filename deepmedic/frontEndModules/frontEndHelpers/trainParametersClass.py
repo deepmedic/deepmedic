@@ -254,9 +254,11 @@ class TrainSessionParameters(object) :
 			self.channelsFilepathsVal = []
 		if self.performValidationOnSamplesThroughoutTraining :
 			self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal else self.errorReqGtLabelsVal()
-		else : 
+		elif self.performFullInferenceOnValidationImagesEveryFewEpochs :
+			self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal else []
+		else : # Dont perform either of the two validations.
 			self.gtLabelsFilepathsVal = []
-		self.providedGtVal = True if gtLabelsFilepathsVal else False
+		self.providedGtVal = True if self.gtLabelsFilepathsVal else False
 		
 		#[Optionals]
 		self.providedRoiMasksVal = True if roiMasksFilepathsVal else False #For fast inf.
