@@ -187,7 +187,7 @@ class TrainSessionParameters(object) :
 		#~~~~~~~~~Sampling~~~~~~~
 		self.providedRoiMasksTrain = True if roiMasksFilepathsTrain else False
 		self.roiMasksFilepathsTrain = roiMasksFilepathsTrain if roiMasksFilepathsTrain else [] #For Int-Augm and for Mask-Where-Neg if no advanced-sampling-train.
-		self.percentOfSamplesToExtractPositTrain = percentOfSamplesToExtractPositTrain if percentOfSamplesToExtractPositTrain else 0.5
+		self.percentOfSamplesToExtractPositTrain = percentOfSamplesToExtractPositTrain if percentOfSamplesToExtractPositTrain <> None else 0.5
 		#~~~~~~~~~Advanced Sampling~~~~~~~
 		#ADVANCED CONFIG IS DISABLED HERE IF useDefaultSamplingFromGtAndRoi = True!
 		self.useDefaultTrainingSamplingFromGtAndRoi = useDefaultTrainingSamplingFromGtAndRoi if useDefaultTrainingSamplingFromGtAndRoi <> None else True
