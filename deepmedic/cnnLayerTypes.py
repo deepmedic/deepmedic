@@ -323,26 +323,27 @@ class ConvLayerWithSoftmax(object):
                  numberOfTruePredictedNegatives
                ]
 
+         
+
     def multiclassRealPosAndNegAndTruePredPosNegTraining0OrValidation1(self, y, training0OrValidation1):
 	"""
 	The returned list has (numberOfClasses)x4 integers: >numberOfRealPositives, numberOfRealNegatives, numberOfTruePredictedPositives, numberOfTruePredictedNegatives< for each class (incl background).
-	For class_i == 0 (backgr), what is reported is the WHOLE rp,rn,tpp,tpn. ie, as calculated considering background VS all other classes.
-	Order in the list is the natural order of the classes (ie class-0-WHOLE RP,RN,TPP,TPN, class-1 RP,RN,TPP,TPN, class-2 RP,RN,TPP,TPN ...)
+	Order in the list is the natural order of the classes (ie class-0 RP,RN,TPP,TPN, class-1 RP,RN,TPP,TPN, class-2 RP,RN,TPP,TPN ...)
 	"""
 	returnedListWithNumberOfRpRnPpPnForEachClass = []
 
 	for class_i in xrange(0, self.numberOfOutputClasses) :
 		#Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
-		vectorOneAtRealPositives = T.gt(y, 0) if class_i == 0 else T.eq(y, class_i)
-		vectorOneAtRealNegatives = T.eq(y, 0) if class_i == 0 else T.neq(y, class_i)
+		vectorOneAtRealPositives = T.eq(y, class_i)
+		vectorOneAtRealNegatives = T.neq(y, class_i)
 
 		if training0OrValidation1 == 0 : #training:
 			yPredToUse = self.y_pred
 		else: #validation
 			yPredToUse = self.y_pred_inference
 
-		vectorOneAtPredictedPositives = T.gt(yPredToUse, 0) if class_i == 0 else T.eq(yPredToUse, class_i)
-		vectorOneAtPredictedNegatives = T.eq(yPredToUse, 0) if class_i == 0 else T.neq(yPredToUse, class_i)
+		vectorOneAtPredictedPositives = T.eq(yPredToUse, class_i)
+		vectorOneAtPredictedNegatives = T.neq(yPredToUse, class_i)
 		vectorOneAtTruePredictedPositives = T.and_(vectorOneAtRealPositives,vectorOneAtPredictedPositives)
 		vectorOneAtTruePredictedNegatives = T.and_(vectorOneAtRealNegatives,vectorOneAtPredictedNegatives)
 		    
@@ -352,7 +353,7 @@ class ConvLayerWithSoftmax(object):
 		returnedListWithNumberOfRpRnPpPnForEachClass.append( T.sum(vectorOneAtTruePredictedNegatives) )
 
 	return returnedListWithNumberOfRpRnPpPnForEachClass
-         
+
     def predictionProbabilities(self) :
         return [self.p_y_given_x_testing] 
 
