@@ -7,43 +7,10 @@
 
 import numpy as np
 from genericHelpers import *
-
-
-
-def dump_cnn_to_file(cnn_instance, filenameWithPathToSaveTo, logger=None) :
-    
-    cnn_instance.freeGpuTrainingData(); cnn_instance.freeGpuValidationData(); cnn_instance.freeGpuTestingData();
-    
-    if logger <> None :
-	logger.print3("Saving network to: "+str(filenameWithPathToSaveTo))
-    else: 
-	print("Saving network to: "+str(filenameWithPathToSaveTo))
-
-    dump_object_to_file(cnn_instance, filenameWithPathToSaveTo)
-
-    if logger <> None :
-	logger.print3("Model saved.")
-    else: 
-	print("Model saved.")
-
-def dump_cnn_to_gzip_file(cnn_instance, filenameWithPathToSaveTo, logger=None) :
-    
-    cnn_instance.freeGpuTrainingData(); cnn_instance.freeGpuValidationData(); cnn_instance.freeGpuTestingData();
-
-    if logger <> None :
-	logger.print3("Saving network to: "+str(filenameWithPathToSaveTo))
-    else: 
-	print("Saving network to: "+str(filenameWithPathToSaveTo))
-
-    dump_object_to_gzip_file(cnn_instance, filenameWithPathToSaveTo)
-
-    if logger <> None :
-	logger.print3("Model saved.")
-    else: 
-	print("Model saved.")
+import os
 
 def dump_cnn_to_gzip_file_dotSave(cnn_instance, filenameWithPathToSaveTo, logger=None) :
-    filenameWithPathToSaveToDotSave = filenameWithPathToSaveTo + ".save"
+    filenameWithPathToSaveToDotSave = os.path.abspath(filenameWithPathToSaveTo + ".save")
     cnn_instance.freeGpuTrainingData(); cnn_instance.freeGpuValidationData(); cnn_instance.freeGpuTestingData();
 
     if logger <> None :

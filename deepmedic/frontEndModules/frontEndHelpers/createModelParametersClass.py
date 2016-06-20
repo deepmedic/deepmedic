@@ -5,6 +5,8 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+import os
+
 from deepmedic.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
 from deepmedic.cnnHelpers import checkReceptiveFieldFineInComparisonToSegmentSize
 from deepmedic.cnnHelpers import calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor
@@ -170,7 +172,7 @@ class CreateModelSessionParameters(object) :
 		self.cnnModelName = cnnModelName if cnnModelName else getDefaultModelName()
 		self.sessionLogger = sessionLogger
 		self.mainOutputAbsFolder = mainOutputAbsFolder
-		self.pathAndFilenameToSaveModel = folderForSessionCnnModels + "/" + self.cnnModelName
+		self.pathAndFilenameToSaveModel = os.path.abspath(folderForSessionCnnModels + "/" + self.cnnModelName)
 
 		#===========MODEL PARAMETERS==========
 		self.numberClasses = numberClasses if numberClasses <> None else self.errReqNumClasses()

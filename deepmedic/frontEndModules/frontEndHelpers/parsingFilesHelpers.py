@@ -8,16 +8,18 @@
 import os
 #generic
 def getAbsPathEvenIfRelativeIsGiven(pathGiven, absolutePathToWhereRelativePathRelatesTo) :
+	#os.path.abspath "cleans" Additional ../.// etc.
+
 	if pathGiven.startswith("/") : 
-		return pathGiven
+		return os.path.abspath(pathGiven)
 	else : #relative path given. Need to make absolute path
 		if os.path.isdir(absolutePathToWhereRelativePathRelatesTo) :
 			relativePathToWhatGiven = absolutePathToWhereRelativePathRelatesTo
 		elif os.path.isfile(absolutePathToWhereRelativePathRelatesTo) :
 			relativePathToWhatGiven = absolutePathToWhereRelativePathRelatesTo[: absolutePathToWhereRelativePathRelatesTo.rfind("/")] + "/"
 		else : #not file, not dir, exit.
-			print "ERROR: in [func:returnAbsolutePathEvenIfRelativePathIsGiven()] Given path :", absolutePathToWhereRelativePathRelatesTo, " does not correspond to neither an existing file nor a directory."
-		return relativePathToWhatGiven + "/" + pathGiven
+			print "ERROR: in [func:returnAbsolutePathEvenIfRelativePathIsGiven()] Given path :", absolutePathToWhereRelativePathRelatesTo, " does not correspond to neither an existing file nor a directory. Exiting!"; exit(1)
+		return os.path.abspath(relativePathToWhatGiven + "/" + pathGiven)
 
 #Generic.
 def checkIfAllElementsOfAListAreFilesAndExitIfNot(pathToTheListingFile, list1) :
@@ -37,6 +39,7 @@ def parseFileLinesInList(pathToListingFile) :
 	return list1
 
 def parseAbsFileLinesInList(pathToListingFile) :
+	# os.path.abspath below is to "clean" the paths from ./..//...
 	pathToFolderContainingThisListFile = pathToListingFile[: pathToListingFile.rfind("/")] + "/"
 	list1 = []
 	with open(pathToListingFile, "r") as inp :
@@ -44,9 +47,9 @@ def parseAbsFileLinesInList(pathToListingFile) :
 			if not line.startswith("#") and line.strip() <> "" :
 				pathToFileParsed = line.strip()
 				if pathToFileParsed.startswith("/") : #abs path.
-					list1.append(pathToFileParsed)
+					list1.append(os.path.abspath(pathToFileParsed))
 				else : #relative path to this listing-file.
-					list1.append(pathToFolderContainingThisListFile + "/" + pathToFileParsed)
+					list1.append(os.path.abspath(pathToFolderContainingThisListFile + "/" + pathToFileParsed))
 	return list1
 
 #Generic.
