@@ -5,6 +5,7 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+import os
 import cPickle
 import gzip
 
@@ -182,6 +183,8 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedBy
                                           fullFilenameOfOriginalImageToCopyHeader,
                                           npDtype = np.dtype(np.float32),
                                           myLogger=None) :
+
+    fullFilenameToSaveWith = os.path.abspath(fullFilenameToSaveWith) # Cleans the .././/...
     img_proxy_for_orig_image = nib.load(fullFilenameOfOriginalImageToCopyHeader)
     hdr_for_orig_image = img_proxy_for_orig_image.header
     
@@ -209,7 +212,7 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedBy
 def savePredictedImageToANewNiiWithHeaderFromOther(labelImageCreatedByPredictions,
                                           listOfNamesToGiveToPredictions,
 
-                                          listOfFilepathsToEachChannelOfEachPatient, #NEW
+                                          listOfFilepathsToEachChannelOfEachPatient,
 
                                           case_i, #the index (in the list of filepathnames) of the current image segmented.
                                           suffixToAdd = "",
