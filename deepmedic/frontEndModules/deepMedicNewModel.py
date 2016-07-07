@@ -6,7 +6,6 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 import os
-import datetime
 
 from deepmedic import myLoggerModule
 
@@ -17,11 +16,12 @@ from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkI
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkListContainsCorrectNumberOfCasesOtherwiseExitWithError
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkThatAllEntriesOfAListFollowNameConventions
 
-
 from deepmedic.frontEndModules.frontEndHelpers.createModelParametersClass import CreateModelSessionParameters
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForCreateModelSession
 
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
+from deepmedic.genericHelpers import datetimeNowAsStr
+
 
 class ModelConfig(object):
 	configStruct = {} #In here will be placed all read arguments.
@@ -190,7 +190,7 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 	cnn3dInstance = Cnn3d()
 	cnn3dInstance.make_cnn_model(*createModelSessionParameters.getTupleForCnnCreation())
 
-	filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial." +str(datetime.datetime.now())
+	filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial." + datetimeNowAsStr()
 	filenameAndPathWhereModelWasSaved =  dump_cnn_to_gzip_file_dotSave(cnn3dInstance, filenameAndPathToSaveModel, sessionLogger)
 
 	createModelSessionParameters.sessionLogger.print3("=========== Creation of the model: \"" + str(createModelSessionParameters.cnnModelName) +"\" finished =================")
