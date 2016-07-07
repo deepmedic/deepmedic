@@ -1186,7 +1186,7 @@ def do_training(myLogger,
 
     #---------To run PARALLEL the extraction of parts for the next subepoch---
     ppservers = () # tuple of all parallel python servers to connect with
-    job_server = pp.Server(ppservers=ppservers) # Creates jobserver with automatically detected number of workers
+    job_server = pp.Server(ncpus=1, ppservers=ppservers) # Creates jobserver with automatically detected number of workers
 
     tupleWithParametersForTraining = (myLogger,
                            0,
@@ -1390,7 +1390,7 @@ def do_training(myLogger,
 
 
             #-------------------------GET DATA FOR THIS SUBEPOCH's TRAINING---------------------------------
-            if not performValidationOnSamplesDuringTrainingProcessBool and boolItIsTheVeryFirstSubepochOfThisProcess :
+            if (not performValidationOnSamplesDuringTrainingProcessBool) and boolItIsTheVeryFirstSubepochOfThisProcess :
 		[imagePartsChannelsToLoadOnGpuForSubepochTraining,
 		lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining,
 		subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining] = getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
