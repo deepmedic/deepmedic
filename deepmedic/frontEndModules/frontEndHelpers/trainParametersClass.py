@@ -400,7 +400,7 @@ class TrainSessionParameters(object) :
 		logPrint("Providing Mask where to get Positive samples (if this is False, samples will be extracted from whole image) = " + str(self.providingMaskWhereToGetPosSamplesVal))
 		logPrint("Paths to weight-maps/masks for Positive sampling = " + str(self.pathsToWeightMapsOfEachCaseForPosSamplingVal))
 		logPrint("Providing Mask where to get Negative samples (if this is False, samples will be extracted from whole image) = " + str(self.providingMaskWhereToGetNegSamplesVal))
-		logPrint("Paths to weight-maps/masks for Negative sampling = " + str(self.pathsToWeightMapsOfEachCaseForNegSamplingTrain))
+		logPrint("Paths to weight-maps/masks for Negative sampling = " + str(self.pathsToWeightMapsOfEachCaseForNegSamplingVal))
 		logPrint("Sampling masks are probability maps = " + str(self.samplingMasksAreProbMapsVal) + ". NOTE: if this is False, we assume they were the GT-labels and the ROI. In this case, if Pos Mask was provided, it is excluded from the NegSampling mask internally (be it ROI or whole image). If this is True (prob maps passed, for weighted sampling) we do not do this.")
 
 		logPrint(">>>>>Validation with Full Inference on Validation Cases<<<<<")

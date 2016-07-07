@@ -15,6 +15,8 @@ import numpy as np
 
 from math import ceil
 
+import datetime
+
 def strFlXDec(flNum, numDec) :
 	#ala "{0:.2f}".format(13.94999)
 	stringThatSaysHowManyDecimals = "{0:." + str(numDec) + "f}"
@@ -316,3 +318,7 @@ def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(mu
                                           fullFilenameOfOriginalImageToCopyHeader,
                                           np.dtype(np.float32),
                                           myLogger)
+
+def datetimeNowAsStr() :
+    #datetime returns in the format: YYYY-MM-DD HH:MM:SS.millis but ':' is not supported for Windows' naming convention.
+    return str(datetime.datetime.now()).replace(':','.')

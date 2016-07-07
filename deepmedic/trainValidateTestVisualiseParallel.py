@@ -7,7 +7,6 @@
 
 import sys
 import time
-import datetime
 import numpy as np
 import nibabel as nib
 import random
@@ -1044,7 +1043,7 @@ def do_training(myLogger,
 
     #---------To run PARALLEL the extraction of parts for the next subepoch---
     ppservers = () # tuple of all parallel python servers to connect with
-    job_server = pp.Server(ppservers=ppservers) # Creates jobserver with automatically detected number of workers
+    job_server = pp.Server(ncpus=1, ppservers=ppservers) # Creates jobserver with automatically detected number of workers
 
     tupleWithParametersForTraining = (myLogger,
                            0,
@@ -1247,7 +1246,7 @@ def do_training(myLogger,
 
 
             #-------------------------GET DATA FOR THIS SUBEPOCH's TRAINING---------------------------------
-            if not performValidationOnSamplesDuringTrainingProcessBool and boolItIsTheVeryFirstSubepochOfThisProcess :
+            if (not performValidationOnSamplesDuringTrainingProcessBool) and boolItIsTheVeryFirstSubepochOfThisProcess :
 		[imagePartsChannelsToLoadOnGpuForSubepochTraining,
 		lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining,
 		subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining] = getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
@@ -1402,7 +1401,7 @@ def do_training(myLogger,
         cnn3dInstance.numberOfEpochsTrained += 1
 
         myLogger.print3("SAVING: Epoch #"+str(epoch)+" finished. Saving CNN model.")
-        dump_cnn_to_gzip_file_dotSave(cnn3dInstance, fileToSaveTrainedCnnModelTo+"."+str(datetime.datetime.now()), myLogger)
+        dump_cnn_to_gzip_file_dotSave(cnn3dInstance, fileToSaveTrainedCnnModelTo+"."+datetimeNowAsStr(), myLogger)
         end_epoch_time = time.clock()
         myLogger.print3("TIMING: The whole Epoch #"+str(epoch)+" took time: "+str(end_epoch_time-start_epoch_time)+"(s)")
         myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -1443,7 +1442,7 @@ def do_training(myLogger,
                              		listOfNamesToGiveToFmVisualisationsIfSaving=listOfNamesToGiveToFmVisualisationsIfSaving
 		                        )
 
-    dump_cnn_to_gzip_file_dotSave(cnn3dInstance, fileToSaveTrainedCnnModelTo+".final."+str(datetime.datetime.now()), myLogger)
+    dump_cnn_to_gzip_file_dotSave(cnn3dInstance, fileToSaveTrainedCnnModelTo+".final."+datetimeNowAsStr(), myLogger)
 
     end_training_time = time.clock()
     myLogger.print3("TIMING: Training process took time: "+str(end_training_time-start_training_time)+"(s)")
