@@ -50,7 +50,9 @@ def setupArgParser() :
 	return parser
 
 def getNameOfLogFileWithoutEnding(filePathToLog):
-	return filePathToLog[filePathToLog.rfind("/") + 1 : filePathToLog.rfind(".")]
+	filenameOfLog = os.path.basename(filePathToLog)
+	(filenameWithoutExt, extension1) = os.path.splitext(filenameOfLog)
+	return filenameWithoutExt
 def getSubepochsPerEpoch(pathToLog) :
 	lineWithPattern = getFirstLineInLogWithCertainPattern(pathToLog, SUBEPS_PER_EP_PATTERN)
 	if lineWithPattern == None : return None
