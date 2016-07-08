@@ -40,7 +40,7 @@ MEANACC_OVERALL_SENTENCE = "mean accuracy of each subepoch:"
 COST_OVERALL_SENTENCE = "mean cost of each subepoch:"
 
 def setupArgParser() :
-	parser = argparse.ArgumentParser( prog='plotterOfTrainingProgress', formatter_class=argparse.RawTextHelpFormatter,
+	parser = argparse.ArgumentParser( prog='plotTrainingProgress', formatter_class=argparse.RawTextHelpFormatter,
 	description='''This script parses training logs and plots accuracy metrics (mean accuracy, sensitivity, specificity, DSC over samples, DSC of full segmentation of validation subjects).''')
 	parser.add_argument("log_files", nargs='+', type=str, help="Paths to training logs. More than one log can be given, to plot progress of multiple experiments. \nFormat: python ./plotTrainingProgress.py log1.txt log2.txt logs3.txt ...")
 	parser.add_argument("-d", "--detailed", dest='detailed_plot', action='store_true', help="By default, only \"overall\" mean empirical accuracy is plotted. Provide this option for a more detailed and \"class-specific\" plot.\nMetrics plotted: mean accuracy, sensitivity, specificity, DSC on samples and DSC on fully-segmented validation subjects.\n***IMPORTANT***\n\"Class-specific\" metrics of the more detailed plot are computed in a \"One-Class Vs All-Others\" fashion!\nIn *Multi-Class* problems, \"overall\" accuracy of the basic plot and \"class-specific\" accuracy of the detailed plot differ significantly because of this!\nOverall accuracy of basic plot: Number of voxels predicted with correct class / number of all voxels.\nClass-specific accuracy of detailed plot: (True Positives + True Negatives with respect to \"the specified class\") / number of all voxels.\n\t>> i.e. voxels predicted with any other class are all considered similar, eg as background.")
