@@ -76,19 +76,19 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 
                                                                  index_of_wanted_image, #THIS IS THE CASE's index!
 
-                                                                 listOfFilepathsToEachChannelOfEachPatient, #NEW
+                                                                 listOfFilepathsToEachChannelOfEachPatient,
 
-                                                                 providedGtLabelsBool, #NEW
-                                                                 listOfFilepathsToGtLabelsOfEachPatient, #NEW
+                                                                 providedGtLabelsBool,
+                                                                 listOfFilepathsToGtLabelsOfEachPatient,
 
-                                                                 providedMaskWhereToGetPositiveSamples, #NEW
-                                                                 listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal,#NEW
+                                                                 providedMaskWhereToGetPositiveSamples,
+                                                                 listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal,
 
-                                                                 providedRoiMaskBool, #NEW
-                                                                 listOfFilepathsToRoiMaskOfEachPatient, #NEW
+                                                                 providedRoiMaskBool,
+                                                                 listOfFilepathsToRoiMaskOfEachPatient,
 
-                                                                 providedMaskWhereToGetNegativeSamples, #NEW
-                                                                 listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal,#NEW
+                                                                 providedMaskWhereToGetNegativeSamples,
+                                                                 listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal,
 
                                                                  useSameSubChannelsAsSingleScale,
                                                                  usingSubsampledWaypath,
@@ -507,7 +507,6 @@ def getImagePartsAndTheirSlices(myLogger,
                                 batch_size,
                                 channelsOfImageNpArray,#chans,niiDims
                                 brainMask,
-                                #New for the extension of the cnn.
                                 channelsOfSubsampledImageNpArray, #chans,niiDims
                                 patchDimensions,
                                 subsampledImageChannels,
@@ -564,7 +563,6 @@ def getImagePartsAndTheirSlices(myLogger,
                 channelsForPartsToReturn.append(thisImagePartChannels)
                 
                 
-                #NEW ADDITION FOR EXTENSION OF CNN
 		if channelsOfSubsampledImageNpArray <> "placeholderNothing" :
                     imagePartSlicesCoords = [ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ] #the right hand values are placeholders in this case.
                     channelsForThisSubsampledImagePart = getImagePartFromSubsampledImageForTraining(
@@ -607,21 +605,21 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
                                                                 numberOfNegativeSamplesPerSubepoch,
                                                                 usingSubsampledWaypath,
 
-								listOfFilepathsToEachChannelOfEachPatient, #NEW
+								listOfFilepathsToEachChannelOfEachPatient,
 
-								listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,#NEW
+								listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
 
-								providedRoiMaskBool, #NEW
-								listOfFilepathsToRoiMaskOfEachPatient, #NEW
+								providedRoiMaskBool,
+								listOfFilepathsToRoiMaskOfEachPatient,
 
-								providedMaskWhereToGetPositiveSamples, #NEW
-                                                                listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal, #NEW
-								providedMaskWhereToGetNegativeSamples, #NEW
-								listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal, #NEW
+								providedMaskWhereToGetPositiveSamples,
+                                                                listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal,
+								providedMaskWhereToGetNegativeSamples,
+								listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal,
 								theMasksWhereToGetAreProbabilityMaps,
 								useSameSubChannelsAsSingleScale,
 
-								listOfFilepathsToEachSubsampledChannelOfEachPatient, #NEW
+								listOfFilepathsToEachSubsampledChannelOfEachPatient,
 
                                                                 imagePartDimensions,
                                                                 patchDimensions,
@@ -708,18 +706,18 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 
                                                 randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu],
 
-						listOfFilepathsToEachChannelOfEachPatient, #NEW
+						listOfFilepathsToEachChannelOfEachPatient,
 
-                                                providedGtLabelsBool=True, #NEW. If this getTheArr function is called, gtLabels should already been provided.
-                                                listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal, #NEW
+                                                providedGtLabelsBool=True, #If this getTheArr function is called, gtLabels should already been provided.
+                                                listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
 
-                                                providedMaskWhereToGetPositiveSamples = providedMaskWhereToGetPositiveSamples, #NEW
+                                                providedMaskWhereToGetPositiveSamples = providedMaskWhereToGetPositiveSamples,
                                                 listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal=listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal, #can be given "no" and will return placeholder
 
-                                                providedRoiMaskBool= providedRoiMaskBool if training0orValidation1 == 0 else False, #NEW
-                                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient if training0orValidation1 == 0 else "placeholder", #NEW
+                                                providedRoiMaskBool= providedRoiMaskBool if training0orValidation1 == 0 else False,
+                                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient if training0orValidation1 == 0 else "placeholder",
 
-                                                providedMaskWhereToGetNegativeSamples = providedMaskWhereToGetNegativeSamples, #NEW
+                                                providedMaskWhereToGetNegativeSamples = providedMaskWhereToGetNegativeSamples,
                                                 listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal=listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal, #can be given "no" and will return placeholder
 						useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
 
@@ -951,27 +949,27 @@ def do_training(myLogger,
 		savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
 		listOfNamesToGiveToPredictionsValidationIfSavingWhenEvalDice,
 
-                listOfFilepathsToEachChannelOfEachPatientTraining, #NEW
-                listOfFilepathsToEachChannelOfEachPatientValidation, #NEW
+                listOfFilepathsToEachChannelOfEachPatientTraining,
+                listOfFilepathsToEachChannelOfEachPatientValidation,
 
-		listOfFilepathsToGtLabelsOfEachPatientTraining, #NEW
-		providedGtForValidationBool, #NEW
-		listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc, #NEW
+		listOfFilepathsToGtLabelsOfEachPatientTraining,
+		providedGtForValidationBool,
+		listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
-                providedMaskWhereToGetPositiveSamplesTraining, #NEW NOT SURE IF THIS IS NEEDED. But lets keep it simple and consistent.
-		listOfFilepathsToMasksOfEachPatientForPosSamplingTraining, #NEW
-                providedMaskWhereToGetPositiveSamplesValidation, #NEW
-		listOfFilepathsToMasksOfEachPatientForPosSamplingValidation, #NEW
+                providedMaskWhereToGetPositiveSamplesTraining, # NOT SURE IF THIS IS NEEDED. But lets keep it simple and consistent.
+		listOfFilepathsToMasksOfEachPatientForPosSamplingTraining,
+                providedMaskWhereToGetPositiveSamplesValidation,
+		listOfFilepathsToMasksOfEachPatientForPosSamplingValidation,
 
-		providedRoiMaskForTrainingBool, #NEW
-		listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining, #NEW
-                providedRoiMaskForFastInfValidationBool, #NEW
-                listOfFilepathsToRoiMaskFastInfOfEachPatientValidation, #NEW
+		providedRoiMaskForTrainingBool,
+		listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining,
+                providedRoiMaskForFastInfValidationBool,
+                listOfFilepathsToRoiMaskFastInfOfEachPatientValidation,
 
-                providedMaskWhereToGetNegativeSamplesTraining, #NEW
-		listOfFilepathsToMasksOfEachPatientForNegSamplingTraining, #NEW
-                providedMaskWhereToGetNegativeSamplesValidation, #NEW
-		listOfFilepathsToMasksOfEachPatientForNegSamplingValidation, #NEW
+                providedMaskWhereToGetNegativeSamplesTraining,
+		listOfFilepathsToMasksOfEachPatientForNegSamplingTraining,
+                providedMaskWhereToGetNegativeSamplesValidation,
+		listOfFilepathsToMasksOfEachPatientForNegSamplingValidation,
 
 		theMasksWhereToGetAreProbabilityMapsTraining,
 		theMasksWhereToGetAreProbabilityMapsValidation,
@@ -993,8 +991,8 @@ def do_training(myLogger,
 
                 useSameSubChannelsAsSingleScale,
 
-                listOfFilepathsToEachSubsampledChannelOfEachPatientTraining, #NEW
-                listOfFilepathsToEachSubsampledChannelOfEachPatientValidation, #NEW
+                listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
+                listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
 		
 		#Learning Rate Schedule:
 		lowerLrByStable0orAuto1orPredefined2orExponential3Schedule,
@@ -1052,17 +1050,17 @@ def do_training(myLogger,
                            numberOfNegativeSamplesPerSubepoch,
                            usingSubsampledWaypath,
 
-                           listOfFilepathsToEachChannelOfEachPatientTraining, #NEW
+                           listOfFilepathsToEachChannelOfEachPatientTraining,
 
                            listOfFilepathsToGtLabelsOfEachPatientTraining,
 
-                           providedRoiMaskForTrainingBool, #NEW
-                           listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining, #NEW
+                           providedRoiMaskForTrainingBool,
+                           listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining,
 
-                           providedMaskWhereToGetPositiveSamplesTraining, #NEW
-                           listOfFilepathsToMasksOfEachPatientForPosSamplingTraining, #NEW
-                           providedMaskWhereToGetNegativeSamplesTraining, #NEW
-                           listOfFilepathsToMasksOfEachPatientForNegSamplingTraining, #NEW
+                           providedMaskWhereToGetPositiveSamplesTraining,
+                           listOfFilepathsToMasksOfEachPatientForPosSamplingTraining,
+                           providedMaskWhereToGetNegativeSamplesTraining,
+                           listOfFilepathsToMasksOfEachPatientForNegSamplingTraining,
                            theMasksWhereToGetAreProbabilityMapsTraining,
                            useSameSubChannelsAsSingleScale,
 
@@ -1085,17 +1083,17 @@ def do_training(myLogger,
                            numberOfNegativeSamplesPerSubepochValidation,
                            usingSubsampledWaypath,
 
-                           listOfFilepathsToEachChannelOfEachPatientValidation, #NEW
+                           listOfFilepathsToEachChannelOfEachPatientValidation,
 
-                           listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc, #NEW
+                           listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
                            "placeholderProvidedRoiMaskBool",
                            "placeholderListOfFilepathsToRoiMask",
 
-                           providedMaskWhereToGetPositiveSamplesValidation, #NEW
-                           listOfFilepathsToMasksOfEachPatientForPosSamplingValidation, #NEW
-                           providedMaskWhereToGetNegativeSamplesValidation, #NEW
-                           listOfFilepathsToMasksOfEachPatientForNegSamplingValidation, #NEW
+                           providedMaskWhereToGetPositiveSamplesValidation,
+                           listOfFilepathsToMasksOfEachPatientForPosSamplingValidation,
+                           providedMaskWhereToGetNegativeSamplesValidation,
+                           listOfFilepathsToMasksOfEachPatientForNegSamplingValidation,
                            theMasksWhereToGetAreProbabilityMapsValidation,
                            useSameSubChannelsAsSingleScale,
 
@@ -1155,17 +1153,17 @@ def do_training(myLogger,
 		                  						numberOfNegativeSamplesPerSubepochValidation,
 		                  						usingSubsampledWaypath,
 
-		                  						listOfFilepathsToEachChannelOfEachPatientValidation, #NEW
+		                  						listOfFilepathsToEachChannelOfEachPatientValidation,
 
-										listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc, #NEW
+										listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
 										"placeholderProvidedRoiMaskBool",
 										"placeholderListOfFilepathsToRoiMask",
 
-										providedMaskWhereToGetPositiveSamplesValidation, #NEW
-		                  						listOfFilepathsToMasksOfEachPatientForPosSamplingValidation, #NEW
-										providedMaskWhereToGetNegativeSamplesValidation, #NEW
-		                  						listOfFilepathsToMasksOfEachPatientForNegSamplingValidation, #NEW
+										providedMaskWhereToGetPositiveSamplesValidation,
+		                  						listOfFilepathsToMasksOfEachPatientForPosSamplingValidation,
+										providedMaskWhereToGetNegativeSamplesValidation,
+		                  						listOfFilepathsToMasksOfEachPatientForNegSamplingValidation,
 										theMasksWhereToGetAreProbabilityMapsValidation,
 										useSameSubChannelsAsSingleScale,
 
@@ -1256,17 +1254,17 @@ def do_training(myLogger,
 									   numberOfNegativeSamplesPerSubepoch,
 									   usingSubsampledWaypath,
 
-									   listOfFilepathsToEachChannelOfEachPatientTraining, #NEW
+									   listOfFilepathsToEachChannelOfEachPatientTraining,
 
 									   listOfFilepathsToGtLabelsOfEachPatientTraining,
 
-									   providedRoiMaskForTrainingBool, #NEW
-									   listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining, #NEW
+									   providedRoiMaskForTrainingBool,
+									   listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining,
 
-									   providedMaskWhereToGetPositiveSamplesTraining, #NEW
-									   listOfFilepathsToMasksOfEachPatientForPosSamplingTraining, #NEW
-									   providedMaskWhereToGetNegativeSamplesTraining, #NEW
-									   listOfFilepathsToMasksOfEachPatientForNegSamplingTraining, #NEW
+									   providedMaskWhereToGetPositiveSamplesTraining,
+									   listOfFilepathsToMasksOfEachPatientForPosSamplingTraining,
+									   providedMaskWhereToGetNegativeSamplesTraining,
+									   listOfFilepathsToMasksOfEachPatientForNegSamplingTraining,
 									   theMasksWhereToGetAreProbabilityMapsTraining,
 									   useSameSubChannelsAsSingleScale,
 
@@ -1415,13 +1413,13 @@ def do_training(myLogger,
 					savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
 		                        cnn3dInstance,
 
-					listOfFilepathsToEachChannelOfEachPatientValidation, #NEW
+					listOfFilepathsToEachChannelOfEachPatientValidation,
 
-					providedGtForValidationBool, #NEW
-					listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc, #NEW
+					providedGtForValidationBool,
+					listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
-		                        providedRoiMaskForFastInfValidationBool, #NEW
-		                        listOfFilepathsToRoiMaskFastInfOfEachPatientValidation, #NEW
+		                        providedRoiMaskForFastInfValidationBool,
+		                        listOfFilepathsToRoiMaskFastInfOfEachPatientValidation,
 
 		                        borrowFlag,
 		                        listOfNamesToGiveToPredictionsIfSavingResults = "Placeholder" if not savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation else listOfNamesToGiveToPredictionsValidationIfSavingWhenEvalDice,
@@ -1458,7 +1456,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 
                              listOfFilepathsToEachChannelOfEachPatient,
 
-                             providedGtLabelsBool, #boolean NEW. DSC calculation will be performed if this is provided.
+                             providedGtLabelsBool, #boolean. DSC calculation will be performed if this is provided.
                              listOfFilepathsToGtLabelsOfEachPatient,
 
                              providedRoiMaskForFastInfBool,
@@ -1599,7 +1597,6 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                          batch_size = batch_size,
                                          channelsOfImageNpArray = imageChannels,#chans,niiDims
                                          brainMask = brainMask,
-                                         #New for the extension of the cnn.
                                          channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
                                          patchDimensions=patchDimensions,
                                          subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
@@ -1639,7 +1636,6 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
             if batch_i%printProgressStep == 0:
 		myLogger.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
 
-            #NEW WAY, WITH THE TEST+VISUALISE:
             featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(batch_i)
             predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[-1]
             listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[:-1]

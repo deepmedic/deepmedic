@@ -313,9 +313,9 @@ class CreateModelSessionParameters(object) :
 		#Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
 		#MP is applied >>AT THE INPUT of the layer<<. To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each dimension for padding (give 0 for none), the mode (usually 'max' pool). Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
 		self.maxPoolingParamsStructure = [ #If a pathway is not used, put an empty list in the first dimension entry. 
-						[[], [],[],[],[],[],[], []], #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
-						[[], [],[],[],[],[],[], []], #second pathway
-						[[],[]], #FC. I this this should NEVER be used.
+						[ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ], #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
+						[ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled)) ], #second pathway
+						[ [] for layeri in xrange(len(self.numFMsInExtraFcs)) ], #FC. I this this should NEVER be used.
 						[[],[],[], []] #zoomed in pathway.
 						]
 
