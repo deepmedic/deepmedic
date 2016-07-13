@@ -281,7 +281,7 @@ class Cnn3d(object):
 		thisLayerMaxPoolingParameters = maxPoolingParamsStructureForThisPathwayType[layer_i]
 
 		layer_instance = ConvLayer(rng,
-						    input=previousLayerOutputImage, #WOWOWOWWOWOWOW Check this out! Passing in the class a 'non initialized' matrix! But reshaped to correct dimensions!
+						    input=previousLayerOutputImage,
 						    inputInferenceBn=previousLayerOutputImageInference,
 						    inputTestingBn=previousLayerOutputImageTesting,
 						    image_shape=previousLayerOutputImageShape,
