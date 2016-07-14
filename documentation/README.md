@@ -1,6 +1,17 @@
 The DeepMedic
 =====================================
 
+### News
+
+14 July 2016:
+* Master branch was updated with better monitoring of training progress and a better plotting script. This version is not backwards compatible. CPickle will fail loading previously trained models from previous versions of the code.
+* Previous version of master branch tagged as v0.5. Use this if you wish to continue working with previously trained models.
+
+Important Issue:
+* Current saving of CNN's state is not backwards compatible. This means that any change to the code of the cnn3d.py and cnnLayerTypes.py will not allow CPickle to load models created with previous versions. This has big priority to solve. Until then, please use tags (versions) compatible with your trained models.
+
+### Introduction
+
 This project aims to offer easy access to Deep Learning for segmentation of structures of interest in biomedical 3D scans. It is a system that allows the easy creation of a 3D Convolutional Neural Network, which can be trained to detect and segment structures if corresponding ground truth labels are provided for training. The system processes NIFTI images, making its use straightforward for many biomedical tasks.
 
 This document describes how to install and run the software. Accompanying data are provided to run the preset examples and make sure that the system is functioning on your system. This document also describes the main functionality, in order for the user to understand the main processing cycle. For greater details please consult [1]. We hope this project will serve well in making the state-of-the-art Convolutional Networks more accessible in the field of medical imaging.
@@ -289,7 +300,7 @@ For each epoch {
 
 The validation on samples and the full segmention of the scans of validation subjects are optional. The **progress of training can be plotted** by using the accompanying `plotTrainingProgress.py` script, which parses the training logs for the reported validation and training accuracy metrics:
 ```
-python plotTrainingProgress.py -logs examples/output/logs/trainSessionDeepMedicLess.txt -class 0
+python plotTrainingProgress.py examples/output/logs/trainSessionDeepMedicLess.txt -d
 ```
 
 **Training Parameters**
