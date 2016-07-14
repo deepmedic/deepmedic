@@ -219,7 +219,7 @@ class Cnn3d(object):
 
 
     #for inference with batch-normalization. Every training batch, this is called to update an internal matrix of each layer, with the last mus and vars, so that I can compute the rolling average for inference.
-    def updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheRollingAverageOfTheBatchNormInference(self) :
+    def updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference(self) :
 
 	if not self.usingBatchNormalization : #Not using batch normalization. Nothing to do here.
 		return

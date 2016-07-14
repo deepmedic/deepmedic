@@ -19,6 +19,8 @@ import pp
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.genericHelpers import *
 
+from deepmedic.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
+
 TINY_FLOAT = np.finfo(np.float32).tiny 
 
 #These two pad/unpad should have their own class, and an instance should be created per subject. So that unpad gets how much to unpad from the pad.
@@ -868,135 +870,6 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 
 
 
-#Called by do_training()
-def reportAccuracyValuesOverWholeEpochForEachClass(myLogger,
-						numberOfClasses,
-						epoch,
-						performValidationOnSamplesDuringTrainingProcessBool,
-						arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation,
-						arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringTraining,
-						) :
-
-	if not performValidationOnSamplesDuringTrainingProcessBool:
-		myLogger.print3( "WARN: Validation on samples was not performed during the training-process, because flag performValidationOnSamplesDuringTrainingProcessBool was set to False!!!" )
-
-	for class_i in xrange(0, numberOfClasses) :
-
-		classString = "(whole-foreground)Class-0" if class_i == 0 else "Class-"+str(class_i)
-
-		myLogger.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + classString + " <<<<<<<<<<<<<" )
-
-		for train0orValidation1 in [1,0] :
-			if (train0orValidation1 == 1) and not performValidationOnSamplesDuringTrainingProcessBool:
-				continue
-
-			trainOrValCapitalString = "TRAINING" if train0orValidation1 == 0 else "VALIDATION"
-			if train0orValidation1 == 0 :
-				arrayThatHoldsAccuracyValuesForTrainOrVal = arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringTraining
-			else :
-				arrayThatHoldsAccuracyValuesForTrainOrVal = arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation
-
-			# [meanErrorOfSubepoch, meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch,
-			#	meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, meanCostOfSubepoch].
-
-			averageAccuracyOfAllSubepochsOfThisEpoch = arrayThatHoldsAccuracyValuesForTrainOrVal[class_i, 1, :]
-			averageAccuracyPosPatchesOfAllSubepochsOfThisEpoch = arrayThatHoldsAccuracyValuesForTrainOrVal[class_i, 2, :]
-			averageAccuracyNegPatchesOfAllSubepochsOfThisEpoch = arrayThatHoldsAccuracyValuesForTrainOrVal[class_i, 3, :]
-			averageDiceOfAllSubepochsOfThisEpoch = arrayThatHoldsAccuracyValuesForTrainOrVal[class_i, 4, :]
-			if train0orValidation1 == 0 :
-				averageCostsOfAllSubepochsOfThisEpoch = arrayThatHoldsAccuracyValuesForTrainOrVal[class_i, 5, :]
-
-
-			initialStringOfLine = trainOrValCapitalString + ": Epoch #" + str(epoch) + ", " + classString + ":"
-			myLogger.print3(initialStringOfLine + " the mean accuracy of whole epoch was: "+str(np.mean(averageAccuracyOfAllSubepochsOfThisEpoch)))
-			myLogger.print3(initialStringOfLine + " the mean accuracy of whole epoch, for Positive Samples(voxels) was: "+str(np.mean(averageAccuracyPosPatchesOfAllSubepochsOfThisEpoch)))
-			myLogger.print3(initialStringOfLine + " the mean accuracy of whole epoch, for Negative Samples(voxels) was: "+str(np.mean(averageAccuracyNegPatchesOfAllSubepochsOfThisEpoch)))
-			myLogger.print3(initialStringOfLine + " the mean Dice of whole epoch was: "+str(np.mean(averageDiceOfAllSubepochsOfThisEpoch)))
-			if train0orValidation1 == 0 :
-				myLogger.print3(initialStringOfLine + " the mean cost of whole epoch was: "+str(np.mean(averageCostsOfAllSubepochsOfThisEpoch)))
-
-			#Visualised in my scripts:
-			myLogger.print3(initialStringOfLine + " the mean accuracy of each subepoch was: "+str(averageAccuracyOfAllSubepochsOfThisEpoch))
-			myLogger.print3(initialStringOfLine + " the mean accuracy of each subepoch, for Positive Samples(voxels) was: "+str(averageAccuracyPosPatchesOfAllSubepochsOfThisEpoch))
-			myLogger.print3(initialStringOfLine + " the mean accuracy of each subepoch, for Negative Samples(voxels) was: "+str(averageAccuracyNegPatchesOfAllSubepochsOfThisEpoch))
-			myLogger.print3(initialStringOfLine + " the mean Dice of each subepoch was: "+str(averageDiceOfAllSubepochsOfThisEpoch))
-			if train0orValidation1 == 0 :
-				myLogger.print3(initialStringOfLine + " the mean cost of each subepoch was: "+str(averageCostsOfAllSubepochsOfThisEpoch))
-        	
-
-	myLogger.print3( ">>>>>>>>>>>>>>>>>>>>>>>>> End Of Accuracy Report at the end of Epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
-	myLogger.print3( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
-
-
-
-#Called by doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch()
-def calculateAndReportMeanAccuracyOverWholeSubepochForEachClass(myLogger,
-								cnn3dInstance,
-								train0orValidation1,
-								subepoch,
-								number_of_batches,
-								errorsOfBatchesAdded,
-								costsOfBatchesAdded,
-								arrayWithNumbersOfPerClassRpRnTpTnInSubepoch
-								) :
-
-	trainOrValCapitalString = "TRAINING" if train0orValidation1 == 0 else "VALIDATION"
-
-	#Calculate mean accuracy over subepoch for each class_i:
-
-	#[ class-i: [meanErrorOfSubepoch, meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch, meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, meanCostOfSubepoch], ...]
-	arrayWithReportedValuesPerClass = np.zeros([cnn3dInstance.numberOfOutputClasses, 6], dtype="float32")
-
-	for class_i in xrange(0, cnn3dInstance.numberOfOutputClasses) :
-
-		numberOfRealPositivesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,0]
-		numberOfRealNegativesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,1]
-		numberOfTruePositivesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,2]
-		numberOfTrueNegativesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,3]
-
-		meanErrorOfSubepoch = 999 if number_of_batches == 0 else errorsOfBatchesAdded/float(number_of_batches)
-		meanAccuracyOfSubepoch = 1.0 - meanErrorOfSubepoch #For validation, where patches are 50/50 exactly (should be), this should be the mean acc of the pos and neg acc. For training, if parts used, this WILL NOT be the mean of Pos/Neg mean accuracy.
-		meanAccuracyOnPositivesOfSubepoch = 999 if numberOfRealPositivesInSubepoch == 0 else numberOfTruePositivesInSubepoch*1.0/numberOfRealPositivesInSubepoch
-		meanAccuracyOnNegativesOfSubepoch = 999 if numberOfRealNegativesInSubepoch == 0 else numberOfTrueNegativesInSubepoch*1.0/numberOfRealNegativesInSubepoch
-		#New addition: Compute dice for the subepoch training/validation batches!
-		numberOfPredictedPositivesInSubepoch = (numberOfRealNegativesInSubepoch + numberOfRealPositivesInSubepoch) - numberOfTrueNegativesInSubepoch - numberOfRealPositivesInSubepoch + numberOfTruePositivesInSubepoch
-		meanDiceOfSubepoch = 999 if (numberOfPredictedPositivesInSubepoch + numberOfRealPositivesInSubepoch == 0) else (2.0*numberOfTruePositivesInSubepoch)/(numberOfPredictedPositivesInSubepoch + numberOfRealPositivesInSubepoch)
-		# In case of validation, meanCostOfSubepoch is just a placeholder. Cause this does not get calculated and reported in this case.
-		meanCostOfSubepoch = 999 if (train0orValidation1 == 1 or number_of_batches == 0) else costsOfBatchesAdded/float(number_of_batches)
-
-		arrayWithReportedValuesPerClass[class_i] = [
-			meanErrorOfSubepoch, meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch, meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, meanCostOfSubepoch]
-
-	#Report mean accuracy over subepoch for each class_i:
-	currentEpoch = cnn3dInstance.numberOfEpochsTrained
-	for class_i in xrange(0, cnn3dInstance.numberOfOutputClasses) :
-		classString = "(whole-foreground)Class-0" if class_i == 0 else "Class-"+str(class_i)
-		myLogger.print3( "++++++++++++++++ Reporting Accuracy over whole subepoch for " + classString + " ++++++++++++++++" )
-
-		[meanErrorOfSubepoch,
-		meanAccuracyOfSubepoch,
-		meanAccuracyOnPositivesOfSubepoch,
-		meanAccuracyOnNegativesOfSubepoch,
-		meanDiceOfSubepoch,
-		meanCostOfSubepoch] = arrayWithReportedValuesPerClass[class_i]
-
-		numberOfRealPositivesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,0]
-		numberOfRealNegativesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,1]
-		numberOfTruePositivesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,2]
-		numberOfTrueNegativesInSubepoch = arrayWithNumbersOfPerClassRpRnTpTnInSubepoch[class_i,3]
-		
-		initialStringOfLine = trainOrValCapitalString + ": Epoch #" + str(currentEpoch) + ", Subepoch #" + str(subepoch) + ", " + classString + ":"
-
-		myLogger.print3(initialStringOfLine + " mean error: "+str(meanErrorOfSubepoch))
-		myLogger.print3(initialStringOfLine + " mean accuracy "+str(meanAccuracyOfSubepoch))	
-	 	myLogger.print3(initialStringOfLine + " mean accuracy for Positive Samples(voxels): " + str(meanAccuracyOnPositivesOfSubepoch) + ". True Predicted Pos="+str(numberOfTruePositivesInSubepoch)+"/"+str(numberOfRealPositivesInSubepoch))
-		myLogger.print3(initialStringOfLine + " mean accuracy for Negative Samples(voxels): " + str(meanAccuracyOnNegativesOfSubepoch) + ". True Predicted Neg="+str(numberOfTrueNegativesInSubepoch)+"/"+str(numberOfRealNegativesInSubepoch))
-		myLogger.print3(initialStringOfLine + " mean Dice: "+str(meanDiceOfSubepoch))
-		if train0orValidation1 == 0 : 
-			myLogger.print3(initialStringOfLine + " mean cost: "+str(meanCostOfSubepoch))
-
-	return arrayWithReportedValuesPerClass
-
 
 #A main routine in do_training, that runs for every batch of validation and training.
 def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
@@ -1004,64 +877,59 @@ def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
 								number_of_batches, #This is the integer division of (numb-o-segments/batchSize)
 								cnn3dInstance,
 								vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
-								epoch, #Deprecated
-								subepoch) :
+								subepoch,
+								accuracyMonitorForEpoch) :
 	"""
 	Returned array is of dimensions [NumberOfClasses x 6]
 	For each class: [meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch, meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, meanCostOfSubepoch]
 	In the case of VALIDATION, meanCostOfSubepoch is just a placeholder. Only valid when training.
 	"""
-	errorsOfBatchesAdded = 0
-	costsOfBatchesAdded = 0
+	trainedOrValidatedString = "Trained" if train0orValidation1 == 0 else "Validated"
+
+	meanErrorsOfBatches = []
+	costsOfBatches = []
 	#each row in the array below will hold the number of Real Positives, Real Negatives, True Predicted Positives and True Predicted Negatives in the subepoch, in this order.
 	shapeOfArrWithNumbersOfPerClassRpRnTpTnInSubep = [ cnn3dInstance.numberOfOutputClasses, 4 ]
 	arrayWithNumbersOfPerClassRpRnTpTnInSubepoch = np.zeros(shapeOfArrWithNumbersOfPerClassRpRnTpTnInSubep, dtype="int32")
 
         for batch_i in xrange(number_of_batches):
 		printProgressStep = max(1, number_of_batches/5)
+		if  batch_i%printProgressStep == 0 :
+			myLogger.print3( trainedOrValidatedString + " on "+str(batch_i)+"/"+str(number_of_batches)+" of the batches for this subepoch...")
 		if train0orValidation1==0 : #training
-		        if  batch_i%printProgressStep == 0 :
-		            myLogger.print3("Trained on "+str(batch_i)+"/"+str(number_of_batches)+" of the batches for this subepoch...")
-			
 			listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining = cnn3dInstance.cnnTrainModel(batch_i, vectorWithWeightsOfTheClassesForCostFunctionOfTraining)
+			cnn3dInstance.updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference() #I should put this inside the 3dCNN.
+
 			[costOfThisBatch, meanErrorOfBatch] = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[:2]
 			listWithNumberOfRpRnPpPnForEachClass = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[2:]
 
 		else : #validation
-			if  batch_i%printProgressStep == 0 :
-		            myLogger.print3("Validated on "+str(batch_i)+"/"+str(number_of_batches)+" of the batches for this subepoch...")
-
 			listWithMeanErrorAndRpRnTpTnForEachClassFromValidation = cnn3dInstance.cnnValidateModel(batch_i)
-			costOfThisBatch = 0 #placeholder in case of validation. This function needs to return it, valid for the case of training only.
+			costOfThisBatch = 999 #placeholder in case of validation.
 			meanErrorOfBatch = listWithMeanErrorAndRpRnTpTnForEachClassFromValidation[0]
 			listWithNumberOfRpRnPpPnForEachClass = listWithMeanErrorAndRpRnTpTnForEachClassFromValidation[1:]
 
 		#The returned listWithNumberOfRpRnPpPnForEachClass holds Real Positives, Real Negatives, True Predicted Positives and True Predicted Negatives for all classes in this order, flattened. First RpRnTpTn are for WHOLE "class".
 		arrayWithNumberOfRpRnPpPnForEachClassForBatch = np.asarray(listWithNumberOfRpRnPpPnForEachClass, dtype="int32").reshape(shapeOfArrWithNumbersOfPerClassRpRnTpTnInSubep, order='C')
-	
-		#New addition, to calculate the dice on each training/validation batch
-		errorsOfBatchesAdded += meanErrorOfBatch
-		costsOfBatchesAdded += costOfThisBatch #only really used in training.
+
+		# To later calculate the mean error and cost over the subepoch
+		meanErrorsOfBatches.append(meanErrorOfBatch)
+		costsOfBatches.append(costOfThisBatch) #only really used in training.
 		arrayWithNumbersOfPerClassRpRnTpTnInSubepoch += arrayWithNumberOfRpRnPpPnForEachClassForBatch
 
-		#============BATCH REGULARIZATION ROLLING AVERAGE===============
-		cnn3dInstance.updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheRollingAverageOfTheBatchNormInference()
 
-	
-	#Calculate and Report mean accuracy over subepoch for each class_i:
-	arrayWithReportedValuesPerClass = calculateAndReportMeanAccuracyOverWholeSubepochForEachClass(	myLogger,
-													cnn3dInstance,
-													train0orValidation1,
-													subepoch,
-													number_of_batches,
-													errorsOfBatchesAdded,
-													costsOfBatchesAdded,
-													arrayWithNumbersOfPerClassRpRnTpTnInSubepoch
-													)
+	#======== Calculate and Report accuracy over subepoch
+	meanAccuracyOfSubepoch = 1.0 - sum(meanErrorsOfBatches) / float(number_of_batches)
+	# In case of validation, meanCostOfSubepoch is just a placeholder. Cause this does not get calculated and reported in this case.
+	meanCostOfSubepoch = accuracyMonitorForEpoch.NA_PATTERN if (train0orValidation1 == 1) else sum(costsOfBatches) / float(number_of_batches)
 
-	#return [meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch, meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, meanCostOfSubepoch]
-	return arrayWithReportedValuesPerClass
+	# This function does NOT flip the class-0 background to foreground!
+	accuracyMonitorForEpoch.updateMonitorAccuraciesWithNewSubepochEntries(	meanAccuracyOfSubepoch,
+										meanCostOfSubepoch,
+										arrayWithNumbersOfPerClassRpRnTpTnInSubepoch)
 
+	accuracyMonitorForEpoch.reportAccuracyForLastSubepoch()
+	#Done
 
 	
 
@@ -1163,22 +1031,12 @@ def do_training(myLogger,
     subSamplingFactor = cnn3dInstance.subsampleFactor
 
 
-
     number_of_batches_training = imagePartsLoadedInGpuPerSubepoch/cnn3dInstance.batchSize
     numberOfPositiveSamplesPerSubepoch = int(imagePartsLoadedInGpuPerSubepoch*percentThatArePositiveSamplesTraining)
     numberOfNegativeSamplesPerSubepoch = imagePartsLoadedInGpuPerSubepoch - numberOfPositiveSamplesPerSubepoch
     number_of_batches_validation = imagePartsLoadedInGpuPerSubepochValidation/cnn3dInstance.batchSizeValidation
     numberOfPositiveSamplesPerSubepochValidation = int(imagePartsLoadedInGpuPerSubepochValidation * percentThatArePositiveSamplesValidation)
     numberOfNegativeSamplesPerSubepochValidation = imagePartsLoadedInGpuPerSubepochValidation - numberOfPositiveSamplesPerSubepochValidation
-
-    # Instantiate the two arrays that will hold the accuracy-values achieved in each subepoch, so that I report them in the end of each epoch:
-    # [meanErrorOfSubepoch, meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch,
-    #	meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, meanCostOfSubepoch].
-    # meanErrorOfSubepoch is not really reported. meanCostOfSubepoch is placeholder in Validation.
-    arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation = np.zeros([cnn3dInstance.numberOfOutputClasses, 6, number_of_subepochs], dtype="float32")
-    arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringTraining = np.zeros([cnn3dInstance.numberOfOutputClasses, 6, number_of_subepochs], dtype="float32")
-
-    meanValidationAccuracyOfLastEpoch = -1 #For the auto-reduction of the Learning Rate
 
 
     #---------To run PARALLEL the extraction of parts for the next subepoch---
@@ -1266,6 +1124,10 @@ def do_training(myLogger,
 
     while cnn3dInstance.numberOfEpochsTrained < n_epochs :
 	epoch = cnn3dInstance.numberOfEpochsTrained
+	
+	trainingAccuracyMonitorForEpoch = AccuracyOfEpochMonitorSegmentation(myLogger, 0, cnn3dInstance.numberOfEpochsTrained, cnn3dInstance.numberOfOutputClasses, number_of_subepochs)
+	validationAccuracyMonitorForEpoch = None if not performValidationOnSamplesDuringTrainingProcessBool else \
+					AccuracyOfEpochMonitorSegmentation(myLogger, 1, cnn3dInstance.numberOfEpochsTrained, cnn3dInstance.numberOfOutputClasses, number_of_subepochs ) 
 
         myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         myLogger.print3("~~~~~~~~~~~~~~~~~~~~Starting new Epoch! Epoch #"+str(epoch)+"/"+str(n_epochs)+" ~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -1362,26 +1224,21 @@ def do_training(myLogger,
 		    train0orValidation1 = 1 #validation
 		    vectorWithWeightsOfTheClassesForCostFunctionOfTraining = 'placeholder' #only used in training
 
-		    arrayWithReportedAccuracyValuesPerClassForValidationForSubepoch = doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
-													train0orValidation1,
-													number_of_batches_validation,
-													cnn3dInstance,
-													vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
-													epoch,
-													subepoch)
-
-		    arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation[:,:, subepoch] = arrayWithReportedAccuracyValuesPerClassForValidationForSubepoch
-
+		    doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
+										train0orValidation1,
+										number_of_batches_validation,
+										cnn3dInstance,
+										vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
+										subepoch,
+										validationAccuracyMonitorForEpoch)
 		    cnn3dInstance.freeGpuValidationData()
 
 		    end_validationForSubepoch_time = time.clock()
 		    myLogger.print3("TIMING: Validating on the batches of this subepoch #" + str(subepoch) + " took time: "+str(end_validationForSubepoch_time-start_validationForSubepoch_time)+"(s)")
 	
 		    #Update cnn's top achieved validation accuracy if needed: (for the autoReduction of Learning Rate.)
-		    averageValidationAccuracyOfAllSubepochsOfThisEpochForWHOLEClass = arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation[0, 1, :]
-		    averageValidationAccuracyOfThisLastEpochForWHOLEClass = np.mean(averageValidationAccuracyOfAllSubepochsOfThisEpochForWHOLEClass)
 		    cnn3dInstance.checkMeanValidationAccOfLastEpochAndUpdateCnnsTopAccAchievedIfNeeded(myLogger,
-											averageValidationAccuracyOfThisLastEpochForWHOLEClass,
+											validationAccuracyMonitorForEpoch.getMeanEmpiricalAccuracyOfEpoch(),
 											minIncreaseInValidationAccuracyConsideredForLrSchedule)
             #-------------------END OF THE VALIDATION-DURING-TRAINING-LOOP-------------------------
 
@@ -1439,11 +1296,6 @@ def do_training(myLogger,
 		multiplierToFadePerEpoch = (numberOfEpochsToWeightTheClassesInTheCostFunction - cnn3dInstance.numberOfEpochsTrained)*1.0 / numberOfEpochsToWeightTheClassesInTheCostFunction
 		nominatorForEachClass = actualNumOfPatchesPerClassInTheSubepoch_notParts + (numOfPatchesInTheSubepoch_notParts - actualNumOfPatchesPerClassInTheSubepoch_notParts) * multiplierToFadePerEpoch
 		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = nominatorForEachClass / ((actualNumOfPatchesPerClassInTheSubepoch_notParts)*NUMBER_OF_CLASSES+TINY_FLOAT)
-		myLogger.print3("DEBUG: numOfPatchesInTheSubepoch_notParts="+str(numOfPatchesInTheSubepoch_notParts))
-		myLogger.print3("DEBUG: actualNumOfPatchesPerClassInTheSubepoch_notParts="+str(actualNumOfPatchesPerClassInTheSubepoch_notParts))
-		myLogger.print3("DEBUG: multiplierToFadePerEpoch ="+str(multiplierToFadePerEpoch))
-		myLogger.print3("DEBUG: vectorWithWeightsOfTheClassesForCostFunctionOfTraining="+str(vectorWithWeightsOfTheClassesForCostFunctionOfTraining))
-
             else :
 		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.ones(NUMBER_OF_CLASSES, dtype='float32')
 
@@ -1488,16 +1340,13 @@ def do_training(myLogger,
             start_trainingForSubepoch_time = time.clock()
 
             train0orValidation1 = 0 #training
-            arrayWithReportedAccuracyValuesPerClassForTrainingForSubepoch = doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
-												train0orValidation1,
-												number_of_batches_training,
-												cnn3dInstance,
-												vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
-												epoch,
-												subepoch)
-
-            arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringTraining[:,:, subepoch] = arrayWithReportedAccuracyValuesPerClassForTrainingForSubepoch
-
+            doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
+									train0orValidation1,
+									number_of_batches_training,
+									cnn3dInstance,
+									vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
+									subepoch,
+									trainingAccuracyMonitorForEpoch)
             cnn3dInstance.freeGpuTrainingData()
 
             end_trainingForSubepoch_time = time.clock()
@@ -1505,19 +1354,14 @@ def do_training(myLogger,
 
 
 	myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" )
-	myLogger.print3("~~~~~~~~~~~~~~~~~ Epoch #" + str(epoch) + " finished. Reporting Accuracy over whole epoch. ~~~~~~~~~~~~~~~~~" )
+	myLogger.print3("~~~~~~~~~~~~~~~~~~ Epoch #" + str(epoch) + " finished. Reporting Accuracy over whole epoch. ~~~~~~~~~~~~~~~~~~" )
 	myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" )
 
-	reportAccuracyValuesOverWholeEpochForEachClass(myLogger,
-						cnn3dInstance.numberOfOutputClasses,
-						epoch,
-						performValidationOnSamplesDuringTrainingProcessBool,
-						arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation,
-						arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringTraining,
-						)
-	arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringValidation *= 0.
-	arrayThatHoldsForEachClassTheAccuracyValuesAchievedInEachSubepochDuringTraining *= 0.
+	if performValidationOnSamplesDuringTrainingProcessBool :
+		validationAccuracyMonitorForEpoch.reportMeanAccyracyOfEpoch()
+	trainingAccuracyMonitorForEpoch.reportMeanAccyracyOfEpoch()
 
+	del trainingAccuracyMonitorForEpoch; del validationAccuracyMonitorForEpoch;
 
 	#=======================Learning Rate Schedule.=========================
 	if (lowerLrByStable0orAuto1orPredefined2orExponential3Schedule == 0) and (numEpochsToWaitBeforeLowerLR > 0) and (cnn3dInstance.numberOfEpochsTrained % numEpochsToWaitBeforeLowerLR)==0 :
@@ -1641,7 +1485,9 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
     myLogger.print3("###########################################################################################################")
 
     start_validationOrTesting_time = time.clock()
-    
+        
+    NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
+
     NUMBER_OF_CLASSES = cnn3dInstance.numberOfOutputClasses
 
     usingSubsampledWaypath = len(cnn3dInstance.cnnLayersSubsampled)>0 #Flag that says if I should be loading subsampled channels etc.
@@ -1650,9 +1496,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
     batch_size = cnn3dInstance.batchSizeTesting
 
     #one dice score for whole + for each class)
-    diceCoefficients1 = np.zeros((total_number_of_images, NUMBER_OF_CLASSES), dtype="float32") #AllpredictedLes/AllLesions
-    diceCoefficients2 = np.zeros((total_number_of_images, NUMBER_OF_CLASSES), dtype="float32") #predictedInsideBrainmask/AllLesions
-    diceCoefficients3 = np.zeros((total_number_of_images, NUMBER_OF_CLASSES), dtype="float32") #predictedInsideBrainMask/ LesionsInsideBrainMAsk (for comparisons)
+    # A list of dimensions: total_number_of_images X NUMBER_OF_CLASSES
+    diceCoeffs1 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #AllpredictedLes/AllLesions
+    diceCoeffs2 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideBrainmask/AllLesions
+    diceCoeffs3 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideBrainMask/ LesionsInsideBrainMAsk (for comparisons)
 
     patchDimensions = cnn3dInstance.patchDimensions
     imagePartDimensions = cnn3dInstance.imagePartDimensionsTesting
@@ -2004,26 +1851,26 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 			#Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinBrainMask / AllLesions , Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask.
 			#Dice1 = Allpredicted/allLesions
 			diceCoeff1 = calculateDiceCoefficient(booleanPredictedLabelImage, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-			diceCoefficients1[image_i, class_i] = diceCoeff1
+			diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 <> -1 else NA_PATTERN
 			#Dice2 = PredictedWithinBrainMask / AllLesions
 			diceCoeff2 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-			diceCoefficients2[image_i, class_i] = diceCoeff2
+			diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 <> -1 else NA_PATTERN
 			#Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask
 			diceCoeff3 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped * multiplyWithBrainMaskOr1)
-			diceCoefficients3[image_i, class_i] = diceCoeff3
+			diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 <> -1 else NA_PATTERN
 
-		myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strFlList4Dec(diceCoefficients1[image_i])+" DICE2="+strFlList4Dec(diceCoefficients2[image_i])+" DICE3="+strFlList4Dec(diceCoefficients3[image_i]))
+		myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
 		printExplanationsAboutDice(myLogger)
 
     #================= Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. ====================
-    if providedGtLabelsBool : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
+    if providedGtLabelsBool and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
 	    myLogger.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
 	    myLogger.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
-	    meanDiceCoefficients1 = np.mean(diceCoefficients1,axis=0) if total_number_of_images>0 else [9999]
-	    meanDiceCoefficients2 = np.mean(diceCoefficients2,axis=0) if total_number_of_images>0 else [9999]
-	    meanDiceCoefficients3 = np.mean(diceCoefficients3,axis=0) if total_number_of_images>0 else [9999]
+	    meanDiceCoeffs1 = getMeanPerColOf2dListExclNA(diceCoeffs1, NA_PATTERN)
+	    meanDiceCoeffs2 = getMeanPerColOf2dListExclNA(diceCoeffs2, NA_PATTERN)
+	    meanDiceCoeffs3 = getMeanPerColOf2dListExclNA(diceCoeffs3, NA_PATTERN)
 
-	    myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strFlList4Dec(meanDiceCoefficients1) + " DICE2="+strFlList4Dec(meanDiceCoefficients2)+" DICE3="+strFlList4Dec(meanDiceCoefficients3))
+	    myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) + " DICE2="+strListFl4fNA(meanDiceCoeffs2, NA_PATTERN)+" DICE3="+strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
 	    printExplanationsAboutDice(myLogger)
 
 
