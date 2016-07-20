@@ -53,6 +53,8 @@ class ModelConfig(object):
 	#==Extra FC Layers. Final Classification one is not included in here.
 	N_FMS_FC = "numberFMsPerLayerFC"
 
+	#== Indices of layers (per pathway type) to make Residual Connections at their output. 
+	RESID_CONN_INDICES = "indicesOfLayersWithResidualConnectionsPerPathType"
 	#Size of Image Segments
 	SEG_DIM_TRAIN = "segmentsDimTrain"
 	SEG_DIM_VAL = "segmentsDimVal"
@@ -146,6 +148,10 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			subsampleFactor=configGet(modelConfig.SUBS_FACTOR),
 			#==FC Layers====
 			numFMsFc=configGet(modelConfig.N_FMS_FC),
+			
+			#==Residual Connections===
+			indicesOfLayersToConnectResidualsInOutput=configGet(modelConfig.RESID_CONN_INDICES),
+			
 			#==Size of Image Segments ==
 			segmDimTrain=configGet(modelConfig.SEG_DIM_TRAIN),
 			segmDimVal=configGet(modelConfig.SEG_DIM_VAL),

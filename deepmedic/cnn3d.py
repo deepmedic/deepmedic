@@ -26,6 +26,66 @@ def getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensions, pa
 	numberOfCentralVoxelsClassifiedPerDimension.append(imagePartDimensions[dimension_i] - patchDimensions[dimension_i] + 1)
     return numberOfCentralVoxelsClassifiedPerDimension
 
+def getMiddlePartOfFms(fms, fmsShape, listOfNumberOfCentralVoxelsToGetPerDimension) :
+    #if part is of even width, one voxel to the left is the centre.
+    rCentreOfPartIndex = (fmsShape[2] - 1) / 2
+    rIndexToStartGettingCentralVoxels = rCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[0]-1)/2
+    rIndexToStopGettingCentralVoxels = rIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[0] #Excluding
+    cCentreOfPartIndex = (fmsShape[3] - 1) / 2
+    cIndexToStartGettingCentralVoxels = cCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[1]-1)/2
+    cIndexToStopGettingCentralVoxels = cIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[1] #Excluding
+
+    if len(listOfNumberOfCentralVoxelsToGetPerDimension) == 2: #the input FMs are of 2 dimensions (for future use)
+        return fms[:,:,
+                    rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
+                    cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels]
+    elif len(listOfNumberOfCentralVoxelsToGetPerDimension) ==3 :  #the input FMs are of 3 dimensions
+        zCentreOfPartIndex = (fmsShape[4] - 1) / 2
+        zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2]-1)/2
+        zIndexToStopGettingCentralVoxels = zIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[2] #Excluding
+        return fms[:, :,
+                    rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
+                    cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels,
+                    zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
+    else : #wrong number of dimensions!
+        return -1
+    
+    
+def makeResidualConnectionBetweenLayersAndReturnOutput(myLogger, deeperLayer, earlierLayer) :
+    # Add the outputs of the two layers and return the output, as well as its dimensions.
+    # Result: The result should have exactly the same shape as the output of the Deeper layer. Both #FMs and Dimensions of FMs.
+    myLogger.print3("DEBUG: Making Residual Connections.")
+    
+    # Note: layer.outputImageShape has dimensions: [batchSize, FMs, r, c, z]    
+    # The deeper FMs can be greater only when there is upsampling. But then, to do residuals, I would need to upsample the earlier FMs. Not implemented.
+    if np.any(deeperLayer.outputImageShape[2:] > earlierLayer.outputImageShape[2:]) or \
+            np.any(deeperLayer.outputImageShapeValidation[2:] > earlierLayer.outputImageShapeValidation[2:]) or \
+                np.any(deeperLayer.outputImageShapeTesting[2:] > earlierLayer.outputImageShapeTesting[2:]) :
+        myLogger.print3("ERROR: In function [makeResidualConnectionBetweenLayersAndReturnOutput] the RCZ-dimensions of a deeper layer FMs were found greater than the earlier layers. Not implemented functionality. Exiting!")
+        myLogger.print3("ERROR: (train) Dimensions of Deeper Layer=" + str(deeperLayer.outputImageShape) + ". Dimensions of Earlier Layer=" + str(earlierLayer.outputImageShape) )
+        myLogger.print3("ERROR: (val) Dimensions of Deeper Layer=" + str(deeperLayer.outputImageShapeValidation) + ". Dimensions of Earlier Layer=" + str(earlierLayer.outputImageShapeValidation) )
+        myLogger.print3("ERROR: (test) Dimensions of Deeper Layer=" + str(deeperLayer.outputImageShapeTesting) + ". Dimensions of Earlier Layer=" + str(earlierLayer.outputImageShapeTesting) )
+        exit(1)
+
+    # get the part of the earlier layer that is of the same dimensions as the FMs of the deeper:
+    partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLayer.output, earlierLayer.outputImageShape, deeperLayer.outputImageShape[2:])
+    partOfEarlierFmsToAddVal = getMiddlePartOfFms(earlierLayer.outputInference, earlierLayer.outputImageShapeValidation, deeperLayer.outputImageShapeValidation[2:])
+    partOfEarlierFmsToAddTest = getMiddlePartOfFms(earlierLayer.outputTesting, earlierLayer.outputImageShapeTesting, deeperLayer.outputImageShapeTesting[2:])
+        
+    # Add the FMs, after taking care of zero padding if the deeper layer has more FMs.
+    numFMsDeeper = deeperLayer.outputImageShape[1]
+    numFMsEarlier = earlierLayer.outputImageShape[1]
+    if numFMsDeeper >= numFMsEarlier :
+        outputOfResConnTrain = T.inc_subtensor(deeperLayer.output[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTrain, inplace=False)
+        outputOfResConnVal = T.inc_subtensor(deeperLayer.outputInference[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddVal, inplace=False)
+        outputOfResConnTest = T.inc_subtensor(deeperLayer.outputTesting[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTest, inplace=False)
+    else : # Deeper FMs are fewer than earlier. This should not happen. But oh well...
+        outputOfResConnTrain = T.inc_subtensor(deeperLayer.output, partOfEarlierFmsToAddTrain[:, :numFMsDeeper, :,:,:], inplace=False)
+        outputOfResConnVal = T.inc_subtensor(deeperLayer.outputInference, partOfEarlierFmsToAddVal[:, :numFMsDeeper, :,:,:], inplace=False)
+        outputOfResConnTest = T.inc_subtensor(deeperLayer.outputTesting, partOfEarlierFmsToAddTest[:, :numFMsDeeper, :,:,:], inplace=False)
+         
+    # Dimensions of output are the same as those of the deeperLayer
+    return (outputOfResConnTrain, outputOfResConnVal, outputOfResConnTest)
 
 ##################################
 ## Various activation functions ##
@@ -44,12 +104,15 @@ def Tanh(x):
     return(y)
 
 
+
+    
 ##################################################
 ##################################################
 ################ THE CNN CLASS ###################
 ##################################################
 ##################################################
 
+# MAKE A SUB-CLASS: pathway!
 class Cnn3d(object):
     def __init__(self):
 
@@ -151,7 +214,8 @@ class Cnn3d(object):
 	self.topMeanValidationAccuracyAchievedInEpoch = [-1,-1]
 	self.lastEpochAtTheEndOfWhichLrWasLowered = 0 #refers to CnnTrained epochs, not the epochs in the do_training loop.
 	
-
+        # Residual Learning
+        self.indicesOfLayersToConnectResidualsInOutput = ""
 
     def change_learning_rate_of_a_cnn(self, newValueForLearningRate, myLogger=None) :
 	stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Learning Rate to: "+str(newValueForLearningRate)
@@ -239,6 +303,7 @@ class Cnn3d(object):
 
 
     def makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(self,
+                                                        myLogger,
 							thisPathwayType,
 							thisPathWayNKerns,
 							thisPathWayKernelDimensions,
@@ -253,7 +318,8 @@ class Cnn3d(object):
 							maxPoolingParamsStructureForThisPathwayType,
 							initializationTechniqueClassic0orDelvingInto1,
 							activationFunctionToUseRelu0orPrelu1,
-							thisPathwayDropoutRates=[]
+							thisPathwayDropoutRates=[],
+                                                        indicesOfLayersToConnectResidualsInOutputForPathway=[]
 							) :
 
 	rng = numpy.random.RandomState(55789)
@@ -262,16 +328,16 @@ class Cnn3d(object):
 	shapeOfInputImageToPathwayValidation = [self.batchSizeValidation, numberOfImageChannelsToPathway] + imagePartDimensionsValidation
 	shapeOfInputImageToPathwayTesting = [self.batchSizeTesting, numberOfImageChannelsToPathway] + imagePartDimensionsTesting
 
-	previousLayerOutputImage = inputImageToPathway
-	previousLayerOutputImageInference = inputImageToPathwayInference
-	previousLayerOutputImageTesting = inputImageToPathwayTesting
-	previousLayerOutputImageShape = shapeOfInputImageToPathway
-	previousLayerOutputImageShapeValidation = shapeOfInputImageToPathwayValidation
-	previousLayerOutputImageShapeTesting = shapeOfInputImageToPathwayTesting
+	inputImageToNextLayer = inputImageToPathway
+	inputImageToNextLayerInference = inputImageToPathwayInference
+	inputImageToNextLayerTesting = inputImageToPathwayTesting
+	inputImageToNextLayerShape = shapeOfInputImageToPathway
+	inputImageToNextLayerShapeValidation = shapeOfInputImageToPathwayValidation
+	inputImageToNextLayerShapeTesting = shapeOfInputImageToPathwayTesting
 
 	for layer_i in xrange(0, len(thisPathWayNKerns)) :
 		thisLayerFilterShape = [thisPathWayNKerns[layer_i],
-					previousLayerOutputImageShape[1], #number of feature maps of last layer.
+					inputImageToNextLayerShape[1], #number of feature maps of last layer.
 					thisPathWayKernelDimensions[layer_i][0],
 					thisPathWayKernelDimensions[layer_i][1],
 					thisPathWayKernelDimensions[layer_i][2]]
@@ -280,13 +346,14 @@ class Cnn3d(object):
 
 		thisLayerMaxPoolingParameters = maxPoolingParamsStructureForThisPathwayType[layer_i]
 
+
 		layer_instance = ConvLayer(rng,
-						    input=previousLayerOutputImage,
-						    inputInferenceBn=previousLayerOutputImageInference,
-						    inputTestingBn=previousLayerOutputImageTesting,
-						    image_shape=previousLayerOutputImageShape,
-						    image_shapeValidation=previousLayerOutputImageShapeValidation,
-						    image_shapeTesting=previousLayerOutputImageShapeTesting,
+						    input=inputImageToNextLayer,
+						    inputInferenceBn=inputImageToNextLayerInference,
+						    inputTestingBn=inputImageToNextLayerTesting,
+						    image_shape=inputImageToNextLayerShape,
+						    image_shapeValidation=inputImageToNextLayerShapeValidation,
+						    image_shapeTesting=inputImageToNextLayerShapeTesting,
 						    filter_shape=thisLayerFilterShape,
 						    poolsize=(0, 0),
 						    #for batchNormalization
@@ -298,15 +365,23 @@ class Cnn3d(object):
 						) 
 		self.typesOfCnnLayers[thisPathwayType].append(layer_instance)
 
-		previousLayerOutputImage = layer_instance.output
-		previousLayerOutputImageInference = layer_instance.outputInference
-		previousLayerOutputImageTesting = layer_instance.outputTesting
-		previousLayerOutputImageShape = layer_instance.outputImageShape
-		previousLayerOutputImageShapeValidation = layer_instance.outputImageShapeValidation
-		previousLayerOutputImageShapeTesting = layer_instance.outputImageShapeTesting
+                if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here
+                        inputImageToNextLayer = layer_instance.output
+        		inputImageToNextLayerInference = layer_instance.outputInference
+        		inputImageToNextLayerTesting = layer_instance.outputTesting
 
+                else : #make residual connection
+                        (inputImageToNextLayer,
+                        inputImageToNextLayerInference,
+                        inputImageToNextLayerTesting) =  makeResidualConnectionBetweenLayersAndReturnOutput( myLogger, layer_instance, self.typesOfCnnLayers[thisPathwayType][layer_i-2] ) #layer_instance.outputTesting
+                # Residual connections preserve the both the number of FMs and the dimensions of the FMs, the same as in the later, deeper layer.
+                inputImageToNextLayerShape = layer_instance.outputImageShape
+                inputImageToNextLayerShapeValidation = layer_instance.outputImageShapeValidation
+                inputImageToNextLayerShapeTesting = layer_instance.outputImageShapeTesting
 
-	return [previousLayerOutputImageShape, previousLayerOutputImageShapeValidation, previousLayerOutputImageShapeTesting]
+        
+	return [inputImageToNextLayer, inputImageToNextLayerInference, inputImageToNextLayerTesting, inputImageToNextLayerShape, inputImageToNextLayerShapeValidation, inputImageToNextLayerShapeTesting]
+
 
 
     def repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(self,
@@ -327,29 +402,7 @@ class Cnn3d(object):
 	return expandedOutput
 
 
-    def getMiddlePartOfFms(self, fms, fmsShape, listOfNumberOfCentralVoxelsToGetPerDimension) :
-	#if part is of even width, one voxel to the left is the centre.
-	rCentreOfPartIndex = (fmsShape[2] - 1) / 2
-	rIndexToStartGettingCentralVoxels = rCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[0]-1)/2
-	rIndexToStopGettingCentralVoxels = rIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[0] #Excluding
-	cCentreOfPartIndex = (fmsShape[3] - 1) / 2
-	cIndexToStartGettingCentralVoxels = cCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[1]-1)/2
-	cIndexToStopGettingCentralVoxels = cIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[1] #Excluding
 
-	if len(listOfNumberOfCentralVoxelsToGetPerDimension) == 2: #the input FMs are of 2 dimensions (for future use)
-		return fms[:,:,
-			rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
-			cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels]
-	elif len(listOfNumberOfCentralVoxelsToGetPerDimension) ==3 :  #the input FMs are of 3 dimensions
-		zCentreOfPartIndex = (fmsShape[4] - 1) / 2
-		zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2]-1)/2
-		zIndexToStopGettingCentralVoxels = zIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[2] #Excluding
-		return fms[:, :,
-			rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
-			cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels,
-			zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
-	else : #wrong number of dimensions!
-		return -1
 
 
 
@@ -386,9 +439,9 @@ class Cnn3d(object):
 		outputOfLayerInference = thisLayer.outputInference
 		outputOfLayerTesting = thisLayer.outputTesting
 			
-		middlePartOfFms = self.getMiddlePartOfFms(outputOfLayer, thisLayer.outputImageShape, numberOfCentralVoxelsToGet)
-		middlePartOfFmsInference = self.getMiddlePartOfFms(outputOfLayerInference, thisLayer.outputImageShapeValidation, numberOfCentralVoxelsToGetValidation)
-		middlePartOfFmsTesting = self.getMiddlePartOfFms(outputOfLayerTesting, thisLayer.outputImageShapeTesting, numberOfCentralVoxelsToGetTesting)
+		middlePartOfFms = getMiddlePartOfFms(outputOfLayer, thisLayer.outputImageShape, numberOfCentralVoxelsToGet)
+		middlePartOfFmsInference = getMiddlePartOfFms(outputOfLayerInference, thisLayer.outputImageShapeValidation, numberOfCentralVoxelsToGetValidation)
+		middlePartOfFmsTesting = getMiddlePartOfFms(outputOfLayerTesting, thisLayer.outputImageShapeTesting, numberOfCentralVoxelsToGetTesting)
 
 
 		if typeOfLayers_index == self.CNN_PATHWAY_SUBSAMPLED :
@@ -838,6 +891,9 @@ class Cnn3d(object):
                        nkernsZoomedIn1,
                        kernelDimensionsZoomedIn1,
 
+                       #---Residual Connections----
+                       indicesOfLayersToConnectResidualsInOutput,
+                       
                        #---MAX POOLING---
                        maxPoolingParamsStructure,
 
@@ -909,6 +965,7 @@ class Cnn3d(object):
 
 	self.softmaxTemperature = softmaxTemperature
 
+        self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput
         #I allocate shared-memory for training,validation and testing data,labels etc.
         #They are just zeros for now. Later, each epoch or whatever I sharedvar.set_value() and change them for training.
         #Probably it works even if I do them smaller (in dimensions) for now, as they 
@@ -991,9 +1048,13 @@ class Cnn3d(object):
 	inputImageToPathwayInference = layer0_inputValidation
 	inputImageToPathwayTesting = layer0_inputTesting
 
-	[dimensionsOfOutputFrom1stPathway,
+	[outputNormalPathTrain,
+        outputNormalPathVal,
+        outputNormalPathTest,
+        dimensionsOfOutputFrom1stPathway,
 	dimensionsOfOutputFrom1stPathwayValidation,
-	dimensionsOfOutputFrom1stPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(thisPathwayType,
+	dimensionsOfOutputFrom1stPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                                                                                                                thisPathwayType,
 														thisPathWayNKerns,
 														thisPathWayKernelDimensions,
 														inputImageToPathway,
@@ -1007,13 +1068,14 @@ class Cnn3d(object):
 														maxPoolingParamsStructure[thisPathwayType],
 														initializationTechniqueClassic0orDelvingInto1,
 														activationFunctionToUseRelu0orPrelu1,
-														dropoutRatesForAllPathways[thisPathwayType]
+														dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
 														)
 	myLogger.print3("DEBUG: The output of the last layer of the FIRST PATH of the cnn has dimensions:"+str(dimensionsOfOutputFrom1stPathway))
 
-	inputToFirstFcLayer = self.cnnLayers[-1].output
-	inputToFirstFcLayerInference = self.cnnLayers[-1].outputInference
-	inputToFirstFcLayerTesting = self.cnnLayers[-1].outputTesting
+	inputToFirstFcLayer = outputNormalPathTrain
+	inputToFirstFcLayerInference = outputNormalPathVal
+	inputToFirstFcLayerTesting = outputNormalPathTest
 	numberOfFmsOfInputToFirstFcLayer = dimensionsOfOutputFrom1stPathway[1]
 
 	#====================== Make the Multi-scale-in-net connections for Path-1 ===========================	
@@ -1039,9 +1101,13 @@ class Cnn3d(object):
 		inputImageToPathwayInference = layer0_inputSubsampledValidation
 		inputImageToPathwayTesting = layer0_inputSubsampledTesting
 
-		[dimensionsOfOutputFrom2ndPathway,
+		[outputSubsampledPathTrain,
+                outputSubsampledPathVal,
+                outputSubsampledPathTest,
+                dimensionsOfOutputFrom2ndPathway,
 		dimensionsOfOutputFrom2ndPathwayValidation,
-		dimensionsOfOutputFrom2ndPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(thisPathwayType,
+		dimensionsOfOutputFrom2ndPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                                                                                                                        thisPathwayType,
 															thisPathWayNKerns,
 															thisPathWayKernelDimensions,
 															inputImageToPathway,
@@ -1055,24 +1121,25 @@ class Cnn3d(object):
 															maxPoolingParamsStructure[thisPathwayType],
 															initializationTechniqueClassic0orDelvingInto1,
 															activationFunctionToUseRelu0orPrelu1,
-															dropoutRatesForAllPathways[thisPathwayType])
+															dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType])
 		myLogger.print3("DEBUG: Training: The output of the last layer of the SECOND PART of the cnn has dimensions:"+str(dimensionsOfOutputFrom2ndPathway))
 		myLogger.print3("DEBUG: Validation: The output of the last layer of the SECOND PART of the cnn has dimensions:"+str(dimensionsOfOutputFrom2ndPathwayValidation))
 		myLogger.print3("DEBUG: Testing: The output of the last layer of the SECOND PART of the cnn has dimensions:"+str(dimensionsOfOutputFrom2ndPathwayTesting))
 
 		expandedOutputOfLastLayerOfSecondCnnPathway = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													self.typesOfCnnLayers[self.CNN_PATHWAY_SUBSAMPLED][-1].output,
+													outputSubsampledPathTrain,
 													dimensionsOfOutputFrom1stPathway )
 
 		myLogger.print3("DEBUG: Training: The shape of the REPEATED output of the 2nd pathway is: " + str(expandedOutputOfLastLayerOfSecondCnnPathway))
 		#For Validation with Subsampled pathway:
 		expandedOutputOfLastLayerOfSecondCnnPathwayInference = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													self.typesOfCnnLayers[self.CNN_PATHWAY_SUBSAMPLED][-1].outputInference,
+													outputSubsampledPathVal,
 													dimensionsOfOutputFrom1stPathwayValidation )
 		myLogger.print3("DEBUG: Validation: The shape of the REPEATED output of the 2nd pathway is: " + str(expandedOutputOfLastLayerOfSecondCnnPathwayInference))
 		#For Testing with Subsampled pathway:
 		expandedOutputOfLastLayerOfSecondCnnPathwayTesting = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													self.typesOfCnnLayers[self.CNN_PATHWAY_SUBSAMPLED][-1].outputTesting,
+													outputSubsampledPathTest,
 													dimensionsOfOutputFrom1stPathwayTesting )
 		myLogger.print3("DEBUG: Testing: The shape of the REPEATED output of the 2nd pathway is: " + str(expandedOutputOfLastLayerOfSecondCnnPathwayTesting))
 	
@@ -1107,13 +1174,17 @@ class Cnn3d(object):
 			imagePartDimensionsForZoomedPatch1Validation.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimensionValidation[dim_i] -1)
 			imagePartDimensionsForZoomedPatch1Testing.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimensionTesting[dim_i] -1)
 
-		inputImageToPathway =  self.getMiddlePartOfFms(layer0_input, inputImageShape, imagePartDimensionsForZoomedPatch1Training)
-		inputImageToPathwayInference = self.getMiddlePartOfFms(layer0_inputValidation, inputImageShapeValidation, imagePartDimensionsForZoomedPatch1Validation)
-		inputImageToPathwayTesting = self.getMiddlePartOfFms(layer0_inputTesting, inputImageShapeTesting, imagePartDimensionsForZoomedPatch1Testing)
+		inputImageToPathway =  getMiddlePartOfFms(layer0_input, inputImageShape, imagePartDimensionsForZoomedPatch1Training)
+		inputImageToPathwayInference = getMiddlePartOfFms(layer0_inputValidation, inputImageShapeValidation, imagePartDimensionsForZoomedPatch1Validation)
+		inputImageToPathwayTesting = getMiddlePartOfFms(layer0_inputTesting, inputImageShapeTesting, imagePartDimensionsForZoomedPatch1Testing)
 
-		[dimensionsOfOutputFromZoomed1Pathway,
+		[outputZoomedPathTrain,
+                outputZoomedPathVal,
+                outputZoomedPathTest,
+                dimensionsOfOutputFromZoomed1Pathway,
 		dimensionsOfOutputFromZoomed1PathwayValidation,
-		dimensionsOfOutputFromZoomed1PathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(thisPathwayType,
+		dimensionsOfOutputFromZoomed1PathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                                                                                                                        thisPathwayType,
 															thisPathWayNKerns,
 															thisPathWayKernelDimensions,
 															inputImageToPathway,
@@ -1127,11 +1198,12 @@ class Cnn3d(object):
 															maxPoolingParamsStructure[thisPathwayType],
 															initializationTechniqueClassic0orDelvingInto1,
 															activationFunctionToUseRelu0orPrelu1,
-															dropoutRatesForAllPathways[thisPathwayType])
+															dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType])
 		#====================================CONCATENATE the output of the ZoomedIn1 pathway=============================
-		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, self.typesOfCnnLayers[thisPathwayType][-1].output], axis=1)
-		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, self.typesOfCnnLayers[thisPathwayType][-1].outputInference], axis=1)
-		inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, self.typesOfCnnLayers[thisPathwayType][-1].outputTesting], axis=1)
+		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, outputZoomedPathTrain], axis=1)
+		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, outputZoomedPathVal], axis=1)
+		inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, outputZoomedPathTest], axis=1)
 		numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + dimensionsOfOutputFromZoomed1Pathway[1]
 
 
@@ -1171,9 +1243,13 @@ class Cnn3d(object):
 		
 
 		myLogger.print3("DEBUG: shape Of Input Image To FC Pathway:" + str(inputOfFcPathwayImagePartDimensionsTraining) )
-		[dimensionsOfOutputFeatureMapFromExtraFcLayersPathway,
+		[outputFcPathTrain,
+                outputFcPathVal,
+                outputFcPathTest,
+                dimensionsOfOutputFeatureMapFromExtraFcLayersPathway,
 		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayValidation,
-		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(thisPathwayType,
+		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                                                                                                                        thisPathwayType,
 															thisPathWayNKerns,
 															thisPathWayKernelDimensions,
 															inputImageToPathway,
@@ -1187,11 +1263,12 @@ class Cnn3d(object):
 															maxPoolingParamsStructure[thisPathwayType],
 															initializationTechniqueClassic0orDelvingInto1,
 															activationFunctionToUseRelu0orPrelu1,
-															dropoutRatesForAllPathways[thisPathwayType])
+															dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType])
 
-		inputImageForFinalClassificationLayer = self.fcLayers[-1].output
-		inputImageForFinalClassificationLayerInference = self.fcLayers[-1].outputInference
-		inputImageForFinalClassificationLayerTesting = self.fcLayers[-1].outputTesting
+		inputImageForFinalClassificationLayer = outputFcPathTrain
+		inputImageForFinalClassificationLayerInference = outputFcPathVal
+		inputImageForFinalClassificationLayerTesting = outputFcPathTest
 		shapeOfInputImageForFinalClassificationLayer = dimensionsOfOutputFeatureMapFromExtraFcLayersPathway
 		shapeOfInputImageForFinalClassificationLayerValidation = dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayValidation
 		shapeOfInputImageForFinalClassificationLayerTesting = dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTesting

@@ -131,6 +131,10 @@ class CreateModelSessionParameters(object) :
 			subsampleFactor,
 			#==FC Layers====
 			numFMsFc,
+			
+			#==Residual Connections===
+			indicesOfLayersToConnectResidualsInOutput,
+			
 			#==Size of Image Segments ==
 			segmDimTrain,
 			segmDimVal,
@@ -219,6 +223,9 @@ class CreateModelSessionParameters(object) :
 		#==FC Layers==
 		self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
 
+		#---Residual Connections----
+		self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput if indicesOfLayersToConnectResidualsInOutput <> None else [[],[],[],[]] # one sublist per cnn pathway type
+				
 		#==Size of Image Segments ==
 		self.segmDimNormalTrain = segmDimTrain if segmDimTrain <> None else self.errReqSegmDimTrain()
 		self.segmDimNormalVal = segmDimVal if segmDimVal <> None else self.receptiveFieldNormal
@@ -355,6 +362,9 @@ class CreateModelSessionParameters(object) :
 		logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.numFMsInExtraFcs)))
 		logPrint("Number of Feature Maps in the additional FC layers = " + str(self.numFMsInExtraFcs))
 
+		logPrint("~~Residual Connections~~")
+		logPrint("Residual Connections will be made at the output of layers with indices (per type of pathway) = " + str(self.indicesOfLayersToConnectResidualsInOutput))
+		
 		logPrint("~~Size Of Image Segments~~")
 		logPrint("Size of Segments for Training = " + str(self.segmDimNormalTrain))
 		logPrint("Size of Segments for Validation = " + str(self.segmDimNormalVal))
@@ -448,12 +458,15 @@ class CreateModelSessionParameters(object) :
 				#----Fully Conn Layers----
 				self.numFMsInExtraFcs,
 				self.kernelDimensionsFirstFcLayer,
-
+					   
 				#----for the zoomed-in pathway----
 				self.zoomedInPatchDimensions,
 				self.nkernsZoomedIn1,
 				self.kernelDimensionsZoomedIn1,
 
+				#---Residual Connections----
+				self.indicesOfLayersToConnectResidualsInOutput,
+				
 				#---MAX POOLING-----
 				self.maxPoolingParamsStructure,
 
