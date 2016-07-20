@@ -51,38 +51,47 @@ def getMiddlePartOfFms(fms, fmsShape, listOfNumberOfCentralVoxelsToGetPerDimensi
         return -1
     
     
-def makeResidualConnectionBetweenLayersAndReturnOutput(myLogger, deeperLayer, earlierLayer) :
+
+def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
+                                                        deeperLayerOutputImagesTrValTest,
+                                                        deeperLayerOutputImageShapesTrValTest,
+                                                        earlierLayerOutputImagesTrValTest,
+                                                        earlierLayerOutputImageShapesTrValTest) :
     # Add the outputs of the two layers and return the output, as well as its dimensions.
     # Result: The result should have exactly the same shape as the output of the Deeper layer. Both #FMs and Dimensions of FMs.
     myLogger.print3("DEBUG: Making Residual Connections.")
     
-    # Note: layer.outputImageShape has dimensions: [batchSize, FMs, r, c, z]    
+    (deeperLayerOutputImageTrain, deeperLayerOutputImageVal, deeperLayerOutputImageTest) = deeperLayerOutputImagesTrValTest
+    (deeperLayerOutputImageShapeTrain, deeperLayerOutputImageShapeVal, deeperLayerOutputImageShapeTest) = deeperLayerOutputImageShapesTrValTest
+    (earlierLayerOutputImageTrain, earlierLayerOutputImageVal, earlierLayerOutputImageTest) = earlierLayerOutputImagesTrValTest
+    (earlierLayerOutputImageShapeTrain, earlierLayerOutputImageShapeVal, earlierLayerOutputImageShapeTest) = earlierLayerOutputImageShapesTrValTest
+    # Note: deeperLayerOutputImageShapeTrain has dimensions: [batchSize, FMs, r, c, z]    
     # The deeper FMs can be greater only when there is upsampling. But then, to do residuals, I would need to upsample the earlier FMs. Not implemented.
-    if np.any(deeperLayer.outputImageShape[2:] > earlierLayer.outputImageShape[2:]) or \
-            np.any(deeperLayer.outputImageShapeValidation[2:] > earlierLayer.outputImageShapeValidation[2:]) or \
-                np.any(deeperLayer.outputImageShapeTesting[2:] > earlierLayer.outputImageShapeTesting[2:]) :
+    if np.any(deeperLayerOutputImageShapeTrain[2:] > earlierLayerOutputImageShapeTrain[2:]) or \
+            np.any(deeperLayerOutputImageShapeVal[2:] > earlierLayerOutputImageShapeVal[2:]) or \
+                np.any(deeperLayerOutputImageShapeTest[2:] > earlierLayerOutputImageShapeTest[2:]) :
         myLogger.print3("ERROR: In function [makeResidualConnectionBetweenLayersAndReturnOutput] the RCZ-dimensions of a deeper layer FMs were found greater than the earlier layers. Not implemented functionality. Exiting!")
-        myLogger.print3("ERROR: (train) Dimensions of Deeper Layer=" + str(deeperLayer.outputImageShape) + ". Dimensions of Earlier Layer=" + str(earlierLayer.outputImageShape) )
-        myLogger.print3("ERROR: (val) Dimensions of Deeper Layer=" + str(deeperLayer.outputImageShapeValidation) + ". Dimensions of Earlier Layer=" + str(earlierLayer.outputImageShapeValidation) )
-        myLogger.print3("ERROR: (test) Dimensions of Deeper Layer=" + str(deeperLayer.outputImageShapeTesting) + ". Dimensions of Earlier Layer=" + str(earlierLayer.outputImageShapeTesting) )
+        myLogger.print3("ERROR: (train) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTrain) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTrain) )
+        myLogger.print3("ERROR: (val) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeVal) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeVal) )
+        myLogger.print3("ERROR: (test) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTest) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTest) )
         exit(1)
 
     # get the part of the earlier layer that is of the same dimensions as the FMs of the deeper:
-    partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLayer.output, earlierLayer.outputImageShape, deeperLayer.outputImageShape[2:])
-    partOfEarlierFmsToAddVal = getMiddlePartOfFms(earlierLayer.outputInference, earlierLayer.outputImageShapeValidation, deeperLayer.outputImageShapeValidation[2:])
-    partOfEarlierFmsToAddTest = getMiddlePartOfFms(earlierLayer.outputTesting, earlierLayer.outputImageShapeTesting, deeperLayer.outputImageShapeTesting[2:])
+    partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLayerOutputImageTrain, earlierLayerOutputImageShapeTrain, deeperLayerOutputImageShapeTrain[2:])
+    partOfEarlierFmsToAddVal = getMiddlePartOfFms(earlierLayerOutputImageVal, earlierLayerOutputImageShapeVal, deeperLayerOutputImageShapeVal[2:])
+    partOfEarlierFmsToAddTest = getMiddlePartOfFms(earlierLayerOutputImageTest, earlierLayerOutputImageShapeTest, deeperLayerOutputImageShapeTest[2:])
         
     # Add the FMs, after taking care of zero padding if the deeper layer has more FMs.
-    numFMsDeeper = deeperLayer.outputImageShape[1]
-    numFMsEarlier = earlierLayer.outputImageShape[1]
+    numFMsDeeper = deeperLayerOutputImageShapeTrain[1]
+    numFMsEarlier = earlierLayerOutputImageShapeTrain[1]
     if numFMsDeeper >= numFMsEarlier :
-        outputOfResConnTrain = T.inc_subtensor(deeperLayer.output[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTrain, inplace=False)
-        outputOfResConnVal = T.inc_subtensor(deeperLayer.outputInference[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddVal, inplace=False)
-        outputOfResConnTest = T.inc_subtensor(deeperLayer.outputTesting[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTest, inplace=False)
+        outputOfResConnTrain = T.inc_subtensor(deeperLayerOutputImageTrain[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTrain, inplace=False)
+        outputOfResConnVal = T.inc_subtensor(deeperLayerOutputImageVal[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddVal, inplace=False)
+        outputOfResConnTest = T.inc_subtensor(deeperLayerOutputImageTest[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTest, inplace=False)
     else : # Deeper FMs are fewer than earlier. This should not happen. But oh well...
-        outputOfResConnTrain = T.inc_subtensor(deeperLayer.output, partOfEarlierFmsToAddTrain[:, :numFMsDeeper, :,:,:], inplace=False)
-        outputOfResConnVal = T.inc_subtensor(deeperLayer.outputInference, partOfEarlierFmsToAddVal[:, :numFMsDeeper, :,:,:], inplace=False)
-        outputOfResConnTest = T.inc_subtensor(deeperLayer.outputTesting, partOfEarlierFmsToAddTest[:, :numFMsDeeper, :,:,:], inplace=False)
+        outputOfResConnTrain = T.inc_subtensor(deeperLayerOutputImageTrain, partOfEarlierFmsToAddTrain[:, :numFMsDeeper, :,:,:], inplace=False)
+        outputOfResConnVal = T.inc_subtensor(deeperLayerOutputImageVal, partOfEarlierFmsToAddVal[:, :numFMsDeeper, :,:,:], inplace=False)
+        outputOfResConnTest = T.inc_subtensor(deeperLayerOutputImageTest, partOfEarlierFmsToAddTest[:, :numFMsDeeper, :,:,:], inplace=False)
          
     # Dimensions of output are the same as those of the deeperLayer
     return (outputOfResConnTrain, outputOfResConnVal, outputOfResConnTest)
@@ -366,14 +375,30 @@ class Cnn3d(object):
 		self.typesOfCnnLayers[thisPathwayType].append(layer_instance)
 
                 if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here
-                        inputImageToNextLayer = layer_instance.output
-        		inputImageToNextLayerInference = layer_instance.outputInference
-        		inputImageToNextLayerTesting = layer_instance.outputTesting
-
+                    inputImageToNextLayer = layer_instance.output
+                    inputImageToNextLayerInference = layer_instance.outputInference
+                    inputImageToNextLayerTesting = layer_instance.outputTesting
+                    
                 else : #make residual connection
-                        (inputImageToNextLayer,
-                        inputImageToNextLayerInference,
-                        inputImageToNextLayerTesting) =  makeResidualConnectionBetweenLayersAndReturnOutput( myLogger, layer_instance, self.typesOfCnnLayers[thisPathwayType][layer_i-2] ) #layer_instance.outputTesting
+                    deeperLayerOutputImagesTrValTest = (layer_instance.output, layer_instance.outputInference, layer_instance.outputTesting)
+                    deeperLayerOutputImageShapesTrValTest = (layer_instance.outputImageShape, layer_instance.outputImageShapeValidation, layer_instance.outputImageShapeTesting)
+                    assert layer_i > 0 # The very first layer (index 0), should never be provided for now. Cause I am connecting 2 layers back.
+                    if layer_i == 1 : # Give the input to the pathway for the earlier part of the residual connection. This can be the input image, or eg the input to the FC pathway.
+                        earlierLayerOutputImagesTrValTest = (inputImageToPathway, inputImageToPathwayInference, inputImageToPathwayTesting)
+                        earlierLayerOutputImageShapesTrValTest = (shapeOfInputImageToPathway, shapeOfInputImageToPathwayValidation, shapeOfInputImageToPathwayTesting)
+                    else :
+                        earlierLayer = self.typesOfCnnLayers[thisPathwayType][layer_i-2]
+                        earlierLayerOutputImagesTrValTest = (earlierLayer.output, earlierLayer.outputInference, earlierLayer.outputTesting)
+                        earlierLayerOutputImageShapesTrValTest = (earlierLayer.outputImageShape, earlierLayer.outputImageShapeValidation, earlierLayer.outputImageShapeTesting)
+    
+                    (inputImageToNextLayer,
+                    inputImageToNextLayerInference,
+                    inputImageToNextLayerTesting) = makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
+                                                                                                        deeperLayerOutputImagesTrValTest,
+                                                                                                        deeperLayerOutputImageShapesTrValTest,
+                                                                                                        earlierLayerOutputImagesTrValTest,
+                                                                                                        earlierLayerOutputImageShapesTrValTest)
+
                 # Residual connections preserve the both the number of FMs and the dimensions of the FMs, the same as in the later, deeper layer.
                 inputImageToNextLayerShape = layer_instance.outputImageShape
                 inputImageToNextLayerShapeValidation = layer_instance.outputImageShapeValidation
