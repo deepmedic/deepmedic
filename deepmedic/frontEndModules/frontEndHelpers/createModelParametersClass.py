@@ -260,6 +260,7 @@ class CreateModelSessionParameters(object) :
 			self.errorReqActivFunction01()
 
 		#==BATCH NORMALIZATION==
+		self.applyBnToInputOfPathways = [False, False, "Placeholder", False] # the 3 entry, for FC, is always True internally.
 		self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches <> None else 60
 		
 		#====Optimization=====
@@ -322,7 +323,7 @@ class CreateModelSessionParameters(object) :
 		self.maxPoolingParamsStructure = [ #If a pathway is not used, put an empty list in the first dimension entry. 
 						[ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ], #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
 						[ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled)) ], #second pathway
-						[ [] for layeri in xrange(len(self.numFMsInExtraFcs)) ], #FC. I this this should NEVER be used.
+						[ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ], #FC. This should NEVER be used for segmentation. Possible for classification though.
 						[[],[],[], []] #zoomed in pathway.
 						]
 
@@ -395,8 +396,8 @@ class CreateModelSessionParameters(object) :
 		logPrint("ReLU (0), or PReLU (1) = " + str(self.activationFunctionRelu0Prelu1))
 
 		logPrint("~~Batch Normalization~~")
+		logPrint("Is Batch Normalization allowed to be applied straight on the inputs of the pathways (eg straight on segments)? = " + str(self.applyBnToInputOfPathways))
 		logPrint("Batch Normalization uses a rolling average for inference, over that many subepochs = " + str(self.bnRollingAverOverThatManyBatches))
-
 
 		logPrint("~~Optimization~~")
 		logPrint("Initial Learning rate = " + str(self.learningRate))
@@ -471,6 +472,7 @@ class CreateModelSessionParameters(object) :
 				self.maxPoolingParamsStructure,
 
 				#for BatchNormalization
+				self.applyBnToInputOfPathways,
 				self.bnRollingAverOverThatManyBatches,
 								 
 				self.segmDimNormalVal,
