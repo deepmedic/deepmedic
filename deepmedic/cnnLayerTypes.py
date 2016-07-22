@@ -491,10 +491,10 @@ class ConvLayerWithSoftmax(ConvLayer):
 	# return -T.mean( weighted_log_p_y_given_x_train[T.arange(y.shape[0]), y] )
 	
 	# Not a very elegant way to do the indexing but oh well...
-	indexDim0 = T.arange( weighted_log_p_y_given_x_train.shape[0] ).dimshuffle( 0, 'x','x','x','x')
-	indexDim2 = T.arange( weighted_log_p_y_given_x_train.shape[2] ).dimshuffle('x','x', 0, 'x','x')
-	indexDim3 = T.arange( weighted_log_p_y_given_x_train.shape[3] ).dimshuffle('x','x','x', 0, 'x')
-	indexDim4 = T.arange( weighted_log_p_y_given_x_train.shape[4] ).dimshuffle('x','x','x','x', 0)
+	indexDim0 = T.arange( weighted_log_p_y_given_x_train.shape[0] ).dimshuffle( 0, 'x','x','x')
+	indexDim2 = T.arange( weighted_log_p_y_given_x_train.shape[2] ).dimshuffle('x', 0, 'x','x')
+	indexDim3 = T.arange( weighted_log_p_y_given_x_train.shape[3] ).dimshuffle('x','x', 0, 'x')
+	indexDim4 = T.arange( weighted_log_p_y_given_x_train.shape[4] ).dimshuffle('x','x','x', 0)
 	return -T.mean( weighted_log_p_y_given_x_train[ indexDim0, y, indexDim2, indexDim3, indexDim4] )
 
 	
