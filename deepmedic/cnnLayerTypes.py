@@ -133,7 +133,7 @@ def createAndInitializeWeightsTensor(filter_shape, initializationTechniqueClassi
 
 	W = theano.shared(
 		numpy.asarray(
-			rng.normal(loc=0.0, scale=stdForInitialization, size=(filter_shape[0],filter_shape[1],filter_shape[2],filter_shape[3]),filter_shape[4]),
+			rng.normal(loc=0.0, scale=stdForInitialization, size=(filter_shape[0],filter_shape[1],filter_shape[2],filter_shape[3],filter_shape[4])),
 			dtype='float32'#theano.config.floatX
 		),
 		borrow=True
@@ -163,7 +163,7 @@ def convolveWithGivenWeightMatrix(W, filter_shape, inputToConvTrain, inputToConv
 	inputToConvReshapedVal = inputToConvVal.dimshuffle(0, 4, 1, 2, 3)
 	inputToConvReshapedShapeVal = (inputToConvShapeVal[0], inputToConvShapeVal[4], inputToConvShapeVal[1], inputToConvShapeVal[2], inputToConvShapeVal[3])
         outputOfConvVal = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedVal, # batch_size, time, num_of_input_channels, rows, columns
-                                  filters = WdimshuwReshapedForConvffledForConv, # Number_of_output_filters, Time, Numb_of_input_Channels, Height/rows, Width/columns
+                                  filters = wReshapedForConv, # Number_of_output_filters, Time, Numb_of_input_Channels, Height/rows, Width/columns
                                   signals_shape = inputToConvReshapedShapeVal, 
                                   filters_shape = wReshapedForConvShape,
                                   border_mode = 'valid')
@@ -180,26 +180,26 @@ def convolveWithGivenWeightMatrix(W, filter_shape, inputToConvTrain, inputToConv
 	outputVal = outputOfConvVal.dimshuffle(0, 2, 3, 4, 1)
 	outputTest = outputOfConvTest.dimshuffle(0, 2, 3, 4, 1)
 
-	outputShapeTrain = [inputToConvShapeTrain[0],
-				inputToConvShapeTrain[1],
+	outputShapeTrain = [	inputToConvShapeTrain[0],
+				filter_shape[0],
 				inputToConvShapeTrain[2]-filter_shape[2]+1,
 				inputToConvShapeTrain[3]-filter_shape[3]+1,
 				inputToConvShapeTrain[4]-filter_shape[4]+1]
-	outputShapeVal = [inputToConvShapeVal[0],
-					inputToConvShapeVal[1],
-					inputToConvShapeVal[2]-filter_shape[2]+1,
-					inputToConvShapeVal[3]-filter_shape[3]+1,
-					inputToConvShapeVal[4]-filter_shape[4]+1]
-	outputShapeTest = [inputToConvShapeTest[0],
-					inputToConvShapeTest[1],
-					inputToConvShapeTest[2]-filter_shape[2]+1,
-					inputToConvShapeTest[3]-filter_shape[3]+1,
-					inputToConvShapeTest[4]-filter_shape[4]+1]
-	
+	outputShapeVal = [	inputToConvShapeVal[0],
+				filter_shape[0],
+				inputToConvShapeVal[2]-filter_shape[2]+1,
+				inputToConvShapeVal[3]-filter_shape[3]+1,
+				inputToConvShapeVal[4]-filter_shape[4]+1]
+	outputShapeTest = [	inputToConvShapeTest[0],
+				filter_shape[0],
+				inputToConvShapeTest[2]-filter_shape[2]+1,
+				inputToConvShapeTest[3]-filter_shape[3]+1,
+				inputToConvShapeTest[4]-filter_shape[4]+1]
+
 	return (outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest)
 
 def checkDimsOfYpredAndYEqual(y, yPred, stringTrainOrVal) :
-	if y.ndim != self.yPred.ndim:
+	if y.ndim != yPred.ndim:
 		raise TypeError(
 			"ERROR! y did not have the same shape as y_pred during " + stringTrainOrVal,
 			('y', y.type, 'y_pred', yPred.type)
@@ -218,8 +218,8 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
 	inputToSoftmaxFlattened = inputToSoftmaxReshaped.flatten(1) 
 	# flatten is "Row-major" 'C' style. ie, starts from index [0,0,0] and grabs elements in order such that last dim index increases first and first index increases last. (first row flattened, then second follows, etc)
 	numberOfVoxelsDenselyClassified = inputToSoftmaxShape[2]*inputToSoftmaxShape[3]*inputToSoftmaxShape[4]
-	firstDimOfInputToSoftmax2d = inputToSoftmaxShape[0]*numberOfVoxelsDenselyClassified # batchSize*r*c*z
-	inputToSoftmax2d = inputToSoftmaxFlattened.reshape(firstDimOfInputToSoftmax2d, numberOfOutputClasses) # Reshape works in "Row-major", ie 'C' style too.
+	firstDimOfInputToSoftmax2d = inputToSoftmaxShape[0]*numberOfVoxelsDenselyClassified # batchSize*r*c*z.
+	inputToSoftmax2d = inputToSoftmaxFlattened.reshape((firstDimOfInputToSoftmax2d, numberOfOutputClasses)) # Reshape works in "Row-major", ie 'C' style too.
 	# Predicted probability per class.
 	p_y_given_x_2d = T.nnet.softmax(inputToSoftmax2d/softmaxTemperature)
 	# Segmentation (EM) for each voxel
@@ -232,12 +232,12 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
 	
 	#return also: p_y_given_x_2d_train = p_y_given_x_2d_train # For convenience in negativeLogLikelihood. Not sure how to implement more efficiently. It would get rid of this if I would.
 	return ( p_y_given_x, y_pred )
-		
+
 class ConvLayer(object):
 
     def __init__(self) :
 	#========= All Parameters of the Layer Instance ===========
-	self.usingBnInLayer = None
+	self.appliedBnInLayer = None
 	self.activationFunctionType = "" #linear, relu or prelu
 	
 	# All trainable parameters
@@ -309,7 +309,7 @@ class ConvLayer(object):
 	#------------------ Batch Normalization ------------------
 	#---------------------------------------------------------
 	if useBnFlag and rollingAverageForBatchNormalizationOverThatManyBatches > 0 :
-		self.usingBnInLayer = True
+		self.appliedBnInLayer = True
 		(inputToNonLinearityTrain,
 		inputToNonLinearityVal,
 		inputToNonLinearityTest,
@@ -326,7 +326,7 @@ class ConvLayer(object):
 		self.params = self.params + [self.gBn, self.b]
 		
 	else : #Not using batch normalization
-		self.usingBnInLayer = False
+		self.appliedBnInLayer = False
 		#make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
 		numberOfInputChannels = inputToLayerShapeTrain[1]
 
@@ -359,7 +359,7 @@ class ConvLayer(object):
 	#------------- Dropout --------------
 	#------------------------------------
 	(inputToPoolTrain, inputToPoolVal, inputToPoolTest) = applyDropout(rng, dropoutRate, inputToLayerShapeTrain, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest)
-	
+
 	#-------------------------------------------------------
 	#-----------  Pooling ----------------------------------
 	#-------------------------------------------------------
@@ -504,7 +504,7 @@ class ConvLayerWithSoftmax(ConvLayer):
 	
 	# check if y has same dimension of y_pred
 	checkDimsOfYpredAndYEqual(y, self.y_pred_train, "training")
-	
+
 	#Mean error of the training batch.
 	tneq = T.neq(self.y_pred_train, y)
 	meanError = T.mean(tneq)
@@ -512,7 +512,7 @@ class ConvLayerWithSoftmax(ConvLayer):
 
     def meanErrorValidation(self, y):
     	# y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-    	
+
 	# check if y has same dimension of y_pred
 	checkDimsOfYpredAndYEqual(y, self.y_pred_val, "validation")
 	

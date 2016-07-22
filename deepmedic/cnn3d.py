@@ -61,7 +61,7 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
     # Add the outputs of the two layers and return the output, as well as its dimensions.
     # Result: The result should have exactly the same shape as the output of the Deeper layer. Both #FMs and Dimensions of FMs.
     myLogger.print3("DEBUG: Making Residual Connections.")
-    
+
     (deeperLayerOutputImageTrain, deeperLayerOutputImageVal, deeperLayerOutputImageTest) = deeperLayerOutputImagesTrValTest
     (deeperLayerOutputImageShapeTrain, deeperLayerOutputImageShapeVal, deeperLayerOutputImageShapeTest) = deeperLayerOutputImageShapesTrValTest
     (earlierLayerOutputImageTrain, earlierLayerOutputImageVal, earlierLayerOutputImageTest) = earlierLayerOutputImagesTrValTest
@@ -89,10 +89,10 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
         outputOfResConnTrain = T.inc_subtensor(deeperLayerOutputImageTrain[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTrain, inplace=False)
         outputOfResConnVal = T.inc_subtensor(deeperLayerOutputImageVal[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddVal, inplace=False)
         outputOfResConnTest = T.inc_subtensor(deeperLayerOutputImageTest[:, :numFMsEarlier, :,:,:], partOfEarlierFmsToAddTest, inplace=False)
-    else : # Deeper FMs are fewer than earlier. This should not happen. But oh well...
-        outputOfResConnTrain = T.inc_subtensor(deeperLayerOutputImageTrain, partOfEarlierFmsToAddTrain[:, :numFMsDeeper, :,:,:], inplace=False)
-        outputOfResConnVal = T.inc_subtensor(deeperLayerOutputImageVal, partOfEarlierFmsToAddVal[:, :numFMsDeeper, :,:,:], inplace=False)
-        outputOfResConnTest = T.inc_subtensor(deeperLayerOutputImageTest, partOfEarlierFmsToAddTest[:, :numFMsDeeper, :,:,:], inplace=False)
+    else : # Deeper FMs are fewer than earlier. This should not happen in most architectures. But oh well...
+        outputOfResConnTrain = deeperLayerOutputImageTrain + partOfEarlierFmsToAddTrain[:, :numFMsDeeper, :,:,:]
+        outputOfResConnVal = deeperLayerOutputImageVal + partOfEarlierFmsToAddVal[:, :numFMsDeeper, :,:,:]
+        outputOfResConnTest = deeperLayerOutputImageTest + partOfEarlierFmsToAddTest[:, :numFMsDeeper, :,:,:]
          
     # Dimensions of output are the same as those of the deeperLayer
     return (outputOfResConnTrain, outputOfResConnVal, outputOfResConnTest)
@@ -141,15 +141,13 @@ class Cnn3d(object):
 				self.cnnLayersZoomed1
 				];
 
-	self.classificationLayer = ""
+	self.finalLayer = ""
 
 	self.numberOfOutputClasses = None
 
         self.initialLearningRate = "" #used by exponential schedule
         self.learning_rate = theano.shared(np.cast["float32"](0.01)) #initial value, changed in make_cnn_model().compileTrainingFunction()
-        self.L1 = ""  # the factor in the cost function. Sum of absolutes of all weights
         self.L1_reg_constant = "" #l1 regularization constant. Given.
-        self.L2_sqr = "" # the factor in the cost function. Sum of sqr of all weights
         self.L2_reg_constant = "" #l2 regularization constant. Given.
 
         self.cnnTrainModel = ""
@@ -214,7 +212,6 @@ class Cnn3d(object):
 	self.softmaxTemperature = 1
 
 	#Batch normalization (rolling average)
-	self.usingBatchNormalization = False
 	self.indexWhereRollingAverageIs = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
 	self.rollingAverageForBatchNormalizationOverThatManyBatches = ""
 
@@ -294,14 +291,12 @@ class Cnn3d(object):
 
     #for inference with batch-normalization. Every training batch, this is called to update an internal matrix of each layer, with the last mus and vars, so that I can compute the rolling average for inference.
     def updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference(self) :
-
-	if not self.usingBatchNormalization : #Not using batch normalization. Nothing to do here.
-		return
-
+        bnIsAppliedToAtLeastOneLayer = False # to avoid having one more cnn-space variable.
 	for layer_type_i in xrange(0, len(self.typesOfCnnLayers)) :
 		for layer_i in xrange(0, len(self.typesOfCnnLayers[layer_type_i])) :
-			if not (layer_type_i == self.CNN_PATHWAY_FC and layer_i == len(self.typesOfCnnLayers[self.CNN_PATHWAY_FC])-1 ) :
-				thisIterationLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
+                        thisIterationLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
+			if thisIterationLayer.appliedBnInLayer == True :
+                                bnIsAppliedToAtLeastOneLayer = True
 				layerMuArrayValue = thisIterationLayer.muBnsArrayForRollingAverage.get_value()
 				layerMuArrayValue[self.indexWhereRollingAverageIs] = thisIterationLayer.sharedNewMu_B.get_value()
 				thisIterationLayer.muBnsArrayForRollingAverage.set_value(layerMuArrayValue, borrow=True)
@@ -309,7 +304,8 @@ class Cnn3d(object):
 				layerVarArrayValue = thisIterationLayer.varBnsArrayForRollingAverage.get_value()
 				layerVarArrayValue[self.indexWhereRollingAverageIs] = thisIterationLayer.sharedNewVar_B.get_value()
 				thisIterationLayer.varBnsArrayForRollingAverage.set_value(layerVarArrayValue, borrow=True)
-	self.indexWhereRollingAverageIs = (self.indexWhereRollingAverageIs + 1) % self.rollingAverageForBatchNormalizationOverThatManyBatches
+        if bnIsAppliedToAtLeastOneLayer :
+	       self.indexWhereRollingAverageIs = (self.indexWhereRollingAverageIs + 1) % self.rollingAverageForBatchNormalizationOverThatManyBatches
 
 
     def makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(self,
@@ -657,18 +653,18 @@ class Cnn3d(object):
 	self.change_learning_rate_of_a_cnn(learning_rate, myLogger)
 
         # =======create a list of all model PARAMETERS (weights and biases) to be fit by gradient descent=======
-	# ======= And REGULARIZATION
+	# ======= REGULARIZATION
 
 	paramsToOptDuringTraining = None #Ws and Bs
-	self.L1 = None
-	self.L2_sqr = None
+	L1 = None
+	L2_sqr = None
 	for type_of_layer_i in xrange(0, len(self.typesOfCnnLayers) ) :
 		for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i]) ) :
 			if layersOfLayerTypesToTrain == "all" or (layer_i in layersOfLayerTypesToTrain[type_of_layer_i]) :
 				paramsToOptDuringTraining = self.typesOfCnnLayers[type_of_layer_i][layer_i].params if paramsToOptDuringTraining == None else paramsToOptDuringTraining + self.typesOfCnnLayers[type_of_layer_i][layer_i].params
 
-			self.L1 = abs(self.typesOfCnnLayers[type_of_layer_i][layer_i].W).sum() if self.L1 == None else self.L1 + abs(self.typesOfCnnLayers[type_of_layer_i][layer_i].W).sum()
-        		self.L2_sqr = (self.typesOfCnnLayers[type_of_layer_i][layer_i].W ** 2).sum() if self.L2_sqr == None else self.L2_sqr + (self.typesOfCnnLayers[type_of_layer_i][layer_i].W ** 2).sum()
+			L1 = abs(self.typesOfCnnLayers[type_of_layer_i][layer_i].W).sum() if L1 == None else L1 + abs(self.typesOfCnnLayers[type_of_layer_i][layer_i].W).sum()
+        		L2_sqr = (self.typesOfCnnLayers[type_of_layer_i][layer_i].W ** 2).sum() if L2_sqr == None else L2_sqr + (self.typesOfCnnLayers[type_of_layer_i][layer_i].W ** 2).sum()
 
         #==========================COST FUNCTION=======================
         # the cost we minimize during training is the NLL of the model
@@ -684,8 +680,8 @@ class Cnn3d(object):
 		exit(1)
 	
         cost = (costFunctionFromLastLayer
-                + self.L1_reg_constant * self.L1
-                + self.L2_reg_constant * self.L2_sqr
+                + self.L1_reg_constant * L1
+                + self.L2_reg_constant * L2_sqr
                 )
       
 
@@ -721,15 +717,14 @@ class Cnn3d(object):
 						)
 	
 	#================BATCH NORMALIZATION UPDATES======================
-	if self.usingBatchNormalization :
-		#These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
-		#... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
-		for layer_type_i in xrange( 0, len(self.typesOfCnnLayers) ) :
-		    for layer_i in xrange( 0, len(self.typesOfCnnLayers[layer_type_i]) ) :
-			if not ( (layer_type_i == self.CNN_PATHWAY_FC) and (layer_i == len(self.typesOfCnnLayers[self.CNN_PATHWAY_FC])-1) ) : #if it is not the very last FC-classification layer... 
-			    theCertainLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
-			    updates.append((theCertainLayer.sharedNewMu_B, theCertainLayer.newMu_B)) #CAREFUL: WARN, PROBLEM, THEANO BUG! If a layer has only 1FM, the .newMu_B ends up being of type (true,) instead of vector!!! Error!!!
-			    updates.append((theCertainLayer.sharedNewVar_B, theCertainLayer.newVar_B))
+	#These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
+	#... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
+	for layer_type_i in xrange( 0, len(self.typesOfCnnLayers) ) :
+	    for layer_i in xrange( 0, len(self.typesOfCnnLayers[layer_type_i]) ) :
+                theCertainLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
+		if theCertainLayer.appliedBnInLayer : # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
+		    updates.append((theCertainLayer.sharedNewMu_B, theCertainLayer.newMu_B)) #CAREFUL: WARN, PROBLEM, THEANO BUG! If a layer has only 1FM, the .newMu_B ends up being of type (true,) instead of vector!!! Error!!!
+		    updates.append((theCertainLayer.sharedNewVar_B, theCertainLayer.newVar_B))
 	
         #========================COMPILATION OF FUNCTIONS =================
         classificationLayer = self.typesOfCnnLayers[self.CNN_PATHWAY_FC][-1]
@@ -779,7 +774,7 @@ class Cnn3d(object):
 	myLogger.print3("...Compiling the function for validation... (This may take a few minutes...)")
         self.cnnValidateModel = theano.function(
 				[index],
-				[classificationLayer.meanErrorValidation(y)] + classificationLayer.multiclassRealPosAndNegAndTruePredPosNegTraining0OrValidation1(y,1),
+				[classificationLayer.meanErrorValidation(y)] + classificationLayer.getRpRnTpTnForTrain0OrVal1(y,1),
 				givens = givensSet
 				)
    	myLogger.print3("The function for validation was compiled.")
@@ -933,7 +928,6 @@ class Cnn3d(object):
 	self.numberOfCentralVoxelsClassifiedPerDimensionValidation = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsValidation, patchDimensions)
 	self.numberOfCentralVoxelsClassifiedPerDimensionTesting = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsTesting, patchDimensions)
 	#Batch normalization (rolling average)
-	self.usingBatchNormalization = True if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False
 	self.rollingAverageForBatchNormalizationOverThatManyBatches = rollingAverageForBatchNormalizationOverThatManyBatches
 
 	self.softmaxTemperature = softmaxTemperature
@@ -1195,7 +1189,7 @@ class Cnn3d(object):
 	"""
 	firstFcLayerAfterConcatenationKernelShape = self.kernelDimensionsFirstFcLayer
 
-        myLogger.print3("DEBUG: In order to be fully connected, the shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape) )    	
+        myLogger.print3("DEBUG: The shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape) )    	
 	
 	inputOfFcPathwayImagePartDimensionsTraining = [	dimensionsOfOutputFrom1stPathway[2],
 						dimensionsOfOutputFrom1stPathway[3],
@@ -1218,7 +1212,7 @@ class Cnn3d(object):
 		inputImageToPathwayTesting =  inputToFirstFcLayerTesting
 		
 
-		myLogger.print3("DEBUG: shape Of Input Image To FC Pathway:" + str(inputOfFcPathwayImagePartDimensionsTraining) )
+		myLogger.print3("DEBUG: shape Of Input To FC Pathway:" + str(inputOfFcPathwayImagePartDimensionsTraining) )
 		[outputFcPathTrain,
                 outputFcPathVal,
                 outputFcPathTest,
@@ -1263,8 +1257,9 @@ class Cnn3d(object):
         #======================Make the FINAL FC CLASSIFICATION LAYER ===================================
 	myLogger.print3("DEBUG: Filter Shape of the final-FC-classification Layer: " + str(filterShapeForFinalClassificationLayer))
 	#The last classification FC layer + softmax.
-	dropoutRateForClassificationLayer = 0 if dropoutRatesForAllPathways[self.CNN_PATHWAY_FC] == [] else dropoutRatesForAllPathways[self.CNN_PATHWAY_FC][-1]
-        classificationLayer = ConvLayerWithSoftmax(
+	dropoutRateForClassificationLayer = 0 if dropoutRatesForAllPathways[self.CNN_PATHWAY_FC] == [] else dropoutRatesForAllPathways[self.CNN_PATHWAY_FC][len(fcLayersFMs)]
+        classificationLayer = ConvLayerWithSoftmax()
+        classificationLayer.makeLayer(
             rng,
             inputToLayerTrain = inputImageForFinalClassificationLayer,
             inputToLayerVal = inputImageForFinalClassificationLayerInference,
@@ -1275,14 +1270,14 @@ class Cnn3d(object):
             filter_shape = filterShapeForFinalClassificationLayer,
             useBnFlag = rollingAverageForBatchNormalizationOverThatManyBatches > 0,
             rollingAverageForBatchNormalizationOverThatManyBatches = rollingAverageForBatchNormalizationOverThatManyBatches,
-            maxPoolingParameters = dropoutRatesForAllPathways[thisPathwayType][len(fcLayersFMs)],
+            maxPoolingParameters = maxPoolingParamsStructure[self.CNN_PATHWAY_FC][len(fcLayersFMs)],
             initializationTechniqueClassic0orDelvingInto1 = initializationTechniqueClassic0orDelvingInto1,
             activationFunctionToUseRelu0orPrelu1orMinus1ForLinear = activationFunctionToUseRelu0orPrelu1,
             dropoutRate = dropoutRateForClassificationLayer,
             softmaxTemperature = self.softmaxTemperature
         )
         self.fcLayers.append(classificationLayer)
-        self.classificationLayer = classificationLayer
+        self.finalLayer = classificationLayer
 
 
 	#======== Make and compile the training, validation, testing and visualisation functions. ==========

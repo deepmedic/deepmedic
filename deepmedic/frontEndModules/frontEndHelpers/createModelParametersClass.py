@@ -324,7 +324,7 @@ class CreateModelSessionParameters(object) :
 						[ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ], #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
 						[ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled)) ], #second pathway
 						[ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ], #FC. This should NEVER be used for segmentation. Possible for classification though.
-						[[],[],[], []] #zoomed in pathway.
+						[[],[],[],[]] #zoomed in pathway.
 						]
 
 		self.softmaxTemperature = 1.0 #Higher temperatures make the probabilities LESS distinctable. Actions have more similar probabilities. 
