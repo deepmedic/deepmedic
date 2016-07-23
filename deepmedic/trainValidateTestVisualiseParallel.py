@@ -1015,8 +1015,6 @@ def do_training(myLogger,
 		indicesOfFmsToVisualisePerPathwayTypeAndPerLayer="placeholder",
 		listOfNamesToGiveToFmVisualisationsIfSaving="placeholder"
                 ):
-    
-    NUMBER_OF_CLASSES = cnn3dInstance.numberOfOutputClasses # normally ==2, positive lesions and negative healthy
 
     usingSubsampledWaypath = len(cnn3dInstance.cnnLayersSubsampled)>0 #Flag that says if I should be loading subsampled channels etc.
 
@@ -1295,9 +1293,9 @@ def do_training(myLogger,
 		actualNumOfPatchesPerClassInTheSubepoch_notParts = np.bincount(np.ravel(arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining).astype(int))
 		multiplierToFadePerEpoch = (numberOfEpochsToWeightTheClassesInTheCostFunction - cnn3dInstance.numberOfEpochsTrained)*1.0 / numberOfEpochsToWeightTheClassesInTheCostFunction
 		nominatorForEachClass = actualNumOfPatchesPerClassInTheSubepoch_notParts + (numOfPatchesInTheSubepoch_notParts - actualNumOfPatchesPerClassInTheSubepoch_notParts) * multiplierToFadePerEpoch
-		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = nominatorForEachClass / ((actualNumOfPatchesPerClassInTheSubepoch_notParts)*NUMBER_OF_CLASSES+TINY_FLOAT)
+		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = nominatorForEachClass / ((actualNumOfPatchesPerClassInTheSubepoch_notParts)*cnn3dInstance.numberOfOutputClasses+TINY_FLOAT)
             else :
-		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.ones(NUMBER_OF_CLASSES, dtype='float32')
+		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.ones(cnn3dInstance.numberOfOutputClasses, dtype='float32')
 
 
             #----------------------------------LOAD TRAINING DATA ON GPU-------------------------------
