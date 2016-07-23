@@ -51,7 +51,30 @@ def getMiddlePartOfFms(fms, fmsShape, listOfNumberOfCentralVoxelsToGetPerDimensi
     else : #wrong number of dimensions!
         return -1
     
+
+def padImageWithMirroring( inputImage, inputImageDimensions, voxelsPerDimToPad ) :
+    # inputImage shape: [batchSize, #channels#, r, c, z]
+    # inputImageDimensions : [ dim r, dim c, dim z ] of inputImage
+    # voxelsPerDimToPad shape: [ num o voxels in r-dim to add, ...c-dim, ...z-dim ]
+    # If voxelsPerDimToPad is odd, 1 more voxel is added to the right side.
+    # r-axis
+    assert np.all(voxelsPerDimToPad) >= 0
     
+    padLeft = int(voxelsPerDimToPad[0]/2); padRight = int((voxelsPerDimToPad[0]+1)/2);
+    paddedImage = T.concatenate([inputImage[:,:, int(voxelsPerDimToPad[0]/2)-1::-1 ,:,:], inputImage], axis=2) if padLeft >0 else inputImage
+    paddedImage = T.concatenate([paddedImage, paddedImage[ :, :, -1:-1-int((voxelsPerDimToPad[0]+1)/2):-1, :, :]], axis=2) if padRight >0 else paddedImage
+    # c-axis
+    padLeft = int(voxelsPerDimToPad[1]/2); padRight = int((voxelsPerDimToPad[1]+1)/2);
+    paddedImage = T.concatenate([paddedImage[:,:,:, padLeft-1::-1 ,:], paddedImage], axis=3) if padLeft >0 else paddedImage
+    paddedImage = T.concatenate([paddedImage, paddedImage[:,:,:, -1:-1-padRight:-1,:]], axis=3) if padRight >0 else paddedImage
+    # z-axis
+    padLeft = int(voxelsPerDimToPad[2]/2); padRight = int((voxelsPerDimToPad[2]+1)/2)
+    paddedImage = T.concatenate([paddedImage[:,:,:,:, padLeft-1::-1 ], paddedImage], axis=4) if padLeft >0 else paddedImage
+    paddedImage = T.concatenate([paddedImage, paddedImage[:,:,:,:, -1:-1-padRight:-1]], axis=4) if padRight >0 else paddedImage
+
+    newDimensions = [ inputImageDimensions[0] + voxelsPerDimToPad[0], inputImageDimensions[1] + voxelsPerDimToPad[1], inputImageDimensions[2] + voxelsPerDimToPad[2]]
+
+    return (paddedImage, newDimensions)
 
 def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
                                                         deeperLayerOutputImagesTrValTest,
@@ -1179,46 +1202,40 @@ class Cnn3d(object):
 
 
         #======================= Make the Fully Connected Layers =======================
-	"""
-	THIS USED TO BE AUTOMATIC, BUT WITH MAX POOLING IT GOT COMPLICATED, AND NOW I DEFINE IT.	
-	#Calculate the kernel dimensions of the first FC layer such that it convolves everything and I end up with only 1 feature per patch.
-        firstFcLayerAfterConcatenationKernelShape = [patchDimensions[0],patchDimensions[1],patchDimensions[2]]
-        for layer_i in xrange(len(nkerns)) :
-            for dim_i in xrange(len(patchDimensions)) :
-                firstFcLayerAfterConcatenationKernelShape[dim_i] += - kernelDimensions[layer_i][dim_i] + 1
-	"""
-	firstFcLayerAfterConcatenationKernelShape = self.kernelDimensionsFirstFcLayer
+        # This is the shape of the kernel in the first FC layer.
+        # NOTE: If there is no hidden FC layer, this kernel is used in the Classification layer then.
+        # Originally it was 1x1x1 only. The pathways themselves where taking care of the receptive field.
+        # However I can now define it larger (eg 3x3x3), in case it helps combining the multiresolution features better/smoother.
+        # The convolution is seamless, ie same shape output/input, by mirror padding the input.
+        
 
-        myLogger.print3("DEBUG: The shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape) )    	
-	
-	inputOfFcPathwayImagePartDimensionsTraining = [	dimensionsOfOutputFrom1stPathway[2],
-						dimensionsOfOutputFrom1stPathway[3],
-						dimensionsOfOutputFrom1stPathway[4]]
-	inputOfFcPathwayImagePartDimensionsValidation = [dimensionsOfOutputFrom1stPathwayValidation[2],
-							dimensionsOfOutputFrom1stPathwayValidation[3],
-							dimensionsOfOutputFrom1stPathwayValidation[4]]
-	inputOfFcPathwayImagePartDimensionsTesting = [	dimensionsOfOutputFrom1stPathwayTesting[2],
-							dimensionsOfOutputFrom1stPathwayTesting[3],
-							dimensionsOfOutputFrom1stPathwayTesting[4]]
-
+        myLogger.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape) )
+        firstFcLayerAfterConcatenationKernelShape = self.kernelDimensionsFirstFcLayer
+	(inputTo1stFcLayerPaddedTrain,
+        inputOfFcPathwayImagePartDimsTrain) = padImageWithMirroring( inputToFirstFcLayer, dimensionsOfOutputFrom1stPathway, np.asarray(firstFcLayerAfterConcatenationKernelShape) - 1 )
+        (inputTo1stFcLayerPaddedVal,
+         inputOfFcPathwayImagePartDimsVal) = padImageWithMirroring( inputToFirstFcLayerInference, dimensionsOfOutputFrom1stPathwayValidation, np.asarray(firstFcLayerAfterConcatenationKernelShape) - 1 )
+        (inputTo1stFcLayerPaddedTest,
+         inputOfFcPathwayImagePartDimsTest) = padImageWithMirroring( inputToFirstFcLayerTesting, dimensionsOfOutputFrom1stPathwayTesting, np.asarray(firstFcLayerAfterConcatenationKernelShape) - 1 )
+    
 	if len(fcLayersFMs)>0 : 
 		thisPathwayType = self.CNN_PATHWAY_FC # 2 == normal
 		thisPathWayNKerns = fcLayersFMs
 		thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape]
 		for fcLayer_i in xrange(1,len(fcLayersFMs)) :
 			thisPathWayKernelDimensions.append([1,1,1])
-		inputImageToPathway =  inputToFirstFcLayer
-		inputImageToPathwayInference =  inputToFirstFcLayerInference
-		inputImageToPathwayTesting =  inputToFirstFcLayerTesting
+		inputImageToPathway =  inputTo1stFcLayerPaddedTrain
+		inputImageToPathwayInference =  inputTo1stFcLayerPaddedVal
+		inputImageToPathwayTesting =  inputTo1stFcLayerPaddedTest
 		
 
-		myLogger.print3("DEBUG: shape Of Input To FC Pathway:" + str(inputOfFcPathwayImagePartDimensionsTraining) )
+		myLogger.print3("DEBUG: shape Of Input To FC Pathway:" + str(inputOfFcPathwayImagePartDimensionsTrain) )
 		[outputFcPathTrain,
                 outputFcPathVal,
                 outputFcPathTest,
                 dimensionsOfOutputFeatureMapFromExtraFcLayersPathway,
-		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayValidation,
-		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayVal,
+		dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTest] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                                                                         thisPathwayType,
 															thisPathWayNKerns,
 															thisPathWayKernelDimensions,
@@ -1226,9 +1243,9 @@ class Cnn3d(object):
 															inputImageToPathwayInference,
 															inputImageToPathwayTesting,
 															numberOfFmsOfInputToFirstFcLayer,
-															inputOfFcPathwayImagePartDimensionsTraining,
-															inputOfFcPathwayImagePartDimensionsValidation,
-															inputOfFcPathwayImagePartDimensionsTesting,
+															inputOfFcPathwayImagePartDimsTrain,
+															inputOfFcPathwayImagePartDimsVal,
+															inputOfFcPathwayImagePartDimsTest,
                                                                                                                         True, # This should always be true for FC.
 															rollingAverageForBatchNormalizationOverThatManyBatches,
 															maxPoolingParamsStructure[thisPathwayType],
@@ -1241,16 +1258,16 @@ class Cnn3d(object):
 		inputImageForFinalClassificationLayerInference = outputFcPathVal
 		inputImageForFinalClassificationLayerTesting = outputFcPathTest
 		shapeOfInputImageForFinalClassificationLayer = dimensionsOfOutputFeatureMapFromExtraFcLayersPathway
-		shapeOfInputImageForFinalClassificationLayerValidation = dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayValidation
-		shapeOfInputImageForFinalClassificationLayerTesting = dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTesting
+		shapeOfInputImageForFinalClassificationLayerValidation = dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayVal
+		shapeOfInputImageForFinalClassificationLayerTesting = dimensionsOfOutputFeatureMapFromExtraFcLayersPathwayTest
 		filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, fcLayersFMs[-1], 1, 1, 1]
 	else : #there is no extra FC layer, just the final FC-softmax.
-		inputImageForFinalClassificationLayer = inputToFirstFcLayer
-		inputImageForFinalClassificationLayerInference = inputToFirstFcLayerInference
-		inputImageForFinalClassificationLayerTesting = inputToFirstFcLayerTesting
-		shapeOfInputImageForFinalClassificationLayer = [self.batchSize, numberOfFmsOfInputToFirstFcLayer] + inputOfFcPathwayImagePartDimensionsTraining
-		shapeOfInputImageForFinalClassificationLayerValidation = [self.batchSizeValidation, numberOfFmsOfInputToFirstFcLayer] + inputOfFcPathwayImagePartDimensionsValidation
-		shapeOfInputImageForFinalClassificationLayerTesting = [self.batchSizeTesting, numberOfFmsOfInputToFirstFcLayer] + inputOfFcPathwayImagePartDimensionsTesting
+		inputImageForFinalClassificationLayer = inputTo1stFcLayerPaddedTrain
+		inputImageForFinalClassificationLayerInference = inputTo1stFcLayerPaddedVal
+		inputImageForFinalClassificationLayerTesting = inputTo1stFcLayerPaddedTest
+		shapeOfInputImageForFinalClassificationLayer = [self.batchSize, numberOfFmsOfInputToFirstFcLayer] + inputOfFcPathwayImagePartDimsTrain
+		shapeOfInputImageForFinalClassificationLayerValidation = [self.batchSizeValidation, numberOfFmsOfInputToFirstFcLayer] + inputOfFcPathwayImagePartDimsVal
+		shapeOfInputImageForFinalClassificationLayerTesting = [self.batchSizeTesting, numberOfFmsOfInputToFirstFcLayer] + inputOfFcPathwayImagePartDimsTest
 		filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, numberOfFmsOfInputToFirstFcLayer] + firstFcLayerAfterConcatenationKernelShape
 
 
@@ -1296,3 +1313,10 @@ class Cnn3d(object):
 	self.compileTestAndVisualisationFunction(myLogger)
 
         myLogger.print3("Finished. Created the CNN's model")
+
+
+
+
+    
+    
+    

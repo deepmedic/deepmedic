@@ -131,6 +131,7 @@ class CreateModelSessionParameters(object) :
 			subsampleFactor,
 			#==FC Layers====
 			numFMsFc,
+			kernelDimensionsFirstFcLayer,
 			
 			#==Residual Connections===
 			indicesOfLayersToConnectResidualsInOutput,
@@ -222,7 +223,9 @@ class CreateModelSessionParameters(object) :
 				self.warnSubFactorOdd()
 		#==FC Layers==
 		self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
-
+		self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer <> None else [1,1,1]
+		assert len(self.kernelDimensionsFirstFcLayer) == 3 and np.all(self.kernelDimensionsFirstFcLayer) > 0
+		
 		#---Residual Connections----
 		self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput if indicesOfLayersToConnectResidualsInOutput <> None else [[],[],[],[]] # one sublist per cnn pathway type
 				
@@ -292,18 +295,16 @@ class CreateModelSessionParameters(object) :
 			self.errorRequireMomValueBetween01()
 
 
-
-		#==============CALCULATED============================
+		#==============CALCULATED=====================
 		if self.useSubsampledBool :
 			self.segmDimSubsampledTrain = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalTrain, self.receptiveFieldNormal, self.subsampleFactor)
 			self.segmDimSubsampledVal = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalVal, self.receptiveFieldNormal, self.subsampleFactor)
 			self.segmDimSubsampledInfer = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalInfer, self.receptiveFieldNormal, self.subsampleFactor)
 		else :
 			self.segmDimSubsampledTrain = []; self.segmDimSubsampledVal = []; self.segmDimSubsampledInfer = [];
+			
 		#============= HIDDENS ======================
-
 		self.costFunctionLetter = "L"
-		self.kernelDimensionsFirstFcLayer = [1,1,1]
 
 		self.numberOfInputChannelsSubsampled = self.numberOfInputChannelsNormal
 
@@ -316,7 +317,7 @@ class CreateModelSessionParameters(object) :
 		self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes = [ [], [] ] #a sublist for each pathway. Starts from 0 index. Give a sublist, even empty for no connections.
 		#... It's ok if I dont have a 2nd path but still give a 2nd sublist, it's controlled by nkernsSubsampled.
 
-		#-------MAX POOLING----------
+		#-------POOLING---------- (not fully supported currently)
 		#One entry per pathway-type. leave [] if the pathway does not exist or there is no mp there AT ALL.
 		#Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
 		#MP is applied >>AT THE INPUT of the layer<<. To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each dimension for padding (give 0 for none), the mode (usually 'max' pool). Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
@@ -350,7 +351,9 @@ class CreateModelSessionParameters(object) :
 		logPrint("Number of Feature Maps per layer = " + str(self.numFMsPerLayerNormal))
 		logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerNormal))
 		logPrint("Receptive Field = " + str(self.receptiveFieldNormal))
-
+		logPrint("Residual connections added at the output of layers (indices) = " + str(self.indicesOfLayersToConnectResidualsInOutput[0]))
+		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[0]))
+		
 		logPrint("~~Subsampled Pathway~~")
 		logPrint("Use subsampled Pathway = " + str(self.useSubsampledBool))
 		logPrint("Number of Layers = " + str(len(self.numFMsPerLayerSubsampled)))
@@ -358,13 +361,15 @@ class CreateModelSessionParameters(object) :
 		logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerSubsampled))
 		logPrint("Receptive Field = " + str(self.receptiveFieldSubsampled))
 		logPrint("Subsampling Factor = " + str(self.subsampleFactor))
-
-		logPrint("~~Full Connected Pathway~~")
+		logPrint("Residual connections added at the output of layers (indices) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
+		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[1]))
+		
+		logPrint("~~Fully Connected Pathway~~")
 		logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.numFMsInExtraFcs)))
 		logPrint("Number of Feature Maps in the additional FC layers = " + str(self.numFMsInExtraFcs))
-
-		logPrint("~~Residual Connections~~")
-		logPrint("Residual Connections will be made at the output of layers with indices (per type of pathway) = " + str(self.indicesOfLayersToConnectResidualsInOutput))
+		logPrint("Residual connections added at the output of layers (indices) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
+		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[2]))
+		logPrint("Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = " + str(self.kernelDimensionsFirstFcLayer))
 		
 		logPrint("~~Size Of Image Segments~~")
 		logPrint("Size of Segments for Training = " + str(self.segmDimNormalTrain))
@@ -396,7 +401,7 @@ class CreateModelSessionParameters(object) :
 		logPrint("ReLU (0), or PReLU (1) = " + str(self.activationFunctionRelu0Prelu1))
 
 		logPrint("~~Batch Normalization~~")
-		logPrint("Is Batch Normalization allowed to be applied straight on the inputs of the pathways (eg straight on segments)? = " + str(self.applyBnToInputOfPathways))
+		logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.applyBnToInputOfPathways))
 		logPrint("Batch Normalization uses a rolling average for inference, over that many subepochs = " + str(self.bnRollingAverOverThatManyBatches))
 
 		logPrint("~~Optimization~~")
