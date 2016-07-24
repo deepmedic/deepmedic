@@ -149,7 +149,7 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			subsampleFactor=configGet(modelConfig.SUBS_FACTOR),
 			#==FC Layers====
 			numFMsFc=configGet(modelConfig.N_FMS_FC),
-			kernelDimensionsFirstFcLayer(modelConfig.KERN_DIM_1ST_FC),
+			kernelDimensionsFirstFcLayer=configGet(modelConfig.KERN_DIM_1ST_FC),
 			#==Residual Connections===
 			indicesOfLayersToConnectResidualsInOutput=configGet(modelConfig.RESID_CONN_INDICES),
 			#==Size of Image Segments ==

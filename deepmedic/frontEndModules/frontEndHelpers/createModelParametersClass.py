@@ -224,7 +224,7 @@ class CreateModelSessionParameters(object) :
 		#==FC Layers==
 		self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
 		self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer <> None else [1,1,1]
-		assert len(self.kernelDimensionsFirstFcLayer) == 3 and np.all(self.kernelDimensionsFirstFcLayer) > 0
+		assert len(self.kernelDimensionsFirstFcLayer) == 3 and (False not in [ dim > 0 for dim in self.kernelDimensionsFirstFcLayer] )
 		
 		#---Residual Connections----
 		self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput if indicesOfLayersToConnectResidualsInOutput <> None else [[],[],[],[]] # one sublist per cnn pathway type
