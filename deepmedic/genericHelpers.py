@@ -187,7 +187,7 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedBy
                                           myLogger=None) :
 
     fullFilenameToSaveWith = os.path.abspath(fullFilenameToSaveWith) # Cleans the .././/...
-    img_proxy_for_orig_image = nib.load(fullFilenameOfOriginalImageToCopyHeader)
+    img_proxy_for_orig_image = nib.as_closest_canonical(nib.load(fullFilenameOfOriginalImageToCopyHeader))
     hdr_for_orig_image = img_proxy_for_orig_image.header
     
     affine_trans_to_ras = img_proxy_for_orig_image.affine
