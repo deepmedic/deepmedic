@@ -41,6 +41,7 @@ class ModelConfig(object):
 	#===Normal pathway===
 	N_FMS_NORM = "numberFMsPerLayerNormal"
 	KERN_DIM_NORM = "kernelDimPerLayerNormal"
+	RESID_CONN_LAYERS_NORM = "layersWithResidualConnNormal"
 
 	#==Subsampled pathway==
 	USE_SUBSAMPLED = "useSubsampledPathway"
@@ -48,13 +49,12 @@ class ModelConfig(object):
 	N_FMS_SUBS = "numberFMsPerLayerSubsampled"
 	KERN_DIM_SUBS = "kernelDimensionsSubsampled"
 	SUBS_FACTOR = "subsampleFactor"
-
+	RESID_CONN_LAYERS_SUBS = "layersWithResidualConnSubsampled"
+	
 	#==Extra hidden FC Layers. Final Classification layer is not included in here.
 	N_FMS_FC = "numberFMsPerLayerFC"
 	KERN_DIM_1ST_FC = "kernelDimFor1stFcLayer"
-	
-	#== Indices of layers (per pathway type) to make Residual Connections at their output. 
-	RESID_CONN_INDICES = "indicesOfLayersWithResidualConnectionsPerPathway"
+	RESID_CONN_LAYERS_FC = "layersWithResidualConnFC"
 	
 	#Size of Image Segments
 	SEG_DIM_TRAIN = "segmentsDimTrain"
@@ -142,16 +142,17 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			#===Normal pathway===
 			numFMsNormal=configGet(modelConfig.N_FMS_NORM),
 			kernDimNormal=configGet(modelConfig.KERN_DIM_NORM),
+			residConnAtLayersNormal=configGet(ModelConfig.RESID_CONN_LAYERS_NORM),
 			#==Subsampled pathway==
 			useSubsampledBool=configGet(modelConfig.USE_SUBSAMPLED),
 			numFMsSubsampled=configGet(modelConfig.N_FMS_SUBS),
 			kernDimSubsampled=configGet(modelConfig.KERN_DIM_SUBS),
 			subsampleFactor=configGet(modelConfig.SUBS_FACTOR),
+			residConnAtLayersSubsampled=configGet(ModelConfig.RESID_CONN_LAYERS_SUBS),
 			#==FC Layers====
 			numFMsFc=configGet(modelConfig.N_FMS_FC),
 			kernelDimensionsFirstFcLayer=configGet(modelConfig.KERN_DIM_1ST_FC),
-			#==Residual Connections===
-			indicesOfLayersToConnectResidualsInOutput=configGet(modelConfig.RESID_CONN_INDICES),
+			residConnAtLayersFc=configGet(ModelConfig.RESID_CONN_LAYERS_FC),
 			#==Size of Image Segments ==
 			segmDimTrain=configGet(modelConfig.SEG_DIM_TRAIN),
 			segmDimVal=configGet(modelConfig.SEG_DIM_VAL),

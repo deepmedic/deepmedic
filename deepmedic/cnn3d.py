@@ -86,7 +86,6 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
                                                         earlierLayerOutputImageShapesTrValTest) :
     # Add the outputs of the two layers and return the output, as well as its dimensions.
     # Result: The result should have exactly the same shape as the output of the Deeper layer. Both #FMs and Dimensions of FMs.
-    myLogger.print3("DEBUG: Making Residual Connections.")
 
     (deeperLayerOutputImageTrain, deeperLayerOutputImageVal, deeperLayerOutputImageTest) = deeperLayerOutputImagesTrValTest
     (deeperLayerOutputImageShapeTrain, deeperLayerOutputImageShapeVal, deeperLayerOutputImageShapeTest) = deeperLayerOutputImageShapesTrValTest
@@ -98,9 +97,9 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
             np.any(deeperLayerOutputImageShapeVal[2:] > earlierLayerOutputImageShapeVal[2:]) or \
                 np.any(deeperLayerOutputImageShapeTest[2:] > earlierLayerOutputImageShapeTest[2:]) :
         myLogger.print3("ERROR: In function [makeResidualConnectionBetweenLayersAndReturnOutput] the RCZ-dimensions of a deeper layer FMs were found greater than the earlier layers. Not implemented functionality. Exiting!")
-        myLogger.print3("ERROR: (train) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTrain) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTrain) )
-        myLogger.print3("ERROR: (val) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeVal) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeVal) )
-        myLogger.print3("ERROR: (test) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTest) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTest) )
+        myLogger.print3("\t (train) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTrain) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTrain) )
+        myLogger.print3("\t (val) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeVal) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeVal) )
+        myLogger.print3("\t (test) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTest) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTest) )
         exit(1)
 
     # get the part of the earlier layer that is of the same dimensions as the FMs of the deeper:
@@ -406,6 +405,7 @@ class Cnn3d(object):
                     inputImageToNextLayerTesting = layer.outputTest
                     
                 else : #make residual connection
+                    myLogger.print3("DEBUG: [Pathway-"+str(thisPathwayType)+"], making Residual Connection between output of layer ["+str(layer_i)+"] (indexing from 0) to input of previous layer.")
                     deeperLayerOutputImagesTrValTest = (layer.outputTrain, layer.outputVal, layer.outputTest)
                     deeperLayerOutputImageShapesTrValTest = (layer.outputShapeTrain, layer.outputShapeVal, layer.outputShapeTest)
                     assert layer_i > 0 # The very first layer (index 0), should never be provided for now. Cause I am connecting 2 layers back.

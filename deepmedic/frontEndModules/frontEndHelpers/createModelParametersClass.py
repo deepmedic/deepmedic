@@ -15,7 +15,15 @@ from deepmedic.cnnHelpers import checkSubsampleFactorEven
 
 class CreateModelSessionParameters(object) :
 	#THE LOGIC WHETHER I GOT A PARAMETER THAT I NEED SHOULD BE IN HERE!
-
+	#Checks for whether needed parameters and types were passed correctly
+	def checkLayersForResidualsGivenDoNotInclude1st(self,
+												residConnAtLayersNormal,
+												residConnAtLayersSubsampled,
+												residConnAtLayersFc) :
+		if 1 in residConnAtLayersNormal : self.errorResLayer1("Normal")
+		if 1 in residConnAtLayersSubsampled : self.errorResLayer1("Subsampled")
+		if 1 in residConnAtLayersFc : self.errorResLayer1("Fully Connected")
+				
 	#To be called from outside too.
 	@staticmethod
 	def getDefaultSessionName() :
@@ -23,7 +31,6 @@ class CreateModelSessionParameters(object) :
 	@staticmethod
 	def getDefaultModelName() :
 		return "cnnModel"
-
 	@staticmethod
 	def defaultDropFcList(numFMsInExtraFcs) :
 		numberOfExtraFcs = len(numFMsInExtraFcs)
@@ -33,6 +40,7 @@ class CreateModelSessionParameters(object) :
 		else :
 			dropoutForExtraFcs = [0.5]
 		return dropoutForExtraFcs
+	
 	#ERRORS
 	@staticmethod
 	def errorSegmDimensionsSmallerThanReceptiveF(receptiveFieldNormal, segmentDimensions, tr0_val1_inf2) :
@@ -100,11 +108,15 @@ class CreateModelSessionParameters(object) :
 	@staticmethod
 	def errorRequireMomNonNorm0Norm1() :
 		print "ERROR: The parameter \"momNonNorm0orNormalized1\" must be given 0 or 1. Omit for default. Exiting!"; exit(1)
-
 	@staticmethod
 	def errorRequireBatchSizeTrain() :
 		print "ERROR: The parameter \"batchSizeTrain\" was not specified, although required. This parameter specifies how many training-samples (segments) to use to form a batch, on which a single training iteration is performed. The bigger the better, but larger batches add to the memory and computational burden. Depending on the segment-size, the batch size should be smaller (if big segment sizes are used) or larger (if small segment sizes are used). A number between 10 to 100 is suggested. Please specify in the format: batchSizeTrain = 10 (a number). Exiting!"; exit(1)
 	errReqBatchSizeTr = errorRequireBatchSizeTrain
+	@staticmethod
+	def errorResLayer1(strPathwayType) :
+		print "ERROR: The parameter \"layersWithResidualConn\" for the [", strPathwayType, "] pathway was specified to include the number 1, ie the 1st layer."
+		print "\t This is not an acceptable value, as a residual connection is made between the output of the specified layer and the input of the previous layer. There is no layer before the 1st!"
+		print "\t Provide a list that does not iinclude the first layer, eg layersWithResidualConnNormal = [4,6,8], or an empty list [] for no such connections. Exiting!"; exit(1)
 
 	@staticmethod
 	def warnForSameReceptiveField() :
@@ -124,17 +136,17 @@ class CreateModelSessionParameters(object) :
 			#===Normal pathway===
 			numFMsNormal,
 			kernDimNormal,
+			residConnAtLayersNormal,
 			#==Subsampled pathway==
 			useSubsampledBool,
 			numFMsSubsampled,
 			kernDimSubsampled,
 			subsampleFactor,
+			residConnAtLayersSubsampled,
 			#==FC Layers====
 			numFMsFc,
 			kernelDimensionsFirstFcLayer,
-			
-			#==Residual Connections===
-			indicesOfLayersToConnectResidualsInOutput,
+			residConnAtLayersFc,
 			
 			#==Size of Image Segments ==
 			segmDimTrain,
@@ -187,9 +199,9 @@ class CreateModelSessionParameters(object) :
 		#===Normal pathway===
 		self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal <> None and numFMsNormal > 0 else self.errReqFMsNormal()
 		numOfLayers = len(self.numFMsPerLayerNormal)
-		
 		self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
 		self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal)
+		residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
 		#==Subsampled pathway==
 		self.useSubsampledBool = useSubsampledBool if useSubsampledBool <> None else False
 		if not self.useSubsampledBool :
@@ -197,7 +209,8 @@ class CreateModelSessionParameters(object) :
 			self.kernDimPerLayerSubsampled = []
 			self.receptiveFieldSubsampled = []
 			self.subsampleFactor = []
-
+			residConnAtLayersSubsampled = []
+		
 		else :
 			self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled <> None else self.numFMsPerLayerNormal
 			if kernDimSubsampled == None and\
@@ -221,14 +234,14 @@ class CreateModelSessionParameters(object) :
 				self.errorSubFactor3d()
 			if not checkSubsampleFactorEven(self.subsampleFactor) :
 				self.warnSubFactorOdd()
+			residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled <> None else residConnAtLayersNormal
+		
 		#==FC Layers==
 		self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
 		self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer <> None else [1,1,1]
 		assert len(self.kernelDimensionsFirstFcLayer) == 3 and (False not in [ dim > 0 for dim in self.kernelDimensionsFirstFcLayer] )
-		
-		#---Residual Connections----
-		self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput if indicesOfLayersToConnectResidualsInOutput <> None else [[],[],[],[]] # one sublist per cnn pathway type
-				
+		residConnAtLayersFc = residConnAtLayersFc if residConnAtLayersFc <> None else []
+						
 		#==Size of Image Segments ==
 		self.segmDimNormalTrain = segmDimTrain if segmDimTrain <> None else self.errReqSegmDimTrain()
 		self.segmDimNormalVal = segmDimVal if segmDimVal <> None else self.receptiveFieldNormal
@@ -294,7 +307,6 @@ class CreateModelSessionParameters(object) :
 		if self.momentumValue < 0. or self.momentumValue > 1:
 			self.errorRequireMomValueBetween01()
 
-
 		#==============CALCULATED=====================
 		if self.useSubsampledBool :
 			self.segmDimSubsampledTrain = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalTrain, self.receptiveFieldNormal, self.subsampleFactor)
@@ -302,7 +314,16 @@ class CreateModelSessionParameters(object) :
 			self.segmDimSubsampledInfer = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalInfer, self.receptiveFieldNormal, self.subsampleFactor)
 		else :
 			self.segmDimSubsampledTrain = []; self.segmDimSubsampledVal = []; self.segmDimSubsampledInfer = [];
-			
+
+		# Residual Connections backwards, per pathway type :
+		self.checkLayersForResidualsGivenDoNotInclude1st(residConnAtLayersNormal, residConnAtLayersSubsampled, residConnAtLayersFc)
+		# The following variable passed to the system takes indices, ie number starts from 0. User specifies from 1.
+		self.indicesOfLayersToConnectResidualsInOutput = [ 	[ layerNum - 1 for layerNum in residConnAtLayersNormal ],
+														 	[ layerNum - 1 for layerNum in residConnAtLayersSubsampled ],
+														 	[ layerNum - 1 for layerNum in residConnAtLayersFc ],
+														 	[] 
+														 ]
+
 		#============= HIDDENS ======================
 		self.costFunctionLetter = "L"
 
@@ -351,7 +372,7 @@ class CreateModelSessionParameters(object) :
 		logPrint("Number of Feature Maps per layer = " + str(self.numFMsPerLayerNormal))
 		logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerNormal))
 		logPrint("Receptive Field = " + str(self.receptiveFieldNormal))
-		logPrint("Residual connections added at the output of layers (indices) = " + str(self.indicesOfLayersToConnectResidualsInOutput[0]))
+		logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[0]))
 		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[0]))
 		
 		logPrint("~~Subsampled Pathway~~")
@@ -361,13 +382,13 @@ class CreateModelSessionParameters(object) :
 		logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerSubsampled))
 		logPrint("Receptive Field = " + str(self.receptiveFieldSubsampled))
 		logPrint("Subsampling Factor = " + str(self.subsampleFactor))
-		logPrint("Residual connections added at the output of layers (indices) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
+		logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
 		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[1]))
 		
 		logPrint("~~Fully Connected Pathway~~")
 		logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.numFMsInExtraFcs)))
 		logPrint("Number of Feature Maps in the additional FC layers = " + str(self.numFMsInExtraFcs))
-		logPrint("Residual connections added at the output of layers (indices) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
+		logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
 		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[2]))
 		logPrint("Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = " + str(self.kernelDimensionsFirstFcLayer))
 		
