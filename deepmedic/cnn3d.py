@@ -409,13 +409,9 @@ class Cnn3d(object):
                     deeperLayerOutputImagesTrValTest = (layer.outputTrain, layer.outputVal, layer.outputTest)
                     deeperLayerOutputImageShapesTrValTest = (layer.outputShapeTrain, layer.outputShapeVal, layer.outputShapeTest)
                     assert layer_i > 0 # The very first layer (index 0), should never be provided for now. Cause I am connecting 2 layers back.
-                    if layer_i == 1 : # Give the input to the pathway for the earlier part of the residual connection. This can be the input image, or eg the input to the FC pathway.
-                        earlierLayerOutputImagesTrValTest = (inputImageToPathway, inputImageToPathwayInference, inputImageToPathwayTesting)
-                        earlierLayerOutputImageShapesTrValTest = (shapeOfInputImageToPathway, shapeOfInputImageToPathwayValidation, shapeOfInputImageToPathwayTesting)
-                    else :
-                        earlierLayer = self.typesOfCnnLayers[thisPathwayType][layer_i-2]
-                        earlierLayerOutputImagesTrValTest = (earlierLayer.outputTrain, earlierLayer.outputVal, earlierLayer.outputTest)
-                        earlierLayerOutputImageShapesTrValTest = (earlierLayer.outputShapeTrain, earlierLayer.outputShapeVal, earlierLayer.outputShapeTest)
+                    earlierLayer = self.typesOfCnnLayers[thisPathwayType][layer_i-1]
+                    earlierLayerOutputImagesTrValTest = (earlierLayer.inputTrain, earlierLayer.inputVal, earlierLayer.inputTest)
+                    earlierLayerOutputImageShapesTrValTest = (earlierLayer.inputShapeTrain, earlierLayer.inputShapeVal, earlierLayer.inputShapeTest)
     
                     (inputImageToNextLayer,
                     inputImageToNextLayerInference,

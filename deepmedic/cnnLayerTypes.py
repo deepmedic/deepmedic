@@ -236,6 +236,14 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
 class ConvLayer(object):
 
     def __init__(self) :
+    # Input to the layer
+	self.inputTrain = None
+	self.inputVal = None
+	self.inputTest = None
+	self.inputShapeTrain = None
+	self.inputShapeVal = None
+	self.inputShapeTest = None
+    	
 	#========= All Parameters of the Layer Instance ===========
 	self.appliedBnInLayer = None
 	self.activationFunctionType = "" #linear, relu or prelu
@@ -259,6 +267,7 @@ class ConvLayer(object):
 		
 	self.numberOfFeatureMaps = None
 	
+	# Output of the layer
 	self.outputTrain = None
 	self.outputVal = None
 	self.outputTest = None
@@ -299,6 +308,12 @@ class ConvLayer(object):
 	# ---------------- Order of what is applied -----------------
 	#  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ] # ala He et al "Identity Mappings in Deep Residual Networks" 2016
 	# -----------------------------------------------------------
+	self.inputTrain = inputToLayerTrain
+	self.inputVal = inputToLayerVal
+	self.inputTest = inputToLayerTest
+	self.inputShapeTrain = inputToLayerShapeTrain
+	self.inputShapeVal = inputToLayerShapeVal
+	self.inputShapeTest = inputToLayerShapeTest
 	
 	self.maxPoolingParameters = maxPoolingParameters
 	self.numberOfFeatureMaps = filter_shape[0] # Of the (Conv) layer! Used in trainValidationVisualise.py
