@@ -428,8 +428,6 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 			padInputImagesBool = configGet(trainConfig.PAD_INPUT),
 
 			)
-
-	#Everything seems alright! Run the testing!
 	
 	trainSessionParameters.sessionLogger.print3("===========       NEW TRAINING SESSION         ===============")
 	trainSessionParameters.printParametersOfThisSession()

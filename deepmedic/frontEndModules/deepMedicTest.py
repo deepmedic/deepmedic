@@ -304,7 +304,6 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
 
 			)
 
-	#Everything seems alright! Run the testing!
 	testSessionParameters.sessionLogger.print3("===========       NEW TESTING SESSION         ===============")
 	testSessionParameters.printParametersOfThisSession()
 

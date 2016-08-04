@@ -188,7 +188,6 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			eRms=configGet(modelConfig.EPS_RMS)
 			)
 
-	#Everything seems alright! Run the testing!
 	
 	createModelSessionParameters.sessionLogger.print3("===========    NEW CREATE-MODEL SESSION    ============")
 	createModelSessionParameters.printParametersOfThisSession()
