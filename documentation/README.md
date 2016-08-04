@@ -3,7 +3,8 @@ The DeepMedic
 
 ### News
 4 Aug 2016:
-* Code in Layer-classes cleaned and commented. Residual Connections available now. Can also now specify kernel size at FC1. Not backwards compatible version. 
+* Code in Layer-classes cleaned/commented. Residual Connections enabled. Possible to specify kernel size at FC1. 
+
 14 July 2016:
 * Master branch was updated with better monitoring of training progress and a better plotting script. This version is not backwards compatible. CPickle will fail loading previously trained models from previous versions of the code.
 * Previous version of master branch tagged as v0.5. Use this if you wish to continue working with previously trained models.
