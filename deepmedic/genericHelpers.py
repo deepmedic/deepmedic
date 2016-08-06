@@ -321,4 +321,7 @@ def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(mu
 
 def datetimeNowAsStr() :
     #datetime returns in the format: YYYY-MM-DD HH:MM:SS.millis but ':' is not supported for Windows' naming convention.
-    return str(datetime.datetime.now()).replace(':','.')
+    dateTimeNowStr = str(datetime.datetime.now())
+    dateTimeNowStr = dateTimeNowStr.replace(':','.')
+    dateTimeNowStr = dateTimeNowStr.replace(' ','.')
+    return dateTimeNowStr

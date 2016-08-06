@@ -81,14 +81,11 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
                                                                  providedGtLabelsBool,
                                                                  listOfFilepathsToGtLabelsOfEachPatient,
 
-                                                                 providedMaskWhereToGetPositiveSamples,
-                                                                 listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal,
+                                                                 providedWeightMapsToSampleForEachCategory, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
+                                                                 forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
 
                                                                  providedRoiMaskBool,
                                                                  listOfFilepathsToRoiMaskOfEachPatient,
-
-                                                                 providedMaskWhereToGetNegativeSamples,
-                                                                 listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal,
 
                                                                  useSameSubChannelsAsSingleScale,
                                                                  usingSubsampledWaypath,
@@ -190,7 +187,9 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     if providedGtLabelsBool : #For training (exact target labels) or validation on samples labels.
         fullFilenamePathOfGtLabels = listOfFilepathsToGtLabelsOfEachPatient[index_of_wanted_image]
         imgGtLabels_proxy = nib.load(fullFilenamePathOfGtLabels)
-        gtLabelsData = imgGtLabels_proxy.get_data()
+	#If the gt file was not type "int" (eg it was float), convert it to int. Because later I m doing some == int comparisons.
+	gtLabelsData = imgGtLabels_proxy.get_data()
+	gtLabelsData = gtLabelsData if np.issubdtype( gtLabelsData.dtype, np.int ) else np.rint(gtLabelsData).astype("int32")
         gtLabelsData = reflectImageArrayIfNeeded(reflectFlags, gtLabelsData) #reflect if flag ==1 .
         imageGtLabels = gtLabelsData
         imgGtLabels_proxy.uncache()
@@ -199,29 +198,24 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         imageGtLabels = "placeholderNothing" #For validation and testing
 
 
-    if providedMaskWhereToGetPositiveSamples :
-        fullFilenamePathOfMaskWhereToGetPositiveSamples = listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal[index_of_wanted_image]
-        img_proxy = nib.load(fullFilenamePathOfMaskWhereToGetPositiveSamples)
-	maskWhereToGetPositiveSamplesData = img_proxy.get_data()
-	maskWhereToGetPositiveSamplesData = reflectImageArrayIfNeeded(reflectFlags, maskWhereToGetPositiveSamplesData)
-        maskWhereToGetPositiveSamples = maskWhereToGetPositiveSamplesData #np.asarray(maskWhereToGetPositiveSamplesData, dtype="float32") #the .get_data returns a nparray but it is not a float64
-        img_proxy.uncache()
-	[maskWhereToGetPositiveSamples, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(maskWhereToGetPositiveSamples, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [maskWhereToGetPositiveSamples, tupleOfPaddingPerAxesLeftRight]
-    else :
-        maskWhereToGetPositiveSamples = "placeholderNothing"
+    if training0orValidation1orTest2 <> 2 and providedWeightMapsToSampleForEachCategory==True : # in testing these weightedMaps are never provided, they are for training/validation only.
+	numberOfSamplingCategories = len(forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient)
+	arrayWithWeightMapsWhereToSampleForEachCategory = np.zeros( [numberOfSamplingCategories] + list(allChannelsOfPatientInNpArray[0].shape), dtype="float32" ) 
+	for cat_i in xrange( numberOfSamplingCategories ) :
+		filepathsToTheWeightMapsOfAllPatientsForThisCategory = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient[cat_i]
+		filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[index_of_wanted_image]
 
-    if providedMaskWhereToGetNegativeSamples :
-        fullFilenamePathOfMaskWhereToGetNegativeSamples = listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal[index_of_wanted_image]
-        img_proxy = nib.load(fullFilenamePathOfMaskWhereToGetNegativeSamples)
-	maskWhereToGetNegativeSamplesData = img_proxy.get_data()
-	maskWhereToGetNegativeSamplesData = reflectImageArrayIfNeeded(reflectFlags, maskWhereToGetNegativeSamplesData)
-        maskWhereToGetNegativeSamples = maskWhereToGetNegativeSamplesData #np.asarray(maskWhereToGetNegativeSamplesData, dtype="float32") #the .get_data returns a nparray but it is not a float64
-        img_proxy.uncache()
-	[maskWhereToGetNegativeSamples, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(maskWhereToGetNegativeSamples, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [maskWhereToGetNegativeSamples, tupleOfPaddingPerAxesLeftRight]
+		img_proxy = nib.load(filepathToTheWeightMapOfThisPatientForThisCategory)
+		weightedMapForThisCatData = img_proxy.get_data()
+		weightedMapForThisCatData = reflectImageArrayIfNeeded(reflectFlags, weightedMapForThisCatData)
+		img_proxy.uncache()
+		[weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight]
+		
+		arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
     else :
-        maskWhereToGetNegativeSamples = "placeholderNothing"
-        
-        
+	arrayWithWeightMapsWhereToSampleForEachCategory = "placeholderNothing"
+
+
     # The second CNN pathway...
     if not usingSubsampledWaypath :
 	allSubsampledChannelsOfPatientInNpArray = "placeholderNothing"
@@ -257,65 +251,36 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 		valueToMultiplyEachVoxel = howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][1]
 		allSubsampledChannelsOfPatientInNpArray[channel_i] = (allSubsampledChannelsOfPatientInNpArray[channel_i] + valueToAddToEachVoxel)*valueToMultiplyEachVoxel
 	
-    return [allChannelsOfPatientInNpArray, imageGtLabels, maskWhereToGetPositiveSamples, roiMask, maskWhereToGetNegativeSamples, allSubsampledChannelsOfPatientInNpArray, tupleOfPaddingPerAxesLeftRight]
+    return [allChannelsOfPatientInNpArray, imageGtLabels, roiMask, arrayWithWeightMapsWhereToSampleForEachCategory, allSubsampledChannelsOfPatientInNpArray, tupleOfPaddingPerAxesLeftRight]
+
 
 
 #made for 3d
-def get_positive_and_negative_imageParts(myLogger,
-                                         numberOfPositiveSamples_forThisImage,
-                                         numberOfNegativeSamples_forThisImage,
-                                         imagePartDimensions,
-                                         channelsOfImageNpArray,#chans,niiDims
-                                         maskWhereToGetPositiveSamples,
-                                         maskWhereToGetNegativeSamples,
-                                         theMasksWhereToGetAreProbabilityMaps,
-                                         get_randomly_only_one_of_the_two = 'False'):
-    #This function, IF get_randomly_only_one_of_the_two==False,
-    #...it will EITHER return NO PAIR OR the same number of Lesions And Brains (complete pairs)
-    
-    """
-	This function returns the coordinate (index) of the "central" voxel of an image part (1v to the left if even part-dimension). It ALSO returns the indeces of the image part, left and right indices, INCLUSIVE BOTH SIDES.
-    """
-    
-    HUGE_INTEGER = 9999999 #intensities should never exceed this. Used in get_positive_and_negative_imageParts()
+def sampleImageParts(	myLogger,
+			numOfSegmentsToExtractForThisSubject,
+			imagePartDimensions,
+			dimensionsOfImageChannel,# the dimensions of the images of this subject. All channels etc should have the same dimensions
+			weightMapToSampleFrom
+			) :
+	"""
+	This function returns the coordinates (index) of the "central" voxel of sampled image parts (1voxel to the left if even part-dimension).
+	It also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
 
-    channelImageDimensions = channelsOfImageNpArray[0].shape
+	Return value: [ rcz-coordsOfCentralVoxelsOfPartsSampled, rcz-sliceCoordsOfImagePartsSampled ]
+	> coordsOfCentralVoxelsOfPartsSampled : an array with shape: 3(rcz) x numOfSegmentsToExtractForThisSubject. 
+		Example: [ rCoordsForCentralVoxelOfEachPart, cCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
+		>> r/c/z-CoordsForCentralVoxelOfEachPart : A 1-dim array with numOfSegmentsToExtractForThisSubject, that holds the r-index within the image of each sampled part.
+	> sliceCoordsOfImagePartsSampled : 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
+		Example: [ r-sliceCoordsOfImagePart, c-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
+		
+	"""
+	# Check if the weight map is fully-zeros. In this case, return no element.
+	# Note: Currently, the caller function is checking this case already and does not let this being called. Which is still fine.
+	if np.sum(weightMapToSampleFrom>0) == 0 :
+		myLogger.print3("WARN: The sampling mask/map was found just zeros! No image parts were sampled for this subject!")
+		return [ [[],[],[]], [[],[],[]] ]
 
-    posNegParts = []
-
-    if get_randomly_only_one_of_the_two == 'False' :
-        iterationsForPositiveAndNegative = [0,1] #iterate for 0=positive and 1=negative
-    else : #batch_size = 1 and the function was called to give back only one, either positive (lesion) or negative (healthy) image-part
-        iterationsForPositiveAndNegative = [random.randint(0,1)]
-    
-    for pos_or_neg in iterationsForPositiveAndNegative : # 0=pos, 1=neg image_part
-        mask_to_check = ""
-        if pos_or_neg == 0 : #iteration for positive image part. Check for lesion.
-            #If I do not have a certain mask to sample from, the previous function will return "placeholderNothing". In this case, sample from anywhere.
-            mask_to_check = maskWhereToGetPositiveSamples if maskWhereToGetPositiveSamples <> "placeholderNothing" else channelsOfImageNpArray[0]<HUGE_INTEGER
-            if (theMasksWhereToGetAreProbabilityMaps==False) and (maskWhereToGetPositiveSamples <> "placeholderNothing") :
-		#In this case I am probably loading the label-map. So just make it binary, for extraction, in case it was multiclass. I ll have to change this for multiclass.
-		mask_to_check = mask_to_check > 0
-            numberPosOrNegSamplesLookingForInThisImage = numberOfPositiveSamples_forThisImage
-        else : #iteration for negative
-            #Make sure that the negatives are outside of the positive-mask. This makes sure that if I load the brainmask for negatives, I dont get lesions...
-            mask_to_check = maskWhereToGetNegativeSamples if maskWhereToGetNegativeSamples <> "placeholderNothing" else channelsOfImageNpArray[0]<HUGE_INTEGER
-            if (theMasksWhereToGetAreProbabilityMaps==False) and (maskWhereToGetPositiveSamples <> "placeholderNothing") :
-    		#Make sure that the negatives are outside of the positive-mask. This makes sure that if I load the brainmask for negatives, I dont get lesions...
-    		#When using 20 images, this adds half a second to the loading time (of all images, not each). So it is fast.
-		mask_to_check[maskWhereToGetPositiveSamples>0] = 0
-            elif (theMasksWhereToGetAreProbabilityMaps==False) and (maskWhereToGetPositiveSamples == "placeholderNothing") :
-		#This is supposed to be "uniform sampling".
-		myLogger.print3("WARN: No mask was provided for the foreground (Ground Truth Labels). In this case, Background-Centered segments are actually extracted from the whole ROI in a UNIFORM manner (thus extracting Foreground-Centered too). This is a hacked implementation, which will be re-written cleaner soon.")
-            numberPosOrNegSamplesLookingForInThisImage = numberOfNegativeSamples_forThisImage
-
-        #Choose a random POSITIVE example:
-
-        if np.sum(mask_to_check>0) == 0 : #[1] and [2] also have the same length, so no prob.
-            myLogger.print3("WARN: NO GT-Labels(0) OR ROI-MASK(1) FOR THIS! no pair found! Iteration was for:"+str(pos_or_neg))
-            return (False, posNegParts) #return found_pair==false
-
-
+	imagePartsSampled = []
 
         #Now out of these, I need to randomly select one, which will be an ImagePart's central voxel.
         #But I need to be CAREFUL and get one that IS NOT closer to the image boundaries than the dimensions of the ImagePart permit.
@@ -330,7 +295,7 @@ def get_positive_and_negative_imageParts(myLogger,
         
         #The below starts all zero. Will be Multiplied by other true-false arrays expressing if the relevant voxels are within boundaries.
         #In the end, the final vector will be true only for the indices of lesions that are within all boundaries.
-        booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries = np.zeros(mask_to_check.shape, dtype="int32")
+        booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries = np.zeros(weightMapToSampleFrom.shape, dtype="int32")
         
 	#The following loop leads to booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries to be true for the indices that allow you to get an image part CENTERED on them, and be safely within image boundaries. Note that if the imagePart is of even dimension, the "central" voxel is one voxel to the left.
         for rcz_i in xrange( len(imagePartDimensions) ) :
@@ -341,11 +306,11 @@ def get_positive_and_negative_imageParts(myLogger,
                 dimensionDividedByTwoFloor = math.floor(imagePartDimensions[rcz_i]/2) #eg 5/2 = 2, with the 3rd voxel being the "central"
                 halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwoFloor, dimensionDividedByTwoFloor] 
         #used to be [halfImagePartBoundaries[0][0]: -halfImagePartBoundaries[0][1]], but in 2D case halfImagePartBoundaries might be ==0, causes problem and you get a null slice.
-	booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries[halfImagePartBoundaries[0][0]: channelImageDimensions[0] - halfImagePartBoundaries[0][1],
-						halfImagePartBoundaries[1][0]: channelImageDimensions[1] - halfImagePartBoundaries[1][1],
-						halfImagePartBoundaries[2][0]: channelImageDimensions[2] - halfImagePartBoundaries[2][1]] = 1
+	booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries[halfImagePartBoundaries[0][0]: dimensionsOfImageChannel[0] - halfImagePartBoundaries[0][1],
+						halfImagePartBoundaries[1][0]: dimensionsOfImageChannel[1] - halfImagePartBoundaries[1][1],
+						halfImagePartBoundaries[2][0]: dimensionsOfImageChannel[2] - halfImagePartBoundaries[2][1]] = 1
 
-	constrainedWithImageBoundariesMaskToSample = mask_to_check * booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries
+	constrainedWithImageBoundariesMaskToSample = weightMapToSampleFrom * booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries
 	#normalize the probabilities to sum to 1, cause the function needs it as so.
 	constrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample / (1.0* np.sum(constrainedWithImageBoundariesMaskToSample))
         
@@ -357,11 +322,11 @@ def get_positive_and_negative_imageParts(myLogger,
         
 	#This is going to be a 3xNumberOfImagePartSamples array.
 	indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts = np.random.choice(constrainedWithImageBoundariesMaskToSample.size,
-												size=numberPosOrNegSamplesLookingForInThisImage,
+												size = numOfSegmentsToExtractForThisSubject,
 												replace=True,
 												p=flattenedConstrainedWithImageBoundariesMaskToSample)
 	#np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), where each of the array in the tuple has the same shape as the listOfIndices. They have the r/c/z coords that correspond to the index of the flattened version.
-	#So, coordsOfCentralVoxelsOfPartsSampled will end up being an array with shape: 3(rcz)xnumberPosOrNegSamplesLookingForInThisImage.
+	#So, coordsOfCentralVoxelsOfPartsSampled will end up being an array with shape: 3(rcz) x numOfSegmentsToExtractForThisSubject.
 	coordsOfCentralVoxelsOfPartsSampled = np.asarray(np.unravel_index(indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts,
 									constrainedWithImageBoundariesMaskToSample.shape #the shape of the brainmask/scan.
 									)
@@ -378,28 +343,8 @@ def get_positive_and_negative_imageParts(myLogger,
         """
 	#coordsOfCentralVoxelsOfPartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
 	#sliceCoordsOfImagePartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. The last dim has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
-        posNegParts.append([coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled]) #(allPosOrNegImagePartsEntries)
-    
-    """
-	OLD!!!!!!!
-    posNegParts: List of 2 slots. First is positive, second is negative if pair is acquired. Only exception...
-        ...is when batch_size is 1, and then this function is called with argument: get_randomly_only_one_of_the_two=='True'.
-        ...In this case, randomly only the neg OR pos is returned. In this case, the returned is placed in first slot of posNegParts.
-        
-        Now, in each slot, the structure is the following: a List [coordinates_rcz, slice_coordinates].
-        coordinates_rcz : a list [r,c,z] of the coords of the central pixel of the ImagePart (in the whole image)
-        #slice_coordinates : a list with as many elements as the number of pairs taken from this image part...
-        #...Each of them is : [ [rlow,rhigh], [clow,chigh], [zlow,zhigh] ]. Both inclusive. So do zhigh+1 when getting the slice! 
-    """
-    
-    myLogger.print3("End of the function that extracts segments. Segments extracted centered on: Foreground="+str(len(posNegParts[0][0][0])) + " Background=" + str(len(posNegParts[1][0][0])))
-    
-    return posNegParts
-
-
-
-
-
+        imagePartsSampled = [coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled]
+	return imagePartsSampled
 
         
         
@@ -526,7 +471,7 @@ def getImagePartsAndTheirSlices(myLogger,
 	zFarBoundary = min(zLowBoundaryNext+imagePartDimensions[2], niiDimensions[2]) #Excluding.
 	zLowBoundary = zFarBoundary - imagePartDimensions[2]
 	zLowBoundaryNext = zLowBoundaryNext + strideOfImagePartsPerDimensionInVoxels[2]
-	zAxisCentralPartPredicted = False if zFarBoundary < niiDimensions[2] else True
+	zAxisCentralPartPredicted = False if zFarBoundary < niiDimensions[2] else True #THIS IS THE IMPORTANT CRITERIO.
 
 	cLowBoundaryNext=0; cAxisCentralPartPredicted = False;
         while not cAxisCentralPartPredicted :
@@ -542,18 +487,16 @@ def getImagePartsAndTheirSlices(myLogger,
 		rLowBoundaryNext = rLowBoundaryNext + strideOfImagePartsPerDimensionInVoxels[0]
 		rAxisCentralPartPredicted = False if rFarBoundary < niiDimensions[0] else True
 
-		thisImagePartChannels = []
-
 		if brainMask<>"placeholderNothing" : #In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
-                    brainMaskForThisImagePart = brainMask[rLowBoundary:rFarBoundary,
+                    if not np.any(brainMask[rLowBoundary:rFarBoundary,
                                                           cLowBoundary:cFarBoundary,
                                                           zLowBoundary:zFarBoundary
-                                                          ]
-                    if not np.any(brainMaskForThisImagePart) : #all of it is out of the brain so skip it.
+                                                          ]) : #all of it is out of the brain so skip it.
                         continue
                     
                 coordsOfTopLeftVoxelForPartsToReturn.append([rLowBoundary,cLowBoundary,zLowBoundary])
                 
+		thisImagePartChannels = []
                 for channel_i in xrange(len(channelsOfImageNpArray)) :
                     thisImagePartChannels.append(channelsOfImageNpArray[channel_i,
                                                                         rLowBoundary:rFarBoundary,
@@ -562,7 +505,7 @@ def getImagePartsAndTheirSlices(myLogger,
                                                                         ])
                 channelsForPartsToReturn.append(thisImagePartChannels)
                 
-                
+                #Subsampled pathway
 		if channelsOfSubsampledImageNpArray <> "placeholderNothing" :
                     imagePartSlicesCoords = [ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ] #the right hand values are placeholders in this case.
                     channelsForThisSubsampledImagePart = getImagePartFromSubsampledImageForTraining(
@@ -593,16 +536,154 @@ def getImagePartsAndTheirSlices(myLogger,
     return [channelsForPartsToReturn, coordsOfTopLeftVoxelForPartsToReturn, channelsForSubsampledPartsToReturn]
                 
 
+def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
+	training0orValidation1,
+
+	sliceCoordsOfThisImagePart,
+	numberOfNormalScaleChannels,
+	imagePartDimensions,
+	patchDimensions,
+
+	allChannelsOfPatientInNpArray,
+	gtLabelsImage,
+
+	usingSubsampledWaypath,
+	useSameSubChannelsAsSingleScale,
+	allSubsampledChannelsOfPatientInNpArray,
+	subSamplingFactor,
+	subsampledImagePartDimensions,
+	# Intensity Augmentation
+	normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
+	stdsOfTheChannsOfThisImage
+	) :
+
+	channelsForThisImagePart = np.zeros((numberOfNormalScaleChannels, imagePartDimensions[0],imagePartDimensions[1],imagePartDimensions[2]), dtype = 'float32')
+	#Inclusive both sides. That's the slice I should grab to get the imagePart, centrered around [0].
+
+	channelsForThisImagePart[:numberOfNormalScaleChannels] = allChannelsOfPatientInNpArray[:,
+												sliceCoordsOfThisImagePart[0][0]:sliceCoordsOfThisImagePart[0][1] +1,
+												sliceCoordsOfThisImagePart[1][0]:sliceCoordsOfThisImagePart[1][1] +1,
+												sliceCoordsOfThisImagePart[2][0]:sliceCoordsOfThisImagePart[2][1] +1]
+	#############################
+	#Normalization Augmentation of the Patches! For more randomness.
+	#Get parameters by how much to renormalize-augment mean and std.
+	if training0orValidation1 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 : #[0] == 2 means augment the intensities of the segments.
+
+		muOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][0]
+		stdOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][1]
+		if stdOfGaussToAdd <> 0 : #np.random.normal does not work for an std==0.
+			howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd, [numberOfNormalScaleChannels, 1,1,1])
+		else :
+			howMuchToAddForEachChannel = np.ones([numberOfNormalScaleChannels, 1,1,1], dtype="float32")*muOfGaussToAdd
+		howMuchToAddForEachChannel = howMuchToAddForEachChannel * np.reshape(stdsOfTheChannsOfThisImage, [numberOfNormalScaleChannels, 1,1,1])
+
+		muOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][0]
+		stdOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][1]
+		if stdOfGaussToMultiply <> 0 :
+			howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply, [numberOfNormalScaleChannels, 1,1,1])
+		else :
+			howMuchToMultiplyForEachChannel = np.ones([numberOfNormalScaleChannels, 1,1,1], dtype="float32")*muOfGaussToMultiply
+		channelsForThisImagePart[:numberOfNormalScaleChannels] = (channelsForThisImagePart[:numberOfNormalScaleChannels] + howMuchToAddForEachChannel)*howMuchToMultiplyForEachChannel
+	##############################
+
+	lesionLabelsForThisImagePart = gtLabelsImage[	sliceCoordsOfThisImagePart[0][0]:sliceCoordsOfThisImagePart[0][1] +1,
+							sliceCoordsOfThisImagePart[1][0]:sliceCoordsOfThisImagePart[1][1] +1,
+							sliceCoordsOfThisImagePart[2][0]:sliceCoordsOfThisImagePart[2][1] +1]
+
+	#Get the part of the GT-segments that correspond to the central (predicted) part of the segments:
+	#I think both Patch and Part can be either even or odd, and this should work in both cases.
+	rczPatchHalfWidth = [ (patchDimensions[i]-1)/2 for i in xrange(3) ] # eg rPatchHalfWidth = (patchDimensions[0]-1)/2
+	rczUpperBoundOfCentralVoxelsLabels = [ imagePartDimensions[i] - rczPatchHalfWidth[i] for i in xrange(3) ] # Excluding
+	#This used to be [rPatchHalfWidth : -rPatchHalfWidth], but in 2D case, where rPatchHalfWidth might be ==0, causes problem and you get a null slice.
+	lesionLabelsForTheCentralClassifiedPartOfThisImagePart = lesionLabelsForThisImagePart[rczPatchHalfWidth[0] : rczUpperBoundOfCentralVoxelsLabels[0],
+                                                                                              rczPatchHalfWidth[1] : rczUpperBoundOfCentralVoxelsLabels[1],
+                                                                                              rczPatchHalfWidth[2] : rczUpperBoundOfCentralVoxelsLabels[2]]
 
 
+	#FOR THE SUBSAMPLED IMAGE-PARTS:
+	if usingSubsampledWaypath :
+		#this datastructure is similar to channelsForThisImagePart, but contains voxels from the subsampled image.
+		subsampledChannelsForThisImagePart = getImagePartFromSubsampledImageForTraining(imagePartDimensions,
+												patchDimensions,
+												allSubsampledChannelsOfPatientInNpArray,
+												sliceCoordsOfThisImagePart,
+												subSamplingFactor,
+												subsampledImagePartDimensions
+												)
+		#############################
+		#Normalization-Augmentation of the Patches! For more randomness.
+		#Get parameters by how much to renormalize-augment mean and std.
+		if training0orValidation1 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 and useSameSubChannelsAsSingleScale:
+                    	#Use values  computed on the normal-resolution images. BUT PREREQUISITE IS TO HAVE THE SAME CHANNELS IN THE TWO PATHWAYS. Else need to recompute!
+                    	subsampledChannelsForThisImagePart[:numberOfNormalScaleChannels] = (subsampledChannelsForThisImagePart[:numberOfNormalScaleChannels] + howMuchToAddForEachChannel)*howMuchToMultiplyForEachChannel
+		elif normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 : 
+			#Need to recompute. NOT IMPLEMENTED YET.
+			myLogger.print3("ERROR: The system uses different channels for normal and subsampled pathway. And was asked to use Data Augmentation with intensity-noise. Not implemented yet. Exiting.")
+			exit(1)
+		##############################
+	else :
+		subsampledChannelsForThisImagePart = None
+
+	return [ channelsForThisImagePart, lesionLabelsForTheCentralClassifiedPartOfThisImagePart, subsampledChannelsForThisImagePart]
+
+
+def shuffleTheSegmentsForThisSubepoch(	imagePartsChannelsToLoadOnGpuForSubepoch,
+					lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch,
+					subsampledImagePartsChannelsToLoadOnGpuForSubepoch,
+					usingSubsampledWaypath) :
+	if usingSubsampledWaypath :
+		combined = zip(imagePartsChannelsToLoadOnGpuForSubepoch,
+                       lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch,
+                       subsampledImagePartsChannelsToLoadOnGpuForSubepoch)
+		random.shuffle(combined)
+		imagePartsChannelsToLoadOnGpuForSubepoch[:],\
+			lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch[:],\
+			subsampledImagePartsChannelsToLoadOnGpuForSubepoch[:] = zip(*combined)
+	else :
+		combined = zip(imagePartsChannelsToLoadOnGpuForSubepoch,
+                       lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch)
+		random.shuffle(combined)
+		imagePartsChannelsToLoadOnGpuForSubepoch[:],\
+			lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch[:] = zip(*combined)
+
+	return [imagePartsChannelsToLoadOnGpuForSubepoch, lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch, subsampledImagePartsChannelsToLoadOnGpuForSubepoch]
+
+
+def getNumberOfSegmentsToExtractPerCategoryFromEachSubject(	numberOfImagePartsToLoadInGpuPerSubepoch,
+								percentOfSamplesPerCategoryToSample, # list with a percentage for each type of category to sample
+								numOfSubjectsLoadingThisSubepochForSampling ) :
+	numberOfSamplingCategories = len(percentOfSamplesPerCategoryToSample)
+	# [arrayForCat1,..., arrayForCatN] : arrayForCat1 = [ numbOfSegmsToExtrFromSubject1, ...,  numbOfSegmsToExtrFromSubjectK]
+	arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = np.zeros( [ len(percentOfSamplesPerCategoryToSample), numOfSubjectsLoadingThisSubepochForSampling ] , dtype="int32" )
+
+	numberOfSamplesDistributedInTheCategories = 0
+	for cat_i in xrange(numberOfSamplingCategories) :
+		if cat_i < numberOfSamplingCategories : #it's the last category. Give it all that remain, to get rid of rounding errors from the float percentage.
+			numberOfSamplesFromThisCategoryPerSubepoch = int(numberOfImagePartsToLoadInGpuPerSubepoch*percentOfSamplesPerCategoryToSample[cat_i])
+			numberOfSamplesDistributedInTheCategories += numberOfSamplesFromThisCategoryPerSubepoch
+		else :
+			numberOfSamplesFromThisCategoryPerSubepoch = numberOfImagePartsToLoadInGpuPerSubepoch - numberOfSamplesDistributedInTheCategories
+
+		numberOfSamplesFromThisCategoryPerSubepochPerImage = numberOfSamplesFromThisCategoryPerSubepoch / numOfSubjectsLoadingThisSubepochForSampling
+		numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly = numberOfSamplesFromThisCategoryPerSubepoch % numOfSubjectsLoadingThisSubepochForSampling
+		
+		arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
+
+		for i_unevenSampleFromThisCat in xrange(numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly):
+			arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i, i_unevenSampleFromThisCat] += 1
+
+	return arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject
 
 #-----------The function that is executed in parallel with gpu training:----------------
 def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 								training0orValidation1,
 
-                                                                n_images_per_subepoch,
-                                                                numberOfPositiveSamplesPerSubepoch,
-                                                                numberOfNegativeSamplesPerSubepoch,
+                                                                n_subjects_per_subepoch,
+
+                                                                numberOfImagePartsToLoadInGpuPerSubepoch,
+
+                                                                samplingTypeInstance,
+
                                                                 usingSubsampledWaypath,
 
 								listOfFilepathsToEachChannelOfEachPatient,
@@ -612,11 +693,9 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 								providedRoiMaskBool,
 								listOfFilepathsToRoiMaskOfEachPatient,
 
-								providedMaskWhereToGetPositiveSamples,
-                                                                listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal,
-								providedMaskWhereToGetNegativeSamples,
-								listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal,
-								theMasksWhereToGetAreProbabilityMaps,
+								providedWeightMapsToSampleForEachCategory,
+                                                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient,
+
 								useSameSubChannelsAsSingleScale,
 
 								listOfFilepathsToEachSubsampledChannelOfEachPatient,
@@ -639,65 +718,38 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
     myLogger.print3(":=:=:=:=:=:=:=:=: Starting to extract Segments from the images for next " + trainingOrValidationString + "... :=:=:=:=:=:=:=:=:")
 
 
-    total_number_of_images = len(listOfFilepathsToEachChannelOfEachPatient)
-    randomIndicesList_for_gpu = get_random_image_indices_to_load_on_GPU(total_number_of_images = total_number_of_images,
-                                                                    max_images_on_gpu_for_subepoch = n_images_per_subepoch,
-                                                                    get_max_images_for_gpu_even_if_total_less = False,
+    total_number_of_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
+    randomIndicesList_for_gpu = get_random_subject_indices_to_load_on_GPU(total_number_of_subjects = total_number_of_subjects,
+                                                                    max_subjects_on_gpu_for_subepoch = n_subjects_per_subepoch,
+                                                                    get_max_subjects_for_gpu_even_if_total_less = False,
                                                                     myLogger=myLogger)
-    myLogger.print3("Out of the " + str(total_number_of_images) + " subjects given for " + trainingOrValidationString + ", it was specified to extract Segments from " + str(n_images_per_subepoch) + " per subepoch.")
+    myLogger.print3("Out of [" + str(total_number_of_subjects) + "] subjects given for [" + trainingOrValidationString + "], it was specified to extract Segments from maximum [" + str(n_subjects_per_subepoch) + "] per subepoch.")
     myLogger.print3("Shuffled indices of subjects that were randomly chosen: "+str(randomIndicesList_for_gpu))
     
     imagePartsChannelsToLoadOnGpuForSubepoch = [] #This is x. Will end up with dimensions: partImagesLoadedPerSubepoch, channels, r,c,z, but flattened.
-    lesionLabelsForTheImagePartsInGpUForSubepoch = [] #These are the FULL LABEL SLICES for the image parts. I ll have to reformat to get the ones for the patches I think.
+    lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch = [] # Labels only for the central/predicted part of segments.
     subsampledImagePartsChannelsToLoadOnGpuForSubepoch = []
             
-    n_images_loading_this_subepoch = len(randomIndicesList_for_gpu) #Can be different than n_images_per_subepoch, cause of available images number.
-    #Load this images into a sharedVariable.set_value(). In the memory I want the IMAGES, not the parts.
-    #In each batch I ll be changing parts, but the whole images should be loaded. I dont want to be changing that!
-            
-    #here normally I would just .setValue(). No theano weird functions needed.
-    #sharedVariableForGpuImagesOfSubepoch = np.asarray(subepochsImagesLoadedInCpuMemory, dtype='float32')
-    #Do I also need the lesions and brains on shared? Probably I do not. Calculate on CPU which image parts to get...
-    #...calculate the slices/view of the shared variable that you want and pass it to the givens.
-            
-            
-    numberOfPositiveSamplesPerSubepochPerImage = numberOfPositiveSamplesPerSubepoch / n_images_loading_this_subepoch
-    numberOfPositiveSamplesPerSubepochLeftUnevenly = numberOfPositiveSamplesPerSubepoch % n_images_loading_this_subepoch
-    numberOfNegativeSamplesPerSubepochPerImage = numberOfNegativeSamplesPerSubepoch / n_images_loading_this_subepoch
-    numberOfNegativeSamplesPerSubepochLeftUnevenly = numberOfNegativeSamplesPerSubepoch % n_images_loading_this_subepoch
-            
-    myLogger.print3("SAMPLING: Starting iterations to extract Segments from each image for next " + trainingOrValidationString + "...")
-    #get number_of_images_to_get_the_pairs_for_the_batch_from pairs from that many random images.
-            
-            
-    numberOfPositiveSamplesFound = 0
-    numberOfNegativeSamplesFound = 0
-            
-    array_numberOfPositiveSamplesFromEachImageToGet = np.zeros(n_images_loading_this_subepoch, dtype='int32') + numberOfPositiveSamplesPerSubepochPerImage
-    array_numberOfNegativeSamplesFromEachImageToGet = np.zeros(n_images_loading_this_subepoch, dtype='int32') + numberOfNegativeSamplesPerSubepochPerImage
-            
-    for i_uneven_positiveSample in xrange(numberOfPositiveSamplesPerSubepochLeftUnevenly):
-        array_numberOfPositiveSamplesFromEachImageToGet[i_uneven_positiveSample]+=1
-    for i_uneven_negativeSample in xrange(numberOfNegativeSamplesPerSubepochLeftUnevenly):
-        array_numberOfNegativeSamplesFromEachImageToGet[i_uneven_negativeSample]+=1
-    index_next_image_with_less = numberOfPositiveSamplesPerSubepochLeftUnevenly
-            
+    numOfSubjectsLoadingThisSubepochForSampling = len(randomIndicesList_for_gpu) #Can be different than n_subjects_per_subepoch, cause of available images number.
 
+    # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
+    stringsPerCategoryToSample = samplingTypeInstance.getStringsPerCategoryToSample()
+    numberOfCategoriesToSample = samplingTypeInstance.getNumberOfCategoriesToSample()
+    percentOfSamplesPerCategoryToSample = samplingTypeInstance.getPercentOfSamplesPerCategoryToSample()
+    arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = getNumberOfSegmentsToExtractPerCategoryFromEachSubject(numberOfImagePartsToLoadInGpuPerSubepoch,
+															percentOfSamplesPerCategoryToSample,
+															numOfSubjectsLoadingThisSubepochForSampling)
     numberOfNormalScaleChannels = len(listOfFilepathsToEachChannelOfEachPatient[0])
 
-    for index_for_vector_with_images_on_gpu in xrange(0, n_images_loading_this_subepoch) :
-	myLogger.print3("SAMPLING: Going to load the images and extract segments from the subject (iteration) #" + str(index_for_vector_with_images_on_gpu) + "/" +str(n_images_loading_this_subepoch))
-        #THE number of imageParts in memory per subepoch I think does not need to be constant. The batch_size needs.
-        #But I could have less batches per subepoch if some images dont have lesions I guess. Anyway.
-        #THEY WAY I DO IT, with taking a pair from each image, the batch_size = 2(pair)*images_in_gpu
-        numberOfPositiveSamples_forThisImage = array_numberOfPositiveSamplesFromEachImageToGet[index_for_vector_with_images_on_gpu]
-        numberOfNegativeSamples_forThisImage = array_numberOfNegativeSamplesFromEachImageToGet[index_for_vector_with_images_on_gpu]
-                
+    myLogger.print3("SAMPLING: Starting iterations to extract Segments from each subject for next " + trainingOrValidationString + "...")
+
+    for index_for_vector_with_images_on_gpu in xrange(0, numOfSubjectsLoadingThisSubepochForSampling) :
+	myLogger.print3("SAMPLING: Going to load the images and extract segments from the subject #" + str(index_for_vector_with_images_on_gpu + 1) + "/" +str(numOfSubjectsLoadingThisSubepochForSampling))
+
         [allChannelsOfPatientInNpArray, #a nparray(channels,dim0,dim1,dim2)
         gtLabelsImage,
-        maskWhereToGetPositiveSamples, #can be returned "placeholderNothing". In this case, I will later grab from whole image.
         roiMask,
-        maskWhereToGetNegativeSamples, #can be returned "placeholderNothing". In this case, I will later grab from whole image.
+        arrayWithWeightMapsWhereToSampleForEachCategory, #can be returned "placeholderNothing" if it's testing phase or not "provided weighted maps". In this case, I will sample from GT/ROI.
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
 	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). "placeholderNothing" when no padding.
         ] = actual_load_patient_images_from_filepath_and_return_nparrays(
@@ -708,14 +760,14 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 
 						listOfFilepathsToEachChannelOfEachPatient,
 
-                                                providedGtLabelsBool=True, #If this getTheArr function is called, gtLabels should already been provided.
-                                                listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
+                                                providedGtLabelsBool=True, # If this getTheArr function is called (training), gtLabels should already been provided.
+                                                listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal, 
 
-                                                providedMaskWhereToGetPositiveSamples = providedMaskWhereToGetPositiveSamples,
-                                                listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal=listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal, #can be given "no" and will return placeholder
+                                                providedWeightMapsToSampleForEachCategory = providedWeightMapsToSampleForEachCategory, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
+                                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
 
-                                                providedRoiMaskBool= providedRoiMaskBool if training0orValidation1 == 0 else False,
-                                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient if training0orValidation1 == 0 else "placeholder",
+                                                providedRoiMaskBool = providedRoiMaskBool,
+                                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient,
 
                                                 providedMaskWhereToGetNegativeSamples = providedMaskWhereToGetNegativeSamples,
                                                 listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal=listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal, #can be given "no" and will return placeholder
@@ -733,132 +785,94 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 							normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
 						reflectImageWithHalfProb = reflectImageWithHalfProbDuringTraining
                                                 )
-	myLogger.print3("DEBUG: Original index of this case in list of subjects: " + str(randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu]))
+	myLogger.print3("DEBUG: Index of this case in the original user-defined list of subjects: " + str(randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu]))
         myLogger.print3("Images for subject loaded.")
-
-
-        myLogger.print3("From current subject #"+str(index_for_vector_with_images_on_gpu)+" extracting that many Segments centered on : Foreground=" + str(numberOfPositiveSamples_forThisImage) + " Background:" + str(numberOfNegativeSamples_forThisImage) )
-        posNegParts = get_positive_and_negative_imageParts(myLogger = myLogger,
-                                                        numberOfPositiveSamples_forThisImage = numberOfPositiveSamples_forThisImage,
-                                                        numberOfNegativeSamples_forThisImage = numberOfNegativeSamples_forThisImage,
-                                                        imagePartDimensions = imagePartDimensions,
-                                                        channelsOfImageNpArray = allChannelsOfPatientInNpArray,#chans,niiDims
-                                                        maskWhereToGetPositiveSamples = maskWhereToGetPositiveSamples,
-                                                        maskWhereToGetNegativeSamples = maskWhereToGetNegativeSamples,
-							theMasksWhereToGetAreProbabilityMaps = theMasksWhereToGetAreProbabilityMaps,
-                                                        get_randomly_only_one_of_the_two = 'False')
-                                
-
-
 	########################
 	#For normalization-augmentation: Get channels' stds if needed:
 	stdsOfTheChannsOfThisImage = np.ones(numberOfNormalScaleChannels, dtype="float32")
 	if training0orValidation1 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 and\
 		normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[1] == 0 : #intensity-augm is to be done, but images are not normalized.
-		if roiMask <> "placeholderNothing": # >>>>>>BRAIN MASK MIGHT BE A PLACEHOLDER!<<<<<<<<
+		if providedRoiMaskBool == True :
 			stdsOfTheChannsOfThisImage = np.std(allChannelsOfPatientInNpArray[:, roiMask>0], axis=(1,2,3)) #We'll use this for the downsampled version too.
 		else : #no brain mask provided:
 			stdsOfTheChannsOfThisImage = np.std(allChannelsOfPatientInNpArray, axis=(1,2,3))
 	#######################
-        #THIS FOR LOOP COULD PROBABLY BE DONE AS A MATRIX-OPERATION SOMEHOW. Actually, after thought probably not as matrix-op but easily parallelisable on many threads. And will save me ALOT of time when extracting. This is THE next optimization point for time efficiency..!
-        for pos_neg_i in [0,1] :
-            for image_part_i in xrange(len(posNegParts[pos_neg_i][0][0])) :
-                channelsForThisImagePart = np.zeros((numberOfNormalScaleChannels, imagePartDimensions[0],imagePartDimensions[1],imagePartDimensions[2]), dtype = 'float32')
-                #Inclusive both sides. That's the slice I should grab to get the imagePart, centrered around [0].
-                image_part_slices_coords = posNegParts[pos_neg_i][1][:,image_part_i,:] #[0] is the central voxel coords.
-                                                
-		channelsForThisImagePart[:numberOfNormalScaleChannels] = allChannelsOfPatientInNpArray[:,
-												image_part_slices_coords[0][0]:image_part_slices_coords[0][1] +1,
-												image_part_slices_coords[1][0]:image_part_slices_coords[1][1] +1,
-												image_part_slices_coords[2][0]:image_part_slices_coords[2][1] +1]
 
-		#############################
-		#Normalization Augmentation of the Patches! For more randomness.
-		#Get parameters by how much to renormalize-augment mean and std.
-		if training0orValidation1 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 : #[0] == 2 means augment the intensities of the segments.
+	dimensionsOfImageChannel = allChannelsOfPatientInNpArray[0].shape
+	finalWeightMapsToSampleFromPerCategoryForSubject = samplingTypeInstance.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
+												providedWeightMapsToSampleForEachCategory,
+												arrayWithWeightMapsWhereToSampleForEachCategory,
 
-			muOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][0]
-			stdOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][1]
-			if stdOfGaussToAdd <> 0 : #np.random.normal does not work for an std==0.
-				howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd, [numberOfNormalScaleChannels, 1,1,1])
-			else :
-				howMuchToAddForEachChannel = np.ones([numberOfNormalScaleChannels, 1,1,1], dtype="float32")*muOfGaussToAdd
-			howMuchToAddForEachChannel = howMuchToAddForEachChannel * np.reshape(stdsOfTheChannsOfThisImage, [numberOfNormalScaleChannels, 1,1,1])
+												True, #providedGtLabelsBool. True both for training and for validation. Prerequisite from user-interface.
+												gtLabelsImage,
+												
+												providedRoiMaskBool,
+												roiMask,
 
-			muOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][0]
-			stdOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][1]
-			if stdOfGaussToMultiply <> 0 :
-				howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply, [numberOfNormalScaleChannels, 1,1,1])
-			else :
-				howMuchToMultiplyForEachChannel = np.ones([numberOfNormalScaleChannels, 1,1,1], dtype="float32")*muOfGaussToMultiply
-			channelsForThisImagePart[:numberOfNormalScaleChannels] = (channelsForThisImagePart[:numberOfNormalScaleChannels] + howMuchToAddForEachChannel)*howMuchToMultiplyForEachChannel
-		##############################
+												dimensionsOfImageChannel)
+
+        #THE number of imageParts in memory per subepoch does not need to be constant. The batch_size does.
+        #But I could have less batches per subepoch if some images dont have lesions I guess. Anyway.
+
+        for cat_i in xrange(numberOfCategoriesToSample) :
+            catString = stringsPerCategoryToSample[cat_i]
+            numOfSegmsToExtractForThisCatFromThisSubject = arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i][index_for_vector_with_images_on_gpu]
+            finalWeightMapToSampleFromForThisCat = finalWeightMapsToSampleFromPerCategoryForSubject[cat_i]
+
+            # Check if the weight map is fully-zeros. In this case, don't call the sampling function, just continue.
+            # Note that this way, the data loaded on GPU will not be as much as I initially wanted. Thus calculate number-of-batches from this actual number of extracted segments.
+            if np.sum(finalWeightMapToSampleFromForThisCat>0) == 0 :
+		myLogger.print3("WARN: The sampling mask/map was found just zeros! No [" + catString + "] image parts were sampled for this subject!")
+		continue
+
+            myLogger.print3("From subject #"+str(index_for_vector_with_images_on_gpu)+", sampling that many segments of Category [" + catString + "] : " + str(numOfSegmsToExtractForThisCatFromThisSubject) )
+            imagePartsSampled = sampleImageParts(myLogger = myLogger,
+						numOfSegmentsToExtractForThisSubject = numOfSegmsToExtractForThisCatFromThisSubject,
+						imagePartDimensions = imagePartDimensions,
+						dimensionsOfImageChannel = dimensionsOfImageChannel, #image dimensions for this subject. All images should have the same.
+						weightMapToSampleFrom=finalWeightMapToSampleFromForThisCat)
+            myLogger.print3("Finished sampling segments of Category [" + catString + "]. Number sampled: " + str( len(imagePartsSampled[0][0]) ) )
+
+            # Use the just sampled coordinates of slices to actually extract the segments (data) from the subject's images. 
+            for image_part_i in xrange(len(imagePartsSampled[0][0])) :
+
+		sliceCoordsOfThisImagePart = imagePartsSampled[1][:,image_part_i,:] #[0] is the central voxel coords.
+
+		[ channelsForThisImagePart,
+		lesionLabelsForTheCentralClassifiedPartOfThisImagePart, # used to be lesionLabelsForThisImagePart, before extracting only for the central voxels.
+		subsampledChannelsForThisImagePart] = extractDataOfASegmentFromImagesUsingSampledSliceCoords(
+											training0orValidation1,
+
+											sliceCoordsOfThisImagePart,
+											numberOfNormalScaleChannels,
+											imagePartDimensions,
+											patchDimensions,
+
+											allChannelsOfPatientInNpArray,
+											gtLabelsImage,
+
+											usingSubsampledWaypath,
+											useSameSubChannelsAsSingleScale,
+											allSubsampledChannelsOfPatientInNpArray,
+											subSamplingFactor,
+											subsampledImagePartDimensions,
+											# Intensity Augmentation
+											normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
+											stdsOfTheChannsOfThisImage
+											)
+		imagePartsChannelsToLoadOnGpuForSubepoch.append(channelsForThisImagePart)
+		lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch.append(lesionLabelsForTheCentralClassifiedPartOfThisImagePart)
+		if usingSubsampledWaypath :
+			subsampledImagePartsChannelsToLoadOnGpuForSubepoch.append(subsampledChannelsForThisImagePart)
 
 
-
-                lesionLabelsForThisImagePart = gtLabelsImage[image_part_slices_coords[0][0]:image_part_slices_coords[0][1] +1,
-                                                                image_part_slices_coords[1][0]:image_part_slices_coords[1][1] +1,
-                                                                image_part_slices_coords[2][0]:image_part_slices_coords[2][1] +1]
-                imagePartsChannelsToLoadOnGpuForSubepoch.append(channelsForThisImagePart)
-                lesionLabelsForTheImagePartsInGpUForSubepoch.append(lesionLabelsForThisImagePart)
-                                                                    
-                #FOR THE SUBSAMPLED IMAGE-PARTS:
-                if usingSubsampledWaypath :
-                    #this datastructure is similar to channelsForThisImagePart, but contains voxels from the subsampled image.
-                    subsampledChannelsForThisImagePart = getImagePartFromSubsampledImageForTraining(imagePartDimensions,
-                                                                                                        patchDimensions,
-                                                                                                        allSubsampledChannelsOfPatientInNpArray,
-                                                                                                        image_part_slices_coords,
-                                                                                                        subSamplingFactor,
-                                                                                                        subsampledImagePartDimensions
-													)
-                    #############################
-                    #Normalization-Augmentation of the Patches! For more randomness.
-                    #Get parameters by how much to renormalize-augment mean and std.
-                    if training0orValidation1 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 and useSameSubChannelsAsSingleScale:
-                    	#Use values  computed on the normal-resolution images. BUT PREREQUISITE IS TO HAVE THE SAME CHANNELS IN THE TWO PATHWAYS. Else need to recompute!
-                    	subsampledChannelsForThisImagePart[:numberOfNormalScaleChannels] = (subsampledChannelsForThisImagePart[:numberOfNormalScaleChannels] + howMuchToAddForEachChannel)*howMuchToMultiplyForEachChannel
-                    elif normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 2 : 
-			#Need to recompute. NOT IMPLEMENTED YET.
-			myLogger.print3("ERROR: The system uses different channels for normal and subsampled pathway. And was asked to use Data Augmentation with intensity-noise. Not implemented yet. Exiting.")
-			exit(1)
-                    ##############################
-                    subsampledImagePartsChannelsToLoadOnGpuForSubepoch.append(subsampledChannelsForThisImagePart)
-                                                                                
-                                                                                
-                                                                                
-    #FINISHED WITH CALCULATING Image Parts etc. Now lets just put them in the correct format and load them on gpu
-    lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch = []
-    #The patch should always be of odd dimensions, and this will work. The image PART can be of even too, it's fine.
-    rPatchHalfWidth = (patchDimensions[0]-1)/2
-    cPatchHalfWidth = (patchDimensions[1]-1)/2
-    zPatchHalfWidth = (patchDimensions[2]-1)/2
-    rUpperBoundToGrabLabelsOfCentralVoxels = imagePartDimensions[0]-rPatchHalfWidth
-    cUpperBoundToGrabLabelsOfCentralVoxels = imagePartDimensions[1]-cPatchHalfWidth
-    zUpperBoundToGrabLabelsOfCentralVoxels = imagePartDimensions[2]-zPatchHalfWidth
-
-    #Get the part of the GT-segments that correspond to the central (predicted) part of the segments.
-    for lesionLabelsForTheImagePart_i in xrange(len(lesionLabelsForTheImagePartsInGpUForSubepoch)) :
-        lesLabelsForTheImagePart = lesionLabelsForTheImagePartsInGpUForSubepoch[lesionLabelsForTheImagePart_i]
-	#used to be [rPatchHalfWidth : -rPatchHalfWidth], but in 2D case, where rPatchHalfWidth might be ==0, causes problem and you get a null slice.
-        lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch.append(lesLabelsForTheImagePart[rPatchHalfWidth : rUpperBoundToGrabLabelsOfCentralVoxels,
-                                                                                              cPatchHalfWidth : cUpperBoundToGrabLabelsOfCentralVoxels,
-                                                                                              zPatchHalfWidth : zUpperBoundToGrabLabelsOfCentralVoxels])
-    #I need to SHUFFLE THEM FIRST, together imageParts and lesionParts!
-    if usingSubsampledWaypath :
-        combined = zip(imagePartsChannelsToLoadOnGpuForSubepoch,
-                       lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch,
-                       subsampledImagePartsChannelsToLoadOnGpuForSubepoch)
-        random.shuffle(combined)
-        imagePartsChannelsToLoadOnGpuForSubepoch[:],\
-            lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch[:],\
-            subsampledImagePartsChannelsToLoadOnGpuForSubepoch[:] = zip(*combined)
-    else :
-        combined = zip(imagePartsChannelsToLoadOnGpuForSubepoch,
-                       lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch)
-        random.shuffle(combined)
-        imagePartsChannelsToLoadOnGpuForSubepoch[:],\
-            lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch[:] = zip(*combined)
+    #I need to shuffle them, together imageParts and lesionParts!
+    [	imagePartsChannelsToLoadOnGpuForSubepoch,
+	lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch,
+	subsampledImagePartsChannelsToLoadOnGpuForSubepoch ] = shuffleTheSegmentsForThisSubepoch(imagePartsChannelsToLoadOnGpuForSubepoch,
+												lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch,
+												subsampledImagePartsChannelsToLoadOnGpuForSubepoch,
+												usingSubsampledWaypath)
 
 
     end_getAllImageParts_time = time.clock()
@@ -866,7 +880,7 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 
     myLogger.print3(":=:=:=:=:=:=:=:=: Finished extracting Segments from the images for next " + trainingOrValidationString + ". :=:=:=:=:=:=:=:=:")
 
-    return [imagePartsChannelsToLoadOnGpuForSubepoch,lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepoch, subsampledImagePartsChannelsToLoadOnGpuForSubepoch]
+    return [imagePartsChannelsToLoadOnGpuForSubepoch, lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch, subsampledImagePartsChannelsToLoadOnGpuForSubepoch]
 
 
 
@@ -945,8 +959,8 @@ def do_training(myLogger,
 		cnn3dInstance,
 
 		performValidationOnSamplesDuringTrainingProcessBool, #REQUIRED FOR AUTO SCHEDULE.
-
 		savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
+
 		listOfNamesToGiveToPredictionsValidationIfSavingWhenEvalDice,
 
                 listOfFilepathsToEachChannelOfEachPatientTraining,
@@ -956,31 +970,26 @@ def do_training(myLogger,
 		providedGtForValidationBool,
 		listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
-                providedMaskWhereToGetPositiveSamplesTraining, # NOT SURE IF THIS IS NEEDED. But lets keep it simple and consistent.
-		listOfFilepathsToMasksOfEachPatientForPosSamplingTraining,
-                providedMaskWhereToGetPositiveSamplesValidation,
-		listOfFilepathsToMasksOfEachPatientForPosSamplingValidation,
+		providedWeightMapsToSampleForEachCategoryTraining,
+		forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+		providedWeightMapsToSampleForEachCategoryValidation,
+		forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
 
 		providedRoiMaskForTrainingBool,
-		listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining,
-                providedRoiMaskForFastInfValidationBool,
-                listOfFilepathsToRoiMaskFastInfOfEachPatientValidation,
+		listOfFilepathsToRoiMaskOfEachPatientTraining, # Also needed for normalization-augmentation
+                providedRoiMaskForValidationBool,
+                listOfFilepathsToRoiMaskOfEachPatientValidation,
 
-                providedMaskWhereToGetNegativeSamplesTraining,
-		listOfFilepathsToMasksOfEachPatientForNegSamplingTraining,
-                providedMaskWhereToGetNegativeSamplesValidation,
-		listOfFilepathsToMasksOfEachPatientForNegSamplingValidation,
-
-		theMasksWhereToGetAreProbabilityMapsTraining,
-		theMasksWhereToGetAreProbabilityMapsValidation,
                 borrowFlag,
                 n_epochs, #every epoch I save my cnnModel
                 number_of_subepochs, #per epoch. Every subepoch I get my Accuracy reported
-                n_images_per_subepoch,  #the max that can be fit in CPU memory. these are never in GPU. Only ImageParts in GPU
+                n_subjects_per_subepoch,  #the max that can be fit in CPU memory. these are never in GPU. Only ImageParts in GPU
                 imagePartsLoadedInGpuPerSubepoch, #Keep this even for now. So that I have same number of pos-neg PAIRS. If it's odd, still will be int divided by two so the lower even will be used.
 		imagePartsLoadedInGpuPerSubepochValidation,
-		percentThatArePositiveSamplesTraining,
-		percentThatArePositiveSamplesValidation,
+
+		#-------Sampling Type---------
+		samplingTypeInstanceTraining, # Instance of the deepmedic/samplingType.SamplingType class for training and validation
+		samplingTypeInstanceValidation,
 
 		#-------Preprocessing-----------
 		padInputImagesBool,
@@ -1027,25 +1036,18 @@ def do_training(myLogger,
     subsampledImagePartDimensionsTraining = cnn3dInstance.subsampledImagePartDimensionsTraining
     subsampledImagePartDimensionsValidation = cnn3dInstance.subsampledImagePartDimensionsValidation
     subSamplingFactor = cnn3dInstance.subsampleFactor
-
-
-    number_of_batches_training = imagePartsLoadedInGpuPerSubepoch/cnn3dInstance.batchSize
-    numberOfPositiveSamplesPerSubepoch = int(imagePartsLoadedInGpuPerSubepoch*percentThatArePositiveSamplesTraining)
-    numberOfNegativeSamplesPerSubepoch = imagePartsLoadedInGpuPerSubepoch - numberOfPositiveSamplesPerSubepoch
-    number_of_batches_validation = imagePartsLoadedInGpuPerSubepochValidation/cnn3dInstance.batchSizeValidation
-    numberOfPositiveSamplesPerSubepochValidation = int(imagePartsLoadedInGpuPerSubepochValidation * percentThatArePositiveSamplesValidation)
-    numberOfNegativeSamplesPerSubepochValidation = imagePartsLoadedInGpuPerSubepochValidation - numberOfPositiveSamplesPerSubepochValidation
-
-
+    
     #---------To run PARALLEL the extraction of parts for the next subepoch---
     ppservers = () # tuple of all parallel python servers to connect with
     job_server = pp.Server(ncpus=1, ppservers=ppservers) # Creates jobserver with automatically detected number of workers
 
     tupleWithParametersForTraining = (myLogger,
                            0,
-                           n_images_per_subepoch,
-                           numberOfPositiveSamplesPerSubepoch,
-                           numberOfNegativeSamplesPerSubepoch,
+                           n_subjects_per_subepoch,
+
+                           imagePartsLoadedInGpuPerSubepoch,
+                           samplingTypeInstanceTraining,
+
                            usingSubsampledWaypath,
 
                            listOfFilepathsToEachChannelOfEachPatientTraining,
@@ -1053,13 +1055,11 @@ def do_training(myLogger,
                            listOfFilepathsToGtLabelsOfEachPatientTraining,
 
                            providedRoiMaskForTrainingBool,
-                           listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining,
+                           listOfFilepathsToRoiMaskOfEachPatientTraining,
 
-                           providedMaskWhereToGetPositiveSamplesTraining,
-                           listOfFilepathsToMasksOfEachPatientForPosSamplingTraining,
-                           providedMaskWhereToGetNegativeSamplesTraining,
-                           listOfFilepathsToMasksOfEachPatientForNegSamplingTraining,
-                           theMasksWhereToGetAreProbabilityMapsTraining,
+                           providedWeightMapsToSampleForEachCategoryTraining,
+                           forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+
                            useSameSubChannelsAsSingleScale,
 
                            listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
@@ -1077,22 +1077,22 @@ def do_training(myLogger,
     tupleWithParametersForValidation = (myLogger,
                            1,
                            len(listOfFilepathsToEachChannelOfEachPatientValidation),
-                           numberOfPositiveSamplesPerSubepochValidation,
-                           numberOfNegativeSamplesPerSubepochValidation,
+
+                           imagePartsLoadedInGpuPerSubepochValidation,
+                           samplingTypeInstanceValidation,
+
                            usingSubsampledWaypath,
 
                            listOfFilepathsToEachChannelOfEachPatientValidation,
 
                            listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
-                           "placeholderProvidedRoiMaskBool",
-                           "placeholderListOfFilepathsToRoiMask",
+                           providedRoiMaskForValidationBool,
+                           listOfFilepathsToRoiMaskOfEachPatientValidation,
 
-                           providedMaskWhereToGetPositiveSamplesValidation,
-                           listOfFilepathsToMasksOfEachPatientForPosSamplingValidation,
-                           providedMaskWhereToGetNegativeSamplesValidation,
-                           listOfFilepathsToMasksOfEachPatientForNegSamplingValidation,
-                           theMasksWhereToGetAreProbabilityMapsValidation,
+                           providedWeightMapsToSampleForEachCategoryValidation,
+                           forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
+
                            useSameSubChannelsAsSingleScale,
 
                            listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
@@ -1104,16 +1104,19 @@ def do_training(myLogger,
 
                            padInputImagesBool,
                            smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                           [0, -1,-1,-1],
-                           [0,0,0]
+                           [0, -1,-1,-1], #don't perform intensity-augmentation during validation.
+                           [0,0,0] #don't perform reflection-augmentation during validation.
                            )
-    tupleWithLocalFunctionsThatWillBeCalledByTheMainJob = (get_random_image_indices_to_load_on_GPU,
+    tupleWithLocalFunctionsThatWillBeCalledByTheMainJob = (get_random_subject_indices_to_load_on_GPU,
                                                            actual_load_patient_images_from_filepath_and_return_nparrays,
                                                            smoothImageWithGaussianFilterIfNeeded,
                                                            reflectImageArrayIfNeeded,
                                                            padCnnInputs,
-                                                           get_positive_and_negative_imageParts,
-                                                           getImagePartFromSubsampledImageForTraining
+                                                           getNumberOfSegmentsToExtractPerCategoryFromEachSubject,
+                                                           sampleImageParts,
+                                                           extractDataOfASegmentFromImagesUsingSampledSliceCoords,
+                                                           getImagePartFromSubsampledImageForTraining,
+                                                           shuffleTheSegmentsForThisSubepoch
                                                            )
     tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ("random", "time", "numpy as np", "nibabel as nib", "math", "from deepmedic.genericHelpers import *", "from scipy.ndimage.filters import gaussian_filter")
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequencially load the data for it.
@@ -1147,22 +1150,20 @@ def do_training(myLogger,
 		                  						1,
 
 		                  						len(listOfFilepathsToEachChannelOfEachPatientValidation),
-		                  						numberOfPositiveSamplesPerSubepochValidation,
-		                  						numberOfNegativeSamplesPerSubepochValidation,
+		                  						imagePartsLoadedInGpuPerSubepochValidation,
+		                  						samplingTypeInstanceValidation,
 		                  						usingSubsampledWaypath,
 
 		                  						listOfFilepathsToEachChannelOfEachPatientValidation,
 
 										listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
-										"placeholderProvidedRoiMaskBool",
-										"placeholderListOfFilepathsToRoiMask",
+										providedRoiMaskForValidationBool,
+										listOfFilepathsToRoiMaskOfEachPatientValidation,
 
-										providedMaskWhereToGetPositiveSamplesValidation,
-		                  						listOfFilepathsToMasksOfEachPatientForPosSamplingValidation,
-										providedMaskWhereToGetNegativeSamplesValidation,
-		                  						listOfFilepathsToMasksOfEachPatientForNegSamplingValidation,
-										theMasksWhereToGetAreProbabilityMapsValidation,
+										providedWeightMapsToSampleForEachCategoryValidation,
+										forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
+
 										useSameSubChannelsAsSingleScale,
 
 										listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
@@ -1187,6 +1188,7 @@ def do_training(myLogger,
 		    myLogger.print3("Loading Validation data for subepoch #"+str(subepoch)+" on shared variable...")
 		    start_loadingToGpu_time = time.clock()
 
+		    numberOfBatchesValidation = len(imagePartsChannelsToLoadOnGpuForSubepochValidation) / cnn3dInstance.batchSizeValidation #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
 		    arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation = np.asarray(imagePartsChannelsToLoadOnGpuForSubepochValidation, dtype='float32')
 		    arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation = np.asarray(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation, dtype='float32')
 
@@ -1224,7 +1226,7 @@ def do_training(myLogger,
 
 		    doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
 										train0orValidation1,
-										number_of_batches_validation,
+										numberOfBatchesValidation, # Computed by the number of extracted samples. So, adapts.
 										cnn3dInstance,
 										vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
 										subepoch,
@@ -1247,9 +1249,9 @@ def do_training(myLogger,
 		lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining,
 		subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining] = getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 									   0,
-									   n_images_per_subepoch,
-									   numberOfPositiveSamplesPerSubepoch,
-									   numberOfNegativeSamplesPerSubepoch,
+									   n_subjects_per_subepoch,
+									   imagePartsLoadedInGpuPerSubepoch,
+									   samplingTypeInstanceTraining,
 									   usingSubsampledWaypath,
 
 									   listOfFilepathsToEachChannelOfEachPatientTraining,
@@ -1257,13 +1259,11 @@ def do_training(myLogger,
 									   listOfFilepathsToGtLabelsOfEachPatientTraining,
 
 									   providedRoiMaskForTrainingBool,
-									   listOfFilepathsToRoiMaskTrainAugmOfEachPatientTraining,
+									   listOfFilepathsToRoiMaskOfEachPatientTraining,
 
-									   providedMaskWhereToGetPositiveSamplesTraining,
-									   listOfFilepathsToMasksOfEachPatientForPosSamplingTraining,
-									   providedMaskWhereToGetNegativeSamplesTraining,
-									   listOfFilepathsToMasksOfEachPatientForNegSamplingTraining,
-									   theMasksWhereToGetAreProbabilityMapsTraining,
+									   providedWeightMapsToSampleForEachCategoryTraining,
+									   forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+
 									   useSameSubChannelsAsSingleScale,
 
 									   listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
@@ -1302,6 +1302,7 @@ def do_training(myLogger,
             myLogger.print3("Loading Training data for subepoch #"+str(subepoch)+" on shared variable...")
             start_loadingToGpu_time = time.clock()
 
+            numberOfBatchesTraining = len(imagePartsChannelsToLoadOnGpuForSubepochTraining) / cnn3dInstance.batchSize #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
             arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining = np.asarray(imagePartsChannelsToLoadOnGpuForSubepochTraining, dtype='float32')
             arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining = np.asarray(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining, dtype='float32')
 
@@ -1310,6 +1311,7 @@ def do_training(myLogger,
             if usingSubsampledWaypath :
 		arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining = np.asarray(subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining, dtype='float32')
                 cnn3dInstance.sharedTrainingSubsampledData_x.set_value(arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining, borrow=borrowFlag)
+
             end_loadingToGpu_time = time.clock()
             myLogger.print3("TIMING: Loading sharedVariables for Training in epoch|subepoch="+str(epoch)+"|"+str(subepoch)+" took time: "+str(end_loadingToGpu_time-start_loadingToGpu_time)+"(s)")
             #TRY TO CLEAR THE VARIABLES before the parallel job starts loading stuff again? Or will it cause problems because the shared variables are borrow=True?
@@ -1340,7 +1342,7 @@ def do_training(myLogger,
             train0orValidation1 = 0 #training
             doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
 									train0orValidation1,
-									number_of_batches_training,
+									numberOfBatchesTraining,
 									cnn3dInstance,
 									vectorWithWeightsOfTheClassesForCostFunctionOfTraining,
 									subepoch,
@@ -1416,8 +1418,8 @@ def do_training(myLogger,
 					providedGtForValidationBool,
 					listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
 
-		                        providedRoiMaskForFastInfValidationBool,
-		                        listOfFilepathsToRoiMaskFastInfOfEachPatientValidation,
+		                        providedRoiMaskForValidationBool,
+		                        listOfFilepathsToRoiMaskOfEachPatientValidation,
 
 		                        borrowFlag,
 		                        listOfNamesToGiveToPredictionsIfSavingResults = "Placeholder" if not savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation else listOfNamesToGiveToPredictionsValidationIfSavingWhenEvalDice,
@@ -1541,9 +1543,8 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 
         [imageChannels, #a nparray(channels,dim0,dim1,dim2)
 	gtLabelsImage, #only for accurate/correct DICE1-2 calculation
-        maskWhereToGetPositiveSamplesFromPlaceholder, #only used in training
         brainMask, 
-        maskWhereToGetNegativeSamplesFromPlaceholder, #only used in training
+        arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
 	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). "placeholderNothing" when no padding.
         ] = actual_load_patient_images_from_filepath_and_return_nparrays(
@@ -1557,16 +1558,13 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                                     providedGtLabelsBool,
                                                     listOfFilepathsToGtLabelsOfEachPatient,
 
-                                                    providedMaskWhereToGetPositiveSamples = False,
-                                                    listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal = "placeholder",
+                                                    providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
+                                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
 
                                                     providedRoiMaskBool = providedRoiMaskForFastInfBool,
                                                     listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
 
-                                                    providedMaskWhereToGetNegativeSamples = False,
-                                                    listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal = "placeholder", #Keep them, I ll need them for automatic accuracy reports.
                                                     useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
-
                                                     usingSubsampledWaypath = usingSubsampledWaypath,
                                                     listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
 
