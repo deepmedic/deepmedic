@@ -5,6 +5,8 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from deepmedic import samplingType
+
 class TrainSessionParameters(object) :
 	#THE LOGIC WHETHER I GOT A PARAMETER THAT I NEED SHOULD BE IN HERE!
 
@@ -81,6 +83,13 @@ class TrainSessionParameters(object) :
 		return None
 	warnDefNegMasksVal = warnDefaultNegSamplMasksVal
 
+
+	# Deprecated :
+	@staticmethod
+	def errorDeprecatedPercPosTraining():
+		print "ERROR: Parameter \"percentOfSamplesToExtractPositiveTrain\" in the config file is now Deprecated! Please remove this entry from the train-config file. If you do not want the default behaviour but instead wish to specify the proportion of Foreground and Background samples yourself, please activate the \"Advanced Sampling\" options (useDefaultTrainingSamplingFromGtAndRoi=False), choose type-of-sampling Foreground/Background (typeOfSamplingForTraining = 0) and use the new variable \"proportionOfSamplesToExtractPerCategoryTraining\" which replaces the functionality of the deprecated (eg. proportionOfSamplesToExtractPerCategoryTraining = [0.3, 0.7]). Exiting."; exit(1) 
+	errDeprPercPosTr = errorDeprecatedPercPosTraining
+
 	def __init__(	self,
 			sessionName,
 			sessionLogger,
@@ -96,12 +105,13 @@ class TrainSessionParameters(object) :
 			#[Optionals]
 			#~~~~~~~~~Sampling~~~~~~~
 			roiMasksFilepathsTrain,
-			percentOfSamplesToExtractPositTrain,
+			percentOfSamplesToExtractPositTrain, # DEPRECATED! Kept for backwards compatibility and issuing an error/warning!
 			#~~~~~~~~~Advanced Sampling~~~~~~~
 			useDefaultTrainingSamplingFromGtAndRoi,
-			pathsToWeightMapsOfEachCaseForPosSamplingTrain, #this is the absolute-path to the listing-file. Req if advancedSamplTrain
-			pathsToWeightMapsOfEachCaseForNegSamplingTrain, #this is the absolute-path to the listing-file. Req if advancedSamplTrain
-			samplingMasksAreProbMapsTrain,
+			samplingTypeTraining, # ForeBackgr0_uniform1_fullImage2_PerClass3
+			proportionOfSamplesPerCategoryTrain,
+			listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
+
 			#~~~~~~~~Training Cycle ~~~~~~~
 			numberOfEpochs,
 			numberOfSubepochs,
@@ -136,7 +146,7 @@ class TrainSessionParameters(object) :
 			listWithAListPerCaseWithFilepathPerChannelVal,
 			gtLabelsFilepathsVal,
 
-			validationSegmentsLoadedOnGpuPerSubepoch,
+			segmentsLoadedOnGpuPerSubepochVal,
 
 			#[Optionals]
 			roiMasksFilepathsVal, #For default sampling and for fast inference. Optional. Otherwise from whole image.
@@ -157,13 +167,12 @@ class TrainSessionParameters(object) :
 
 			#~~~~~~~~ Advanced Validation Sampling ~~~~~~~~~~
 			useDefaultUniformValidationSampling,
+			samplingTypeValidation, # ForeBackgr0_uniform1_fullImage2_PerClass3
+			proportionOfSamplesPerCategoryVal,
+			listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
 
-			percentOfSamplesToExtractPositVal,
-			pathsToWeightMapsOfEachCaseForPosSamplingVal, #this is the absolute-path to the listing-file. Req if advancedSamplTrain
-			pathsToWeightMapsOfEachCaseForNegSamplingVal, #this is the absolute-path to the listing-file. Req if advancedSamplTrain
-			samplingMasksAreProbMapsVal,
 			#==============Generic and Preprocessing===============
-			padInputImagesBool,
+			padInputImagesBool
 
 			):
 
@@ -187,30 +196,37 @@ class TrainSessionParameters(object) :
 		#~~~~~~~~~Sampling~~~~~~~
 		self.providedRoiMasksTrain = True if roiMasksFilepathsTrain else False
 		self.roiMasksFilepathsTrain = roiMasksFilepathsTrain if roiMasksFilepathsTrain else [] #For Int-Augm and for Mask-Where-Neg if no advanced-sampling-train.
-		self.percentOfSamplesToExtractPositTrain = percentOfSamplesToExtractPositTrain if percentOfSamplesToExtractPositTrain <> None else 0.5
+
+		if percentOfSamplesToExtractPositTrain <> None : #Deprecated. Issue error and ask for correction.
+			self.errDeprPercPosTr()
 		#~~~~~~~~~Advanced Sampling~~~~~~~
 		#ADVANCED CONFIG IS DISABLED HERE IF useDefaultSamplingFromGtAndRoi = True!
 		self.useDefaultTrainingSamplingFromGtAndRoi = useDefaultTrainingSamplingFromGtAndRoi if useDefaultTrainingSamplingFromGtAndRoi <> None else True
+		DEFAULT_SAMPLING_TYPE_TR = 0
 		if self.useDefaultTrainingSamplingFromGtAndRoi :
-			self.pathsToWeightMapsOfEachCaseForPosSamplingTrain = self.gtLabelsFilepathsTrain
-			self.pathsToWeightMapsOfEachCaseForNegSamplingTrain = self.roiMasksFilepathsTrain if self.roiMasksFilepathsTrain else None
-			self.samplingMasksAreProbMapsTrain = False
+			self.samplingTypeInstanceTrain = samplingType.SamplingType( self.sessionLogger, DEFAULT_SAMPLING_TYPE_TR, self.cnn3dInstance.numberOfOutputClasses )
+			numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
+			self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
+			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = None
 		else :
-			self.pathsToWeightMapsOfEachCaseForPosSamplingTrain = pathsToWeightMapsOfEachCaseForPosSamplingTrain if\
-							pathsToWeightMapsOfEachCaseForPosSamplingTrain else self.warnDefPosMasksTr()# Warning returns None.
-			self.pathsToWeightMapsOfEachCaseForNegSamplingTrain = pathsToWeightMapsOfEachCaseForNegSamplingTrain if\
-							pathsToWeightMapsOfEachCaseForNegSamplingTrain else self.warnDefNegMasksTr()# Warning returns None.
-			self.samplingMasksAreProbMapsTrain = samplingMasksAreProbMapsTrain if samplingMasksAreProbMapsTrain <> None else True #This should be kinda hidden. Only for me I can use =False if segments.
+			samplingTypeToUseTr = samplingTypeTraining if samplingTypeTraining <> None else DEFAULT_SAMPLING_TYPE_TR
+			self.samplingTypeInstanceTrain = samplingType.SamplingType( self.sessionLogger, samplingTypeToUseTr, self.cnn3dInstance.numberOfOutputClasses)
+			if samplingTypeToUseTr in [0,3] and proportionOfSamplesPerCategoryTrain :
+				self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( proportionOfSamplesPerCategoryTrain )
+			else :
+				numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
+				self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
 
-		self.providingMaskWhereToGetPosSamplesTrain = True if self.pathsToWeightMapsOfEachCaseForPosSamplingTrain else False #If false, samples from whole image the corresponding samples.
-		self.providingMaskWhereToGetNegSamplesTrain = True if self.pathsToWeightMapsOfEachCaseForNegSamplingTrain else False #If false, samples from whole image the corresponding samples.
+			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain #If None, following bool will turn False.
+
+		self.providedWeightMapsToSampleForEachCategoryTraining = True if self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining else False 
+		
 
 		#~~~~~~~~ Training Cycle ~~~~~~~~~~~
 		self.numberOfEpochs = numberOfEpochs if numberOfEpochs <> None else 35
 		self.numberOfSubepochs = numberOfSubepochs if numberOfSubepochs <> None else 20
 		self.numOfCasesLoadedPerSubepoch = numOfCasesLoadedPerSubepoch if numOfCasesLoadedPerSubepoch <> None else 50
 		self.segmentsLoadedOnGpuPerSubepochTrain = segmentsLoadedOnGpuPerSubepochTrain if segmentsLoadedOnGpuPerSubepochTrain <> None else 1000
-
 
 		#~~~~~~~ Learning Rate Schedule ~~~~~~~~
 		#Auto requires performValidationOnSamplesThroughoutTraining and providedGtForValidationBool
@@ -265,23 +281,29 @@ class TrainSessionParameters(object) :
 		self.roiMasksFilepathsVal = roiMasksFilepathsVal if roiMasksFilepathsVal else [] #Also for default sampling of neg segs.
 
 		#~~~~~Validation on Samples~~~~~~~~
-		self.validationSegmentsLoadedOnGpuPerSubepoch = validationSegmentsLoadedOnGpuPerSubepoch if validationSegmentsLoadedOnGpuPerSubepoch <> None else 3000
+		self.segmentsLoadedOnGpuPerSubepochVal = segmentsLoadedOnGpuPerSubepochVal if segmentsLoadedOnGpuPerSubepochVal <> None else 3000
 
 		#~~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~
 		#ADVANCED OPTION ARE DISABLED IF useDefaultUniformValidationSampling = True!
 		self.useDefaultUniformValidationSampling = useDefaultUniformValidationSampling if useDefaultUniformValidationSampling <> None else True
+		DEFAULT_SAMPLING_TYPE_VAL = 1
 		if self.useDefaultUniformValidationSampling :
-			self.percentOfSamplesToExtractPositVal = 0.0
-			self.pathsToWeightMapsOfEachCaseForPosSamplingVal = None
-			self.pathsToWeightMapsOfEachCaseForNegSamplingVal = None # To grab from whole image for uniforma sampling.
-			self.samplingMasksAreProbMapsVal = False
+			self.samplingTypeInstanceVal = samplingType.SamplingType( self.sessionLogger, DEFAULT_SAMPLING_TYPE_VAL, self.cnn3dInstance.numberOfOutputClasses )
+			numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
+			self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
+			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation = None
 		else :
-			self.percentOfSamplesToExtractPositVal = percentOfSamplesToExtractPositVal if percentOfSamplesToExtractPositVal <> None else self.warnDefPercPosTrVal()
-			self.pathsToWeightMapsOfEachCaseForPosSamplingVal = pathsToWeightMapsOfEachCaseForPosSamplingVal if pathsToWeightMapsOfEachCaseForPosSamplingVal else self.warnDefPosMasksVal()
-			self.pathsToWeightMapsOfEachCaseForNegSamplingVal = pathsToWeightMapsOfEachCaseForNegSamplingVal if pathsToWeightMapsOfEachCaseForNegSamplingVal else self.warnDefNegMasksVal()
-			self.samplingMasksAreProbMapsVal = samplingMasksAreProbMapsVal if samplingMasksAreProbMapsVal <> None else True #This should be kinda hidden. Only for me I can use =False if segmentations.
-		self.providingMaskWhereToGetPosSamplesVal = True if self.pathsToWeightMapsOfEachCaseForPosSamplingVal else False #If false, samples from whole image the corresponding samples.
-		self.providingMaskWhereToGetNegSamplesVal = True if self.pathsToWeightMapsOfEachCaseForNegSamplingVal else False #If false, samples from whole image the corresponding samples.
+			samplingTypeToUseVal = samplingTypeValidation if samplingTypeValidation <> None else DEFAULT_SAMPLING_TYPE_VAL
+			self.samplingTypeInstanceVal = samplingType.SamplingType( self.sessionLogger, samplingTypeToUseVal, self.cnn3dInstance.numberOfOutputClasses)
+			if samplingTypeToUseVal in [0,3] and proportionOfSamplesPerCategoryVal :
+				self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( proportionOfSamplesPerCategoryVal )
+			else :
+				numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
+				self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
+
+			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal #If None, following bool will turn False.
+
+		self.providedWeightMapsToSampleForEachCategoryValidation = True if self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation else False 
 
 		#~~~~~~Full inference on validation image~~~~~~
 		self.numberOfEpochsBetweenFullInferenceOnValImages = numberOfEpochsBetweenFullInferenceOnValImages if numberOfEpochsBetweenFullInferenceOnValImages <> None else 1
@@ -353,14 +375,15 @@ class TrainSessionParameters(object) :
 		logPrint("~~Sampling~~")
 		logPrint("Region-Of-Interest Masks provided = " + str(self.providedRoiMasksTrain))
 		logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
-		logPrint("Percent of Samples to extract from positive (foreground) = " + str(self.percentOfSamplesToExtractPositTrain))
+		logPrint("Using default sampling = " + str(self.useDefaultTrainingSamplingFromGtAndRoi) + ". NOTE: Adv.Sampl.Params are auto-set to perform default sampling if True.")
+
 		logPrint("~~Advanced Sampling (Sampling method further parameters)~~")
 		logPrint("Using default sampling = " + str(self.useDefaultTrainingSamplingFromGtAndRoi))
-		logPrint("Providing Mask where to get Positive samples (if this is False, samples will be extracted from whole image) = " + str(self.providingMaskWhereToGetPosSamplesTrain))
-		logPrint("Paths to weight-maps/masks for Positive sampling = " + str(self.pathsToWeightMapsOfEachCaseForPosSamplingTrain))
-		logPrint("Providing Mask where to get Negative samples (if this is False, samples will be extracted from whole image) = " + str(self.providingMaskWhereToGetNegSamplesTrain))
-		logPrint("Paths to weight-maps/masks for Negative sampling = " + str(self.pathsToWeightMapsOfEachCaseForNegSamplingTrain))
-		logPrint("Sampling masks are probability maps = " + str(self.samplingMasksAreProbMapsTrain) + ". NOTE: if this is False, we assume they were the GT-labels and the ROI. If Mask for Pos was provided, it is excluded from the NegSampling mask internally (be it ROI or whole image). If this is True (prob maps passed, for weighted sampling) we do not do all this.")
+		logPrint("Type of Sampling = " + str(self.samplingTypeInstanceTrain.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceTrain.getIntSamplingType()) + ")")
+		logPrint("Sampling Categories = " + str(self.samplingTypeInstanceTrain.getStringsPerCategoryToSample()) )
+		logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceTrain.getPercentOfSamplesPerCategoryToSample()))
+		logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryTraining))
+		logPrint("Paths to weight-maps for sampling of each category = " + str(self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining))
 
 		logPrint("~~Training Cycle~~")
 		logPrint("Number of Epochs = " + str(self.numberOfEpochs))
@@ -389,19 +412,19 @@ class TrainSessionParameters(object) :
 		logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " + str(self.channelsFilepathsVal))
 		logPrint("Provided Ground-Truth for Validation = " + str(self.providedGtVal) + ". NOTE: Required for Val on samples. Not Req for Full-Inference, but DSC will be reported if provided.")
 		logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
-		logPrint("Provided ROI masks for Validation = " + str(self.providedRoiMasksVal) + ". NOTE: Validation-sampling and Full-Inference will be limited within this mask if provided. If not provided, Negative Validation samples will be extracted from whole volume, except if advanced-sampling is enabled, and the user provided separate weighting-maps/masks for sampling.")
+		logPrint("Provided ROI masks for Validation = " + str(self.providedRoiMasksVal) + ". NOTE: Validation-sampling and Full-Inference will be limited within this mask if provided. If not provided, Negative Validation samples will be extracted from whole volume, except if advanced-sampling is enabled, and the user provided separate weight-maps for sampling.")
 		logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
 
 		logPrint(">>>>>Validation on Samples throughout Training<<<<<")
-		logPrint("Number of Segments loaded on GPU per subepoch for Validation = " + str(self.validationSegmentsLoadedOnGpuPerSubepoch))
-		logPrint("Use default uniform sampling for validation? = " + str(self.useDefaultUniformValidationSampling) + ". NOTE: Adv.Sampl.Params are auto-set to perform uniform-sampling if True.")
+		logPrint("Number of Segments loaded on GPU per subepoch for Validation = " + str(self.segmentsLoadedOnGpuPerSubepochVal))
+		logPrint("Using default uniform sampling for validation = " + str(self.useDefaultUniformValidationSampling) + ". NOTE: Adv.Sampl.Params are auto-set to perform uniform-sampling if True.")
+
 		logPrint("~~Advanced Sampling~~")
-		logPrint("Percent of Samples to extract from positive (foreground) = " + str(self.percentOfSamplesToExtractPositVal))
-		logPrint("Providing Mask where to get Positive samples (if this is False, samples will be extracted from whole image) = " + str(self.providingMaskWhereToGetPosSamplesVal))
-		logPrint("Paths to weight-maps/masks for Positive sampling = " + str(self.pathsToWeightMapsOfEachCaseForPosSamplingVal))
-		logPrint("Providing Mask where to get Negative samples (if this is False, samples will be extracted from whole image) = " + str(self.providingMaskWhereToGetNegSamplesVal))
-		logPrint("Paths to weight-maps/masks for Negative sampling = " + str(self.pathsToWeightMapsOfEachCaseForNegSamplingVal))
-		logPrint("Sampling masks are probability maps = " + str(self.samplingMasksAreProbMapsVal) + ". NOTE: if this is False, we assume they were the GT-labels and the ROI. In this case, if Pos Mask was provided, it is excluded from the NegSampling mask internally (be it ROI or whole image). If this is True (prob maps passed, for weighted sampling) we do not do this.")
+		logPrint("Type of Sampling = " + str(self.samplingTypeInstanceVal.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceVal.getIntSamplingType()) + ")")
+		logPrint("Sampling Categories = " + str(self.samplingTypeInstanceVal.getStringsPerCategoryToSample()) )
+		logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceVal.getPercentOfSamplesPerCategoryToSample()))
+		logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryValidation))
+		logPrint("Paths to weight-maps for sampling of each category = " + str(self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation))
 
 		logPrint(">>>>>Validation with Full Inference on Validation Cases<<<<<")
 		logPrint("Perform Full-Inference on Val. cases every that many epochs = " + str(self.numberOfEpochsBetweenFullInferenceOnValImages))
@@ -425,8 +448,6 @@ class TrainSessionParameters(object) :
 	def getTupleForCnnTraining(self) :
 
 		borrowFlag = True
-		
-		percentThatArePositiveSamplesVal = 0.0
 
 		trainTuple = (self.sessionLogger,
 			self.pathAndFilenameToSaveTrainedModels,
@@ -444,32 +465,26 @@ class TrainSessionParameters(object) :
 			self.providedGtVal,
 			self.gtLabelsFilepathsVal,
 
-		        self.providingMaskWhereToGetPosSamplesTrain, #Always true, since either GT labels or advanced-mask-where-to-pos
-			self.pathsToWeightMapsOfEachCaseForPosSamplingTrain,
-		        self.providingMaskWhereToGetPosSamplesVal, #If false, corresponding samples will be extracted uniformly from whole image.
-			self.pathsToWeightMapsOfEachCaseForPosSamplingVal,
+		        self.providedWeightMapsToSampleForEachCategoryTraining, #Always true, since either GT labels or advanced-mask-where-to-pos
+			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+		        self.providedWeightMapsToSampleForEachCategoryValidation, #If false, corresponding samples will be extracted uniformly from whole image.
+			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
 
-			self.providedRoiMasksTrain, #for int-augm.
-			self.roiMasksFilepathsTrain,#for int-augm
-		        self.providedRoiMasksVal, #for fast inf
-		        self.roiMasksFilepathsVal, #fast inf and also for default sampling of neg segs.
-
-		        self.providingMaskWhereToGetNegSamplesTrain, #If false, will extract neg samples from whole image. Else ROI or adv-mask.
-			self.pathsToWeightMapsOfEachCaseForNegSamplingTrain,
-		        self.providingMaskWhereToGetNegSamplesVal, #If false, corresponding samples will be extracted uniformly from whole image.
-			self.pathsToWeightMapsOfEachCaseForNegSamplingVal,
-
-			self.samplingMasksAreProbMapsTrain,
-			self.samplingMasksAreProbMapsVal,
+			self.providedRoiMasksTrain, # also used for int-augm.
+			self.roiMasksFilepathsTrain,# also used for int-augm
+		        self.providedRoiMasksVal, # also used for fast inf
+		        self.roiMasksFilepathsVal, # also used for fast inf and also for uniform sampling of segs.
 
 		        borrowFlag,
 		        self.numberOfEpochs,
 		        self.numberOfSubepochs,
 		        self.numOfCasesLoadedPerSubepoch,
 		        self.segmentsLoadedOnGpuPerSubepochTrain,
-			self.validationSegmentsLoadedOnGpuPerSubepoch,
-			self.percentOfSamplesToExtractPositTrain,
-			self.percentOfSamplesToExtractPositVal,
+			self.segmentsLoadedOnGpuPerSubepochVal,
+
+			#-------Sampling Type---------
+			self.samplingTypeInstanceTrain,
+			self.samplingTypeInstanceVal,
 
 			#-------Preprocessing-----------
 			self.padInputImagesBool,
@@ -493,7 +508,6 @@ class TrainSessionParameters(object) :
 
 			#Weighting Classes differently in the CNN's cost function during training:
 			self.numberOfEpochsToWeightTheClassesInTheCostFunction,
-
 
 			self.performFullInferenceOnValidationImagesEveryFewEpochs, #Even if not providedGtForValidationBool, inference will be performed if this == True, to save the results, eg for visual.
 			self.numberOfEpochsBetweenFullInferenceOnValImages, # Should not be == 0, except if performFullInferenceOnValidationImagesEveryFewEpochsBool == False

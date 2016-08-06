@@ -40,12 +40,15 @@ class TrainConfig(object):
 	GT_LABELS_TR = "gtLabelsTraining"
 	ROI_MASKS_TR = "roiMasksTraining"
 
+	# DEPRECATED! parsed for backwards compatibility and providing a warning! Use advanced sampling options instead.
 	PERC_POS_SAMPLES_TR = "percentOfSamplesToExtractPositiveTrain"
+
 	#~~~~Advanced Sampling~~~~~
 	DEFAULT_TR_SAMPLING = "useDefaultTrainingSamplingFromGtAndRoi"
-	MAPS_POS_SAMPL_TR = "weightedMapsForPosSamplingTrain"
-	MAPS_NEG_SAMPL_TR = "weightedMapsForNegSamplingTrain"
-	SAMPL_MASKS_ARE_PRMAPS_TR = "samplingMasksAreProbMapsTrain"
+	TYPE_OF_SAMPLING_TR = "typeOfSamplingForTraining"
+	PROP_OF_SAMPLES_PER_CAT_TR = "proportionOfSamplesToExtractPerCategoryTraining"
+	WEIGHT_MAPS_PER_CAT_FILEPATHS_TR = "weightedMapsForSamplingEachCategoryTrain"
+
 	#~~~~~ Training cycle ~~~~~~~~
 	NUM_EPOCHS = "numberOfEpochs"
 	NUM_SUBEP = "numberOfSubepochs"
@@ -90,10 +93,9 @@ class TrainConfig(object):
 	INDICES_OF_FMS_TO_SAVE_FC_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathwayVal"
 	#~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~~
 	DEFAULT_VAL_SAMPLING = "useDefaultUniformValidationSampling"
-	PERC_POS_SAMPLES_VAL = "percentOfSamplesToExtractPositiveVal"
-	MAPS_POS_SAMPL_VAL = "weightedMapsForPosSamplingVal"
-	MAPS_NEG_SAMPL_VAL = "weightedMapsForNegSamplingVal"
-	SAMPL_MASKS_ARE_PRMAPS_VAL = "samplingMasksAreProbMapsVal"
+	TYPE_OF_SAMPLING_VAL = "typeOfSamplingForVal"
+	PROP_OF_SAMPLES_PER_CAT_VAL = "proportionOfSamplesToExtractPerCategoryVal"
+	WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = "weightedMapsForSamplingEachCategoryVal"
 
 	#========= GENERICS =========
 	PAD_INPUT = "padInputImagesBool"
@@ -314,8 +316,8 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 	"""
 
 	#Fill in the session's parameters.
-	#[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
 	if configGet(trainConfig.CHANNELS_TR) :
+		#[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
 		listOfAListPerChannelWithFilepathsOfAllCasesTrain = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, trainConfigFilepath)) for channelConfPath in configGet(trainConfig.CHANNELS_TR)]
 		#[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
 		listWithAListPerCaseWithFilepathPerChannelTrain = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesTrain)) ]
@@ -324,8 +326,12 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 	gtLabelsFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.GT_LABELS_TR), trainConfigFilepath) ) if configGet(trainConfig.GT_LABELS_TR) else None
 	roiMasksFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.ROI_MASKS_TR), trainConfigFilepath) ) if configGet(trainConfig.ROI_MASKS_TR) else None
 	#~~~~~ Advanced Training Sampling~~~~~~~~~
-	pathsToWeightMapsOfEachCaseForPosSamplingTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.MAPS_POS_SAMPL_TR), trainConfigFilepath) ) if configGet(trainConfig.MAPS_POS_SAMPL_TR) else None
-	pathsToWeightMapsOfEachCaseForNegSamplingTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.MAPS_NEG_SAMPL_TR), trainConfigFilepath) ) if configGet(trainConfig.MAPS_NEG_SAMPL_TR) else None
+	if configGet(trainConfig.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR) :
+		#[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
+		listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, trainConfigFilepath)) for weightMapConfPath in configGet(trainConfig.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR)]
+	else :
+		listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = None
+
 	#=======VALIDATION==========
 	if configGet(trainConfig.CHANNELS_VAL) :
 		listOfAListPerChannelWithFilepathsOfAllCasesVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, trainConfigFilepath)) for channelConfPath in configGet(trainConfig.CHANNELS_VAL)]
@@ -338,8 +344,12 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 	#~~~~~Full Inference~~~~~~
 	namesToSavePredsAndFeatsVal = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.NAMES_FOR_PRED_PER_CASE_VAL), trainConfigFilepath) ) if configGet(trainConfig.NAMES_FOR_PRED_PER_CASE_VAL) else None #CAREFUL: Here we use a different parsing function!
 	#~~~~~Advanced Validation Sampling~~~~~~~~
-	pathsToWeightMapsOfEachCaseForPosSamplingVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.MAPS_POS_SAMPL_VAL), trainConfigFilepath) ) if configGet(trainConfig.MAPS_POS_SAMPL_VAL) else None
-	pathsToWeightMapsOfEachCaseForNegSamplingVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.MAPS_NEG_SAMPL_VAL), trainConfigFilepath) ) if configGet(trainConfig.MAPS_NEG_SAMPL_VAL) else None
+	if configGet(trainConfig.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL) :
+		#[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
+		listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, trainConfigFilepath)) for weightMapConfPath in configGet(trainConfig.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL)]
+	else :
+		listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal = None
+
 
 	trainSessionParameters = TrainSessionParameters(
 			sessionName = sessionName,
@@ -354,14 +364,15 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 			gtLabelsFilepathsTrain = gtLabelsFilepathsTrain,
 
 			#[Optionals]
-			#~~~~~~~~~Sampling~~~~~~~
+			#~~~~~~~~~Sampling~~~~~~~~~
 			roiMasksFilepathsTrain = roiMasksFilepathsTrain,
 			percentOfSamplesToExtractPositTrain = configGet(trainConfig.PERC_POS_SAMPLES_TR),
 			#~~~~~~~~~Advanced Sampling~~~~~~~
 			useDefaultTrainingSamplingFromGtAndRoi = configGet(trainConfig.DEFAULT_TR_SAMPLING),
-			pathsToWeightMapsOfEachCaseForPosSamplingTrain = pathsToWeightMapsOfEachCaseForPosSamplingTrain, 
-			pathsToWeightMapsOfEachCaseForNegSamplingTrain = pathsToWeightMapsOfEachCaseForNegSamplingTrain, 
-			samplingMasksAreProbMapsTrain = configGet(trainConfig.SAMPL_MASKS_ARE_PRMAPS_TR),
+			samplingTypeTraining = configGet(trainConfig.TYPE_OF_SAMPLING_TR),
+			proportionOfSamplesPerCategoryTrain = configGet(trainConfig.PROP_OF_SAMPLES_PER_CAT_TR),
+			listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain,
+
 			#~~~~~~~~Training Cycle ~~~~~~~
 			numberOfEpochs = configGet(trainConfig.NUM_EPOCHS),
 			numberOfSubepochs = configGet(trainConfig.NUM_SUBEP),
@@ -396,7 +407,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 			listWithAListPerCaseWithFilepathPerChannelVal = listWithAListPerCaseWithFilepathPerChannelVal,
 			gtLabelsFilepathsVal = gtLabelsFilepathsVal,
 
-			validationSegmentsLoadedOnGpuPerSubepoch = configGet(trainConfig.NUM_VAL_SEGMS_LOADED_PERSUB),
+			segmentsLoadedOnGpuPerSubepochVal = configGet(trainConfig.NUM_VAL_SEGMS_LOADED_PERSUB),
 
 			#[Optionals]
 			roiMasksFilepathsVal = roiMasksFilepathsVal, #For default sampling and for fast inference. Optional. Otherwise from whole image.
@@ -420,12 +431,12 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
 
 			#~~~~~~~~ Advanced Validation Sampling ~~~~~~~~~~
 			useDefaultUniformValidationSampling = configGet(trainConfig.DEFAULT_VAL_SAMPLING),
-			percentOfSamplesToExtractPositVal = configGet(trainConfig.PERC_POS_SAMPLES_VAL),
-			pathsToWeightMapsOfEachCaseForPosSamplingVal = pathsToWeightMapsOfEachCaseForPosSamplingVal,
-			pathsToWeightMapsOfEachCaseForNegSamplingVal = pathsToWeightMapsOfEachCaseForNegSamplingVal,
-			samplingMasksAreProbMapsVal = configGet(trainConfig.SAMPL_MASKS_ARE_PRMAPS_VAL),
+			samplingTypeValidation = configGet(trainConfig.TYPE_OF_SAMPLING_VAL),
+			proportionOfSamplesPerCategoryVal = configGet(trainConfig.PROP_OF_SAMPLES_PER_CAT_VAL),
+			listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal,
+
 			#==============Generic and Preprocessing===============
-			padInputImagesBool = configGet(trainConfig.PAD_INPUT),
+			padInputImagesBool = configGet(trainConfig.PAD_INPUT)
 
 			)
 	
