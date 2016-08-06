@@ -423,7 +423,7 @@ class CreateModelSessionParameters(object) :
 
 		logPrint("~~Batch Normalization~~")
 		logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.applyBnToInputOfPathways))
-		logPrint("Batch Normalization uses a rolling average for inference, over that many subepochs = " + str(self.bnRollingAverOverThatManyBatches))
+		logPrint("Batch Normalization uses a rolling average for inference, over this many batches = " + str(self.bnRollingAverOverThatManyBatches))
 
 		logPrint("~~Optimization~~")
 		logPrint("Initial Learning rate = " + str(self.learningRate))

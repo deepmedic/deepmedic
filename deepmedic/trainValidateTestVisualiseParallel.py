@@ -107,7 +107,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         myLogger.print3("------- The argument 'index_of_wanted_image' given is greater than the filenames given for the .nii folders! Exiting.")
         exit(1)
     
-    myLogger.print3("Loading subject with 1st channel at:"+str(listOfFilepathsToEachChannelOfEachPatient[index_of_wanted_image][0]))
+    myLogger.print3("Loading subject with 1st channel at: "+str(listOfFilepathsToEachChannelOfEachPatient[index_of_wanted_image][0]))
     
     numberOfNormalScaleChannels = len(listOfFilepathsToEachChannelOfEachPatient[0])
 
@@ -769,8 +769,6 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
                                                 providedRoiMaskBool = providedRoiMaskBool,
                                                 listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient,
 
-                                                providedMaskWhereToGetNegativeSamples = providedMaskWhereToGetNegativeSamples,
-                                                listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal=listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal, #can be given "no" and will return placeholder
 						useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
 
                                                 usingSubsampledWaypath=usingSubsampledWaypath,
