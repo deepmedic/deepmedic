@@ -137,34 +137,34 @@ def dump_object_to_gzip_file(my_obj, filenameWithPath) :
 
 
 #This could be renamed to be more generic.
-def get_random_image_indices_to_load_on_GPU(total_number_of_images, 
-                                            max_images_on_gpu_for_subepoch, 
-                                            get_max_images_for_gpu_even_if_total_less=False,
+def get_random_subject_indices_to_load_on_GPU(total_number_of_subjects, 
+                                            max_subjects_on_gpu_for_subepoch, 
+                                            get_max_subjects_for_gpu_even_if_total_less=False,
                                             myLogger=None):
 
-    images_indices = range(total_number_of_images)
-    random_order_chosen_images=[]
+    subjects_indices = range(total_number_of_subjects)
+    random_order_chosen_subjects=[]
     
-    random.shuffle(images_indices) #does it in place. Now they are shuffled
+    random.shuffle(subjects_indices) #does it in place. Now they are shuffled
     
-    if max_images_on_gpu_for_subepoch>=total_number_of_images:
-        random_order_chosen_images += images_indices
+    if max_subjects_on_gpu_for_subepoch>=total_number_of_subjects:
+        random_order_chosen_subjects += subjects_indices
 
-        if get_max_images_for_gpu_even_if_total_less : #This is if I want to have a certain amount on GPU, even if total images are less.
-            while (len(random_order_chosen_images)<max_images_on_gpu_for_subepoch):
-                random.shuffle(images_indices)
-                number_of_extra_images_to_get_to_fill_gpu = min(max_images_on_gpu_for_subepoch - len(random_order_chosen_images), total_number_of_images)
-                random_order_chosen_images += (images_indices[:number_of_extra_images_to_get_to_fill_gpu])
-            if len(random_order_chosen_images)<>max_images_on_gpu_for_subepoch :
+        if get_max_subjects_for_gpu_even_if_total_less : #This is if I want to have a certain amount on GPU, even if total subjects are less.
+            while (len(random_order_chosen_subjects)<max_subjects_on_gpu_for_subepoch):
+                random.shuffle(subjects_indices)
+                number_of_extra_subjects_to_get_to_fill_gpu = min(max_subjects_on_gpu_for_subepoch - len(random_order_chosen_subjects), total_number_of_subjects)
+                random_order_chosen_subjects += (subjects_indices[:number_of_extra_subjects_to_get_to_fill_gpu])
+            if len(random_order_chosen_subjects)<>max_subjects_on_gpu_for_subepoch :
 		if myLogger<>None :
-                    myLogger.print3("ERROR: in get_random_image_indices_to_load_on_GPU(), something is wrong!")
+                    myLogger.print3("ERROR: in get_random_subjects_indices_to_load_on_GPU(), something is wrong!")
 		else :
-                    print "ERROR: in get_random_image_indices_to_load_on_GPU(), something is wrong!"
+                    print "ERROR: in get_random_subjects_indices_to_load_on_GPU(), something is wrong!"
                 exit(1)
     else:
-        random_order_chosen_images += images_indices[:max_images_on_gpu_for_subepoch]
+        random_order_chosen_subjects += subjects_indices[:max_subjects_on_gpu_for_subepoch]
 
-    return random_order_chosen_images
+    return random_order_chosen_subjects
 
 
 
