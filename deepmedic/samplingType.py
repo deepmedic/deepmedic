@@ -88,7 +88,7 @@ class SamplingType(object) :
 				self.logger.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], if weighted-maps are not provided, at least Ground Truth labels should be given to extract foreground! Exiting!"); exit(1)
 			elif providedRoiMaskBool : # and providedGtLabelsBool
 				maskForForegroundSampling = (gtLabelsImage>0).astype(int)
-				maskForBackgroundSampling_roiMinusGtLabels = (providedRoiMaskBool>0) * (maskForForegroundSampling==0)
+				maskForBackgroundSampling_roiMinusGtLabels = (roiMask>0) * (maskForForegroundSampling==0)
 				finalWeightMapsToSampleFromPerCategoryForSubject = [ maskForForegroundSampling, maskForBackgroundSampling_roiMinusGtLabels ] #Foreground / Background (in sequence)
 			else : # no weightmaps, gt provided and roi is not provided.
 				maskForForegroundSampling = (gtLabelsImage>0).astype(int)
