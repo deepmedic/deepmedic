@@ -341,7 +341,7 @@ class TrainSessionParameters(object) :
 		self.useSameSubChannelsAsSingleScale = True
 		self.subsampledChannelsFilepathsTrain = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
 		self.subsampledChannelsFilepathsVal = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
-		self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = [None, None]
+		self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = [None, None] # One element for Normal and one for Subsampled Pathway. Either None for no smoothing, or a List [std-r, std-c, std-z] of the gaussian kernel to smooth with.
 
 		self.numberOfEpochsToWeightTheClassesInTheCostFunction = 0
 

@@ -45,7 +45,7 @@ def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions) : #Works for 2D
 
 #In the 3 first axes. Which means it can take a 4-dim image.
 def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight) :
- 	#tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). "placeholderNothing" when no padding.
+ 	#tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
 
 	unpaddedArray1 = array1[tupleOfPaddingPerAxesLeftRight[0][0]:, tupleOfPaddingPerAxesLeftRight[1][0]:, tupleOfPaddingPerAxesLeftRight[2][0]:]
 	#The checks below are to make it work if padding == 0, which may happen for 2D on the 3rd axis.
@@ -63,6 +63,7 @@ def reflectImageArrayIfNeeded(reflectFlags, imageArray) :
 	return reflImageArray
 
 def smoothImageWithGaussianFilterIfNeeded(smoothImageWithGaussianFilterStds, imageArray) :
+	# Either None for no smoothing, or a List with 3 elements, [std-r, std-c, std-z] of the gaussian kernel to smooth with.
 	#If I do not want to smooth at all a certain axis, pass std=0 for it. Works, I tried. Returns the actual voxel value.
 	if smoothImageWithGaussianFilterStds == None :
 		return imageArray
@@ -116,7 +117,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     for reflectImageWithHalfProb_dimi in xrange(0, len(reflectImageWithHalfProb)) :
     	reflectFlags.append(reflectImageWithHalfProb[reflectImageWithHalfProb_dimi] * random.randint(0,1))
     
-    tupleOfPaddingPerAxesLeftRight = "placeholderNothing" #This will be given a proper value if padding is performed.
+    tupleOfPaddingPerAxesLeftRight = ((0,0), (0,0), (0,0)) #This will be given a proper value if padding is performed.
 
     if providedRoiMaskBool :
         fullFilenamePathOfRoiMask = listOfFilepathsToRoiMaskOfEachPatient[index_of_wanted_image]
@@ -145,11 +146,11 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 	channelData = reflectImageArrayIfNeeded(reflectFlags, channelData) #reflect if flag ==1 .
 	[channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, imagePartDimensions) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
 
-	if allChannelsOfPatientInNpArray == None :
+	if not isinstance(allChannelsOfPatientInNpArray, (np.ndarray)) :
             #Initialize the array in which all the channels for the patient will be placed.
             niiDimensions = list(channelData.shape)
             allChannelsOfPatientInNpArray = np.zeros( (numberOfNormalScaleChannels, niiDimensions[0], niiDimensions[1], niiDimensions[2]))
-
+            
 	allChannelsOfPatientInNpArray[channel_i] = channelData
 	"""
         if len(channelData.shape) <= 3 :
@@ -166,8 +167,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 	if training0orValidation1orTest2 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 1 : #[0] should be ==0 for no normAug, eg in the case of validation
 		stdOfChannel = 1.
 		if normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[1] == 0 : #[0]==0 means it is not already normalized. Else just use std=1.
-			# >>>>>>ROI MASK MIGHT BE A PLACEHOLDER!<<<<<<<<
-			if roiMask <> "placeholderNothing":
+			if providedRoiMaskBool :
 				stdOfChannel = np.std(allChannelsOfPatientInNpArray[channel_i][roiMask>0]) #We'll use this for the downsampled version too.
 			else : #no roi mask provided:
 				stdOfChannel = np.std(allChannelsOfPatientInNpArray[channel_i])
@@ -487,7 +487,7 @@ def getImagePartsAndTheirSlices(myLogger,
 		rLowBoundaryNext = rLowBoundaryNext + strideOfImagePartsPerDimensionInVoxels[0]
 		rAxisCentralPartPredicted = False if rFarBoundary < niiDimensions[0] else True
 
-		if brainMask<>"placeholderNothing" : #In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
+		if isinstance(brainMask, (np.ndarray)) : #In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
                     if not np.any(brainMask[rLowBoundary:rFarBoundary,
                                                           cLowBoundary:cFarBoundary,
                                                           zLowBoundary:zFarBoundary
@@ -506,7 +506,7 @@ def getImagePartsAndTheirSlices(myLogger,
                 channelsForPartsToReturn.append(thisImagePartChannels)
                 
                 #Subsampled pathway
-		if channelsOfSubsampledImageNpArray <> "placeholderNothing" :
+		if isinstance(channelsOfSubsampledImageNpArray, (np.ndarray)) :
                     imagePartSlicesCoords = [ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ] #the right hand values are placeholders in this case.
                     channelsForThisSubsampledImagePart = getImagePartFromSubsampledImageForTraining(
                                                                                                    imagePartDimensions,
@@ -525,7 +525,7 @@ def getImagePartsAndTheirSlices(myLogger,
     for extra_useless_image_part_i in xrange(number_of_imageParts_missing_for_exact_division) :
         channelsForPartsToReturn.append(channelsForPartsToReturn[total_number_of_image_parts-1])
         coordsOfTopLeftVoxelForPartsToReturn.append(coordsOfTopLeftVoxelForPartsToReturn[total_number_of_image_parts-1])
-	if channelsOfSubsampledImageNpArray <> "placeholderNothing" :
+	if isinstance(channelsOfSubsampledImageNpArray, (np.ndarray)) :
             channelsForSubsampledPartsToReturn.append(channelsForSubsampledPartsToReturn[total_number_of_image_parts-1])
 
     #I think that since the parts are acquired in a certain order and are sorted this way in the list, it is easy
@@ -751,7 +751,7 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
         roiMask,
         arrayWithWeightMapsWhereToSampleForEachCategory, #can be returned "placeholderNothing" if it's testing phase or not "provided weighted maps". In this case, I will sample from GT/ROI.
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
-	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). "placeholderNothing" when no padding.
+	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
         ] = actual_load_patient_images_from_filepath_and_return_nparrays(
                                                 myLogger,
 						training0orValidation1,
@@ -1544,7 +1544,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         brainMask, 
         arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
-	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). "placeholderNothing" when no padding.
+	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
         ] = actual_load_patient_images_from_filepath_and_return_nparrays(
                                                     myLogger,
                                                     2,
@@ -1826,7 +1826,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 		unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
 		unpaddedGtLabelsImage = gtLabelsImage if not padInputImagesBool else unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
 		#Hack, for it to work for the case that I do not use a brainMask.
-		if brainMask <> "placeholderNothing" : #If brainmask was given:
+		if isinstance(brainMask, (np.ndarray)) : #If brainmask was given:
 			multiplyWithBrainMaskOr1 = brainMask if not padInputImagesBool else unpadCnnOutputs(brainMask, tupleOfPaddingPerAxesLeftRight)
 		else :
 			multiplyWithBrainMaskOr1 = 1
