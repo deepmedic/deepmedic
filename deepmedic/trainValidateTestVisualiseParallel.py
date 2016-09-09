@@ -123,7 +123,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 
     if providedRoiMaskBool :
         fullFilenamePathOfRoiMask = listOfFilepathsToRoiMaskOfEachPatient[index_of_wanted_image]
-        img_proxy = nib.load(fullFilenamePathOfRoiMask)
+        img_proxy = as_closest_canonical(nib.load(fullFilenamePathOfRoiMask))
 	roiMaskData = img_proxy.get_data()
 	roiMaskData = reflectImageArrayIfNeeded(reflectFlags, roiMaskData)
         roiMask = roiMaskData #np.asarray(roiMaskData, dtype="float32") #the .get_data returns a nparray but it is not a float64
@@ -139,7 +139,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel = np.ones( (numberOfNormalScaleChannels, 2), dtype="float32")
     for channel_i in xrange(numberOfNormalScaleChannels):
         fullFilenamePathOfChannel = listOfFilepathsToEachChannelOfEachPatient[index_of_wanted_image][channel_i]
-        img_proxy = nib.load(fullFilenamePathOfChannel)
+        img_proxy = as_closest_canonical(nib.load(fullFilenamePathOfChannel))
         channelData = img_proxy.get_data()
         if len(channelData.shape) > 3 :
             channelData = channelData[:,:,:,0]
@@ -189,7 +189,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     #LOAD the class-labels.
     if providedGtLabelsBool : #For training (exact target labels) or validation on samples labels.
         fullFilenamePathOfGtLabels = listOfFilepathsToGtLabelsOfEachPatient[index_of_wanted_image]
-        imgGtLabels_proxy = nib.load(fullFilenamePathOfGtLabels)
+        imgGtLabels_proxy = as_closest_canonical(nib.load(fullFilenamePathOfGtLabels))
         gtLabelsData = imgGtLabels_proxy.get_data()
         gtLabelsData = reflectImageArrayIfNeeded(reflectFlags, gtLabelsData) #reflect if flag ==1 .
         imageGtLabels = gtLabelsData
@@ -201,7 +201,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 
     if providedMaskWhereToGetPositiveSamples :
         fullFilenamePathOfMaskWhereToGetPositiveSamples = listOfFilepathsToMasksOfEachPatientForPosSamplingForTrainOrVal[index_of_wanted_image]
-        img_proxy = nib.load(fullFilenamePathOfMaskWhereToGetPositiveSamples)
+        img_proxy = as_closest_canonical(nib.load(fullFilenamePathOfMaskWhereToGetPositiveSamples))
 	maskWhereToGetPositiveSamplesData = img_proxy.get_data()
 	maskWhereToGetPositiveSamplesData = reflectImageArrayIfNeeded(reflectFlags, maskWhereToGetPositiveSamplesData)
         maskWhereToGetPositiveSamples = maskWhereToGetPositiveSamplesData #np.asarray(maskWhereToGetPositiveSamplesData, dtype="float32") #the .get_data returns a nparray but it is not a float64
@@ -212,7 +212,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
 
     if providedMaskWhereToGetNegativeSamples :
         fullFilenamePathOfMaskWhereToGetNegativeSamples = listOfFilepathsToMasksOfEachPatientForNegSamplingForTrainOrVal[index_of_wanted_image]
-        img_proxy = nib.load(fullFilenamePathOfMaskWhereToGetNegativeSamples)
+        img_proxy = as_closest_canonical(nib.load(fullFilenamePathOfMaskWhereToGetNegativeSamples))
 	maskWhereToGetNegativeSamplesData = img_proxy.get_data()
 	maskWhereToGetNegativeSamplesData = reflectImageArrayIfNeeded(reflectFlags, maskWhereToGetNegativeSamplesData)
         maskWhereToGetNegativeSamples = maskWhereToGetNegativeSamplesData #np.asarray(maskWhereToGetNegativeSamplesData, dtype="float32") #the .get_data returns a nparray but it is not a float64
@@ -233,7 +233,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         for channel_i in xrange(numberOfSubsampledScaleChannels):
         
             fullFilenamePathOfChannel = listOfFilepathsToEachSubsampledChannelOfEachPatient[index_of_wanted_image][channel_i]
-            img_proxy = nib.load(fullFilenamePathOfChannel)
+            img_proxy = as_closest_canonical(nib.load(fullFilenamePathOfChannel))
             channelData = img_proxy.get_data()
             if len(channelData.shape) > 3 :
 		channelData = channelData[:,:,:,0]
