@@ -2,10 +2,13 @@ The DeepMedic
 =====================================
 
 ### News
-4 Aug 2016:
+10 Oct 2016 (v0.5.3):
+* Sampling refactored. Now possible to use weighted-maps to sample each class.
+
+4 Aug 2016 (v0.5.2):
 * Code in Layer-classes cleaned/commented. Residual Connections enabled. Possible to specify kernel size at FC1. 
 
-14 July 2016:
+14 July 2016 (v0.5.1):
 * Master branch was updated with better monitoring of training progress and a better plotting script. This version is not backwards compatible. CPickle will fail loading previously trained models from previous versions of the code.
 * Previous version of master branch tagged as v0.5. Use this if you wish to continue working with previously trained models.
 
@@ -155,7 +158,7 @@ The model should be loaded and training for two epochs should be performed. Afte
 
 You can **plot the training progress** using an accompanying script, which parses the training logs:
 '''
-python plotTrainingProgress.py -logs examples/output/logs/trainSessionWithValidTinyCnn.txt -class 0
+python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTinyCnn.txt -d
 '''
 
 Now lets **test** with the trained model (replace *DATE+TIME*):
