@@ -42,6 +42,7 @@ class ModelConfig(object):
 	N_FMS_NORM = "numberFMsPerLayerNormal"
 	KERN_DIM_NORM = "kernelDimPerLayerNormal"
 	RESID_CONN_LAYERS_NORM = "layersWithResidualConnNormal"
+	LOWER_RANK_LAYERS_NORM = "lowerRankLayersNormal"
 
 	#==Subsampled pathway==
 	USE_SUBSAMPLED = "useSubsampledPathway"
@@ -50,6 +51,7 @@ class ModelConfig(object):
 	KERN_DIM_SUBS = "kernelDimensionsSubsampled"
 	SUBS_FACTOR = "subsampleFactor"
 	RESID_CONN_LAYERS_SUBS = "layersWithResidualConnSubsampled"
+	LOWER_RANK_LAYERS_SUBS = "lowerRankLayersSubsampled"
 	
 	#==Extra hidden FC Layers. Final Classification layer is not included in here.
 	N_FMS_FC = "numberFMsPerLayerFC"
@@ -143,12 +145,14 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			numFMsNormal=configGet(modelConfig.N_FMS_NORM),
 			kernDimNormal=configGet(modelConfig.KERN_DIM_NORM),
 			residConnAtLayersNormal=configGet(ModelConfig.RESID_CONN_LAYERS_NORM),
+			lowerRankLayersNormal=configGet(ModelConfig.LOWER_RANK_LAYERS_NORM),
 			#==Subsampled pathway==
 			useSubsampledBool=configGet(modelConfig.USE_SUBSAMPLED),
 			numFMsSubsampled=configGet(modelConfig.N_FMS_SUBS),
 			kernDimSubsampled=configGet(modelConfig.KERN_DIM_SUBS),
 			subsampleFactor=configGet(modelConfig.SUBS_FACTOR),
 			residConnAtLayersSubsampled=configGet(ModelConfig.RESID_CONN_LAYERS_SUBS),
+			lowerRankLayersSubsampled=configGet(ModelConfig.LOWER_RANK_LAYERS_SUBS),
 			#==FC Layers====
 			numFMsFc=configGet(modelConfig.N_FMS_FC),
 			kernelDimensionsFirstFcLayer=configGet(modelConfig.KERN_DIM_1ST_FC),
@@ -161,6 +165,8 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			batchSizeTrain=configGet(modelConfig.BATCH_SIZE_TR),
 			batchSizeVal=configGet(modelConfig.BATCH_SIZE_VAL),
 			batchSizeInfer=configGet(modelConfig.BATCH_SIZE_INFER),
+			#===Other Architectural Parameters ===
+			activationFunction=configGet(modelConfig.ACTIV_FUNCTION),
 			#==Dropout Rates==
 			dropNormal=configGet(modelConfig.DROP_R_NORM),
 			dropSubsampled=configGet(modelConfig.DROP_R_SUBS),
@@ -170,7 +176,6 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 			l2Reg=configGet(modelConfig.L2_REG),
 			#== Weight Initialization==
 			initialMethod=configGet(modelConfig.INITIAL_METHOD),
-			activationFunction=configGet(modelConfig.ACTIV_FUNCTION),
 			#== Batch Normalization ==
 			bnRollingAverOverThatManyBatches=configGet(modelConfig.BN_ROLL_AV_BATCHES),
 			#====Optimization=====
@@ -195,7 +200,12 @@ def deepMedicNewModelMain(modelConfigFilepath) :
 	createModelSessionParameters.sessionLogger.print3("=========== Creating the CNN model ===============")
 	cnn3dInstance = Cnn3d()
 	cnn3dInstance.make_cnn_model(*createModelSessionParameters.getTupleForCnnCreation())
-
+	
+	cnn3dInstance.initializeTrainingState(*createModelSessionParameters.getTupleForInitializingTrainingState())
+	cnn3dInstance.compileTrainFunction(*createModelSessionParameters.getTupleForCompilationOfTrainFunc())
+	cnn3dInstance.compileValidationFunction(*createModelSessionParameters.getTupleForCompilationOfValFunc())
+	cnn3dInstance.compileTestAndVisualisationFunction(*createModelSessionParameters.getTupleForCompilationOfTestFunc())
+	
 	filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial." + datetimeNowAsStr()
 	filenameAndPathWhereModelWasSaved =  dump_cnn_to_gzip_file_dotSave(cnn3dInstance, filenameAndPathToSaveModel, sessionLogger)
 

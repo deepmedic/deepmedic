@@ -10,14 +10,14 @@ def read(fname):
 
 setup(
     name = "deepmedic",
-    version = "0.5.3",
+    version = "0.5.4",
     author = "Konstantinos Kamnitsas",
     author_email = "konstantinos.kamnitsas12@ic.ac.uk",
     description = "Efficient Multi-Scale 3D Convolutional Neural Network for Brain Lesion Segmentation",
     license = "BSD",
     keywords = "CNN convolutional neural network brain lesion segmentation",
     url = "https://github.com/Kamnitsask/deepmedic",
-    download_url = 'https://github.com/Kamnitsask/deepmedic/tarball/0.5.3',
+    download_url = 'https://github.com/Kamnitsask/deepmedic/tarball/0.5.4',
     packages=find_packages(),
     scripts = ['deepMedicRun'],
     long_description=read('README.md'),

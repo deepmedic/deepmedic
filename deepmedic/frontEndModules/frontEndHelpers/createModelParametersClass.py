@@ -137,12 +137,14 @@ class CreateModelSessionParameters(object) :
 			numFMsNormal,
 			kernDimNormal,
 			residConnAtLayersNormal,
+			lowerRankLayersNormal,
 			#==Subsampled pathway==
 			useSubsampledBool,
 			numFMsSubsampled,
 			kernDimSubsampled,
 			subsampleFactor,
 			residConnAtLayersSubsampled,
+			lowerRankLayersSubsampled,
 			#==FC Layers====
 			numFMsFc,
 			kernelDimensionsFirstFcLayer,
@@ -156,6 +158,9 @@ class CreateModelSessionParameters(object) :
 			batchSizeTrain,
 			batchSizeVal,
 			batchSizeInfer,
+			
+			#===Other Architectural Parameters ===
+			activationFunction,
 			#==Dropout Rates==
 			dropNormal,
 			dropSubsampled,
@@ -165,7 +170,7 @@ class CreateModelSessionParameters(object) :
 			l2Reg,
 			#== Weight Initialization==
 			initialMethod,
-			activationFunction,
+
 			#== Batch Normalization ==
 			bnRollingAverOverThatManyBatches,
 
@@ -202,6 +207,8 @@ class CreateModelSessionParameters(object) :
 		self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
 		self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal)
 		residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+		lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+		
 		#==Subsampled pathway==
 		self.useSubsampledBool = useSubsampledBool if useSubsampledBool <> None else False
 		if not self.useSubsampledBool :
@@ -210,6 +217,7 @@ class CreateModelSessionParameters(object) :
 			self.receptiveFieldSubsampled = []
 			self.subsampleFactor = []
 			residConnAtLayersSubsampled = []
+			lowerRankLayersSubsampled = []
 		
 		else :
 			self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled <> None else self.numFMsPerLayerNormal
@@ -235,7 +243,8 @@ class CreateModelSessionParameters(object) :
 			if not checkSubsampleFactorEven(self.subsampleFactor) :
 				self.warnSubFactorOdd()
 			residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled <> None else residConnAtLayersNormal
-		
+			lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled <> None else lowerRankLayersNormal
+			
 		#==FC Layers==
 		self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
 		self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer <> None else [1,1,1]
@@ -324,6 +333,16 @@ class CreateModelSessionParameters(object) :
 														 	[] 
 														 ]
 
+		self.indicesOfLowerRankLayersPerPathway = [ [ layerNum - 1 for layerNum in lowerRankLayersNormal ],
+													[ layerNum - 1 for layerNum in lowerRankLayersSubsampled ],
+													[], #FC doesn't make sense to be lower rank. It's 1x1x1 anyway.
+													[]
+												]
+		self.ranksOfLowerRankLayersForEachPathway = [	[ 2 for layer_i in self.indicesOfLowerRankLayersPerPathway[0] ],
+														[ 2 for layer_i in self.indicesOfLowerRankLayersPerPathway[1] ],
+														[],
+														[]
+													]
 		#============= HIDDENS ======================
 		self.costFunctionLetter = "L"
 
@@ -373,6 +392,8 @@ class CreateModelSessionParameters(object) :
 		logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerNormal))
 		logPrint("Receptive Field = " + str(self.receptiveFieldNormal))
 		logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[0]))
+		logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[0]))
+		logPrint("Lower Rank layers will be made of rank = " + str(self.ranksOfLowerRankLayersForEachPathway[0]))
 		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[0]))
 		
 		logPrint("~~Subsampled Pathway~~")
@@ -383,12 +404,15 @@ class CreateModelSessionParameters(object) :
 		logPrint("Receptive Field = " + str(self.receptiveFieldSubsampled))
 		logPrint("Subsampling Factor = " + str(self.subsampleFactor))
 		logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
+		logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[1]))
+		logPrint("Lower Rank layers will be made of rank = " + str(self.ranksOfLowerRankLayersForEachPathway[1]))
 		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[1]))
 		
 		logPrint("~~Fully Connected Pathway~~")
 		logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.numFMsInExtraFcs)))
 		logPrint("Number of Feature Maps in the additional FC layers = " + str(self.numFMsInExtraFcs))
 		logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
+		logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[2]))
 		#logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[2]))
 		logPrint("Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = " + str(self.kernelDimensionsFirstFcLayer))
 		
@@ -445,19 +469,78 @@ class CreateModelSessionParameters(object) :
 		cnnCreationTuple = (
 				self.sessionLogger,
 				self.cnnModelName,
-				self.costFunctionLetter,
-
-				self.segmDimNormalTrain,
-				self.receptiveFieldNormal,
-		
+				#=== Model Parameters ===
+				self.numberClasses,
 				self.numberOfInputChannelsNormal,
 				self.numberOfInputChannelsSubsampled,
-
+				#=== Normal Pathway ===
 				self.numFMsPerLayerNormal, #ONLY for the convolutional layers, NOT the final convFCSoftmaxLayer!
 				self.kernDimPerLayerNormal,
+				self.receptiveFieldNormal, # Should be automatically calculate it in the CNN.
+				#=== Subsampled Pathway ===
+				self.numFMsPerLayerSubsampled,
+				self.kernDimPerLayerSubsampled,
+				self.subsampleFactor,
+
+				#=== Zoomed-in pathway === # Deprecated
+				self.zoomedInPatchDimensions,
+				self.nkernsZoomedIn1,
+				self.kernelDimensionsZoomedIn1,
+				
+				#=== FC Layers ===
+				self.numFMsInExtraFcs,
+				self.kernelDimensionsFirstFcLayer,
+				self.softmaxTemperature,
+				
+				#=== Other Architectural params ===
+				self.activationFunctionRelu0Prelu1,
+				#---Residual Connections----
+				self.indicesOfLayersToConnectResidualsInOutput,
+				#--Lower Rank Layer Per Pathway---
+				self.indicesOfLowerRankLayersPerPathway,
+				self.ranksOfLowerRankLayersForEachPathway,
+				#---Pooling---
+				self.maxPoolingParamsStructure,
+				#--- Skip Connections --- #Deprecated, not used/supported
+				self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
+				
+				#==Size of Image Segments ==
+				self.segmDimNormalTrain,
+				self.segmDimNormalVal,
+				self.segmDimNormalInfer,
+				self.segmDimSubsampledTrain, # Should be automatically calculate it in the CNN.
+				self.segmDimSubsampledVal,
+				self.segmDimSubsampledInfer,
+				
+				#=== Batch Sizes ===
 				self.batchSizeTrain,
 				self.batchSizeVal,
 				self.batchSizeInfer,
+
+				#=== Others ====
+				#Dropout
+				self.dropoutRatesForAllPathways,
+				#Initialization
+				self.initialMethodClassic0Delving1,
+				#Batch Normalization
+				self.applyBnToInputOfPathways,
+				self.bnRollingAverOverThatManyBatches,
+								 
+				#=== various ===
+				borrowFlag,
+				dataTypeX
+				)
+
+		return cnnCreationTuple
+
+	def getTupleForInitializingTrainingState(self) :
+
+		initializingTrainingStateTuple = (
+				self.sessionLogger,
+
+				"all",
+				#=====COST FUNCTION=====
+				self.costFunctionLetter,
 
 				#=====OPTIMIZATION=====
 				self.learningRate,
@@ -470,59 +553,24 @@ class CreateModelSessionParameters(object) :
 				self.eAdam,
 				self.rhoRms,
 				self.eRms,
-
-				#=====COST FUNCTION=====
+				# Regularisation
 				self.l1Reg,
-				self.l2Reg,
-				self.softmaxTemperature,
-				borrowFlag,
-				#-----for the extendedVersion---
-				self.segmDimSubsampledTrain,
-				self.numFMsPerLayerSubsampled,
-				self.kernDimPerLayerSubsampled,
-				self.subsampleFactor,
-
-				#----Fully Conn Layers----
-				self.numFMsInExtraFcs,
-				self.kernelDimensionsFirstFcLayer,
-					   
-				#----for the zoomed-in pathway----
-				self.zoomedInPatchDimensions,
-				self.nkernsZoomedIn1,
-				self.kernelDimensionsZoomedIn1,
-
-				#---Residual Connections----
-				self.indicesOfLayersToConnectResidualsInOutput,
-				
-				#---MAX POOLING-----
-				self.maxPoolingParamsStructure,
-
-				#for BatchNormalization
-				self.applyBnToInputOfPathways,
-				self.bnRollingAverOverThatManyBatches,
-								 
-				self.segmDimNormalVal,
-				self.segmDimSubsampledVal,
-				self.segmDimNormalInfer,
-				self.segmDimSubsampledInfer,
-
-				self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
-								 
-				self.initialMethodClassic0Delving1,
-				self.activationFunctionRelu0Prelu1,
-				self.dropoutRatesForAllPathways, 
-
-				self.numberClasses,
-
-				dataTypeX
+				self.l2Reg
 				)
 
-		return cnnCreationTuple
+		return initializingTrainingStateTuple
 
+	def getTupleForCompilationOfTrainFunc(self) :
+		trainFunctionCompilationTuple = ( self.sessionLogger, )
+		return trainFunctionCompilationTuple
+	
+	def getTupleForCompilationOfValFunc(self) :
+		valFunctionCompilationTuple = ( self.sessionLogger, )
+		return valFunctionCompilationTuple
 
-
-
-
+	def getTupleForCompilationOfTestFunc(self) :
+		testFunctionCompilationTuple = ( self.sessionLogger, )
+		return testFunctionCompilationTuple
 
 
 

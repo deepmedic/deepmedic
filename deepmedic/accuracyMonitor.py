@@ -45,14 +45,12 @@ class AccuracyOfEpochMonitorSegmentation(object) :
 
 	# Generic. Does not flip the class-0 background class.
 	def updateMonitorAccuraciesWithNewSubepochEntries(self,
-							meanAccuracyOfSubepoch,
 							meanCostOfSubepoch,
 							perClassRpRnTpTnInSubep # Class X 4. The Real Pos, Real Neg, True Pos (pred), True Neg (pred).
 							) :
 
 
 		#---------- This first part takes care of the overall, multi-class mean accuracy: meanAccuracy = Num-Voxels-Predicted-Correct-Class / All-Voxels. 
-		self.meanEmpiricalAccuracyOfEachSubep.append(meanAccuracyOfSubepoch)
 		if self.training0orValidation1 == 0 :
 			self.meanCostOfEachSubep.append(meanCostOfSubepoch)
 
@@ -62,7 +60,9 @@ class AccuracyOfEpochMonitorSegmentation(object) :
 		self.correctlyPredVoxelsInEachSubep.append(correctlyPredVoxelsInSubep)
 		numberOfAllSamples = perClassRpRnTpTnInSubep[0,0] + perClassRpRnTpTnInSubep[0,1] #RealPos + RealNeg wrt any class (eg backgr)
 		self.numberOfAllSamplesOfEachSubep.append(numberOfAllSamples)
-
+		meanAccuracyOfSubepoch = self.NA_PATTERN if numberOfAllSamples == 0 else correctlyPredVoxelsInSubep*1.0/numberOfAllSamples
+		self.meanEmpiricalAccuracyOfEachSubep.append(meanAccuracyOfSubepoch)
+		
 		#----------- Calculate accuracy over subepoch for each class_i, in a One-Vs-All fashion ------
 		self.listPerSubepPerClassRpRnTpTn.append(perClassRpRnTpTnInSubep)
 

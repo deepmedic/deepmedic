@@ -15,10 +15,7 @@ import random
 from math import floor
 from math import ceil
 
-from deepmedic.cnnLayerTypes import ConvLayerWithSoftmax
-from deepmedic.cnnLayerTypes import ConvLayer
-from __builtin__ import True
-
+from deepmedic import cnnLayerTypes
 
 #-----helper functions that I use in here---
 def getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensions, patchDimensions) :
@@ -93,9 +90,9 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
     (earlierLayerOutputImageShapeTrain, earlierLayerOutputImageShapeVal, earlierLayerOutputImageShapeTest) = earlierLayerOutputImageShapesTrValTest
     # Note: deeperLayerOutputImageShapeTrain has dimensions: [batchSize, FMs, r, c, z]    
     # The deeper FMs can be greater only when there is upsampling. But then, to do residuals, I would need to upsample the earlier FMs. Not implemented.
-    if np.any(deeperLayerOutputImageShapeTrain[2:] > earlierLayerOutputImageShapeTrain[2:]) or \
-            np.any(deeperLayerOutputImageShapeVal[2:] > earlierLayerOutputImageShapeVal[2:]) or \
-                np.any(deeperLayerOutputImageShapeTest[2:] > earlierLayerOutputImageShapeTest[2:]) :
+    if np.any(np.asarray(deeperLayerOutputImageShapeTrain[2:]) > np.asarray(earlierLayerOutputImageShapeTrain[2:])) or \
+            np.any(np.asarray(deeperLayerOutputImageShapeVal[2:]) > np.asarray(earlierLayerOutputImageShapeVal[2:])) or \
+                np.any(np.asarray(deeperLayerOutputImageShapeTest[2:]) > np.asarray(earlierLayerOutputImageShapeTest[2:])) :
         myLogger.print3("ERROR: In function [makeResidualConnectionBetweenLayersAndReturnOutput] the RCZ-dimensions of a deeper layer FMs were found greater than the earlier layers. Not implemented functionality. Exiting!")
         myLogger.print3("\t (train) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTrain) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTrain) )
         myLogger.print3("\t (val) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeVal) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeVal) )
@@ -122,21 +119,6 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
     # Dimensions of output are the same as those of the deeperLayer
     return (outputOfResConnTrain, outputOfResConnVal, outputOfResConnTest)
 
-##################################
-## Various activation functions ##
-##################################
-#### rectified linear unit
-def ReLU(x):
-    y = T.maximum(0.0, x)
-    return(y)
-#### sigmoid
-def Sigmoid(x):
-    y = T.nnet.sigmoid(x)
-    return(y)
-#### tanh
-def Tanh(x):
-    y = T.tanh(x)
-    return(y)
 
 
 
@@ -153,8 +135,6 @@ class Cnn3d(object):
 
 	self.cnnModelName = None
 
-	self.costFunctionLetter = "" # "L", "D" or "J"
-
         self.cnnLayers = []
         self.cnnLayersSubsampled = []
         self.fcLayers = []
@@ -170,35 +150,11 @@ class Cnn3d(object):
 
 	self.numberOfOutputClasses = None
 
-        self.initialLearningRate = "" #used by exponential schedule
-        self.learning_rate = theano.shared(np.cast["float32"](0.01)) #initial value, changed in make_cnn_model().compileTrainingFunction()
-        self.L1_reg_constant = "" #l1 regularization constant. Given.
-        self.L2_reg_constant = "" #l2 regularization constant. Given.
-
+        #=== Compiled Functions for API ====
         self.cnnTrainModel = ""
         self.cnnValidateModel = ""
         self.cnnTestModel = ""
         self.cnnVisualiseFmFunction = ""
-
-	#=======FOR OPTIMIZERs================
-	self.sgd0orAdam1orRmsProp2 = None
-	self.classicMomentum0OrNesterov1 = None
-	#SGD + Classic momentum: (to save the momentum)
-        self.initialMomentum = "" #used by exponential schedule
-        self.momentum = theano.shared(np.cast["float32"](0.))
-        self.momentumTypeNONNormalized0orNormalized1 = None
-	self.velocities_forMom = [] #list of shared_variables. Each of the individual Dws is a sharedVar. This whole thing isnt.
-        #ADAM:
-	self.b1_adam = None
-	self.b2_adam = None
-	self.epsilonForAdam = None
-	self.i_adam = theano.shared(np.cast["float32"](0.)) #Current iteration of adam
-	self.m_listForAllParamsAdam = [] #list of mean of grads for all parameters, for ADAM optimizer.
-	self.v_listForAllParamsAdam = [] #list of variances of grads for all parameters, for ADAM optimizer.
-	#RMSProp
-	self.rho_rmsProp = None
-	self.epsilonForRmsProp = None
-	self.accuGradSquare_listForAllParamsRmsProp = [] #the rolling average accumulator of the variance of the grad (grad^2)
 
 	#=====================================
         self.sharedTrainingNiiData_x = ""
@@ -221,26 +177,14 @@ class Cnn3d(object):
         self.batchSize = ""
         self.batchSizeValidation = ""
         self.batchSizeTesting = ""
-        self.number_of_images_in_shared = ""
-        #self.patchesToTrainPerImagePart = ""
+
         self.dataTypeX = ""
-        self.nkerns = "" #number of feature maps.
-	self.nkernsSubsampled = ""
 	self.subsampleFactor = ""
         self.patchDimensions = ""
 	#Fully Connected Layers
-	self.kernelDimensionsFirstFcLayer = ""
-
         self.numberOfCentralVoxelsClassifiedPerDimension = ""
         self.numberOfCentralVoxelsClassifiedPerDimensionTesting = ""   
 
-	self.softmaxTemperature = 1
-
-	#Batch normalization (rolling average)
-	self.indexWhereRollingAverageIs = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
-	self.rollingAverageForBatchNormalizationOverThatManyBatches = ""
-
-	self.numberOfEpochsTrained = 0
 
 	#Automatically lower CNN's learning rate by looking at validation accuracy:
 	self.topMeanValidationAccuracyAchievedInEpoch = [-1,-1]
@@ -249,6 +193,55 @@ class Cnn3d(object):
         # Residual Learning
         self.indicesOfLayersToConnectResidualsInOutput = ""
 
+        # Lower rank convolutional layers
+        self.indicesOfLowerRankLayersPerPathway = ""
+        self.ranksOfLowerRankLayersForEachPathway = ""
+        
+        
+        
+        #============= ATTRIBUTES SPECIFIC TO THE TRAINING STATE ============
+        self.numberOfEpochsTrained = 0
+    
+        self._trainingStateAttributesInitialized = False
+        
+        self.layersOfLayerTypesToTrain = None
+        self.costFunctionLetter = "" # "L", "D" or "J"
+        #====== Learning rate and momentum ==========
+        self.initialLearningRate = "" #used by exponential schedule
+        self.learning_rate = theano.shared(np.cast["float32"](0.01)) #initial value, changed in make_cnn_model().compileTrainingFunction()
+        self.classicMomentum0OrNesterov1 = None
+        #SGD + Classic momentum: (to save the momentum)
+        self.initialMomentum = "" #used by exponential schedule
+        self.momentum = theano.shared(np.cast["float32"](0.))
+        self.momentumTypeNONNormalized0orNormalized1 = None
+        self.velocities_forMom = [] #list of shared_variables. Each of the individual Dws is a sharedVar. This whole thing isnt.
+        #=== Optimizer specific =====
+        self.sgd0orAdam1orRmsProp2 = None
+        #ADAM:
+        self.b1_adam = None
+        self.b2_adam = None
+        self.epsilonForAdam = None
+        self.i_adam = theano.shared(np.cast["float32"](0.)) #Current iteration of adam
+        self.m_listForAllParamsAdam = [] #list of mean of grads for all parameters, for ADAM optimizer.
+        self.v_listForAllParamsAdam = [] #list of variances of grads for all parameters, for ADAM optimizer.
+        #RMSProp
+        self.rho_rmsProp = None
+        self.epsilonForRmsProp = None
+        self.accuGradSquare_listForAllParamsRmsProp = [] #the rolling average accumulator of the variance of the grad (grad^2)
+        #Regularisation
+        self.L1_reg_constant = None
+        self.L2_reg_constant = None
+        
+        
+        #======= tensors, input to the CNN. Needed to be saved for later compilation after loading =======
+        # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
+        self.inputTensorsXToCnnInitialized = False
+        self.layer0_input = None; self.layer0_inputValidation = None; self.layer0_inputTesting = None;
+        self.layer0_inputSubsampled = None; self.layer0_inputSubsampledValidation = None; self.layer0_inputSubsampledTesting = None;
+        
+    def increaseNumberOfEpochsTrained(self):
+        self.numberOfEpochsTrained += 1
+        
     def change_learning_rate_of_a_cnn(self, newValueForLearningRate, myLogger=None) :
 	stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Learning Rate to: "+str(newValueForLearningRate)
 	if myLogger<>None :
@@ -313,25 +306,17 @@ class Cnn3d(object):
 	self.sharedTestingNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
 	self.sharedTestingSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
 
-
+    def _checkTrainingStateAttributesInitialized(self):
+        return self._trainingStateAttributesInitialized
+    
     #for inference with batch-normalization. Every training batch, this is called to update an internal matrix of each layer, with the last mus and vars, so that I can compute the rolling average for inference.
     def updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference(self) :
-        bnIsAppliedToAtLeastOneLayer = False # to avoid having one more cnn-space variable.
-	for layer_type_i in xrange(0, len(self.typesOfCnnLayers)) :
-		for layer_i in xrange(0, len(self.typesOfCnnLayers[layer_type_i])) :
-                        thisIterationLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
-			if thisIterationLayer.appliedBnInLayer == True :
-                                bnIsAppliedToAtLeastOneLayer = True
-				layerMuArrayValue = thisIterationLayer.muBnsArrayForRollingAverage.get_value()
-				layerMuArrayValue[self.indexWhereRollingAverageIs] = thisIterationLayer.sharedNewMu_B.get_value()
-				thisIterationLayer.muBnsArrayForRollingAverage.set_value(layerMuArrayValue, borrow=True)
+        self._updateMatricesOfBnRollingAverageForInference()
 
-				layerVarArrayValue = thisIterationLayer.varBnsArrayForRollingAverage.get_value()
-				layerVarArrayValue[self.indexWhereRollingAverageIs] = thisIterationLayer.sharedNewVar_B.get_value()
-				thisIterationLayer.varBnsArrayForRollingAverage.set_value(layerVarArrayValue, borrow=True)
-        if bnIsAppliedToAtLeastOneLayer :
-	       self.indexWhereRollingAverageIs = (self.indexWhereRollingAverageIs + 1) % self.rollingAverageForBatchNormalizationOverThatManyBatches
-
+    def _updateMatricesOfBnRollingAverageForInference(self):
+        for layer_type_i in xrange(0, len(self.typesOfCnnLayers)) :
+            for layer_i in xrange(0, len(self.typesOfCnnLayers[layer_type_i])) :
+                self.typesOfCnnLayers[layer_type_i][layer_i].updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference() # Will do nothing if no BN.
 
     def makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(self,
                                                         myLogger,
@@ -351,7 +336,9 @@ class Cnn3d(object):
 							initializationTechniqueClassic0orDelvingInto1,
 							activationFunctionToUseRelu0orPrelu1,
 							thisPathwayDropoutRates=[],
-                                                        indicesOfLayersToConnectResidualsInOutputForPathway=[]
+                                                        indicesOfLayersToConnectResidualsInOutputForPathway=[],
+                                                        indicesOfLowerRankLayersForPathway=[],
+                                                        ranksOfLowerRankLayersForPathway = []
 							) :
 
 	rng = numpy.random.RandomState(55789)
@@ -380,7 +367,10 @@ class Cnn3d(object):
         
                 useBnInThisLayer = applyBnToInputOfPathway if layer_i == 0 and rollingAverageForBatchNormalizationOverThatManyBatches > 0 else rollingAverageForBatchNormalizationOverThatManyBatches > 0
                 activationFunctionToUseRelu0orPrelu1orMinus1ForLinear = -1 if layer_i == 0 and thisPathwayType <> self.CNN_PATHWAY_FC else activationFunctionToUseRelu0orPrelu1
-                layer = ConvLayer()
+                if layer_i in indicesOfLowerRankLayersForPathway :
+                    layer = cnnLayerTypes.LowRankConvLayer(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
+                else : # normal conv layer
+                    layer = cnnLayerTypes.ConvLayer()
 		layer.makeLayer(rng,
                         inputToLayerTrain=inputImageToNextLayer,
                         inputToLayerVal=inputImageToNextLayerInference,
@@ -388,7 +378,7 @@ class Cnn3d(object):
                         inputToLayerShapeTrain=inputImageToNextLayerShape,
                         inputToLayerShapeVal=inputImageToNextLayerShapeValidation,
                         inputToLayerShapeTest=inputImageToNextLayerShapeTesting,
-                        filter_shape=thisLayerFilterShape,
+                        filterShape=thisLayerFilterShape,
                         #for batchNormalization
                         useBnFlag = useBnInThisLayer,
                         rollingAverageForBatchNormalizationOverThatManyBatches=rollingAverageForBatchNormalizationOverThatManyBatches,
@@ -430,27 +420,26 @@ class Cnn3d(object):
 	return [inputImageToNextLayer, inputImageToNextLayerInference, inputImageToNextLayerTesting, inputImageToNextLayerShape, inputImageToNextLayerShapeValidation, inputImageToNextLayerShapeTesting]
 
 
-
+    def repeatRczTheOutputOfLayerBySubsampleFactor(self, layerOutputToRepeat):
+        # Repeat FM in the three dimensions, to upsample back to the normal resolution space.
+        expandedOutputR = layerOutputToRepeat.repeat(self.subsampleFactor[0], axis = 2)
+        expandedOutputRC = expandedOutputR.repeat(self.subsampleFactor[1], axis = 3)
+        expandedOutputRCZ = expandedOutputRC.repeat(self.subsampleFactor[2], axis = 4)
+        return expandedOutputRCZ
+    
     def repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(self,
 									   layerOutputToRepeat,
 									   dimensionsOfFmToMatch ) :
 	# dimensionsOfFmToMatch should be [batch_size, numberOfFms, r, c , z]. I care for RCZ.
-	#Now I need to repeat the output in the three dimensions, so that it has 9x9x9 dimensions.
-	expandedOutputR = layerOutputToRepeat.repeat(self.subsampleFactor[0],axis = 2)
-	expandedOutputRC = expandedOutputR.repeat(self.subsampleFactor[1],axis = 3)
-	expandedOutputRCZ = expandedOutputRC.repeat(self.subsampleFactor[2],axis = 4)
-	expandedOutput = expandedOutputRCZ
-	#If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12. I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
+        expandedOutput = self.repeatRczTheOutputOfLayerBySubsampleFactor(layerOutputToRepeat)
+	# If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
+        # I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
 	expandedOutput = expandedOutput[:,
 					:,
 					:dimensionsOfFmToMatch[2],
 					:dimensionsOfFmToMatch[3],
 					:dimensionsOfFmToMatch[4]]
 	return expandedOutput
-
-
-
-
 
 
     def makeMultiscaleConnectionsForLayerType(self,
@@ -505,7 +494,7 @@ class Cnn3d(object):
 													middlePartOfFmsTesting,
 													shapeOfOutputOfLastLayerOf1stPathwayTesting )
 
-		numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + thisLayer.numberOfFeatureMaps
+		numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + thisLayer.getNumberOfFeatureMaps()
 		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, middlePartOfFms], axis=1)
 		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, middlePartOfFmsInference], axis=1)
 		inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, middlePartOfFmsTesting], axis=1)
@@ -535,15 +524,11 @@ class Cnn3d(object):
     """
 
 
-    def getUpdatesAccordingToSgd(self,
-					cost,
-					paramsToOptDuringTraining
-					) :
+    def getUpdatesAccordingToSgd(self, cost, paramsToOptDuringTraining) :
         # create a list of gradients for all model parameters
         grads = T.grad(cost, paramsToOptDuringTraining)
         
         #========================= Momentum ===========================
-        
 	self.velocities_forMom = []
         updates = []
 
@@ -568,13 +553,8 @@ class Cnn3d(object):
 
 	return updates
 
-    def getUpdatesAccordingToRmsProp(self,
-				cost,
-				params,
-				epsilon=1e-6
-				) :
-
-	#epsilon=1e-4 #I got NaN in cost function when I ran it with epsilon=1e-6. So lets try if this was the problem...
+    def getUpdatesAccordingToRmsProp(self, cost, params) :
+	#epsilon=1e-4 in paper. I got NaN in cost function when I ran it with this value. Worked ok with epsilon=1e-6.
 
 	#Code taken and updated (it was V2 of paper, updated to V8) from https://gist.github.com/Newmu/acb738767acb4788bac3
         grads = T.grad(cost, params)
@@ -594,7 +574,7 @@ class Cnn3d(object):
 
             accu_new = self.rho_rmsProp * accu + (1 - self.rho_rmsProp) * T.sqr(grad)
 
-            stepToGradientDirection = multiplierForCurrentGradUpdateForNonNormalizedOrNormalizedMomentum*(self.learning_rate * grad /T.sqrt(accu_new + epsilon))
+            stepToGradientDirection = multiplierForCurrentGradUpdateForNonNormalizedOrNormalizedMomentum*(self.learning_rate * grad /T.sqrt(accu_new + self.epsilonForRmsProp))
 
             newVelocity = self.momentum*v - stepToGradientDirection
 
@@ -610,12 +590,9 @@ class Cnn3d(object):
         return updates
 
 
-    def getUpdatesAccordingToAdam(self,
-				cost,
-				params,
-				epsilon = 10**(-8) #According to paper.
-				) :
-	#Code is on par with version V8 of Kingma's paper.
+    def getUpdatesAccordingToAdam(self, cost, params) :
+        # Epsilon on paper was 10**(-8).
+	# Code is on par with version V8 of Kingma's paper.
         grads = T.grad(cost, params)
 
         updates = []
@@ -636,7 +613,7 @@ class Cnn3d(object):
             self.v_listForAllParamsAdam.append(v)
             m_t = (self.b1_adam * m) + ((1. - self.b1_adam) * grad)
             v_t = (self.b2_adam * v) + ((1. - self.b2_adam) * T.sqr(grad)) #Double check this with the paper.
-            grad_t = m_t / (T.sqrt(v_t) + epsilon)
+            grad_t = m_t / (T.sqrt(v_t) + self.epsilonForAdam)
             param_t = param - (lr_t * grad_t)
             updates.append((m, m_t))
             updates.append((v, v_t))
@@ -644,109 +621,158 @@ class Cnn3d(object):
         updates.append((i, i_t))
         return updates
 
+    def _getUpdatesOfTrainableParameters(self, myLogger, cost, paramsToOptDuringTraining) :
+        if self.sgd0orAdam1orRmsProp2 == 0 :
+            myLogger.print3("Optimizer used: [SGD]. Momentum used: Classic0 or Nesterov1 : " + str(self.classicMomentum0OrNesterov1))
+            updates = self.getUpdatesAccordingToSgd(cost, paramsToOptDuringTraining)
+        elif self.sgd0orAdam1orRmsProp2 == 1 :
+            myLogger.print3("Optimizer used: [ADAM]. No momentum implemented for Adam.")
+            updates = self.getUpdatesAccordingToAdam(cost, paramsToOptDuringTraining)
+        elif self.sgd0orAdam1orRmsProp2 == 2 :
+            myLogger.print3("Optimizer used: [RMSProp]. Momentum used: Classic0 or Nesterov1 : " + str(self.classicMomentum0OrNesterov1))
+            updates = self.getUpdatesAccordingToRmsProp(cost, paramsToOptDuringTraining)
+        return updates
 
+    def _initializeSharedVarsForXInputs(self):
+        # ======= Initialize sharedVariables ==========
+        #Create the needed shared variables. Number of dimensions should be correct (5 for x, 4 for y). But size is placeholder. Changes when shared.set_value during training.
+        self.sharedTrainingNiiData_x = theano.shared(np.zeros([1,1,1,1,1], dtype="float32"), borrow = self.borrowFlag)
+        self.sharedTrainingSubsampledData_x = theano.shared(np.zeros([1,1,1,1,1], dtype="float32"), borrow = self.borrowFlag)
+        self.sharedValidationNiiData_x = theano.shared(np.zeros([1,1,1,1,1], dtype="float32"), borrow = self.borrowFlag)
+        self.sharedValidationSubsampledData_x = theano.shared(np.zeros([1,1,1,1,1], dtype="float32"), borrow = self.borrowFlag)
+        self.sharedTestingNiiData_x = theano.shared(np.zeros([1,1,1,1,1], dtype="float32"), borrow = self.borrowFlag)
+        self.sharedTestingSubsampledData_x = theano.shared(np.zeros([1,1,1,1,1], dtype="float32"), borrow = self.borrowFlag)
+        
+    def _initializeSharedVarsForYInputs(self):
+        # When storing data on the GPU it has to be stored as floats (floatX). Later this variable is cast as "int", to be used correctly in computations.
+        self.sharedTrainingNiiLabels_y = theano.shared(np.zeros([1,1,1,1], dtype="float32") , borrow = self.borrowFlag)
+        self.sharedValidationNiiLabels_y = theano.shared(np.zeros([1,1,1,1], dtype="float32") , borrow = self.borrowFlag)
+    
+    def _getTrainableParameters(self):
+        paramsToOptDuringTraining = [] #Ws and Bs
+        for type_of_layer_i in xrange(0, len(self.typesOfCnnLayers) ) :
+            for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i]) ) :
+                if self.layersOfLayerTypesToTrain == "all" or (layer_i in self.layersOfLayerTypesToTrain[type_of_layer_i]) :
+                    paramsToOptDuringTraining = paramsToOptDuringTraining + self.typesOfCnnLayers[type_of_layer_i][layer_i].params
+        return paramsToOptDuringTraining
+
+    def _getL1RegCost(self) :
+        L1 = 0
+        for type_of_layer_i in xrange(0, len(self.typesOfCnnLayers) ) :
+            for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i]) ) :    
+                L1 += self.typesOfCnnLayers[type_of_layer_i][layer_i].getL1RegCost()
+        return L1
+    
+    def _getL2RegCost(self) :
+        L2_sqr = 0
+        for type_of_layer_i in xrange(0, len(self.typesOfCnnLayers) ) :
+            for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i]) ) :    
+                L2_sqr += self.typesOfCnnLayers[type_of_layer_i][layer_i].getL2RegCost()
+        return L2_sqr
+    
+    # This function should be called at least once prior to compiling train function for the first time. 
+    # If I need to "resume" training, this should not be called.
+    # However, if I need to use a pretrained model, and train it in a second stage, I should recall this, with the new stage's parameters, and then recompile trainFunction.
+    def initializeTrainingState(self, myLogger,
+                                        layersOfLayerTypesToTrain, 
+                                        costFunctionLetter,
+                                        learning_rate,
+                                        sgd0orAdam1orRmsProp2,
+                                        classicMomentum0OrNesterov1,
+                                        momentum,
+                                        momentumTypeNONNormalized0orNormalized1,
+                                        b1ParamForAdam,
+                                        b2ParamForAdam,
+                                        epsilonForAdam,
+                                        rhoParamForRmsProp,
+                                        epsilonForRmsProp,
+                                        L1_reg_constant,
+                                        L2_reg_constant
+                                        ) :
+        myLogger.print3("Setting the training-related attributes of the CNN.")
+        self.numberOfEpochsTrained = 0
+        
+        # Layers to train (rest are left untouched, eg for pretrained models.
+        self.layersOfLayerTypesToTrain = layersOfLayerTypesToTrain
+        
+        # Cost function
+        if costFunctionLetter <> "previous" :
+            self.costFunctionLetter = costFunctionLetter
+            
+        # Regularization
+        self.L1_reg_constant = L1_reg_constant
+        self.L2_reg_constant = L2_reg_constant
+
+        # Learning rate and momentum
+        self.initialLearningRate = learning_rate # This is important for the learning rate schedule to work.
+        self.change_learning_rate_of_a_cnn(learning_rate, myLogger)
+        self.classicMomentum0OrNesterov1 = classicMomentum0OrNesterov1
+        self.initialMomentum = momentum
+        self.momentumTypeNONNormalized0orNormalized1 = momentumTypeNONNormalized0orNormalized1
+        self.change_momentum_of_a_cnn(momentum, myLogger)
+
+        # Optimizer
+        self.sgd0orAdam1orRmsProp2 = sgd0orAdam1orRmsProp2
+        if sgd0orAdam1orRmsProp2 == 1 :
+            self.changeB1AndB2ParametersOfAdam(b1ParamForAdam, b2ParamForAdam, myLogger)
+            self.epsilonForAdam = epsilonForAdam
+        elif sgd0orAdam1orRmsProp2 == 2 :
+            self.changeRhoParameterOfRmsProp(rhoParamForRmsProp, myLogger)
+            self.epsilonForRmsProp = epsilonForRmsProp
+
+        self._trainingStateAttributesInitialized = True
+
+    def _getUpdatesForBnRollingAverage(self) :
+        #These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
+        #... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
+        updatesForBnRollingAverage = []
+        for layer_type_i in xrange( 0, len(self.typesOfCnnLayers) ) :
+            for layer_i in xrange( 0, len(self.typesOfCnnLayers[layer_type_i]) ) :
+                    theCertainLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
+                    updatesForBnRollingAverage.extend( theCertainLayer.getUpdatesForBnRollingAverage() ) #CAREFUL: WARN, PROBLEM, THEANO BUG! If a layer has only 1FM, the .newMu_B ends up being of type (true,) instead of vector!!! Error!!!
+        return updatesForBnRollingAverage
+        
     #NOTE: compileTrainFunction() changes the self.initialLearningRate. Which is used for the exponential schedule!
-    def compileTrainFunction(self, myLogger, layersOfLayerTypesToTrain, learning_rate,
-				sgd0orAdam1orRmsProp2,
-					classicMomentum0OrNesterov1,
-					momentum,
-					momentumTypeNONNormalized0orNormalized1,
-					b1ParamForAdam,
-					b2ParamForAdam,
-					epsilonForAdam,
-					rhoParamForRmsProp,
-					epsilonForRmsProp,
-				costFunctionLetter = "previous") :
-	myLogger.print3("...Building the function for training...")
-	
+    def compileTrainFunction(self, myLogger) :
+	myLogger.print3("...Building the training function...")
+
+        if not self._checkTrainingStateAttributesInitialized() :
+            myLogger.print3("ERROR: Prior to compiling the training function, training state attributes need to be initialized via a call of [Cnn3d.setTrainingStateAttributes(...)]. Exiting!"); exit(1)
+
+        self._initializeSharedVarsForXInputs()
+        self._initializeSharedVarsForYInputs()
+        
 	#symbolic variables needed:
 	index = T.lscalar()
-	x = self.symbolicXForUseToReCompileTrainFunction
-	xSubsampled = self.symbolicXSubsampledForUseToReCompileTrainFunction
-
+	x = self.layer0_input
+	xSubsampled = self.layer0_inputSubsampled
 	y = T.itensor4('y') # Input of the theano-compiled-function. Dimensions of y labels: [batchSize, r, c, z]
-
+        # When storing data on the GPU it has to be stored as floats (floatX). Thus the sharedVariable is FloatX/32. Here this variable is cast as "int", to be used correctly in computations.
         intCastSharedTrainingNiiLabels_y = T.cast( self.sharedTrainingNiiLabels_y, 'int32')
 	inputVectorWeightsOfClassesInCostFunction = T.fvector() #These two were added to counter class imbalance by changing the weights in the cost function
 	weightPerClass = T.fvector() # a vector with 1 element per class.
 
-	self.initialLearningRate = learning_rate
-	self.change_learning_rate_of_a_cnn(learning_rate, myLogger)
-
-        # =======create a list of all model PARAMETERS (weights and biases) to be fit by gradient descent=======
-	# ======= REGULARIZATION
-
-	paramsToOptDuringTraining = None #Ws and Bs
-	L1 = None
-	L2_sqr = None
-	for type_of_layer_i in xrange(0, len(self.typesOfCnnLayers) ) :
-		for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i]) ) :
-			if layersOfLayerTypesToTrain == "all" or (layer_i in layersOfLayerTypesToTrain[type_of_layer_i]) :
-				paramsToOptDuringTraining = self.typesOfCnnLayers[type_of_layer_i][layer_i].params if paramsToOptDuringTraining == None else paramsToOptDuringTraining + self.typesOfCnnLayers[type_of_layer_i][layer_i].params
-
-			L1 = abs(self.typesOfCnnLayers[type_of_layer_i][layer_i].W).sum() if L1 == None else L1 + abs(self.typesOfCnnLayers[type_of_layer_i][layer_i].W).sum()
-        		L2_sqr = (self.typesOfCnnLayers[type_of_layer_i][layer_i].W ** 2).sum() if L2_sqr == None else L2_sqr + (self.typesOfCnnLayers[type_of_layer_i][layer_i].W ** 2).sum()
+        # ======= Create List Of Trained Parameters to be fit by gradient descent=======
+	paramsToOptDuringTraining = self._getTrainableParameters()
 
         #==========================COST FUNCTION=======================
-        # the cost we minimize during training is the NLL of the model
-	if costFunctionLetter <> "previous" :
-		self.costFunctionLetter = costFunctionLetter
-
 	#The cost Function to use.
 	if self.costFunctionLetter == "L" :
-		costFunctionFromLastLayer = self.fcLayers[-1].negativeLogLikelihood(y, weightPerClass)
+		costFromLastLayer = self.finalLayer.negativeLogLikelihood(y, weightPerClass)
 	else :
-		myLogger.print3("ERROR: Problem in make_cnn_model(). The parameter self.costFunctionLetter did not have an acceptable value( L,D,J ). Exiting.")
-		exit(1)
-	
-        cost = (costFunctionFromLastLayer
-                + self.L1_reg_constant * L1
-                + self.L2_reg_constant * L2_sqr
-                )
+		myLogger.print3("ERROR: Problem in make_cnn_model(). The parameter self.costFunctionLetter did not have an acceptable value( L,D,J ). Exiting."); exit(1)
+        
+        cost = (costFromLastLayer
+                + self.L1_reg_constant * self._getL1RegCost()
+                + self.L2_reg_constant * self._getL2RegCost())
       
-
 	#============================OPTIMIZATION=============================
-	self.sgd0orAdam1orRmsProp2 = sgd0orAdam1orRmsProp2
-	self.classicMomentum0OrNesterov1 = classicMomentum0OrNesterov1
-	self.initialMomentum = momentum
-	self.momentumTypeNONNormalized0orNormalized1 = momentumTypeNONNormalized0orNormalized1
-	self.change_momentum_of_a_cnn(momentum, myLogger)
+        updates = self._getUpdatesOfTrainableParameters(myLogger, cost, paramsToOptDuringTraining)
 
-	updates = None
-	if sgd0orAdam1orRmsProp2 == 0 :
-		myLogger.print3("UPDATE: The optimizer that will be used is SGD. Momentum used: Classic0 or Nesterov1 = " + str(classicMomentum0OrNesterov1))
-		updates = self.getUpdatesAccordingToSgd(cost,
-							paramsToOptDuringTraining
-							)
-	elif sgd0orAdam1orRmsProp2 == 1 :
-		myLogger.print3("UPDATE: The optimizer that will be used is ADAM. No momentum implemented for Adam.")
-		self.changeB1AndB2ParametersOfAdam(b1ParamForAdam, b2ParamForAdam, myLogger)
-		self.epsilonForAdam = epsilonForAdam
-		updates = self.getUpdatesAccordingToAdam(cost,
-						paramsToOptDuringTraining,
-						epsilonForAdam
-						)
-	elif sgd0orAdam1orRmsProp2 == 2 :
-		myLogger.print3("UPDATE: The optimizer that will be used is RMSProp. Momentum used: Classic0 or Nesterov1 = " + str(classicMomentum0OrNesterov1))
-		self.changeRhoParameterOfRmsProp(rhoParamForRmsProp, myLogger)
-		self.epsilonForRmsProp = epsilonForRmsProp
-		updates = self.getUpdatesAccordingToRmsProp(cost,
-						paramsToOptDuringTraining,
-						epsilonForRmsProp
-						)
-	
-	#================BATCH NORMALIZATION UPDATES======================
-	#These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
-	#... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
-	for layer_type_i in xrange( 0, len(self.typesOfCnnLayers) ) :
-	    for layer_i in xrange( 0, len(self.typesOfCnnLayers[layer_type_i]) ) :
-                theCertainLayer = self.typesOfCnnLayers[layer_type_i][layer_i]
-		if theCertainLayer.appliedBnInLayer : # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
-		    updates.append((theCertainLayer.sharedNewMu_B, theCertainLayer.newMu_B)) #CAREFUL: WARN, PROBLEM, THEANO BUG! If a layer has only 1FM, the .newMu_B ends up being of type (true,) instead of vector!!! Error!!!
-		    updates.append((theCertainLayer.sharedNewVar_B, theCertainLayer.newVar_B))
-	
+	#================BATCH NORMALIZATION ROLLING AVERAGE UPDATES======================
+	updates = updates + self._getUpdatesForBnRollingAverage()
+    
         #========================COMPILATION OF FUNCTIONS =================
-        classificationLayer = self.typesOfCnnLayers[self.CNN_PATHWAY_FC][-1]
 
 	if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
 		givensSet = { x: self.sharedTrainingNiiData_x[index * self.batchSize: (index + 1) * self.batchSize],
@@ -761,26 +787,23 @@ class Cnn3d(object):
 	myLogger.print3("...Compiling the function for training... (This may take a few minutes...)")
         self.cnnTrainModel = theano.function(
 				[index, inputVectorWeightsOfClassesInCostFunction],
-				[cost, classificationLayer.meanErrorTraining(y)] + classificationLayer.getRpRnTpTnForTrain0OrVal1(y,0),
+				[cost] + self.finalLayer.getRpRnTpTnForTrain0OrVal1(y,0),
 				updates=updates,
 				givens = givensSet
 				)
 
-	myLogger.print3("The function for training was compiled.")
+	myLogger.print3("The training function was compiled.")
 
     def compileValidationFunction(self, myLogger) :
-	myLogger.print3("...Building the function for validation...")
+	myLogger.print3("...Building the validation function...")
 	
 	#symbolic variables needed:
 	index = T.lscalar()
-	x = self.symbolicXForUseToReCompileTrainFunction
-	xSubsampled = self.symbolicXSubsampledForUseToReCompileTrainFunction
-
+	x = self.layer0_inputValidation
+	xSubsampled = self.layer0_inputSubsampledValidation
         y = T.itensor4('y') # Input of the theano-compiled-function. Dimensions of y labels: [batchSize, r, c, z]
-        
+        # When storing data on the GPU it has to be stored as floats (floatX). Thus the sharedVariable is FloatX/32. Here this variable is cast as "int", to be used correctly in computations.
         intCastSharedValidationNiiLabels_y = T.cast( self.sharedValidationNiiLabels_y, 'int32')
-
-        classificationLayer = self.typesOfCnnLayers[self.CNN_PATHWAY_FC][-1]
 
 	if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
 		givensSet = { x: self.sharedValidationNiiData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
@@ -793,10 +816,10 @@ class Cnn3d(object):
 	myLogger.print3("...Compiling the function for validation... (This may take a few minutes...)")
         self.cnnValidateModel = theano.function(
 				[index],
-				[classificationLayer.meanErrorValidation(y)] + classificationLayer.getRpRnTpTnForTrain0OrVal1(y,1),
+				self.finalLayer.getRpRnTpTnForTrain0OrVal1(y,1),
 				givens = givensSet
 				)
-   	myLogger.print3("The function for validation was compiled.")
+   	myLogger.print3("The validation function was compiled.")
 
 
     def compileTestAndVisualisationFunction(self, myLogger) :
@@ -804,16 +827,15 @@ class Cnn3d(object):
 	
 	#symbolic variables needed:
 	index = T.lscalar()
-	x = self.symbolicXForUseToReCompileTrainFunction
-	xSubsampled = self.symbolicXSubsampledForUseToReCompileTrainFunction
+	x = self.layer0_inputTesting
+	xSubsampled = self.layer0_inputSubsampledTesting
 
 	listToReturnWithAllTheFmActivationsAndPredictionsAppended = []
         for type_of_layer_i in xrange(0,len(self.typesOfCnnLayers)) : #0=simple pathway, 1 = subsampled pathway, 2 = fc layers, 3 = zoomedIn1.
             for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i])) : #each layer that this pathway/fc has.
 		listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(self.typesOfCnnLayers[type_of_layer_i][layer_i].fmsActivations([0,9999]))
 
-        classificationLayer = self.typesOfCnnLayers[self.CNN_PATHWAY_FC][-1]
-        listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(classificationLayer.predictionProbabilities())
+        listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(self.finalLayer.predictionProbabilities())
         
 	if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
 		givensSet = { x: self.sharedTestingNiiData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] }
@@ -830,77 +852,86 @@ class Cnn3d(object):
 	myLogger.print3("The function for testing and visualisation of FMs was compiled.")
 
 
+    def _getInputTensorsXToCnn(self):
+        if not self.inputTensorsXToCnnInitialized :
+            # Symbolic variables, which stand for the input to the CNN. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
+            tensor5 = T.TensorType(dtype='float32', broadcastable=(False, False, False, False, False))
+            self.layer0_input = tensor5() # Actually, for these 3, a single tensor5() could be used, as long as I reshape it separately for each afterwards. The actual value is loaded by the compiled functions.
+            self.layer0_inputValidation = tensor5() # myTensor.reshape(inputImageShapeValidation)
+            self.layer0_inputTesting = tensor5()
+            self.layer0_inputSubsampled = tensor5() # Actually, for these 3, a single tensor5() could be used.
+            self.layer0_inputSubsampledValidation = tensor5() # myTensor.reshape(inputImageSubsampledShapeValidation)
+            self.layer0_inputSubsampledTesting = tensor5()
+            self.inputTensorsXToCnnInitialized = True
+            
+        return (self.layer0_input, self.layer0_inputValidation, self.layer0_inputTesting,
+                self.layer0_inputSubsampled, self.layer0_inputSubsampledValidation, self.layer0_inputSubsampledTesting)
+
+    def _getClassificationLayer(self):
+        return cnnLayerTypes.ConvLayerWithSoftmax()
+        
     def make_cnn_model(self,
                        myLogger,
                        cnnModelName,
-                       costFunctionLetter,
-
-                       imagePartDimensionsTraining ,
-                       patchDimensions,
-
+                       #=== Model Parameters ===
+                       numberOfOutputClasses,
                        numberOfImageChannelsPath1,
                        numberOfImageChannelsPath2,
-
+                       
+                       #=== Normal Pathway ===
                        nkerns,
                        kernelDimensions,
-                       batch_size,
-                       batch_size_validation,
-                       batch_size_testing,
-                       #===OPTIMIZATION====
-                       learning_rate,
-                       sgd0orAdam1orRmsProp2,
-                       classicMomentum0OrNesterov1,
-                       momentum,
-                       momentumTypeNONNormalized0orNormalized1,
-                       b1ParamForAdam,
-                       b2ParamForAdam,
-                       epsilonForAdam,
-                       rhoParamForRmsProp,
-                       epsilonForRmsProp,
-                       #===COST FUNCTION====
-                       L1_reg_constant,
-                       L2_reg_constant,
-                       softmaxTemperature,
-                       borrowFlag,
-                       #-----for the extendedVersion---
-                       subsampledImagePartDimensionsTraining,
+                       patchDimensions, # Should be automatically calculate it in here
+                       #=== Subsampled Pathway ===
                        nkernsSubsampled,
                        kernelDimensionsSubsampled,
                        subsampleFactor,
-
-                       #-----Fully Connected Layers---
-                       fcLayersFMs,
-                       kernelDimensionsFirstFcLayer,
-
-                       #----for the zoomed-in pathway----
+                       #=== zoomed-in pathway === # Deprecated.
                        zoomedInPatchDimensions,
                        nkernsZoomedIn1,
                        kernelDimensionsZoomedIn1,
-
+                       #=== FC Layers ===
+                       fcLayersFMs,
+                       kernelDimensionsFirstFcLayer,
+                       softmaxTemperature,
+                       
+                       #=== Other Architectural params ===
+                       activationFunctionToUseRelu0orPrelu1,
                        #---Residual Connections----
                        indicesOfLayersToConnectResidualsInOutput,
-                       
-                       #---MAX POOLING---
+                       #--Lower Rank Layer Per Pathway---
+                       indicesOfLowerRankLayersPerPathway,
+                       ranksOfLowerRankLayersForEachPathway,
+                       #---Pooling---
                        maxPoolingParamsStructure,
+                       #--- Skip Connections --- #Deprecated, not used/supported
+                       convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
+                       
+                       #===Size of Image Segments ===
+                       imagePartDimensionsTraining ,
+                       imagePartDimensionsValidation,
+                       imagePartDimensionsTesting,
+                       subsampledImagePartDimensionsTraining, # Should be automatically calculate it in here
+                       subsampledImagePartDimensionsValidation,
+                       subsampledImagePartDimensionsTesting,
 
-                       #for BatchNormalization
+                       #=== Batch Sizes ===
+                       batch_size,
+                       batch_size_validation,
+                       batch_size_testing,
+
+                       #=== Others ===
+                       #Dropout
+                       dropoutRatesForAllPathways, #list of sublists, one for each pathway. Each either empty or full with the dropout rates of all the layers in the path.
+                       #Initialization
+                       initializationTechniqueClassic0orDelvingInto1,
+                       #Batch Normalization
                        applyBnToInputOfPathways, # one Boolean flag per pathway type. Placeholder for the FC pathway.
                        rollingAverageForBatchNormalizationOverThatManyBatches,
 
-                       imagePartDimensionsValidation,
-                       subsampledImagePartDimensionsValidation,
-                       imagePartDimensionsTesting,
-                       subsampledImagePartDimensionsTesting,
-
-                       convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
-
-                       initializationTechniqueClassic0orDelvingInto1,
-                       activationFunctionToUseRelu0orPrelu1,
-                       dropoutRatesForAllPathways, #list of sublists, one for each pathway. Each either empty or full with the dropout rates of all the layers in the path.
-			
-                       numberOfOutputClasses = 2,
+                       #=== various ====
+                       borrowFlag,
                        dataTypeX = 'float32',
-                       number_of_images_in_shared=2 #not used currently. Only to initialize a shared variable. See note where it is used.
                        ):
         """
 	maxPoolingParamsStructure: The padding of the function further below adds zeros. Zeros are not good, especially if I use PreLus. So I made mine, that pads by mirroring.
@@ -910,83 +941,44 @@ class Cnn3d(object):
 
 	self.cnnModelName = cnnModelName
 
-	self.usingSubsampledPathway = len(nkernsSubsampled) > 0
-
-        self.borrowFlag = borrowFlag
+        # ============= Model Parameters Passed as arguments ================
+        self.numberOfOutputClasses = numberOfOutputClasses
+        self.numberOfImageChannelsPath1 = numberOfImageChannelsPath1
+        self.numberOfImageChannelsPath2 = numberOfImageChannelsPath2
+        # === Architecture ===
+        self.usingSubsampledPathway = len(nkernsSubsampled) > 0
+        self.subsampleFactor = subsampleFactor
+        self.patchDimensions = patchDimensions # receptive field
+        self.zoomedInPatchDimensions = zoomedInPatchDimensions
+        
+        #== Other Architectural Params ==
+        self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput
+        self.indicesOfLowerRankLayersPerPathway = indicesOfLowerRankLayersPerPathway
+        #pooling?
+        #== Size of Image Segments ==
         self.imagePartDimensionsTraining = imagePartDimensionsTraining
         self.imagePartDimensionsValidation = imagePartDimensionsValidation
         self.imagePartDimensionsTesting = imagePartDimensionsTesting
         self.subsampledImagePartDimensionsTraining = subsampledImagePartDimensionsTraining
         self.subsampledImagePartDimensionsValidation = subsampledImagePartDimensionsValidation
         self.subsampledImagePartDimensionsTesting = subsampledImagePartDimensionsTesting
-
+        # == Batch Sizes ==
         self.batchSize = batch_size
         self.batchSizeValidation = batch_size_validation
         self.batchSizeTesting = batch_size_testing
-
-        self.L1_reg_constant = L1_reg_constant
-        self.L2_reg_constant = L2_reg_constant
+        #== Others ==
+        self.dropoutRatesForAllPathways = dropoutRatesForAllPathways
+        self.initializationTechniqueClassic0orDelvingInto1 = initializationTechniqueClassic0orDelvingInto1
+        #== various ==
+        self.borrowFlag = borrowFlag
         self.dataTypeX = dataTypeX
-        self.nkerns = nkerns
-	self.nkernsSubsampled = nkernsSubsampled
-	self.nkernsZoomedIn1 = nkernsZoomedIn1
-	self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer
 
-	self.subsampleFactor = subsampleFactor
-        self.patchDimensions = patchDimensions
-	self.zoomedInPatchDimensions = zoomedInPatchDimensions
-        self.numberOfImageChannelsPath1 = numberOfImageChannelsPath1
-        self.numberOfImageChannelsPath2 = numberOfImageChannelsPath2
-        self.number_of_images_in_shared = number_of_images_in_shared
-        self.numberOfOutputClasses = numberOfOutputClasses
-        
-	self.initializationTechniqueClassic0orDelvingInto1 = initializationTechniqueClassic0orDelvingInto1
-	self.dropoutRatesForAllPathways = dropoutRatesForAllPathways
-
-	self.numberOfCentralVoxelsClassifiedPerDimension = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsTraining, patchDimensions)
-	self.numberOfCentralVoxelsClassifiedPerDimensionValidation = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsValidation, patchDimensions)
-	self.numberOfCentralVoxelsClassifiedPerDimensionTesting = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsTesting, patchDimensions)
-	#Batch normalization (rolling average)
-	self.rollingAverageForBatchNormalizationOverThatManyBatches = rollingAverageForBatchNormalizationOverThatManyBatches
-
-	self.softmaxTemperature = softmaxTemperature
-
-        self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput
-        #I allocate shared-memory for training,validation and testing data,labels etc.
-        #They are just zeros for now. Later, each epoch or whatever I sharedvar.set_value() and change them for training.
-        #Probably it works even if I do them smaller (in dimensions) for now, as they 
-        #...probably get expanded later if I sharedVar.set_value with a bigger shape.
-
-        #The first argument used to be 'number_of_images_in_shared' but now it is just by default 2, a placeholder. When I actually .set_value loading the data, shape changes!
-        trainingNiiData_x = np.zeros([number_of_images_in_shared, numberOfImageChannelsPath1, imagePartDimensionsTraining[0], imagePartDimensionsTraining[1], imagePartDimensionsTraining[2]], dtype='float32')
-        trainingSubsampledData_x = trainingNiiData_x
-        validationNiiData_x = trainingNiiData_x
-        validationSubsampledData_x = trainingNiiData_x
-        testingNiiData_x = trainingNiiData_x
-        testingSubsampledData_x = trainingNiiData_x
-        #trainingNiiLabels_y = np.zeros(patchesToTrainPerImagePart, dtype='float32')
-        trainingNiiLabels_y = np.zeros((self.batchSize,9,9,9), dtype='float32') #9 is a placeholder. imagePartDim - halfPatch is the real thing.
-        validationNiiLabels_y = trainingNiiLabels_y
-
-        #Load them into shared variables: THIS CAN GO TO ANOTHER FUNCTION SEPARATELY!!!
-        self.sharedTrainingNiiData_x = theano.shared(trainingNiiData_x, borrow = borrowFlag)
-        self.sharedTrainingSubsampledData_x = theano.shared(trainingSubsampledData_x, borrow = borrowFlag)
-        self.sharedValidationNiiData_x = theano.shared(validationNiiData_x, borrow = borrowFlag)
-        self.sharedValidationSubsampledData_x = theano.shared(validationSubsampledData_x, borrow = borrowFlag)
-        self.sharedTestingNiiData_x = theano.shared(testingNiiData_x, borrow = borrowFlag)
-        self.sharedTestingSubsampledData_x = theano.shared(testingSubsampledData_x, borrow = borrowFlag)
-        # When storing data on the GPU it has to be stored as floats
-        # therefore we will store the labels as ``floatX`` as well
-        # (``shared_y`` does exactly that). But during our computations
-        # we need them as ints (we use labels as index, and if they are
-        # floats it doesn't make sense) therefore instead of returning
-        # ``shared_y`` we will have to cast it to int. This little hack
-        # lets ous get around this issue
-        self.sharedTrainingNiiLabels_y = theano.shared(trainingNiiLabels_y , borrow = borrowFlag)
-        self.sharedValidationNiiLabels_y = theano.shared(validationNiiLabels_y , borrow = borrowFlag)
+        # ======== Calculated Attributes =========
+        self.numberOfCentralVoxelsClassifiedPerDimension = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsTraining, patchDimensions) # I should get rid of this.
+        self.numberOfCentralVoxelsClassifiedPerDimensionValidation = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsValidation, patchDimensions) # I should get rid of this.
+        self.numberOfCentralVoxelsClassifiedPerDimensionTesting = getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensionsTesting, patchDimensions) # I should get rid of this.
 
         #==============================
-
         rng = numpy.random.RandomState(23455)
 
         ######################
@@ -994,36 +986,19 @@ class Cnn3d(object):
         ######################
         myLogger.print3("...Building the CNN model...")
 
-
-	#symbolic variables needed:
-	tensor5 = T.TensorType(dtype='float32', broadcastable=(False, False, False, False, False))
-	x = tensor5()
-	self.symbolicXForUseToReCompileTrainFunction = x
-        tensor5Subsampled = T.TensorType(dtype='float32', broadcastable=(False, False, False, False, False))
-	xSubsampled = tensor5Subsampled()
-	self.symbolicXSubsampledForUseToReCompileTrainFunction = xSubsampled
-
-
-        # Reshape matrix of rasterized images of shape (batch_size, 28 * 28)
-        # to a 4D tensor, compatible with our ConvLayer
-        # (28, 28) is the size of MNIST images.
+	# Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
+        (layer0_input, layer0_inputValidation, layer0_inputTesting,
+         layer0_inputSubsampled, layer0_inputSubsampledValidation, layer0_inputSubsampledTesting) = self._getInputTensorsXToCnn()
+         
 	inputImageShape = (self.batchSize, numberOfImageChannelsPath1, imagePartDimensionsTraining[0], imagePartDimensionsTraining[1], imagePartDimensionsTraining[2])
 	inputImageShapeValidation = (self.batchSizeValidation, numberOfImageChannelsPath1, imagePartDimensionsValidation[0], imagePartDimensionsValidation[1], imagePartDimensionsValidation[2])
 	inputImageShapeTesting = (self.batchSizeTesting, numberOfImageChannelsPath1, imagePartDimensionsTesting[0], imagePartDimensionsTesting[1], imagePartDimensionsTesting[2])
-
-        layer0_input = x.reshape(inputImageShape)
-        layer0_inputValidation = x.reshape(inputImageShapeValidation)
-        layer0_inputTesting = x.reshape(inputImageShapeTesting)
 
 	if self.usingSubsampledPathway : #Using subsampled pathway.
 		inputImageSubsampledShape = (self.batchSize, numberOfImageChannelsPath2, subsampledImagePartDimensionsTraining[0], subsampledImagePartDimensionsTraining[1], subsampledImagePartDimensionsTraining[2])
 		inputImageSubsampledShapeValidation = (self.batchSizeValidation, numberOfImageChannelsPath2, subsampledImagePartDimensionsValidation[0], subsampledImagePartDimensionsValidation[1], subsampledImagePartDimensionsValidation[2])
 		inputImageSubsampledShapeTesting = (self.batchSizeTesting, numberOfImageChannelsPath2, subsampledImagePartDimensionsTesting[0], subsampledImagePartDimensionsTesting[1], subsampledImagePartDimensionsTesting[2])
 
-		layer0_inputSubsampled = xSubsampled.reshape(inputImageSubsampledShape)
-		layer0_inputSubsampledValidation = xSubsampled.reshape(inputImageSubsampledShapeValidation)
-		layer0_inputSubsampledTesting = xSubsampled.reshape(inputImageSubsampledShapeTesting)
-        
 
 
 	#=======================Make the FIRST (NORMAL) PATHWAY of the CNN=======================
@@ -1056,7 +1031,9 @@ class Cnn3d(object):
 														initializationTechniqueClassic0orDelvingInto1,
 														activationFunctionToUseRelu0orPrelu1,
 														dropoutRatesForAllPathways[thisPathwayType],
-                                                                                                                indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
+                                                                                                                indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
+                                                                                                                indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                                                                                                                ranksOfLowerRankLayersForEachPathway[thisPathwayType]
 														)
 	myLogger.print3("DEBUG: Shape of output of the FIRST PATH: (Train) "+str(dimensionsOfOutputFrom1stPathway)+\
                          ", (Val) "+str(dimensionsOfOutputFrom1stPathwayValidation)+", (Test) "+str(dimensionsOfOutputFrom1stPathwayTesting))
@@ -1111,7 +1088,10 @@ class Cnn3d(object):
 															initializationTechniqueClassic0orDelvingInto1,
 															activationFunctionToUseRelu0orPrelu1,
 															dropoutRatesForAllPathways[thisPathwayType],
-                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType])
+                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
+                                                                                                                        indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                                                                                                                        ranksOfLowerRankLayersForEachPathway[thisPathwayType]
+                                                                                                                        )
 		myLogger.print3("DEBUG: Shape of output of the SECOND PATH: (Train) "+str(dimensionsOfOutputFrom2ndPathway)+\
                          ", (Val) "+str(dimensionsOfOutputFrom2ndPathwayValidation)+", (Test) "+str(dimensionsOfOutputFrom2ndPathwayTesting))
 		
@@ -1184,7 +1164,10 @@ class Cnn3d(object):
 															initializationTechniqueClassic0orDelvingInto1,
 															activationFunctionToUseRelu0orPrelu1,
 															dropoutRatesForAllPathways[thisPathwayType],
-                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType])
+                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
+                                                                                                                        indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                                                                                                                        ranksOfLowerRankLayersForEachPathway[thisPathwayType]
+                                                                                                                        )
 		#====================================CONCATENATE the output of the ZoomedIn1 pathway=============================
 		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, outputZoomedPathTrain], axis=1)
 		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, outputZoomedPathVal], axis=1)
@@ -1199,7 +1182,7 @@ class Cnn3d(object):
         # Originally it was 1x1x1 only. The pathways themselves where taking care of the receptive field.
         # However I can now define it larger (eg 3x3x3), in case it helps combining the multiresolution features better/smoother.
         # The convolution is seamless, ie same shape output/input, by mirror padding the input.
-        firstFcLayerAfterConcatenationKernelShape = self.kernelDimensionsFirstFcLayer
+        firstFcLayerAfterConcatenationKernelShape = kernelDimensionsFirstFcLayer
         myLogger.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape) )
         inputOfFcPathwayImagePartDimsTrain = [self.batchSize, numberOfFmsOfInputToFirstFcLayer] + dimensionsOfOutputFrom1stPathway[2:5]
         inputOfFcPathwayImagePartDimsVal = [self.batchSizeValidation, numberOfFmsOfInputToFirstFcLayer] + dimensionsOfOutputFrom1stPathwayValidation[2:5]
@@ -1243,7 +1226,10 @@ class Cnn3d(object):
 															initializationTechniqueClassic0orDelvingInto1,
 															activationFunctionToUseRelu0orPrelu1,
 															dropoutRatesForAllPathways[thisPathwayType],
-                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType])
+                                                                                                                        indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
+                                                                                                                        indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                                                                                                                        ranksOfLowerRankLayersForEachPathway[thisPathwayType]
+                                                                                                                        )
 
 		filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, fcLayersFMs[-1], 1, 1, 1]
 	else : #there is no extra FC layer, just the final FC-softmax.
@@ -1255,14 +1241,13 @@ class Cnn3d(object):
 		shapeOfInputImageForFinalClassificationLayerTesting = inputOfFcPathwayImagePartDimsTest
 		filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, numberOfFmsOfInputToFirstFcLayer] + firstFcLayerAfterConcatenationKernelShape
 
-
         #======================Make the FINAL FC CLASSIFICATION LAYER ===================================
 	myLogger.print3("DEBUG: Filter Shape of the final-FC-classification Layer: " + str(filterShapeForFinalClassificationLayer))
         myLogger.print3("DEBUG: Shape of input to the Classification layer: (Train) "+str(shapeOfInputImageForFinalClassificationLayer)+\
                          ", (Val) "+str(shapeOfInputImageForFinalClassificationLayerValidation)+", (Test) "+str(shapeOfInputImageForFinalClassificationLayerTesting))
 	#The last classification FC layer + softmax.
 	dropoutRateForClassificationLayer = 0 if dropoutRatesForAllPathways[self.CNN_PATHWAY_FC] == [] else dropoutRatesForAllPathways[self.CNN_PATHWAY_FC][len(fcLayersFMs)]
-        classificationLayer = ConvLayerWithSoftmax()
+        classificationLayer = self._getClassificationLayer()
         classificationLayer.makeLayer(
             rng,
             inputToLayerTrain = inputImageForFinalClassificationLayer,
@@ -1271,35 +1256,19 @@ class Cnn3d(object):
             inputToLayerShapeTrain = shapeOfInputImageForFinalClassificationLayer,
             inputToLayerShapeVal = shapeOfInputImageForFinalClassificationLayerValidation,
             inputToLayerShapeTest = shapeOfInputImageForFinalClassificationLayerTesting,
-            filter_shape = filterShapeForFinalClassificationLayer,
+            filterShape = filterShapeForFinalClassificationLayer,
             useBnFlag = rollingAverageForBatchNormalizationOverThatManyBatches > 0,
             rollingAverageForBatchNormalizationOverThatManyBatches = rollingAverageForBatchNormalizationOverThatManyBatches,
             maxPoolingParameters = maxPoolingParamsStructure[self.CNN_PATHWAY_FC][len(fcLayersFMs)],
             initializationTechniqueClassic0orDelvingInto1 = initializationTechniqueClassic0orDelvingInto1,
             activationFunctionToUseRelu0orPrelu1orMinus1ForLinear = activationFunctionToUseRelu0orPrelu1,
             dropoutRate = dropoutRateForClassificationLayer,
-            softmaxTemperature = self.softmaxTemperature
+            softmaxTemperature = softmaxTemperature
         )
         self.fcLayers.append(classificationLayer)
         self.finalLayer = classificationLayer
 
-
-	#======== Make and compile the training, validation, testing and visualisation functions. ==========
-	self.compileTrainFunction(myLogger, "all", learning_rate, 
-				sgd0orAdam1orRmsProp2,
-					classicMomentum0OrNesterov1,
-					momentum,
-					momentumTypeNONNormalized0orNormalized1, 
-					b1ParamForAdam,
-					b2ParamForAdam,
-					epsilonForAdam,
-					rhoParamForRmsProp,
-					epsilonForRmsProp,
-				costFunctionLetter)
-	self.compileValidationFunction(myLogger)
-	self.compileTestAndVisualisationFunction(myLogger)
-
-        myLogger.print3("Finished. Created the CNN's model")
+        myLogger.print3("Finished building the CNN's model.")
 
 
 

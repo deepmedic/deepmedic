@@ -878,9 +878,9 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
 
     myLogger.print3(":=:=:=:=:=:=:=:=: Finished extracting Segments from the images for next " + trainingOrValidationString + ". :=:=:=:=:=:=:=:=:")
 
-    return [imagePartsChannelsToLoadOnGpuForSubepoch, lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch, subsampledImagePartsChannelsToLoadOnGpuForSubepoch]
-
-
+    return [    np.asarray(imagePartsChannelsToLoadOnGpuForSubepoch, dtype="float32"),
+        np.asarray(lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch, dtype="float32"),
+        np.asarray(subsampledImagePartsChannelsToLoadOnGpuForSubepoch, dtype="float32")]
 
 
 #A main routine in do_training, that runs for every batch of validation and training.
@@ -898,11 +898,9 @@ def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
 	"""
 	trainedOrValidatedString = "Trained" if train0orValidation1 == 0 else "Validated"
 
-	meanErrorsOfBatches = []
 	costsOfBatches = []
 	#each row in the array below will hold the number of Real Positives, Real Negatives, True Predicted Positives and True Predicted Negatives in the subepoch, in this order.
-	shapeOfArrWithNumbersOfPerClassRpRnTpTnInSubep = [ cnn3dInstance.numberOfOutputClasses, 4 ]
-	arrayWithNumbersOfPerClassRpRnTpTnInSubepoch = np.zeros(shapeOfArrWithNumbersOfPerClassRpRnTpTnInSubep, dtype="int32")
+	arrayWithNumbersOfPerClassRpRnTpTnInSubepoch = np.zeros([ cnn3dInstance.numberOfOutputClasses, 4 ], dtype="int32")
 
         for batch_i in xrange(number_of_batches):
 		printProgressStep = max(1, number_of_batches/5)
@@ -912,34 +910,27 @@ def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
 			listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining = cnn3dInstance.cnnTrainModel(batch_i, vectorWithWeightsOfTheClassesForCostFunctionOfTraining)
 			cnn3dInstance.updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference() #I should put this inside the 3dCNN.
 
-			[costOfThisBatch, meanErrorOfBatch] = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[:2]
-			listWithNumberOfRpRnPpPnForEachClass = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[2:]
+			costOfThisBatch = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[0]
+			listWithNumberOfRpRnPpPnForEachClass = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[1:]
 
 		else : #validation
 			listWithMeanErrorAndRpRnTpTnForEachClassFromValidation = cnn3dInstance.cnnValidateModel(batch_i)
 			costOfThisBatch = 999 #placeholder in case of validation.
-			meanErrorOfBatch = listWithMeanErrorAndRpRnTpTnForEachClassFromValidation[0]
-			listWithNumberOfRpRnPpPnForEachClass = listWithMeanErrorAndRpRnTpTnForEachClassFromValidation[1:]
+			listWithNumberOfRpRnPpPnForEachClass = listWithMeanErrorAndRpRnTpTnForEachClassFromValidation[:]
 
 		#The returned listWithNumberOfRpRnPpPnForEachClass holds Real Positives, Real Negatives, True Predicted Positives and True Predicted Negatives for all classes in this order, flattened. First RpRnTpTn are for WHOLE "class".
-		arrayWithNumberOfRpRnPpPnForEachClassForBatch = np.asarray(listWithNumberOfRpRnPpPnForEachClass, dtype="int32").reshape(shapeOfArrWithNumbersOfPerClassRpRnTpTnInSubep, order='C')
+		arrayWithNumberOfRpRnPpPnForEachClassForBatch = np.asarray(listWithNumberOfRpRnPpPnForEachClass, dtype="int32").reshape(arrayWithNumbersOfPerClassRpRnTpTnInSubepoch.shape, order='C')
 
 		# To later calculate the mean error and cost over the subepoch
-		meanErrorsOfBatches.append(meanErrorOfBatch)
 		costsOfBatches.append(costOfThisBatch) #only really used in training.
 		arrayWithNumbersOfPerClassRpRnTpTnInSubepoch += arrayWithNumberOfRpRnPpPnForEachClassForBatch
 
 
 	#======== Calculate and Report accuracy over subepoch
-	meanAccuracyOfSubepoch = 1.0 - sum(meanErrorsOfBatches) / float(number_of_batches)
 	# In case of validation, meanCostOfSubepoch is just a placeholder. Cause this does not get calculated and reported in this case.
 	meanCostOfSubepoch = accuracyMonitorForEpoch.NA_PATTERN if (train0orValidation1 == 1) else sum(costsOfBatches) / float(number_of_batches)
-
 	# This function does NOT flip the class-0 background to foreground!
-	accuracyMonitorForEpoch.updateMonitorAccuraciesWithNewSubepochEntries(	meanAccuracyOfSubepoch,
-										meanCostOfSubepoch,
-										arrayWithNumbersOfPerClassRpRnTpTnInSubepoch)
-
+	accuracyMonitorForEpoch.updateMonitorAccuraciesWithNewSubepochEntries(meanCostOfSubepoch, arrayWithNumbersOfPerClassRpRnTpTnInSubepoch)
 	accuracyMonitorForEpoch.reportAccuracyForLastSubepoch()
 	#Done
 
@@ -1187,24 +1178,21 @@ def do_training(myLogger,
 		    start_loadingToGpu_time = time.clock()
 
 		    numberOfBatchesValidation = len(imagePartsChannelsToLoadOnGpuForSubepochValidation) / cnn3dInstance.batchSizeValidation #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
-		    arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation = np.asarray(imagePartsChannelsToLoadOnGpuForSubepochValidation, dtype='float32')
-		    arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation = np.asarray(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation, dtype='float32')
 
-		    myLogger.print3("DEBUG: For Validation, loading to shared variable that many Segments: " + str(len(arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation))) 
-		    cnn3dInstance.sharedValidationNiiData_x.set_value(arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation, borrow=borrowFlag)
-		    cnn3dInstance.sharedValidationNiiLabels_y.set_value(arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation, borrow=borrowFlag)
+		    myLogger.print3("DEBUG: For Validation, loading to shared variable that many Segments: " + str(len(imagePartsChannelsToLoadOnGpuForSubepochValidation))) 
+		    cnn3dInstance.sharedValidationNiiData_x.set_value(imagePartsChannelsToLoadOnGpuForSubepochValidation, borrow=borrowFlag)
+		    cnn3dInstance.sharedValidationNiiLabels_y.set_value(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation, borrow=borrowFlag)
 
 		    if usingSubsampledWaypath :
-			arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation = np.asarray(subsampledImagePartsChannelsToLoadOnGpuForSubepochValidation, dtype='float32')
-		        cnn3dInstance.sharedValidationSubsampledData_x.set_value(arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation, borrow=borrowFlag)
+		        cnn3dInstance.sharedValidationSubsampledData_x.set_value(subsampledImagePartsChannelsToLoadOnGpuForSubepochValidation, borrow=borrowFlag)
 		    
 		    end_loadingToGpu_time = time.clock()
 		    myLogger.print3("TIMING: Loading sharedVariables for Validation in epoch|subepoch="+str(epoch)+"|"+str(subepoch)+" took time: "+str(end_loadingToGpu_time-start_loadingToGpu_time)+"(s)")
 		    #TRY TO CLEAR THE VARIABLES before the parallel job starts loading stuff again? Or will it cause problems because the shared variables are borrow=True?
-		    arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation = ""
-		    arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation = ""
+		    imagePartsChannelsToLoadOnGpuForSubepochValidation = ""
+		    lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochValidation = ""
 		    if usingSubsampledWaypath :
-			arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochValidation = ""
+			subsampledImagePartsChannelsToLoadOnGpuForSubepochValidation = ""
 
 
 		    #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
@@ -1292,6 +1280,7 @@ def do_training(myLogger,
 		multiplierToFadePerEpoch = (numberOfEpochsToWeightTheClassesInTheCostFunction - cnn3dInstance.numberOfEpochsTrained)*1.0 / numberOfEpochsToWeightTheClassesInTheCostFunction
 		nominatorForEachClass = actualNumOfPatchesPerClassInTheSubepoch_notParts + (numOfPatchesInTheSubepoch_notParts - actualNumOfPatchesPerClassInTheSubepoch_notParts) * multiplierToFadePerEpoch
 		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = nominatorForEachClass / ((actualNumOfPatchesPerClassInTheSubepoch_notParts)*cnn3dInstance.numberOfOutputClasses+TINY_FLOAT)
+		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.asarray(vectorWithWeightsOfTheClassesForCostFunctionOfTraining, dtype="float32")
             else :
 		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.ones(cnn3dInstance.numberOfOutputClasses, dtype='float32')
 
@@ -1301,22 +1290,19 @@ def do_training(myLogger,
             start_loadingToGpu_time = time.clock()
 
             numberOfBatchesTraining = len(imagePartsChannelsToLoadOnGpuForSubepochTraining) / cnn3dInstance.batchSize #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
-            arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining = np.asarray(imagePartsChannelsToLoadOnGpuForSubepochTraining, dtype='float32')
-            arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining = np.asarray(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining, dtype='float32')
 
-            cnn3dInstance.sharedTrainingNiiData_x.set_value(arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining, borrow=borrowFlag)
-            cnn3dInstance.sharedTrainingNiiLabels_y.set_value(arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining, borrow=borrowFlag)
+            cnn3dInstance.sharedTrainingNiiData_x.set_value(imagePartsChannelsToLoadOnGpuForSubepochTraining, borrow=borrowFlag)
+            cnn3dInstance.sharedTrainingNiiLabels_y.set_value(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining, borrow=borrowFlag)
             if usingSubsampledWaypath :
-		arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining = np.asarray(subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining, dtype='float32')
-                cnn3dInstance.sharedTrainingSubsampledData_x.set_value(arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining, borrow=borrowFlag)
+                cnn3dInstance.sharedTrainingSubsampledData_x.set_value(subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining, borrow=borrowFlag)
 
             end_loadingToGpu_time = time.clock()
             myLogger.print3("TIMING: Loading sharedVariables for Training in epoch|subepoch="+str(epoch)+"|"+str(subepoch)+" took time: "+str(end_loadingToGpu_time-start_loadingToGpu_time)+"(s)")
             #TRY TO CLEAR THE VARIABLES before the parallel job starts loading stuff again? Or will it cause problems because the shared variables are borrow=True?
-            arrayNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining = ""
-            arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining = ""
+            imagePartsChannelsToLoadOnGpuForSubepochTraining = ""
+            lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining = ""
             if usingSubsampledWaypath :
-		arraySubsampledNormalizedImagePartsChannelsToLoadOnGpuForSubepochTraining = ""
+		subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining = ""
 
             #------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
             if performValidationOnSamplesDuringTrainingProcessBool :
@@ -1394,7 +1380,7 @@ def do_training(myLogger,
 
 	#================== Everything for epoch has finished. =======================
 	#Training finished. Update the number of epochs that the cnn was trained.
-        cnn3dInstance.numberOfEpochsTrained += 1
+        cnn3dInstance.increaseNumberOfEpochsTrained()
 
         myLogger.print3("SAVING: Epoch #"+str(epoch)+" finished. Saving CNN model.")
         dump_cnn_to_gzip_file_dotSave(cnn3dInstance, fileToSaveTrainedCnnModelTo+"."+datetimeNowAsStr(), myLogger)
@@ -1506,9 +1492,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 
     #stride is how much I move in each dimension to acquire the next imagePart. 
     #I move exactly the number I segment in the centre of each image part (originally this was 9^3 segmented per imagePart).
-    numberOfCentralVoxelsClassified = [imagePartDimensions[0]-patchDimensions[0]+1,
-                                              imagePartDimensions[1]-patchDimensions[1]+1,
-                                              imagePartDimensions[2]-patchDimensions[2]+1] #this is so that I can do smalles strides for the RMF extension.
+    numberOfCentralVoxelsClassified = cnn3dInstance.finalLayer.outputShapeTest[2:]
     strideOfImagePartsPerDimensionInVoxels = numberOfCentralVoxelsClassified
 
     rPatchHalfWidth = (patchDimensions[0]-1)/2
@@ -1528,7 +1512,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 				indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
 				if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
 					#If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
-					numberOfFeatureMapsInThisLayer = cnn3dInstance.typesOfCnnLayers[pathwayType_i][layer_i].numberOfFeatureMaps
+					numberOfFeatureMapsInThisLayer = cnn3dInstance.typesOfCnnLayers[pathwayType_i][layer_i].getNumberOfFeatureMaps()
 					indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] = min(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1], numberOfFeatureMapsInThisLayer)
 					totalNumberOfFMsToProcess += indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] - indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0]
 				

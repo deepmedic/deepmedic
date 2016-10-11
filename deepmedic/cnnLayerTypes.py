@@ -15,8 +15,13 @@ from theano.tensor.nnet import conv
 import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
 import random
 
+from sys import maxint as MAX_INT
+
 from deepmedic.maxPoolingModule import myMaxPooling3d
 
+###############################################################
+# Functions used by layers but do not change Layer Attributes #
+###############################################################
 
 def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputInference, inputTesting) :
 	if dropoutRate > 0.001 : #Below 0.001 I take it as if there is no dropout at all. (To avoid float problems with == 0.0. Although my tries show it actually works fine.)
@@ -83,7 +88,7 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
 		varBnsArrayForRollingAverage,
 		sharedNewMu_B,
 		sharedNewVar_B,
-		mu_B, # this is the current value of muB calculated in this training iteration. It will be saved in the "sharedNewMu_B" (update), in order to be used for updating the rolling average. Something is really wrong.
+		mu_B, # this is the current value of muB calculated in this training iteration. It will be saved in the "sharedNewMu_B" (update), in order to be used for updating the rolling average. Something could be simplified here.
 		var_B
 		)
 
@@ -124,16 +129,16 @@ def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
 
 	return ( aPrelu, outputTrain, outputVal, outputTest )
 
-def createAndInitializeWeightsTensor(filter_shape, initializationTechniqueClassic0orDelvingInto1, rng) :
-	# filter_shape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]
+def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic0orDelvingInto1, rng) :
+	# filterShape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]
 	if initializationTechniqueClassic0orDelvingInto1 == 0 :
-		stdForInitialization = 0.01 #this is what I was using for my whole first year.
+		stdForInitialization = 0.01
 	elif initializationTechniqueClassic0orDelvingInto1 == 1 :
-		stdForInitialization = np.sqrt( 2.0 / (filter_shape[1] * filter_shape[2] * filter_shape[3] * filter_shape[4]) ) #Delving Into rectifiers suggestion.
+		stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
 
 	W = theano.shared(
 		numpy.asarray(
-			rng.normal(loc=0.0, scale=stdForInitialization, size=(filter_shape[0],filter_shape[1],filter_shape[2],filter_shape[3],filter_shape[4])),
+			rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
 			dtype='float32'#theano.config.floatX
 		),
 		borrow=True
@@ -141,13 +146,13 @@ def createAndInitializeWeightsTensor(filter_shape, initializationTechniqueClassi
 	# W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
         return W
        
-def convolveWithGivenWeightMatrix(W, filter_shape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
-	# input weight matrix W has shape: [ Number of filters (outputFMs), number of input channels, rKernelDim, cKernelDim, zKernelDim ] == filter_shape
-	# filter_shape is the shape of W.
+def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
+	# input weight matrix W has shape: [ Number of filters (outputFMs), number of input channels, rKernelDim, cKernelDim, zKernelDim ] == filterShape
+	# filterShape is the shape of W.
 	
 	# Conv3d2d requires in in shape: [Number_of_output_filters, zKernelDim, Numb_of_input_Channels, rKernelDim, cKernelDim]
 	wReshapedForConv = W.dimshuffle(0,4,1,2,3)
-	wReshapedForConvShape = (filter_shape[0], filter_shape[4], filter_shape[1], filter_shape[2], filter_shape[3])
+	wReshapedForConvShape = (filterShape[0], filterShape[4], filterShape[1], filterShape[2], filterShape[3])
 	
         #Reshape image for what conv3d2d needs:
         inputToConvReshapedTrain = inputToConvTrain.dimshuffle(0, 4, 1, 2, 3)
@@ -181,20 +186,20 @@ def convolveWithGivenWeightMatrix(W, filter_shape, inputToConvTrain, inputToConv
 	outputTest = outputOfConvTest.dimshuffle(0, 2, 3, 4, 1)
 
 	outputShapeTrain = [	inputToConvShapeTrain[0],
-				filter_shape[0],
-				inputToConvShapeTrain[2]-filter_shape[2]+1,
-				inputToConvShapeTrain[3]-filter_shape[3]+1,
-				inputToConvShapeTrain[4]-filter_shape[4]+1]
+				filterShape[0],
+				inputToConvShapeTrain[2]-filterShape[2]+1,
+				inputToConvShapeTrain[3]-filterShape[3]+1,
+				inputToConvShapeTrain[4]-filterShape[4]+1]
 	outputShapeVal = [	inputToConvShapeVal[0],
-				filter_shape[0],
-				inputToConvShapeVal[2]-filter_shape[2]+1,
-				inputToConvShapeVal[3]-filter_shape[3]+1,
-				inputToConvShapeVal[4]-filter_shape[4]+1]
+				filterShape[0],
+				inputToConvShapeVal[2]-filterShape[2]+1,
+				inputToConvShapeVal[3]-filterShape[3]+1,
+				inputToConvShapeVal[4]-filterShape[4]+1]
 	outputShapeTest = [	inputToConvShapeTest[0],
-				filter_shape[0],
-				inputToConvShapeTest[2]-filter_shape[2]+1,
-				inputToConvShapeTest[3]-filter_shape[3]+1,
-				inputToConvShapeTest[4]-filter_shape[4]+1]
+				filterShape[0],
+				inputToConvShapeTest[2]-filterShape[2]+1,
+				inputToConvShapeTest[3]-filterShape[3]+1,
+				inputToConvShapeTest[4]-filterShape[4]+1]
 
 	return (outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest)
 
@@ -222,52 +227,58 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
 	inputToSoftmax2d = inputToSoftmaxFlattened.reshape((firstDimOfInputToSoftmax2d, numberOfOutputClasses)) # Reshape works in "Row-major", ie 'C' style too.
 	# Predicted probability per class.
 	p_y_given_x_2d = T.nnet.softmax(inputToSoftmax2d/softmaxTemperature)
-	# Segmentation (EM) for each voxel
-	y_pred_2d = T.argmax(p_y_given_x_2d, axis=1)
-	
 	p_y_given_x_classMinor = p_y_given_x_2d.reshape((inputToSoftmaxShape[0], inputToSoftmaxShape[2], inputToSoftmaxShape[3], inputToSoftmaxShape[4], inputToSoftmaxShape[1])) #Result: batchSize, R,C,Z, Classes.
-
 	p_y_given_x = p_y_given_x_classMinor.dimshuffle(0,4,1,2,3) #Result: batchSize, Class, R, C, Z
-	y_pred = y_pred_2d.reshape((inputToSoftmaxShape[0], inputToSoftmaxShape[2], inputToSoftmaxShape[3], inputToSoftmaxShape[4])) #Result: batchSize, R, C, Z
-	
-	#return also: p_y_given_x_2d_train = p_y_given_x_2d_train # For convenience in negativeLogLikelihood. Not sure how to implement more efficiently. It would get rid of this if I would.
+
+	# Classification (EM) for each voxel
+	y_pred = T.argmax(p_y_given_x, axis=1) #Result: batchSize, R, C, Z
+
 	return ( p_y_given_x, y_pred )
 
-class ConvLayer(object):
+#################################################################
+# 			            Layer Types		                		#
+#################################################################
+# Inheritance:
+# Block -> ConvLayer -> LowRankConvLayer
+#		L-----> ConvLayerWithSoftmax
 
+class Block(object):
+    
     def __init__(self) :
-    # Input to the layer
+	# === Input to the layer ===
 	self.inputTrain = None
 	self.inputVal = None
 	self.inputTest = None
 	self.inputShapeTrain = None
 	self.inputShapeVal = None
 	self.inputShapeTest = None
-    	
-	#========= All Parameters of the Layer Instance ===========
-	self.appliedBnInLayer = None
-	self.activationFunctionType = "" #linear, relu or prelu
+
+	# === Basic architecture parameters === 
+	self._numberOfFeatureMaps = None
+	self._maxPoolingParameters = None
+	
+	#=== All Trainable Parameters of the Block ===
+	self._appliedBnInLayer = None # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
 	
 	# All trainable parameters
 	self.params = [] # W, (gbn), b, (aPrelu)
-	self.W = None
-	self.gBn = None # ONLY WHEN BN is applied
-	self.b = None # shape: a vector with one value per FM of the input
-	self.aPrelu = None # ONLY WHEN PreLu
+	self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
+	self._gBn = None # ONLY WHEN BN is applied
+	self._b = None # shape: a vector with one value per FM of the input
+	self._aPrelu = None # ONLY WHEN PreLu
 	
 	# ONLY WHEN BN! All of these are for the rolling average! If I fix this, only 2 will remain!
-	self.muBnsArrayForRollingAverage = None
-	self.varBnsArrayForRollingAverage = None
-	self.sharedNewMu_B = None
-	self.sharedNewVar_B = None
-	self.newMu_B = mu_B = None
-	self.newVar_B = var_B = None
+	self._muBnsArrayForRollingAverage = None # Array
+	self._varBnsArrayForRollingAverage = None # Arrays
+	self._rollingAverageForBatchNormalizationOverThatManyBatches = None
+	self._indexWhereRollingAverageIs = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
+	self._sharedNewMu_B = None # last value shared, to update the rolling average array.
+	self._sharedNewVar_B = None
+	self._newMu_B = None # last value tensor, to update the corresponding shared.
+	self._newVar_B = None
 	
-	self.maxPoolingParameters = None
-		
-	self.numberOfFeatureMaps = None
 	
-	# Output of the layer
+	# === Output of the block ===
 	self.outputTrain = None
 	self.outputVal = None
 	self.outputTest = None
@@ -275,39 +286,8 @@ class ConvLayer(object):
 	self.outputShapeVal = None
 	self.outputShapeTest = None
 	
-    def makeLayer(self,
-		rng,
-		inputToLayerTrain,
-		inputToLayerVal,
-		inputToLayerTest,
-		inputToLayerShapeTrain,
-		inputToLayerShapeVal,
-		inputToLayerShapeTest,
-		filter_shape,
-		useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
-		rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-		maxPoolingParameters,
-		initializationTechniqueClassic0orDelvingInto1,
-		activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=0,
-		dropoutRate=0.0):
-        """
-        type rng: numpy.random.RandomState
-        param rng: a random number generator used to initialize weights
-
-        type inputToLayer:  tensor5 = theano.tensor.TensorType(dtype='float32', broadcastable=(False, False, False, False, False))
-        param inputToLayer: symbolic image tensor, of shape inputToLayerShape
-
-        type filter_shape: tuple or list of length 5
-        param filter_shape: (number of filters, num input feature maps,
-                              filter height, filter width, filter depth)
-
-        type inputToLayerShape: tuple or list of length 5
-        param inputToLayerShape: (batch size, num input feature maps,
-                             image height, image width, filter depth)
-        """
-	# ---------------- Order of what is applied -----------------
-	#  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ] # ala He et al "Identity Mappings in Deep Residual Networks" 2016
-	# -----------------------------------------------------------
+    # Setters
+    def _setBlocksInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest) :
 	self.inputTrain = inputToLayerTrain
 	self.inputVal = inputToLayerVal
 	self.inputTest = inputToLayerTest
@@ -315,60 +295,128 @@ class ConvLayer(object):
 	self.inputShapeVal = inputToLayerShapeVal
 	self.inputShapeTest = inputToLayerShapeTest
 	
-	self.maxPoolingParameters = maxPoolingParameters
-	self.numberOfFeatureMaps = filter_shape[0] # Of the (Conv) layer! Used in trainValidationVisualise.py
+    def _setBlocksArchitectureAttributes(self, filterShape, maxPoolingParameters) :
+	self._numberOfFeatureMaps = filterShape[0] # Of the output! Used in trainValidationVisualise.py. Not of the input!
+        assert self.inputShapeTrain[1] == filterShape[1]
+	self._maxPoolingParameters = maxPoolingParameters
 
-        assert inputToLayerShapeTrain[1] == filter_shape[1]
+    def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest) :
+	self.outputTrain = outputTrain
+	self.outputVal = outputVal
+	self.outputTest = outputTest
+	self.outputShapeTrain = outputShapeTrain
+	self.outputShapeVal = outputShapeVal
+	self.outputShapeTest = outputShapeTest
+
+    # Getters
+    def getNumberOfFeatureMaps(self):
+    	return self._numberOfFeatureMaps
+    def fmsActivations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
+	return self.outputTest[:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
+
+    # Other API
+    def getL1RegCost(self) : #Called for L1 weigths regularisation
+    	raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
+    def getL2RegCost(self) : #Called for L2 weigths regularisation
+    	raise NotImplementedMethod()
+
+
+    def updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(self):
+    	# This function should be erazed when I reimplement the Rolling average.
+    	if self._appliedBnInLayer :
+		muArrayValue = self._muBnsArrayForRollingAverage.get_value()
+		muArrayValue[self._indexWhereRollingAverageIs] = self._sharedNewMu_B.get_value()
+		self._muBnsArrayForRollingAverage.set_value(muArrayValue, borrow=True)
+
+		varArrayValue = self._varBnsArrayForRollingAverage.get_value()
+		varArrayValue[self._indexWhereRollingAverageIs] = self._sharedNewVar_B.get_value()
+		self._varBnsArrayForRollingAverage.set_value(varArrayValue, borrow=True)
+    		self._indexWhereRollingAverageIs = (self._indexWhereRollingAverageIs + 1) % self._rollingAverageForBatchNormalizationOverThatManyBatches
+    		
+    def getUpdatesForBnRollingAverage(self) :
+    	# This function or something similar should stay, even if I clean the BN rolling average.
+    	if self._appliedBnInLayer :
+    		#CAREFUL: WARN, PROBLEM, THEANO BUG! If a layer has only 1FM, the .newMu_B ends up being of type (true,) instead of vector!!! Error!!!
+    		return [ (self._sharedNewMu_B, self._newMu_B),
+			(self._sharedNewVar_B, self._newVar_B) ]
+    	else :
+    		return []
+
+
+
+class ConvLayer(Block):
+
+    def __init__(self) :
+	Block.__init__(self)
+	self._activationFunctionType = "" #linear, relu or prelu
+
+
+    def _processInputWithBnNonLinearityDropoutPooling(self,
+		rng,
+		inputToLayerTrain,
+		inputToLayerVal,
+		inputToLayerTest,
+		inputToLayerShapeTrain,
+		inputToLayerShapeVal,
+		inputToLayerShapeTest,
+		useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
+		rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
+		maxPoolingParameters,
+		activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
+		dropoutRate) :
+	# ---------------- Order of what is applied -----------------
+	#  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ] # ala He et al "Identity Mappings in Deep Residual Networks" 2016
+	# -----------------------------------------------------------
 
 	#---------------------------------------------------------
 	#------------------ Batch Normalization ------------------
 	#---------------------------------------------------------
 	if useBnFlag and rollingAverageForBatchNormalizationOverThatManyBatches > 0 :
-		self.appliedBnInLayer = True
+		self._appliedBnInLayer = True
+		self._rollingAverageForBatchNormalizationOverThatManyBatches = rollingAverageForBatchNormalizationOverThatManyBatches
 		(inputToNonLinearityTrain,
 		inputToNonLinearityVal,
 		inputToNonLinearityTest,
-		self.gBn,
-		self.b,
+		self._gBn,
+		self._b,
 		# For rolling average :
-		self.muBnsArrayForRollingAverage,
-		self.varBnsArrayForRollingAverage,
-		self.sharedNewMu_B,
-		self.sharedNewVar_B,
-		self.newMu_B,
-		self.newVar_B
+		self._muBnsArrayForRollingAverage,
+		self._varBnsArrayForRollingAverage,
+		self._sharedNewMu_B,
+		self._sharedNewVar_B,
+		self._newMu_B,
+		self._newVar_B
 		) = applyBn( rollingAverageForBatchNormalizationOverThatManyBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain)
-		self.params = self.params + [self.gBn, self.b]
+		self.params = self.params + [self._gBn, self._b]
 		
 	else : #Not using batch normalization
-		self.appliedBnInLayer = False
+		self._appliedBnInLayer = False
 		#make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
 		numberOfInputChannels = inputToLayerShapeTrain[1]
 
-		(self.b,
+		(self._b,
 		inputToNonLinearityTrain,
 		inputToNonLinearityVal,
 		inputToNonLinearityTest) = makeBiasParamsAndApplyToFms( inputToLayerTrain, inputToLayerVal, inputToLayerTest, numberOfInputChannels )
-		self.params = self.params + [self.b]
+		self.params = self.params + [self._b]
 		
 	#--------------------------------------------------------
 	#------------ Apply Activation/ non-linearity -----------
 	#--------------------------------------------------------
 	if activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == -1 : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
-		self.activationFunctionType = "linear"
+		self._activationFunctionType = "linear"
 		( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = (inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
 	elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 0 :
 		#print "Layer: Activation function used = ReLu"
-		self.activationFunctionType = "relu"
+		self._activationFunctionType = "relu"
 		( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyRelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
 		
 	elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 1 :
 		#print "Layer: Activation function used = PReLu"
-		self.activationFunctionType = "prelu"
+		self._activationFunctionType = "prelu"
 		numberOfInputChannels = inputToLayerShapeTrain[1]
-		( aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest, numberOfInputChannels)
-		self.aPrelu = aPrelu
-		self.params = self.params + [self.aPrelu]
+		( self._aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest, numberOfInputChannels)
+		self.params = self.params + [self._aPrelu]
 
 	#------------------------------------
 	#------------- Dropout --------------
@@ -387,44 +435,196 @@ class ConvLayer(object):
 		inputToConvShapeVal = inputToLayerShapeVal
 		inputToConvShapeTest = inputToLayerShapeTest
 	else : #Max pooling is actually happening here...
-		(inputToConvTrain, inputToConvShapeTrain) = myMaxPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self.maxPoolingParameters)
-		(inputToConvVal, inputToConvShapeVal) = myMaxPooling3d(inputToPoolVal, inputToLayerShapeVal, self.maxPoolingParameters)
-		(inputToConvTest, inputToConvShapeTest) = myMaxPooling3d(inputToPoolTest, inputToLayerShapeTest, self.maxPoolingParameters)
+		(inputToConvTrain, inputToConvShapeTrain) = myMaxPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self._maxPoolingParameters)
+		(inputToConvVal, inputToConvShapeVal) = myMaxPooling3d(inputToPoolVal, inputToLayerShapeVal, self._maxPoolingParameters)
+		(inputToConvTest, inputToConvShapeTest) = myMaxPooling3d(inputToPoolTest, inputToLayerShapeTest, self._maxPoolingParameters)
 
+	return (inputToConvTrain, inputToConvVal, inputToConvTest,
+		inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest )
+
+
+    def _createWeightsTensorAndConvolve(self, rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 
+						inputToConvTrain, inputToConvVal, inputToConvTest,
+						inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
 	#-----------------------------------------------
 	#------------------ Convolution ----------------
 	#-----------------------------------------------
 	#----- Initialise the weights -----
 	# W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
-	self.W = createAndInitializeWeightsTensor(filter_shape, initializationTechniqueClassic0orDelvingInto1, rng)
-	self.params = [self.W] + self.params
+	self._W = createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+	self.params = [self._W] + self.params
 	
 	#---------- Convolve --------------
-	(self.outputTrain,
-	self.outputVal,
-	self.outputTest,
-	self.outputShapeTrain,
-	self.outputShapeVal,
-	self.outputShapeTest) = convolveWithGivenWeightMatrix(self.W, filter_shape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+	tupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(self._W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
 	
+	return tupleWithOuputAndShapeTrValTest
 
-    def fmsActivations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
-	return self.outputTest[:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
+    # The main function that builds this.
+    def makeLayer(self,
+		rng,
+		inputToLayerTrain,
+		inputToLayerVal,
+		inputToLayerTest,
+		inputToLayerShapeTrain,
+		inputToLayerShapeVal,
+		inputToLayerShapeTest,
+		filterShape,
+		useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
+		rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
+		maxPoolingParameters,
+		initializationTechniqueClassic0orDelvingInto1,
+		activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=0,
+		dropoutRate=0.0):
+        """
+        type rng: numpy.random.RandomState
+        param rng: a random number generator used to initialize weights
+
+        type inputToLayer:  tensor5 = theano.tensor.TensorType(dtype='float32', broadcastable=(False, False, False, False, False))
+        param inputToLayer: symbolic image tensor, of shape inputToLayerShape
+
+        type filterShape: tuple or list of length 5
+        param filterShape: (number of filters, num input feature maps,
+                              filter height, filter width, filter depth)
+
+        type inputToLayerShape: tuple or list of length 5
+        param inputToLayerShape: (batch size, num input feature maps,
+                             image height, image width, filter depth)
+        """
+        self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest)
+        self._setBlocksArchitectureAttributes(filterShape, maxPoolingParameters)
+        
+	# Apply all the straightforward operations on the input, such as BN, activation function, dropout, pooling        
+        (inputToConvTrain, inputToConvVal, inputToConvTest,
+	inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) = self._processInputWithBnNonLinearityDropoutPooling(	rng,
+											inputToLayerTrain,
+											inputToLayerVal,
+											inputToLayerTest,
+											inputToLayerShapeTrain,
+											inputToLayerShapeVal,
+											inputToLayerShapeTest,
+											useBnFlag,
+											rollingAverageForBatchNormalizationOverThatManyBatches,
+											maxPoolingParameters,
+											activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
+											dropoutRate)
+        
+        tupleWithOuputAndShapeTrValTest = self._createWeightsTensorAndConvolve(rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 
+										inputToConvTrain, inputToConvVal, inputToConvTest,
+										inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+        
+        self._setBlocksOutputAttributes(*tupleWithOuputAndShapeTrValTest)
+        
+    # Override parent's abstract classes.
+    def getL1RegCost(self) : #Called for L1 weigths regularisation
+	return abs(self._W).sum()
+    def getL2RegCost(self) : #Called for L2 weigths regularisation
+	return (self._W ** 2).sum()
 
 
-#Here lets create a new type of convolution layer that will take the place of the old regression-layer class,
-#...which should be used as a final layer in a patchwise classifier. It should be a convolution layer + softmax,
-#...with a different costfunction, to work with patches.
+
+
+# Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
+class LowRankConvLayer(ConvLayer):
+    def __init__(self, rank=2) :
+	ConvLayer.__init__(self)
+	
+	self._WperSubconv = None # List of ._W theano tensors. One per low-rank subconv. Treat carefully. 
+	del(self._W) # The ._W of the Block parent is not used.
+	self._rank = rank # 1 or 2 dimensions
+	
+    def _cropSubconvOutputsToSameDimsAndConcatenateFms(self,
+							rSubconvOutput, rSubconvOutputShape,
+							cSubconvOutput, cSubconvOutputShape,
+							zSubconvOutput, zSubconvOutputShape,
+							filterShape) :
+    	assert (rSubconvOutputShape[0] == cSubconvOutputShape[0]) and (cSubconvOutputShape[0] == zSubconvOutputShape[0]) # same batch size.
+    	
+	concatOutputShape = [ rSubconvOutputShape[0],
+				rSubconvOutputShape[1] + cSubconvOutputShape[1] + zSubconvOutputShape[1],
+				rSubconvOutputShape[2],
+				cSubconvOutputShape[3],
+				zSubconvOutputShape[4]
+				]
+	rCropSlice = slice( (filterShape[2]-1)/2, (filterShape[2]-1)/2 + concatOutputShape[2] )
+	cCropSlice = slice( (filterShape[3]-1)/2, (filterShape[3]-1)/2 + concatOutputShape[3] )
+	zCropSlice = slice( (filterShape[4]-1)/2, (filterShape[4]-1)/2 + concatOutputShape[4] )
+    	rSubconvOutputCropped = rSubconvOutput[:,:, :, cCropSlice if self._rank == 1 else slice(0, MAX_INT), zCropSlice  ]
+	cSubconvOutputCropped = cSubconvOutput[:,:, rCropSlice, :, zCropSlice if self._rank == 1 else slice(0, MAX_INT) ]
+	zSubconvOutputCropped = zSubconvOutput[:,:, rCropSlice if self._rank == 1 else slice(0, MAX_INT), cCropSlice, : ]
+	concatSubconvOutputs = T.concatenate([rSubconvOutputCropped, cSubconvOutputCropped, zSubconvOutputCropped], axis=1) #concatenate the FMs
+	
+	return (concatSubconvOutputs, concatOutputShape)
+
+    # Overload the ConvLayer's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.	
+    def _createWeightsTensorAndConvolve(self, rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 
+						inputToConvTrain, inputToConvVal, inputToConvTest,
+						inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
+	# Behaviour: Create W, set self._W, set self.params, convolve, return ouput and outputShape.
+	# The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
+	# If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
+	# If 2-dim: rSubconv is the input convolved with the RC-2D filter, cSubconv with CZ-2D filter, zSubconv with ZR-2D filter. 
+	
+	#----- Initialise the weights and Convolve for 3 separate, low rank filters, R,C,Z. -----
+	# W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
+	
+	rSubconvFilterShape = [ filterShape[0]/3, filterShape[1], filterShape[2], 1 if self._rank == 1 else filterShape[3], 1 ]
+	rSubconvW = createAndInitializeWeightsTensor(rSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+	rSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(rSubconvW, rSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+	
+	cSubconvFilterShape = [ filterShape[0]/3, filterShape[1], 1, filterShape[3], 1 if self._rank == 1 else filterShape[4] ]
+	cSubconvW = createAndInitializeWeightsTensor(cSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+	cSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(cSubconvW, cSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+
+	numberOfFmsForTotalToBeExact = filterShape[0] - 2*(filterShape[0]/3) # Cause of possibly inexact integer division.
+	zSubconvFilterShape = [ numberOfFmsForTotalToBeExact, filterShape[1], 1 if self._rank == 1 else filterShape[2], 1, filterShape[4] ]
+	zSubconvW = createAndInitializeWeightsTensor(zSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+	zSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(zSubconvW, zSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+
+	# Set the W attribute and trainable parameters.
+	self._WperSubconv = [rSubconvW, cSubconvW, zSubconvW] # Bear in mind that these sub tensors have different shapes! Treat carefully.
+	self.params = self._WperSubconv + self.params
+
+	# concatenate together.
+	(concatSubconvOutputsTrain, concatOutputShapeTrain) = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputAndShapeTrValTest[0], rSubconvTupleWithOuputAndShapeTrValTest[3],
+													cSubconvTupleWithOuputAndShapeTrValTest[0], cSubconvTupleWithOuputAndShapeTrValTest[3],
+													zSubconvTupleWithOuputAndShapeTrValTest[0], zSubconvTupleWithOuputAndShapeTrValTest[3],
+													filterShape)
+	(concatSubconvOutputsVal, concatOutputShapeVal) = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputAndShapeTrValTest[1], rSubconvTupleWithOuputAndShapeTrValTest[4],
+													cSubconvTupleWithOuputAndShapeTrValTest[1], cSubconvTupleWithOuputAndShapeTrValTest[4],
+													zSubconvTupleWithOuputAndShapeTrValTest[1], zSubconvTupleWithOuputAndShapeTrValTest[4],
+													filterShape)
+	(concatSubconvOutputsTest, concatOutputShapeTest) = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputAndShapeTrValTest[2], rSubconvTupleWithOuputAndShapeTrValTest[5],
+													cSubconvTupleWithOuputAndShapeTrValTest[2], cSubconvTupleWithOuputAndShapeTrValTest[5],
+													zSubconvTupleWithOuputAndShapeTrValTest[2], zSubconvTupleWithOuputAndShapeTrValTest[5],
+													filterShape)
+
+	return (concatSubconvOutputsTrain, concatSubconvOutputsVal, concatSubconvOutputsTest, concatOutputShapeTrain, concatOutputShapeVal, concatOutputShapeTest)
+	
+	
+    # Implement parent's abstract classes.
+    def getL1RegCost(self) : #Called for L1 weigths regularisation
+    	l1Cost = 0
+    	for wOfSubconv in self._WperSubconv : l1Cost += abs(wOfSubconv).sum()
+	return l1Cost
+    def getL2RegCost(self) : #Called for L2 weigths regularisation
+    	l2Cost = 0
+	for wOfSubconv in self._WperSubconv : l2Cost += (wOfSubconv ** 2).sum()
+	return l2Cost
+    def getW(self):
+    	print "ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"; exit(1)
+
+
+
 class ConvLayerWithSoftmax(ConvLayer):
     """ Final Classification layer with Softmax """
 
     def __init__(self):
     	ConvLayer.__init__(self)
     	
-	self.numberOfOutputClasses = None
-	self.bClassLayer = None
+	self._numberOfOutputClasses = None
+	self._bClassLayer = None
 	
-	self.softmaxTemperature = None
+	self._softmaxTemperature = None
 	
     def makeLayer(	self,
 			rng,
@@ -434,7 +634,7 @@ class ConvLayerWithSoftmax(ConvLayer):
 			inputToLayerShapeTrain,
 			inputToLayerShapeVal,
 			inputToLayerShapeTest,
-			filter_shape,
+			filterShape,
 			useBnFlag, # Must be true to do BN
 			rollingAverageForBatchNormalizationOverThatManyBatches, #If this is 0, it means we are not using BatchNormalization
 			maxPoolingParameters,
@@ -451,7 +651,7 @@ class ConvLayerWithSoftmax(ConvLayer):
 		inputToLayerShapeTrain,
 		inputToLayerShapeVal,
 		inputToLayerShapeTest,
-		filter_shape,
+		filterShape,
 		useBnFlag, # Must be true to do BN
 		rollingAverageForBatchNormalizationOverThatManyBatches, #If this is 0, it means we are not using BatchNormalization
 		maxPoolingParameters,
@@ -459,9 +659,9 @@ class ConvLayerWithSoftmax(ConvLayer):
 		activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
 		dropoutRate)
 	
-	self.numberOfOutputClasses = filter_shape[0]
-	assert self.numberOfOutputClasses == self.numberOfFeatureMaps
-	self.softmaxTemperature = softmaxTemperature
+	self._numberOfOutputClasses = filterShape[0]
+	assert self._numberOfOutputClasses == self._numberOfFeatureMaps
+	self._softmaxTemperature = softmaxTemperature
 	
 	outputOfConvTrain = self.outputTrain
 	outputOfConvVal = self.outputVal
@@ -473,21 +673,20 @@ class ConvLayerWithSoftmax(ConvLayer):
 		
 	# At this last classification layer, the conv output needs to have bias added before the softmax.
 	# NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
-	# and this self.bClassLayer that is added only to this final output before the softmax.
-	(self.bClassLayer,
+	# and this self._bClassLayer that is added only to this final output before the softmax.
+	(self._bClassLayer,
 	inputToSoftmaxTrain,
 	inputToSoftmaxVal,
-	inputToSoftmaxTest) = makeBiasParamsAndApplyToFms( outputOfConvTrain, outputOfConvVal, outputOfConvTest, self.numberOfFeatureMaps )
-	self.params = self.params + [self.bClassLayer]
+	inputToSoftmaxTest) = makeBiasParamsAndApplyToFms( outputOfConvTrain, outputOfConvVal, outputOfConvTest, self._numberOfFeatureMaps )
+	self.params = self.params + [self._bClassLayer]
 	
 	# ============ Softmax ==============
-	#self.p_y_given_x_2d_train = ? Can I implement negativeLogLikelihood without this ?
 	( self.p_y_given_x_train,
-	self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxTrain, outputOfConvShapeTrain, self.numberOfOutputClasses, softmaxTemperature)
+	self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxTrain, outputOfConvShapeTrain, self._numberOfOutputClasses, softmaxTemperature)
 	( self.p_y_given_x_val,
-	self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxVal, outputOfConvShapeVal, self.numberOfOutputClasses, softmaxTemperature)
+	self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxVal, outputOfConvShapeVal, self._numberOfOutputClasses, softmaxTemperature)
 	( self.p_y_given_x_test,
-	self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxTest, outputOfConvShapeTest, self.numberOfOutputClasses, softmaxTemperature)
+	self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxTest, outputOfConvShapeTest, self._numberOfOutputClasses, softmaxTemperature)
 	
 	
 
@@ -552,7 +751,7 @@ class ConvLayerWithSoftmax(ConvLayer):
 	
 	returnedListWithNumberOfRpRnTpTnForEachClass = []
 
-	for class_i in xrange(0, self.numberOfOutputClasses) :
+	for class_i in xrange(0, self._numberOfOutputClasses) :
 		#Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
 		tensorOneAtRealPos = T.eq(y, class_i)
 		tensorOneAtRealNeg = T.neq(y, class_i)
