@@ -1272,15 +1272,21 @@ def do_training(myLogger,
 		subsampledImagePartsChannelsToLoadOnGpuForSubepochTraining] = parallelJobToGetDataForNextTraining() #fromParallelProcessing that had started from last loop when it was submitted.
 
             #-------------------------COMPUTE CLASS-WEIGHTS, TO WEIGHT COST FUNCTION AND COUNTER CLASS IMBALANCE----------------------
-            #Do it for only few epochs, until I get to an ok local minimum neighbourhood.
+            #Do it for only few epochs, until I get to an ok local minima neighbourhood.
             if cnn3dInstance.numberOfEpochsTrained < numberOfEpochsToWeightTheClassesInTheCostFunction :
-		#This part was recently changed to multiclass. NOT VALIDATED, but should work.
-		numOfPatchesInTheSubepoch_notParts = np.prod(arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining.shape)
-		actualNumOfPatchesPerClassInTheSubepoch_notParts = np.bincount(np.ravel(arrayLesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining).astype(int))
-		multiplierToFadePerEpoch = (numberOfEpochsToWeightTheClassesInTheCostFunction - cnn3dInstance.numberOfEpochsTrained)*1.0 / numberOfEpochsToWeightTheClassesInTheCostFunction
-		nominatorForEachClass = actualNumOfPatchesPerClassInTheSubepoch_notParts + (numOfPatchesInTheSubepoch_notParts - actualNumOfPatchesPerClassInTheSubepoch_notParts) * multiplierToFadePerEpoch
-		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = nominatorForEachClass / ((actualNumOfPatchesPerClassInTheSubepoch_notParts)*cnn3dInstance.numberOfOutputClasses+TINY_FLOAT)
-		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.asarray(vectorWithWeightsOfTheClassesForCostFunctionOfTraining, dtype="float32")
+		numOfPatchesInTheSubepoch_notParts = np.prod(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining.shape)
+	    	actualNumOfPatchesPerClassInTheSubepoch_notParts = np.bincount(np.ravel(lesionLabelsForPATCHESOfTheImagePartsInGpUForSubepochTraining).astype(int))
+	    	# yx - y1 = (x - x1) * (y2 - y1)/(x2 - x1)
+	    	# yx = the multiplier I currently want, y1 = the multiplier at the begining, y2 = the multiplier at the end
+	    	# x = current epoch, x1 = epoch where linear decrease starts, x2 = epoch where linear decrease ends
+	    	y1 = (1./(actualNumOfPatchesPerClassInTheSubepoch_notParts+TINY_FLOAT)) * (numOfPatchesInTheSubepoch_notParts*1.0/cnn3dInstance.numberOfOutputClasses)
+	    	y2 = 1.
+	    	x1 = 0. * number_of_subepochs # linear decrease starts from epoch=0
+	    	x2 = numberOfEpochsToWeightTheClassesInTheCostFunction * number_of_subepochs
+	    	x = cnn3dInstance.numberOfEpochsTrained * number_of_subepochs + subepoch
+	    	yx = (x - x1) * (y2 - y1)/(x2 - x1) + y1
+	    	vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.asarray(yx, dtype="float32")
+	    	myLogger.print3("UPDATE: [Weight of Classes] Setting the weights of the classes in the cost function to: " +str(vectorWithWeightsOfTheClassesForCostFunctionOfTraining))
             else :
 		vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.ones(cnn3dInstance.numberOfOutputClasses, dtype='float32')
 

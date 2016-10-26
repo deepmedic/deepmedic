@@ -244,7 +244,7 @@ The main parameters to specify the CNN model are the following.
 
 *Architecture:*
 
-- numberFMsPerLayerNormal: A list which needs to have as many entries as the number of layers in the normal pathway that  we want to create. Each entry is a number, which defines the number of feature-maps in the corresponding layer ([15, 20, 25, 30] in fig1)
+- numberFMsPerLayerNormal: A list which needs to have as many entries as the number of layers in the normal pathway that  we want to create. Each entry is a number, which defines the number of feature-maps in the corresponding layer ([30, 40, 40, 50] in fig1)
 - kernelDimPerLayerNormal: The dimensions of the kernels per layer. ([[5,5,5], [5,5,5], [5,5,5], [5,5,5]] in Fig.1.) 
 - useSubsampledPathway: Setting this to “True” creates a subsampled-pathway, with the same architecture as the normal one. “False” for single-scale processing with the normal pathway only. Additional parameters allow tailoring this pathway further.
 - numberFMsPerLayerFC: The final layers of the two pathways are contatenated. This parameter allows the addition of extra hidden FC layers before the classification layer. The number of entries specified how many extra layers, the number of each entry specifies the number of FMs in each layer. Final classification layer not included ([[150], [150]] in Fig.1).
