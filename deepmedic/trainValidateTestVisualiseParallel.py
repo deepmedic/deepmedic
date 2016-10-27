@@ -658,7 +658,7 @@ def getNumberOfSegmentsToExtractPerCategoryFromEachSubject(	numberOfImagePartsTo
 
 	numberOfSamplesDistributedInTheCategories = 0
 	for cat_i in xrange(numberOfSamplingCategories) :
-		if cat_i < numberOfSamplingCategories : #it's the last category. Give it all that remain, to get rid of rounding errors from the float percentage.
+		if cat_i < numberOfSamplingCategories - 1 : #it's the last category. Give it all that remain, to get rid of rounding errors from the float percentage.
 			numberOfSamplesFromThisCategoryPerSubepoch = int(numberOfImagePartsToLoadInGpuPerSubepoch*percentOfSamplesPerCategoryToSample[cat_i])
 			numberOfSamplesDistributedInTheCategories += numberOfSamplesFromThisCategoryPerSubepoch
 		else :
