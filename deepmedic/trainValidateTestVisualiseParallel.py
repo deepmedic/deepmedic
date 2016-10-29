@@ -653,24 +653,28 @@ def getNumberOfSegmentsToExtractPerCategoryFromEachSubject(	numberOfImagePartsTo
 								percentOfSamplesPerCategoryToSample, # list with a percentage for each type of category to sample
 								numOfSubjectsLoadingThisSubepochForSampling ) :
 	numberOfSamplingCategories = len(percentOfSamplesPerCategoryToSample)
+	# [numForCat1,..., numForCatN]
+	arrayNumberOfSegmentsToExtractPerSamplingCategory = np.zeros( numberOfSamplingCategories, dtype="int32" )
 	# [arrayForCat1,..., arrayForCatN] : arrayForCat1 = [ numbOfSegmsToExtrFromSubject1, ...,  numbOfSegmsToExtrFromSubjectK]
-	arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = np.zeros( [ len(percentOfSamplesPerCategoryToSample), numOfSubjectsLoadingThisSubepochForSampling ] , dtype="int32" )
+	arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = np.zeros( [ numberOfSamplingCategories, numOfSubjectsLoadingThisSubepochForSampling ] , dtype="int32" )
 
 	numberOfSamplesDistributedInTheCategories = 0
 	for cat_i in xrange(numberOfSamplingCategories) :
-		if cat_i < numberOfSamplingCategories - 1 : #it's the last category. Give it all that remain, to get rid of rounding errors from the float percentage.
-			numberOfSamplesFromThisCategoryPerSubepoch = int(numberOfImagePartsToLoadInGpuPerSubepoch*percentOfSamplesPerCategoryToSample[cat_i])
-			numberOfSamplesDistributedInTheCategories += numberOfSamplesFromThisCategoryPerSubepoch
-		else :
-			numberOfSamplesFromThisCategoryPerSubepoch = numberOfImagePartsToLoadInGpuPerSubepoch - numberOfSamplesDistributedInTheCategories
+		numberOfSamplesFromThisCategoryPerSubepoch = int(numberOfImagePartsToLoadInGpuPerSubepoch*percentOfSamplesPerCategoryToSample[cat_i])
+		arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += numberOfSamplesFromThisCategoryPerSubepoch
+		numberOfSamplesDistributedInTheCategories += numberOfSamplesFromThisCategoryPerSubepoch
+	# Distribute samples that were left from the rounding error of integer division.
+	numOfUndistributedSamples = numberOfImagePartsToLoadInGpuPerSubepoch - numberOfSamplesDistributedInTheCategories
+	indicesOfCategoriesToGiveUndistrSamples = np.random.choice(numberOfSamplingCategories, size=numOfUndistributedSamples, replace=True, p=percentOfSamplesPerCategoryToSample)
+	for cat_i in indicesOfCategoriesToGiveUndistrSamples : # they will be as many as the undistributed samples
+		arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += 1
 
-		numberOfSamplesFromThisCategoryPerSubepochPerImage = numberOfSamplesFromThisCategoryPerSubepoch / numOfSubjectsLoadingThisSubepochForSampling
-		numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly = numberOfSamplesFromThisCategoryPerSubepoch % numOfSubjectsLoadingThisSubepochForSampling
-		
+	for cat_i in xrange(numberOfSamplingCategories) :
+		numberOfSamplesFromThisCategoryPerSubepochPerImage = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] / numOfSubjectsLoadingThisSubepochForSampling		
 		arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
-
+		numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] % numOfSubjectsLoadingThisSubepochForSampling
 		for i_unevenSampleFromThisCat in xrange(numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly):
-			arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i, i_unevenSampleFromThisCat] += 1
+			arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i, random.randint(0, numOfSubjectsLoadingThisSubepochForSampling-1)] += 1
 
 	return arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject
 
