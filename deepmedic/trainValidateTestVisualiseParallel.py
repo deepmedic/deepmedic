@@ -315,10 +315,6 @@ def sampleImageParts(	myLogger,
 	constrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample / (1.0* np.sum(constrainedWithImageBoundariesMaskToSample))
         
 	flattenedConstrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample.flatten()
-
-        #slice_coordinates : a list with as many elements as the number of pairs taken from this image part...
-        #Each of them is : [ [rlow,rhigh], [clow,chigh], [zlow,zhigh] ]. Both inclusive. So do zhigh+1 when getting the slice! 
-        allPosOrNegImagePartsEntries = []
         
 	#This is going to be a 3xNumberOfImagePartSamples array.
 	indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts = np.random.choice(constrainedWithImageBoundariesMaskToSample.size,
@@ -344,6 +340,7 @@ def sampleImageParts(	myLogger,
 	#coordsOfCentralVoxelsOfPartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
 	#sliceCoordsOfImagePartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. The last dim has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
         imagePartsSampled = [coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled]
+        # Currently, coordsOfCentralVoxelsOfPartsSampled is useless. I could remove it entirely.
 	return imagePartsSampled
 
         
@@ -446,24 +443,17 @@ def getImagePartFromSubsampledImageForTraining(imagePartDimensions,
     
    
     
-def getImagePartsAndTheirSlices(myLogger,
+def getCoordsOfAllSegmentsOfAnImage(myLogger,
 				strideOfImagePartsPerDimensionInVoxels,
                                 imagePartDimensions,
                                 batch_size,
                                 channelsOfImageNpArray,#chans,niiDims
-                                brainMask,
-                                channelsOfSubsampledImageNpArray, #chans,niiDims
-                                patchDimensions,
-                                subsampledImageChannels,
-                                subSamplingFactor,
-                                subsampledImagePartDimensions,
+                                brainMask
                                 ) :
     myLogger.print3("Starting to (tile) extract Segments from the images of the subject for Segmentation...")
 
-    channelsForPartsToReturn = []
-    coordsOfTopLeftVoxelForPartsToReturn = []
-    channelsForSubsampledPartsToReturn = []
-    
+    sliceCoordsOfSegmentsToReturn = []
+
     niiDimensions = list(channelsOfImageNpArray[0].shape)
 
     zLowBoundaryNext=0; zAxisCentralPartPredicted = False;
@@ -494,46 +484,23 @@ def getImagePartsAndTheirSlices(myLogger,
                                                           ]) : #all of it is out of the brain so skip it.
                         continue
                     
-                coordsOfTopLeftVoxelForPartsToReturn.append([rLowBoundary,cLowBoundary,zLowBoundary])
-                
-		thisImagePartChannels = []
-                for channel_i in xrange(len(channelsOfImageNpArray)) :
-                    thisImagePartChannels.append(channelsOfImageNpArray[channel_i,
-                                                                        rLowBoundary:rFarBoundary,
-                                                                        cLowBoundary:cFarBoundary,
-                                                                        zLowBoundary:zFarBoundary
-                                                                        ])
-                channelsForPartsToReturn.append(thisImagePartChannels)
-                
-                #Subsampled pathway
-		if isinstance(channelsOfSubsampledImageNpArray, (np.ndarray)) :
-                    imagePartSlicesCoords = [ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ] #the right hand values are placeholders in this case.
-                    channelsForThisSubsampledImagePart = getImagePartFromSubsampledImageForTraining(
-                                                                                                   imagePartDimensions,
-                                                                                                   patchDimensions,
-                                                                                                   subsampledImageChannels,
-                                                                                                   imagePartSlicesCoords,
-                                                                                                   subSamplingFactor,
-                                                                                                   subsampledImagePartDimensions
-                                                                                                   )
-                    channelsForSubsampledPartsToReturn.append(channelsForThisSubsampledImagePart)
+                sliceCoordsOfSegmentsToReturn.append([ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ])
+
 
                 
     #I need to have a total number of image-parts that can be exactly-divided by the 'batch_size'. For this reason, I add in the far end of the list multiple copies of the last element. I NEED THIS IN THEANO. I TRIED WITHOUT. NO.
-    total_number_of_image_parts = len(channelsForPartsToReturn)
+    total_number_of_image_parts = len(sliceCoordsOfSegmentsToReturn)
     number_of_imageParts_missing_for_exact_division =  batch_size - total_number_of_image_parts%batch_size if total_number_of_image_parts%batch_size <> 0 else 0
     for extra_useless_image_part_i in xrange(number_of_imageParts_missing_for_exact_division) :
-        channelsForPartsToReturn.append(channelsForPartsToReturn[total_number_of_image_parts-1])
-        coordsOfTopLeftVoxelForPartsToReturn.append(coordsOfTopLeftVoxelForPartsToReturn[total_number_of_image_parts-1])
-	if isinstance(channelsOfSubsampledImageNpArray, (np.ndarray)) :
-            channelsForSubsampledPartsToReturn.append(channelsForSubsampledPartsToReturn[total_number_of_image_parts-1])
+        sliceCoordsOfSegmentsToReturn.append(sliceCoordsOfSegmentsToReturn[total_number_of_image_parts-1])
 
     #I think that since the parts are acquired in a certain order and are sorted this way in the list, it is easy
     #to know which part of the image they came from, as it depends only on the stride-size and the imagePart size.
     
     myLogger.print3("Finished (tiling) extracting Segments from the images of the subject for Segmentation.")
 
-    return [channelsForPartsToReturn, coordsOfTopLeftVoxelForPartsToReturn, channelsForSubsampledPartsToReturn]
+    # sliceCoordsOfSegmentsToReturn: list with 3 dimensions. numberOfSegments x 3(rcz) x 2 (lower and upper limit of the segment, INCLUSIVE both sides)
+    return [sliceCoordsOfSegmentsToReturn]
                 
 
 def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
@@ -625,6 +592,48 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
 		subsampledChannelsForThisImagePart = None
 
 	return [ channelsForThisImagePart, lesionLabelsForTheCentralClassifiedPartOfThisImagePart, subsampledChannelsForThisImagePart]
+
+
+def extractDataOfSegmentsUsingSampledSliceCoords(sliceCoordsOfSegmentsToExtract,
+						imagePartDimensions,
+						channelsOfImageNpArray,#chans,niiDims
+						channelsOfSubsampledImageNpArray, #chans,niiDims
+						patchDimensions,
+						subsampledImageChannels,
+						subSamplingFactor,
+						subsampledImagePartDimensions,
+						) :
+	numberOfSegmentsToExtract = len(sliceCoordsOfSegmentsToExtract)
+	numberOfChannels = channelsOfImageNpArray.shape[0]
+	channelsForPartsToReturn = np.zeros( [numberOfSegmentsToExtract, numberOfChannels] + imagePartDimensions, dtype= "float32")
+
+	if isinstance(channelsOfSubsampledImageNpArray, (np.ndarray)) : # Using subsampled pathway
+		numberOfChannelsSubsampled = channelsOfSubsampledImageNpArray.shape[0]
+		channelsForSubsampledPartsToReturn = np.zeros([numberOfSegmentsToExtract, numberOfChannelsSubsampled] + subsampledImagePartDimensions , dtype="float32")
+	else :
+		channelsForSubsampledPartsToReturn = None
+		
+	for segment_i in xrange(numberOfSegmentsToExtract) :
+		rLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][0]; rFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][1]
+		cLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][1][0]; cFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][1][1]
+		zLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][2][0]; zFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][2][1]
+		channelsForPartsToReturn[segment_i] = channelsOfImageNpArray[:,
+									rLowBoundary:rFarBoundary+1,
+									cLowBoundary:cFarBoundary+1,
+									zLowBoundary:zFarBoundary+1
+									]
+		#Subsampled pathway
+		if isinstance(channelsOfSubsampledImageNpArray, (np.ndarray)) :
+			imagePartSlicesCoords = sliceCoordsOfSegmentsToExtract[segment_i] #[ [rLowBoundary, rFarBoundary], [cLowBoundary, cFarBoundary], [zLowBoundary, zFarBoundary] ] #the right hand values are placeholders in this case.
+			channelsForSubsampledPartsToReturn[segment_i] = getImagePartFromSubsampledImageForTraining(
+														imagePartDimensions,
+														patchDimensions,
+														subsampledImageChannels,
+														imagePartSlicesCoords,
+														subSamplingFactor,
+														subsampledImagePartDimensions
+														)
+	return [channelsForPartsToReturn, channelsForSubsampledPartsToReturn]
 
 
 def shuffleTheSegmentsForThisSubepoch(	imagePartsChannelsToLoadOnGpuForSubepoch,
@@ -1582,28 +1591,14 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 		multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
 
         #get all the parts of the image on the cpu
-        [imagePartsChannelsToLoadOnGpuForThisImage,
-         coordsOfTopLeftVoxelForPartsToReturn,
-         subsampledImagePartsChannelsToLoadOnGpuForThisImage
-         ] = getImagePartsAndTheirSlices(myLogger=myLogger,
-                                         strideOfImagePartsPerDimensionInVoxels=strideOfImagePartsPerDimensionInVoxels,
-                                         imagePartDimensions = imagePartDimensions,
-                                         batch_size = batch_size,
-                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
-                                         brainMask = brainMask,
-                                         channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
-                                         patchDimensions=patchDimensions,
-                                         subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
-                                         subSamplingFactor=subSamplingFactor,
-                                         subsampledImagePartDimensions=subsampledImagePartDimensions,
-                                         )
+        [ sliceCoordsOfSegmentsInImage ] = getCoordsOfAllSegmentsOfAnImage(myLogger=myLogger,
+				                                         strideOfImagePartsPerDimensionInVoxels=strideOfImagePartsPerDimensionInVoxels,
+				                                         imagePartDimensions = imagePartDimensions,
+				                                         batch_size = batch_size,
+				                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
+				                                         brainMask = brainMask
+				                                         )
         
-        myLogger.print3("Loading data for subject #"+str(image_i)+" on sharedvariable...")
-        cnn3dInstance.sharedTestingNiiData_x.set_value(np.asarray(imagePartsChannelsToLoadOnGpuForThisImage, dtype='float32'), borrow=borrowFlag)
-        if usingSubsampledWaypath :
-            cnn3dInstance.sharedTestingSubsampledData_x.set_value(np.asarray(subsampledImagePartsChannelsToLoadOnGpuForThisImage, dtype='float32'), borrow=borrowFlag)
- 
-        myLogger.print3("All the Segments for the current subject were loaded on the shared variable.")
         myLogger.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
         
         #In the next part, for each imagePart in a batch I get from the cnn a vector with labels for the central voxels of the imagepart (9^3 originally).
@@ -1618,19 +1613,49 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         imagePartsPerZdirection = (niiDimensions[2]-patchDimensions[2]+1) / strideOfImagePartsPerDimensionInVoxels[2]
         imagePartsPerZSlice = imagePartsPerRdirection*imagePartsPerCdirection
                 
-        totalNumberOfImagePartsToProcessForThisImage = len(imagePartsChannelsToLoadOnGpuForThisImage)
+        totalNumberOfImagePartsToProcessForThisImage = len(sliceCoordsOfSegmentsInImage)
         myLogger.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
 
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
 	number_of_batches = totalNumberOfImagePartsToProcessForThisImage/batch_size
+	extractTimePerSubject = 0; loadingTimePerSubject = 0; fwdPassTimePerSubject = 0
         for batch_i in xrange(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
 
             printProgressStep = max(1, number_of_batches/5)
             if batch_i%printProgressStep == 0:
 		myLogger.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
 
-            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(batch_i)
+	    # Extract the data for the segments of this batch. ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords() of training and use it here as well. )
+	    start_extract_time = time.clock()
+	    sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batch_size : (batch_i+1)*batch_size ]
+	    [imagePartsChannelsToLoadOnGpuForThisBatch,
+	    subsampledImagePartsChannelsToLoadOnGpuForThisBatch] = extractDataOfSegmentsUsingSampledSliceCoords(sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
+									                                        imagePartDimensions=imagePartDimensions,
+									                                        channelsOfImageNpArray=imageChannels,#chans,niiDims
+									                                        channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
+									                                        patchDimensions=patchDimensions,
+									                                        subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
+									                                        subSamplingFactor=subSamplingFactor,
+									                                        subsampledImagePartDimensions=subsampledImagePartDimensions,
+									                                        )
+	    end_extract_time = time.clock()
+	    extractTimePerSubject += end_extract_time - start_extract_time
+
+	    # Load the data of the batch on the GPU
+	    start_loading_time = time.clock()
+	    cnn3dInstance.sharedTestingNiiData_x.set_value(imagePartsChannelsToLoadOnGpuForThisBatch, borrow=borrowFlag)
+	    if usingSubsampledWaypath :
+	    	cnn3dInstance.sharedTestingSubsampledData_x.set_value(subsampledImagePartsChannelsToLoadOnGpuForThisBatch, borrow=borrowFlag)
+	    end_loading_time = time.clock()
+	    loadingTimePerSubject += end_loading_time - start_loading_time
+	    
+	    # Do the inference
+	    start_training_time = time.clock()
+            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(0)
+            #featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(batch_i)
+            end_training_time = time.clock()
+            fwdPassTimePerSubject += end_training_time - start_training_time
             predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[-1]
             listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[:-1]
             #No reshape needed, cause I now do it internally. But to dimensions (batchSize, FMs, R,C,Z).
@@ -1641,7 +1666,8 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 
                 #Now put the label-cube in the new-label-segmentation-image, at the correct position. 
                 #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
-                coordsOfTopLeftVoxelForThisPart = coordsOfTopLeftVoxelForPartsToReturn[imagePartOfConstructedProbMap_i]
+		sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedProbMap_i]
+		coordsOfTopLeftVoxelForThisPart = [ sliceCoordsOfThisSegment[0][0], sliceCoordsOfThisSegment[1][0], sliceCoordsOfThisSegment[2][0] ]
                 labelImageCreatedByPredictions[
 			:,
                         coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
@@ -1720,7 +1746,8 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 		    		for imagePart_in_this_batch_i in xrange(batch_size) :
 		        		#Now put the label-cube in the new-label-segmentation-image, at the correct position. 
 		        		#The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
-		       			coordsOfTopLeftVoxelForThisPart = coordsOfTopLeftVoxelForPartsToReturn[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
+		       			sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
+		       			coordsOfTopLeftVoxelForThisPart = [ sliceCoordsOfThisSegment[0][0], sliceCoordsOfThisSegment[1][0], sliceCoordsOfThisSegment[2][0] ]
 		       			fmImageInMultidimArrayToReconstructInThisIteration[ # I put the central-predicted-voxels of all FMs to the corresponding, newly created images all at once.
 						:, #last dimension is the number-of-Fms, I create an image for each.	
 						coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
@@ -1733,7 +1760,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 
 	#Clear GPU from testing data.
 	cnn3dInstance.freeGpuTestingData()
-
+	myLogger.print3("TIMING: Segmentation of this subject: [Extracting:] "+ str(extractTimePerSubject) +\
+							 " [Loading:] " + str(loadingTimePerSubject) +\
+							 " [ForwardPass:] " + str(fwdPassTimePerSubject) +\
+							 " [Total:] " + str(extractTimePerSubject+loadingTimePerSubject+fwdPassTimePerSubject) + "(s)")
 
 	#=================Save Predicted-Probability-Map and Evaluate Dice====================
 	segmentationImage = np.argmax(labelImageCreatedByPredictions, axis=0) #The SEGMENTATION.
