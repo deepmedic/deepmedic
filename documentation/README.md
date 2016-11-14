@@ -2,6 +2,10 @@ The DeepMedic
 =====================================
 
 ### News
+14 Nov 2016 (v0.5.4):
+* Original configuration moved to deepMedicOriginal. Updated config now in deepMedic.
+* More memory efficient testing. CNN code has been refactored. Minor fixes.
+
 10 Oct 2016 (v0.5.3):
 * Sampling refactored. Now possible to use weighted-maps to sample each class.
 
@@ -25,7 +29,7 @@ This document describes how to install and run the software. Accompanying data a
 
 The system was initially developed for the segmentation of brain lesions in MRI scans. It was employed for our research presented in [1],[2], where a 3D network architecture with two convolutional pathways was presented for the efficient multi-scale processing of multi-modal MRI volumes. If the use of the software positively influences your endeavours, please cite [1].
 
-[1] **Konstantinos Kamnitsas**, Christian Ledig, Virginia F.J. Newcombe, Joanna P. Simpson, Andrew D. Kane, David K. Menon, Daniel Rueckert, and Ben Glocker, “[Efficient Multi-Scale 3D CNN with Fully Connected CRF for Accurate Brain Lesion Segmentation][paper1]”, *arxiv preprint arxiv:1603.05959, 2016*.
+[1] **Konstantinos Kamnitsas**, Christian Ledig, Virginia F.J. Newcombe, Joanna P. Simpson, Andrew D. Kane, David K. Menon, Daniel Rueckert, and Ben Glocker, “[Efficient Multi-Scale 3D CNN with Fully Connected CRF for Accurate Brain Lesion Segmentation][paper1]”, *Medical Image Analysis, 2016*.
 
 [2] **Konstantinos Kamnitsas**, Liang Chen, Christian Ledig, Daniel Rueckert, and Ben Glocker, “[Multi-Scale 3D CNNs for segmentation of brain Lesions in multi-modal MRI][paper2]”, *in proceeding of ISLES challenge, MICCAI 2015*.
 
@@ -212,7 +216,7 @@ may be thrown because you are using a version of CUDA that is not compatible wit
 
 Previously we briefly discussed how to quickly run a pre-set example with a tiny CNN, just so you can check whether everything works on your system. In this section we will go through the process in a bit more detail. We also explain the main parameters that should be specified in the configuration files, in order for you to tailor the network and process to your needs. 
 
-The **configuration files** in `examples/configFiles/deepMedicLess/` display these main parameters and the values used in our work in [[1](#citations)]. In an effort to keep the configuration files simple for the user, many of the parameters are "hidden", being passed internally values that worked well in our experiments. The config files in `examples/configFiles/deepMedic/` display all the available parameters, in case one wants to dwell deeper. 
+The **.cfg configuration files** in `examples/configFiles/deepMedicOriginal/` display the parameters used in our work in [[1](#citations)]. In an attempt to make it simpler for the user, we also provide a cleaner version of the configuration files, named with "Less", where many parameters are "hidden". They are internally passed values that worked well in our experiments. Finally, the config files in `examples/configFiles/deepMedic/` provide a network configuration that we will be gradually updating with components that seem to improve the overall performance of the system.
 
 **_Note:_** The config files are parsed as python scripts, thus follow **python syntax**. Any commented-out configuration variables are internally given **default values**.
 
@@ -220,7 +224,7 @@ The **configuration files** in `examples/configFiles/deepMedicLess/` display the
 
 To create a new CNN model, you need to point to a config file with the parameters of a model:
 ```
-./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedicLess/model/modelConfig.cfg
+./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg
 ```
 
 After reading the parameters given in modelConfig.cfg, a CNN-model will be created and saved with cPickle in the output folder. The session prints all the parameters that are used for the model-creation on the screen and to a log.txt file. 
@@ -262,19 +266,19 @@ After a model is created, it is pickled and saved. You can then train it using y
 
 a) By adding the `-model` option and specifying the file with a saved/pickled model (created by a -newModel process or half trained from a previous training-session).
 ```
-./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg \
+./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedic/train/trainConfig.cfg \
                                 -model ./path-to-saved-model
 ```
 
 b) The path to the saved model to train can be specified in the config file. In this case, the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
 ```
-./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg
+./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedic/train/trainConfig.cfg
 ```
 
 c) The model created from a model-creation session can be passed straight to a training session, after it is saved. **Note:** If a path to another model is specified in the config-file, it is disregarded.
 ```
-./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedicLess/model/modelConfig.cfg \
-                       		-train ./examples/configFiles/deepMedicLess/train/trainConfig.cfg
+./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg \
+                       		-train ./examples/configFiles/deepMedic/train/trainConfig.cfg
 ```
 
 **The Training Session**
@@ -305,7 +309,7 @@ For each epoch {
 
 The validation on samples and the full segmention of the scans of validation subjects are optional. The **progress of training can be plotted** by using the accompanying `plotTrainingProgress.py` script, which parses the training logs for the reported validation and training accuracy metrics:
 ```
-python plotTrainingProgress.py examples/output/logs/trainSessionDeepMedicLess.txt -d
+python plotTrainingProgress.py examples/output/logs/trainSessionDeepMedic.txt -d
 ```
 
 **Training Parameters**
@@ -390,7 +394,7 @@ Note that this testing procedure is similar to the full-inference procedure perf
 
 ### 4. How to run DeepMedic on your data
 
-In `examples/configFiles/deepMedic/` we provide the configuration of the DeepMedic model, as employed in our work in [1], and very similar to the model employed in our winning contribution for the ISLES 2015 challenge [2]. “Cleaner” versions of the configuration files are provided in `examples/configFiles/deepMedicLess/`, where many parameters omitted (they are passed as *default* internally). The configuration of these two models is exactly the same.
+In `examples/configFiles/deepMedicOriginal/` we provide the configuration of the network as employed in our work in [1], and very similar to the model employed in our winning contribution for the ISLES 2015 challenge [2]. The config files named with “Less” are “cleaner” versions to make them more readable, where many parameters are omitted/hidden (they are passed *default* values internally). The configuration of these two models is exactly the same. In `examples/configFiles/deepMedic/` we provide a configuration which we will be gradually updating with any components we find generally well behaved. You are adviced to use the latter, bearing in mind that behavior might slightly change between version (hopefully for the best!). 
 
 To run the DeepMedic on your data, the following are the minimum steps you need to follow:
 
