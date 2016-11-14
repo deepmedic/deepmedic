@@ -440,6 +440,6 @@ License for the data provided for the examples: Creative Commons Attribution-Non
 
 [//]: # (reference links)
 
-   [paper1]: <http://arxiv.org/abs/1603.05959> 
+   [paper1]: <http://www.sciencedirect.com/science/article/pii/S1361841516301839>
 
    [paper2]: <http://www.isles-challenge.org/ISLES2015/articles/kamnk1.pdf>
