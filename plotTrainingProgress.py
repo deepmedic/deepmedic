@@ -11,12 +11,15 @@ This script parses training logs and plots accuracy metrics (mean accuracy, sens
 Last update: 16 June 2016
 '''
 
+from __future__ import absolute_import, print_function
+
 import numpy as np
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import os
 import sys
 import argparse
+from six.moves import xrange
 
 import re
 
@@ -194,7 +197,7 @@ def getListOfAccNumbersFromListOfStrNumbersAvoidingNotAppl(listOfstringNumbers, 
 	listOfAccNumbers = []
 	for stringNumber in listOfstringNumbers :
 		stringNumberStrippedOfWhiteSpace = stringNumber.strip()
-		parseFloatNumber = float(stringNumberStrippedOfWhiteSpace) if stringNumberStrippedOfWhiteSpace <> NA_PATTERN else previousValueOfTheVariableInTheTimeSerie
+		parseFloatNumber = float(stringNumberStrippedOfWhiteSpace) if stringNumberStrippedOfWhiteSpace != NA_PATTERN else previousValueOfTheVariableInTheTimeSerie
 		previousValueOfTheVariableInTheTimeSerie = parseFloatNumber
 		listOfAccNumbers.append(parseFloatNumber)
 	return listOfAccNumbers
@@ -501,7 +504,7 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
 				numberOfSubsPerEpoch = subepochsPerEpOfExpers[valOrTrainExperiment_i]
 				numberOfEpsBetweenFullInf = epochsPerFullInferOfExpers[valOrTrainExperiment_i]
 
-				if meanPosNegDice1_i <> 4 : #Not for DSC full inference.
+				if meanPosNegDice1_i != 4 : #Not for DSC full inference.
 					numberOfSubepochsRan = len(valOrTrainExperiment[meanPosNegDice1_i])
 					numberOfEpochsRan = numberOfSubepochsRan*1.0/numberOfSubsPerEpoch
 					maxNumOfEpsDurationOfExps = maxNumOfEpsDurationOfExps if maxNumOfEpsDurationOfExps >= numberOfEpochsRan else numberOfEpochsRan
@@ -578,8 +581,8 @@ if __name__ == '__main__':
 
 	if not detailedPlotBool: # basic plot
 		if args.classes_to_plot :
-			print "ERROR: -c/--classes option should only be provided when -d/--detailed plotting is specified. Default basic plotting parses and shows overall and not class-specific accuracy."
-			print "Exiting!"; exit(1)
+			print("ERROR: -c/--classes option should only be provided when -d/--detailed plotting is specified. Default basic plotting parses and shows overall and not class-specific accuracy.")
+			print("Exiting!"); exit(1)
 
 		measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, None, movingAverSubeps)
 		plotProgressBasic(measuredMetricsFromAllExperiments, listOfExperimentsNames, movingAverSubeps, subepochsPerEpFromEachLog, saveFigBool)

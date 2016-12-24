@@ -30,7 +30,7 @@ def parseFileLinesInList(pathToListingFile) :
 	list1 = []
 	with open(pathToListingFile, "r") as inp :
 		for line in inp :
-			if not line.startswith("#") and line.strip() <> "" :
+			if not line.startswith("#") and line.strip() != "" :
 				list1.append(line.strip())
 	return list1
 
@@ -40,7 +40,7 @@ def parseAbsFileLinesInList(pathToListingFile) :
 	list1 = []
 	with open(pathToListingFile, "r") as inp :
 		for line in inp :
-			if not line.startswith("#") and line.strip() <> "" :
+			if not line.startswith("#") and line.strip() != "" :
 				pathToFileParsed = line.strip()
 				if os.path.isabs(pathToFileParsed) : #abs path.
 					list1.append(os.path.normpath(pathToFileParsed))
@@ -50,7 +50,7 @@ def parseAbsFileLinesInList(pathToListingFile) :
 
 def checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCasesPreviously, pathToGivenListFile, listOfFilepathsToChannelIForEachCase) :
 	numberOfContainedCasesInList = len(listOfFilepathsToChannelIForEachCase)
-	if numberOfCasesPreviously <> numberOfContainedCasesInList :
+	if numberOfCasesPreviously != numberOfContainedCasesInList :
 		print "ERROR: Given file:", pathToGivenListFile, " contains #", numberOfContainedCasesInList," entries, whereas previously checked files contained #", numberOfCasesPreviously,". All listing-files for channels, masks, etc, should contain the same number of entries, one for each case.\nExiting!"
 		exit(1)
 

@@ -14,8 +14,11 @@ import theano.tensor as T
 from theano.tensor.nnet import conv
 import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
 import random
-
-from sys import maxint as MAX_INT
+try:
+	from sys import maxint as MAX_INT
+except ImportError:
+	# python3 compatibility
+	from sys import maxsize as MAX_INT
 
 from deepmedic.maxPoolingModule import myMaxPooling3d
 
@@ -611,7 +614,7 @@ class LowRankConvLayer(ConvLayer):
 	for wOfSubconv in self._WperSubconv : l2Cost += (wOfSubconv ** 2).sum()
 	return l2Cost
     def getW(self):
-    	print "ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"; exit(1)
+    	print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
 
 
 

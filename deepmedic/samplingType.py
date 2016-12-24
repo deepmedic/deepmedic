@@ -4,7 +4,7 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
-
+from six.moves import xrange
 import numpy as np
 
 class SamplingType(object) :
@@ -29,7 +29,7 @@ class SamplingType(object) :
 			self.logger.print3("ERROR: Tried to create a SamplingType instance, but the samplingType passed was invalid. Should be [0,1,2,3]. Exiting!"); exit(1)
 
 	def setPercentOfSamplesPerCategoryToSample(self, percentageOfSamplesPerCategoryOfSampling) :
-		if self.samplingType in [0,3] and len(percentageOfSamplesPerCategoryOfSampling) <> self.getNumberOfCategoriesToSample() :
+		if self.samplingType in [0,3] and len(percentageOfSamplesPerCategoryOfSampling) != self.getNumberOfCategoriesToSample() :
 			self.logger.print3("ERROR: In class [SamplingType], the list percentageOfSamplesPerCategoryOfSampling had [" + str(len(percentageOfSamplesPerCategoryOfSampling)) + "] elements. In this case of [" + self.stringOfSamplingType + "], it should have [" + str(self.getNumberOfCategoriesToSample()) + "]! Exiting!"); exit(1)
 
 		if self.samplingType == 0 :
@@ -81,7 +81,7 @@ class SamplingType(object) :
 		if self.samplingType == 0 : # fore/background
 			if providedWeightMapsToSampleForEachCategory : #Both weight maps should be provided currently.
 				numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
-				if numOfProvidedWeightMaps <> self.getNumberOfCategoriesToSample() :
+				if numOfProvidedWeightMaps != self.getNumberOfCategoriesToSample() :
 					self.logger.print3("ERROR: For SamplingType = Fore/Background(0), [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! Two (fore/back) were expected! Exiting!"); exit(1)	
 				finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory
 			elif not providedGtLabelsBool:
@@ -97,7 +97,7 @@ class SamplingType(object) :
 		elif self.samplingType == 1 : # uniform
 			if providedWeightMapsToSampleForEachCategory :
 				numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
-				if numOfProvidedWeightMaps <> 1 :
+				if numOfProvidedWeightMaps != 1 :
 					self.logger.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! One was expected! Exiting!"); exit(1)
 				finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should be an array with dim1==1 already.
 			elif providedRoiMaskBool :
@@ -107,7 +107,7 @@ class SamplingType(object) :
 		elif self.samplingType == 2 : # full image. SAME AS UNIFORM?
 			if providedWeightMapsToSampleForEachCategory :
 				numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
-				if numOfProvidedWeightMaps <> 1 :
+				if numOfProvidedWeightMaps != 1 :
 					self.logger.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! One was expected! Exiting!"); exit(1)
 				finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should be an array with dim1==1 already.
 			elif providedRoiMaskBool :
@@ -117,7 +117,7 @@ class SamplingType(object) :
 		elif self.samplingType == 3 : # Targetted per class.
 			if providedWeightMapsToSampleForEachCategory :
 				numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
-				if numOfProvidedWeightMaps <> self.getNumberOfCategoriesToSample() :
+				if numOfProvidedWeightMaps != self.getNumberOfCategoriesToSample() :
 					self.logger.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! As many as the classes [" + str(self.getNumberOfCategoriesToSample()) + "] (incl Background) were expected! Exiting!"); exit(1)
 				finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should have as many entries as classes (incl backgr).
 			elif providedGtLabelsBool :

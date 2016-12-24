@@ -183,7 +183,7 @@ class TrainSessionParameters(object) :
 		self.mainOutputAbsFolder = mainOutputAbsFolder
 		self.cnn3dInstance = cnn3dInstance #Must be filled from outside after initialization
 		self.cnnModelFilepath = cnnModelFilepath #This is where the model was loaded from.
-		self.cnnModelName = cnn3dInstance.cnnModelName if cnn3dInstance.cnnModelName <> None else "defaultCnnModelName"
+		self.cnnModelName = cnn3dInstance.cnnModelName if cnn3dInstance.cnnModelName != None else "defaultCnnModelName"
 
 
 		#====================TRAINING==========================
@@ -197,11 +197,11 @@ class TrainSessionParameters(object) :
 		self.providedRoiMasksTrain = True if roiMasksFilepathsTrain else False
 		self.roiMasksFilepathsTrain = roiMasksFilepathsTrain if roiMasksFilepathsTrain else [] #For Int-Augm and for Mask-Where-Neg if no advanced-sampling-train.
 
-		if percentOfSamplesToExtractPositTrain <> None : #Deprecated. Issue error and ask for correction.
+		if percentOfSamplesToExtractPositTrain != None : #Deprecated. Issue error and ask for correction.
 			self.errDeprPercPosTr()
 		#~~~~~~~~~Advanced Sampling~~~~~~~
 		#ADVANCED CONFIG IS DISABLED HERE IF useDefaultSamplingFromGtAndRoi = True!
-		self.useDefaultTrainingSamplingFromGtAndRoi = useDefaultTrainingSamplingFromGtAndRoi if useDefaultTrainingSamplingFromGtAndRoi <> None else True
+		self.useDefaultTrainingSamplingFromGtAndRoi = useDefaultTrainingSamplingFromGtAndRoi if useDefaultTrainingSamplingFromGtAndRoi != None else True
 		DEFAULT_SAMPLING_TYPE_TR = 0
 		if self.useDefaultTrainingSamplingFromGtAndRoi :
 			self.samplingTypeInstanceTrain = samplingType.SamplingType( self.sessionLogger, DEFAULT_SAMPLING_TYPE_TR, self.cnn3dInstance.numberOfOutputClasses )
@@ -209,7 +209,7 @@ class TrainSessionParameters(object) :
 			self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
 			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = None
 		else :
-			samplingTypeToUseTr = samplingTypeTraining if samplingTypeTraining <> None else DEFAULT_SAMPLING_TYPE_TR
+			samplingTypeToUseTr = samplingTypeTraining if samplingTypeTraining != None else DEFAULT_SAMPLING_TYPE_TR
 			self.samplingTypeInstanceTrain = samplingType.SamplingType( self.sessionLogger, samplingTypeToUseTr, self.cnn3dInstance.numberOfOutputClasses)
 			if samplingTypeToUseTr in [0,3] and proportionOfSamplesPerCategoryTrain :
 				self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( proportionOfSamplesPerCategoryTrain )
@@ -223,20 +223,20 @@ class TrainSessionParameters(object) :
 		
 
 		#~~~~~~~~ Training Cycle ~~~~~~~~~~~
-		self.numberOfEpochs = numberOfEpochs if numberOfEpochs <> None else 35
-		self.numberOfSubepochs = numberOfSubepochs if numberOfSubepochs <> None else 20
-		self.numOfCasesLoadedPerSubepoch = numOfCasesLoadedPerSubepoch if numOfCasesLoadedPerSubepoch <> None else 50
-		self.segmentsLoadedOnGpuPerSubepochTrain = segmentsLoadedOnGpuPerSubepochTrain if segmentsLoadedOnGpuPerSubepochTrain <> None else 1000
+		self.numberOfEpochs = numberOfEpochs if numberOfEpochs != None else 35
+		self.numberOfSubepochs = numberOfSubepochs if numberOfSubepochs != None else 20
+		self.numOfCasesLoadedPerSubepoch = numOfCasesLoadedPerSubepoch if numOfCasesLoadedPerSubepoch != None else 50
+		self.segmentsLoadedOnGpuPerSubepochTrain = segmentsLoadedOnGpuPerSubepochTrain if segmentsLoadedOnGpuPerSubepochTrain != None else 1000
 
 		#~~~~~~~ Learning Rate Schedule ~~~~~~~~
 		#Auto requires performValidationOnSamplesThroughoutTraining and providedGtForValidationBool
-		self.stable0orAuto1orPredefined2orExponential3LrSchedule = stable0orAuto1orPredefined2orExponential3LrSchedule if stable0orAuto1orPredefined2orExponential3LrSchedule <> None else 3
+		self.stable0orAuto1orPredefined2orExponential3LrSchedule = stable0orAuto1orPredefined2orExponential3LrSchedule if stable0orAuto1orPredefined2orExponential3LrSchedule != None else 3
 		#Used for Stable + Auto + Predefined.
-		self.whenDecreasingDivideLrBy = whenDecreasingDivideLrBy if whenDecreasingDivideLrBy <> None else 2.0
+		self.whenDecreasingDivideLrBy = whenDecreasingDivideLrBy if whenDecreasingDivideLrBy != None else 2.0
 		#Stable + Auto. Set this to 0 to never lower it!
-		self.numEpochsToWaitBeforeLoweringLr = numEpochsToWaitBeforeLoweringLr if numEpochsToWaitBeforeLoweringLr <> None else 3
+		self.numEpochsToWaitBeforeLoweringLr = numEpochsToWaitBeforeLoweringLr if numEpochsToWaitBeforeLoweringLr != None else 3
 		#Auto:
-		self.minIncreaseInValidationAccuracyThatResetsWaiting = minIncreaseInValidationAccuracyThatResetsWaiting if minIncreaseInValidationAccuracyThatResetsWaiting <> None else 0.0005
+		self.minIncreaseInValidationAccuracyThatResetsWaiting = minIncreaseInValidationAccuracyThatResetsWaiting if minIncreaseInValidationAccuracyThatResetsWaiting != None else 0.0005
 		#Predefined.
 		self.predefinedSchedLowerLrAtEpochs = predefinedSchedule
 		if self.stable0orAuto1orPredefined2orExponential3LrSchedule == 2 and self.predefinedSchedLowerLrAtEpochs == None :
@@ -246,7 +246,7 @@ class TrainSessionParameters(object) :
 
 		#~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
 		self.reflectImagesPerAxis = reflectImagesPerAxis if reflectImagesPerAxis else [False, False, False]
-		self.performIntAugm = performIntAugm if performIntAugm <> None else False
+		self.performIntAugm = performIntAugm if performIntAugm != None else False
 		if self.performIntAugm :
 			self.sampleIntAugmShiftWithMuAndStd = sampleIntAugmShiftWithMuAndStd if sampleIntAugmShiftWithMuAndStd else [0.0 , 0.1]
 			self.sampleIntAugmMultiWithMuAndStd = sampleIntAugmMultiWithMuAndStd if sampleIntAugmMultiWithMuAndStd else [1.0 , 0.0]
@@ -257,10 +257,10 @@ class TrainSessionParameters(object) :
 			self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd = [0, "plcholder", [], []]
 
 		#===================VALIDATION========================
-		self.performValidationOnSamplesThroughoutTraining = performValidationOnSamplesThroughoutTraining if performValidationOnSamplesThroughoutTraining <> None else False
+		self.performValidationOnSamplesThroughoutTraining = performValidationOnSamplesThroughoutTraining if performValidationOnSamplesThroughoutTraining != None else False
 		if self.stable0orAuto1orPredefined2orExponential3LrSchedule == 1 and not self.performValidationOnSamplesThroughoutTraining :
 			self.errorAutoRequiresValSamples()
-		self.performFullInferenceOnValidationImagesEveryFewEpochs = performFullInferenceOnValidationImagesEveryFewEpochs if performFullInferenceOnValidationImagesEveryFewEpochs <> None else False
+		self.performFullInferenceOnValidationImagesEveryFewEpochs = performFullInferenceOnValidationImagesEveryFewEpochs if performFullInferenceOnValidationImagesEveryFewEpochs != None else False
 
 		#Input:
 		if self.performValidationOnSamplesThroughoutTraining or self.performFullInferenceOnValidationImagesEveryFewEpochs :
@@ -281,11 +281,11 @@ class TrainSessionParameters(object) :
 		self.roiMasksFilepathsVal = roiMasksFilepathsVal if roiMasksFilepathsVal else [] #Also for default sampling of neg segs.
 
 		#~~~~~Validation on Samples~~~~~~~~
-		self.segmentsLoadedOnGpuPerSubepochVal = segmentsLoadedOnGpuPerSubepochVal if segmentsLoadedOnGpuPerSubepochVal <> None else 3000
+		self.segmentsLoadedOnGpuPerSubepochVal = segmentsLoadedOnGpuPerSubepochVal if segmentsLoadedOnGpuPerSubepochVal != None else 3000
 
 		#~~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~
 		#ADVANCED OPTION ARE DISABLED IF useDefaultUniformValidationSampling = True!
-		self.useDefaultUniformValidationSampling = useDefaultUniformValidationSampling if useDefaultUniformValidationSampling <> None else True
+		self.useDefaultUniformValidationSampling = useDefaultUniformValidationSampling if useDefaultUniformValidationSampling != None else True
 		DEFAULT_SAMPLING_TYPE_VAL = 1
 		if self.useDefaultUniformValidationSampling :
 			self.samplingTypeInstanceVal = samplingType.SamplingType( self.sessionLogger, DEFAULT_SAMPLING_TYPE_VAL, self.cnn3dInstance.numberOfOutputClasses )
@@ -293,7 +293,7 @@ class TrainSessionParameters(object) :
 			self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
 			self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation = None
 		else :
-			samplingTypeToUseVal = samplingTypeValidation if samplingTypeValidation <> None else DEFAULT_SAMPLING_TYPE_VAL
+			samplingTypeToUseVal = samplingTypeValidation if samplingTypeValidation != None else DEFAULT_SAMPLING_TYPE_VAL
 			self.samplingTypeInstanceVal = samplingType.SamplingType( self.sessionLogger, samplingTypeToUseVal, self.cnn3dInstance.numberOfOutputClasses)
 			if samplingTypeToUseVal in [0,3] and proportionOfSamplesPerCategoryVal :
 				self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( proportionOfSamplesPerCategoryVal )
@@ -306,17 +306,17 @@ class TrainSessionParameters(object) :
 		self.providedWeightMapsToSampleForEachCategoryValidation = True if self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation else False 
 
 		#~~~~~~Full inference on validation image~~~~~~
-		self.numberOfEpochsBetweenFullInferenceOnValImages = numberOfEpochsBetweenFullInferenceOnValImages if numberOfEpochsBetweenFullInferenceOnValImages <> None else 1
+		self.numberOfEpochsBetweenFullInferenceOnValImages = numberOfEpochsBetweenFullInferenceOnValImages if numberOfEpochsBetweenFullInferenceOnValImages != None else 1
 		if self.numberOfEpochsBetweenFullInferenceOnValImages == 0 and self.performFullInferenceOnValidationImagesEveryFewEpochs :
 			self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
 
 		#predictions
-		self.saveSegmentationVal = saveSegmentationVal if saveSegmentationVal <> None else True
+		self.saveSegmentationVal = saveSegmentationVal if saveSegmentationVal != None else True
 		self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if saveProbMapsBoolPerClassVal else [True]*cnn3dInstance.numberOfOutputClasses
 		self.filepathsToSavePredictionsForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
 		#features:
-		self.saveIndividualFmImagesVal = saveIndividualFmImagesVal if saveIndividualFmImagesVal <> None else False
-		self.saveMultidimensionalImageWithAllFmsVal = saveMultidimensionalImageWithAllFmsVal if saveMultidimensionalImageWithAllFmsVal <> None else False
+		self.saveIndividualFmImagesVal = saveIndividualFmImagesVal if saveIndividualFmImagesVal != None else False
+		self.saveMultidimensionalImageWithAllFmsVal = saveMultidimensionalImageWithAllFmsVal if saveMultidimensionalImageWithAllFmsVal != None else False
 		self.indicesOfFmsToVisualisePerPathwayAndLayerVal = [item if item else [] for item in indicesOfFmsToVisualisePerPathwayAndLayerVal] #By default, save none.
 		self.indicesOfFmsToVisualisePerPathwayAndLayerVal.append([]) #for the Zoomed-in pathway. HIDDEN
 		self.filepathsToSaveFeaturesForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
@@ -329,7 +329,7 @@ class TrainSessionParameters(object) :
 
 		#===================== OTHERS======================
 		#Preprocessing
-		self.padInputImagesBool = padInputImagesBool if padInputImagesBool <> None else True
+		self.padInputImagesBool = padInputImagesBool if padInputImagesBool != None else True
 
 		#Others useful internally or for reporting:
 		self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
