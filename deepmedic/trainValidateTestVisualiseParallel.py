@@ -5,6 +5,8 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 import sys
 import time
 import numpy as np
@@ -28,12 +30,12 @@ TINY_FLOAT = np.finfo(np.float32).tiny
 def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions) : #Works for 2D as well I think.
     cnnReceptiveFieldArray = np.asarray(cnnReceptiveField, dtype="int16")
     array1Dimensions = np.asarray(array1.shape,dtype="int16")
-    if len(array1.shape) <> 3 :
+    if len(array1.shape) != 3 :
         print("ERROR! Given array in padCnnInputs() was expected of 3-dimensions, but was passed an array of dimensions: ", array1.shape,", Exiting!")
         exit(1)
     #paddingValue = (array1[0,0,0] + array1[-1,0,0] + array1[0,-1,0] + array1[-1,-1,0] + array1[0,0,-1] + array1[-1,0,-1] + array1[0,-1,-1] + array1[-1,-1,-1]) / 8.0
     #Calculate how much padding needed to fully infer the original array1, taking only the receptive field in account.
-    paddingAtLeftPerAxis = (cnnReceptiveFieldArray - 1) / 2
+    paddingAtLeftPerAxis = (cnnReceptiveFieldArray - 1) // 2
     paddingAtRightPerAxis = cnnReceptiveFieldArray - 1 - paddingAtLeftPerAxis
     #Now, to cover the case that the specified image-segment of the CNN is larger than the image (eg full-image inference and current image is smaller), pad further to right.
     paddingFurtherToTheRightNeededForSegment = np.maximum(0, np.asarray(imagePartDimensions,dtype="int16")-(array1Dimensions+paddingAtLeftPerAxis+paddingAtRightPerAxis))
@@ -134,7 +136,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel = np.ones( (numberOfNormalScaleChannels, 2), dtype="float32")
     for channel_i in xrange(numberOfNormalScaleChannels):
         fullFilenamePathOfChannel = listOfFilepathsToEachChannelOfEachPatient[index_of_wanted_image][channel_i]
-        if fullFilenamePathOfChannel <> "-" : #normal case, filepath was given.
+        if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
             img_proxy = nib.load(fullFilenamePathOfChannel)
             channelData = img_proxy.get_data()
             if len(channelData.shape) > 3 :
@@ -193,7 +195,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
         
-    if training0orValidation1orTest2 <> 2 and providedWeightMapsToSampleForEachCategory==True : # in testing these weightedMaps are never provided, they are for training/validation only.
+    if training0orValidation1orTest2 != 2 and providedWeightMapsToSampleForEachCategory==True : # in testing these weightedMaps are never provided, they are for training/validation only.
         numberOfSamplingCategories = len(forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient)
         arrayWithWeightMapsWhereToSampleForEachCategory = np.zeros( [numberOfSamplingCategories] + list(allChannelsOfPatientInNpArray[0].shape), dtype="float32" ) 
         for cat_i in xrange( numberOfSamplingCategories ) :
@@ -291,10 +293,10 @@ def sampleImageParts(   myLogger,
     #The following loop leads to booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries to be true for the indices that allow you to get an image part CENTERED on them, and be safely within image boundaries. Note that if the imagePart is of even dimension, the "central" voxel is one voxel to the left.
     for rcz_i in xrange( len(dimsOfSegmentRcz) ) :
         if dimsOfSegmentRcz[rcz_i]%2 == 0: #even
-            dimensionDividedByTwo = dimsOfSegmentRcz[rcz_i]/2
+            dimensionDividedByTwo = dimsOfSegmentRcz[rcz_i]//2
             halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwo - 1, dimensionDividedByTwo] #central of ImagePart is 1 vox closer to begining of axes.
         else: #odd
-            dimensionDividedByTwoFloor = math.floor(dimsOfSegmentRcz[rcz_i]/2) #eg 5/2 = 2, with the 3rd voxel being the "central"
+            dimensionDividedByTwoFloor = math.floor(dimsOfSegmentRcz[rcz_i]//2) #eg 5/2 = 2, with the 3rd voxel being the "central"
             halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwoFloor, dimensionDividedByTwoFloor] 
     #used to be [halfImagePartBoundaries[0][0]: -halfImagePartBoundaries[0][1]], but in 2D case halfImagePartBoundaries might be ==0, causes problem and you get a null slice.
     booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries[halfImagePartBoundaries[0][0]: dimensionsOfImageChannel[0] - halfImagePartBoundaries[0][1],
@@ -360,16 +362,16 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
     numberOfCentralVoxelsClassifiedForEachImagePart_zDim = dimsOfPrimarySegment[2] - recFieldCnn[2] + 1
     
     #Calculate the slice that I should get, and where I should put it in the imagePart (eg if near the borders, and I cant grab a whole slice-imagePart).
-    rSlotsPreviously = ((subSamplingFactor[0]-1)/2)*recFieldCnn[0] if subSamplingFactor[0]%2==1 \
-                                                else (subSamplingFactor[0]-2)/2*recFieldCnn[0] + recFieldCnn[0]/2
-    cSlotsPreviously = ((subSamplingFactor[1]-1)/2)*recFieldCnn[1] if subSamplingFactor[1]%2==1 \
-                                                else (subSamplingFactor[1]-2)/2*recFieldCnn[1] + recFieldCnn[1]/2
-    zSlotsPreviously = ((subSamplingFactor[2]-1)/2)*recFieldCnn[2] if subSamplingFactor[2]%2==1 \
-                                                else (subSamplingFactor[2]-2)/2*recFieldCnn[2] + recFieldCnn[2]/2
+    rSlotsPreviously = ((subSamplingFactor[0]-1)//2)*recFieldCnn[0] if subSamplingFactor[0]%2==1 \
+                                                else (subSamplingFactor[0]-2)//2*recFieldCnn[0] + recFieldCnn[0]//2
+    cSlotsPreviously = ((subSamplingFactor[1]-1)//2)*recFieldCnn[1] if subSamplingFactor[1]%2==1 \
+                                                else (subSamplingFactor[1]-2)//2*recFieldCnn[1] + recFieldCnn[1]//2
+    zSlotsPreviously = ((subSamplingFactor[2]-1)//2)*recFieldCnn[2] if subSamplingFactor[2]%2==1 \
+                                                else (subSamplingFactor[2]-2)//2*recFieldCnn[2] + recFieldCnn[2]//2
     #1*17
-    rToCentralVoxelOfAnAveragedArea = subSamplingFactor[0]/2 if subSamplingFactor[0]%2==1 else (subSamplingFactor[0]/2 - 1) #one closer to the beginning of the dim. Same happens when I get parts of image.
-    cToCentralVoxelOfAnAveragedArea = subSamplingFactor[1]/2 if subSamplingFactor[1]%2==1 else (subSamplingFactor[1]/2 - 1)
-    zToCentralVoxelOfAnAveragedArea =  subSamplingFactor[2]/2 if subSamplingFactor[2]%2==1 else (subSamplingFactor[2]/2 - 1)
+    rToCentralVoxelOfAnAveragedArea = subSamplingFactor[0]//2 if subSamplingFactor[0]%2==1 else (subSamplingFactor[0]//2 - 1) #one closer to the beginning of the dim. Same happens when I get parts of image.
+    cToCentralVoxelOfAnAveragedArea = subSamplingFactor[1]//2 if subSamplingFactor[1]%2==1 else (subSamplingFactor[1]//2 - 1)
+    zToCentralVoxelOfAnAveragedArea =  subSamplingFactor[2]//2 if subSamplingFactor[2]%2==1 else (subSamplingFactor[2]//2 - 1)
     #This is where to start taking voxels from the subsampled image. From the beginning of the imagePart(1 st patch)...
     #... go forward a few steps to the voxel that is like the "central" in this subsampled (eg 3x3) area. 
     #...Then go backwards -Patchsize to find the first voxel of the subsampled. 
@@ -390,11 +392,9 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
     chighNonInclCorrected = min(chighNonIncl, subsampledImageDimensions[1])
     zhighNonInclCorrected = min(zhighNonIncl, subsampledImageDimensions[2]) #This gave 7
     
-    rLowToPutTheNotPaddedInSubsampledImPart = 0 if rlow >= 0 else abs(rlow)/subSamplingFactor[0]
-    cLowToPutTheNotPaddedInSubsampledImPart = 0 if clow >= 0 else abs(clow)/subSamplingFactor[1]
-    zLowToPutTheNotPaddedInSubsampledImPart = 0 if zlow >= 0 else abs(zlow)/subSamplingFactor[2]
-    
-    #print "DEBUG: rlow=",rlow, " rhighNonIncl=",rhighNonIncl," rlowCorrected=",rlowCorrected," rhighNonInclCorrected=",rhighNonInclCorrected," rLowToPutTheNotPaddedInSubsampledImPart=", rLowToPutTheNotPaddedInSubsampledImPart, " rHighNonInclToPutTheNotPaddedInSubsampledImPart=",rHighNonInclToPutTheNotPaddedInSubsampledImPart
+    rLowToPutTheNotPaddedInSubsampledImPart = 0 if rlow >= 0 else abs(rlow)//subSamplingFactor[0]
+    cLowToPutTheNotPaddedInSubsampledImPart = 0 if clow >= 0 else abs(clow)//subSamplingFactor[1]
+    zLowToPutTheNotPaddedInSubsampledImPart = 0 if zlow >= 0 else abs(zlow)//subSamplingFactor[2]
     
     dimensionsOfTheSliceOfSubsampledImageNotPadded = [  int(math.ceil((rhighNonInclCorrected - rlowCorrected)*1.0/subSamplingFactor[0])),
                                                         int(math.ceil((chighNonInclCorrected - clowCorrected)*1.0/subSamplingFactor[1])),
@@ -466,7 +466,7 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
                 
     #I need to have a total number of image-parts that can be exactly-divided by the 'batch_size'. For this reason, I add in the far end of the list multiple copies of the last element. I NEED THIS IN THEANO. I TRIED WITHOUT. NO.
     total_number_of_image_parts = len(sliceCoordsOfSegmentsToReturn)
-    number_of_imageParts_missing_for_exact_division =  batch_size - total_number_of_image_parts%batch_size if total_number_of_image_parts%batch_size <> 0 else 0
+    number_of_imageParts_missing_for_exact_division =  batch_size - total_number_of_image_parts%batch_size if total_number_of_image_parts%batch_size != 0 else 0
     for extra_useless_image_part_i in xrange(number_of_imageParts_missing_for_exact_division) :
         sliceCoordsOfSegmentsToReturn.append(sliceCoordsOfSegmentsToReturn[-1])
         
@@ -551,9 +551,9 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
             continue
         subSamplingFactor = pathway.subsFactor()
         pathwayInputShapeRcz = pathway.getShapeOfInput()[0][2:] if training0orValidation1 == 0 else pathway.getShapeOfInput()[1][2:]
-        leftBoundaryRcz = [ coordsOfCentralVoxelOfThisImPart[0] - subSamplingFactor[0]*(pathwayInputShapeRcz[0]-1)/2,
-                            coordsOfCentralVoxelOfThisImPart[1] - subSamplingFactor[1]*(pathwayInputShapeRcz[1]-1)/2,
-                            coordsOfCentralVoxelOfThisImPart[2] - subSamplingFactor[2]*(pathwayInputShapeRcz[2]-1)/2]
+        leftBoundaryRcz = [ coordsOfCentralVoxelOfThisImPart[0] - subSamplingFactor[0]*(pathwayInputShapeRcz[0]-1)//2,
+                            coordsOfCentralVoxelOfThisImPart[1] - subSamplingFactor[1]*(pathwayInputShapeRcz[1]-1)//2,
+                            coordsOfCentralVoxelOfThisImPart[2] - subSamplingFactor[2]*(pathwayInputShapeRcz[2]-1)//2]
         rightBoundaryRcz = [leftBoundaryRcz[0] + subSamplingFactor[0]*pathwayInputShapeRcz[0],
                             leftBoundaryRcz[1] + subSamplingFactor[1]*pathwayInputShapeRcz[1],
                             leftBoundaryRcz[2] + subSamplingFactor[2]*pathwayInputShapeRcz[2]]
@@ -569,7 +569,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
             if howMuchToAddForEachChannel == None or howMuchToMultiplyForEachChannel == None :
                 muOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][0]
                 stdOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][1]
-                if stdOfGaussToAdd <> 0 : #np.random.normal does not work for an std==0.
+                if stdOfGaussToAdd != 0 : #np.random.normal does not work for an std==0.
                     howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd, [numOfInpChannelsForPrimaryPath, 1,1,1])
                 else :
                     howMuchToAddForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32")*muOfGaussToAdd
@@ -577,7 +577,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                 
                 muOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][0]
                 stdOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][1]
-                if stdOfGaussToMultiply <> 0 :
+                if stdOfGaussToMultiply != 0 :
                     howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply, [numOfInpChannelsForPrimaryPath, 1,1,1])
                 else :
                     howMuchToMultiplyForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32")*muOfGaussToMultiply
@@ -615,9 +615,9 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
         
     # Get ground truth labels for training.
     numOfCentralVoxelsClassifRcz = cnn3d.finalTargetLayer_outputShapeTrainValTest[training0orValidation1][2:]
-    leftBoundaryRcz = [ coordsOfCentralVoxelOfThisImPart[0] - (numOfCentralVoxelsClassifRcz[0]-1)/2,
-                        coordsOfCentralVoxelOfThisImPart[1] - (numOfCentralVoxelsClassifRcz[1]-1)/2,
-                        coordsOfCentralVoxelOfThisImPart[2] - (numOfCentralVoxelsClassifRcz[2]-1)/2]
+    leftBoundaryRcz = [ coordsOfCentralVoxelOfThisImPart[0] - (numOfCentralVoxelsClassifRcz[0]-1)//2,
+                        coordsOfCentralVoxelOfThisImPart[1] - (numOfCentralVoxelsClassifRcz[1]-1)//2,
+                        coordsOfCentralVoxelOfThisImPart[2] - (numOfCentralVoxelsClassifRcz[2]-1)//2]
     rightBoundaryRcz = [leftBoundaryRcz[0] + numOfCentralVoxelsClassifRcz[0],
                         leftBoundaryRcz[1] + numOfCentralVoxelsClassifRcz[1],
                         leftBoundaryRcz[2] + numOfCentralVoxelsClassifRcz[2]]
@@ -665,7 +665,7 @@ def getNumberOfSegmentsToExtractPerCategoryFromEachSubject( numberOfImagePartsTo
         arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += 1
         
     for cat_i in xrange(numberOfSamplingCategories) :
-        numberOfSamplesFromThisCategoryPerSubepochPerImage = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] / numOfSubjectsLoadingThisSubepochForSampling
+        numberOfSamplesFromThisCategoryPerSubepochPerImage = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] // numOfSubjectsLoadingThisSubepochForSampling
         arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
         numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] % numOfSubjectsLoadingThisSubepochForSampling
         for i_unevenSampleFromThisCat in xrange(numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly):
@@ -878,7 +878,7 @@ def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
     arrayWithNumbersOfPerClassRpRnTpTnInSubepoch = np.zeros([ cnn3dInstance.numberOfOutputClasses, 4 ], dtype="int32")
     
     for batch_i in xrange(number_of_batches):
-        printProgressStep = max(1, number_of_batches/5)
+        printProgressStep = max(1, number_of_batches//5)
         if  batch_i%printProgressStep == 0 :
             myLogger.print3( trainedOrValidatedString + " on "+str(batch_i)+"/"+str(number_of_batches)+" of the batches for this subepoch...")
         if train0orValidation1==0 : #training
@@ -1118,7 +1118,7 @@ def do_training(myLogger,
                 myLogger.print3("Loading Validation data for subepoch #"+str(subepoch)+" on shared variable...")
                 start_loadingToGpu_time = time.clock()
                 
-                numberOfBatchesValidation = len(channsOfSegmentsForSubepPerPathwayVal[0]) / cnn3dInstance.batchSizeValidation #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
+                numberOfBatchesValidation = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3dInstance.batchSizeValidation #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
                 
                 myLogger.print3("DEBUG: For Validation, loading to shared variable that many Segments: " + str(len(channsOfSegmentsForSubepPerPathwayVal[0])))
                 
@@ -1236,7 +1236,7 @@ def do_training(myLogger,
             myLogger.print3("Loading Training data for subepoch #"+str(subepoch)+" on shared variable...")
             start_loadingToGpu_time = time.clock()
             
-            numberOfBatchesTraining = len(channsOfSegmentsForSubepPerPathwayTrain[0]) / cnn3dInstance.batchSize #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
+            numberOfBatchesTraining = len(channsOfSegmentsForSubepPerPathwayTrain[0]) // cnn3dInstance.batchSize #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
             
             cnn3dInstance.sharedInpXTrain.set_value(channsOfSegmentsForSubepPerPathwayTrain[0], borrow=borrowFlag) # Primary pathway
             for index in xrange(len(channsOfSegmentsForSubepPerPathwayTrain[1:])) :
@@ -1317,7 +1317,7 @@ def do_training(myLogger,
             newLearningRate = cnn3dInstance.initialLearningRate * pow(gammaForExpSchedule, cnn3dInstance.numberOfEpochsTrained-minEpochToLowerLr + 1.0)
             #Momentum increased linearly.
             newMomentum = ((cnn3dInstance.numberOfEpochsTrained - minEpochToLowerLr + 1) - (n_epochs-minEpochToLowerLr))*1.0 / (n_epochs - minEpochToLowerLr) * (exponentialScheduleForLrAndMom[2] - cnn3dInstance.initialMomentum) + exponentialScheduleForLrAndMom[2]
-            print "DEBUG: new learning rate was calculated: ", newLearningRate, " and new Momentum :", newMomentum
+            print("DEBUG: new learning rate was calculated: ", newLearningRate, " and new Momentum: ", newMomentum)
             cnn3dInstance.change_learning_rate_of_a_cnn(newLearningRate, myLogger)
             cnn3dInstance.change_momentum_of_a_cnn(newMomentum, myLogger)
             
@@ -1331,7 +1331,7 @@ def do_training(myLogger,
         myLogger.print3("TIMING: The whole Epoch #"+str(epoch)+" took time: "+str(end_epoch_time-start_epoch_time)+"(s)")
         myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         
-        if performFullInferenceOnValidationImagesEveryFewEpochsBool and (cnn3dInstance.numberOfEpochsTrained <> 0) and (cnn3dInstance.numberOfEpochsTrained % everyThatManyEpochsComputeDiceOnTheFullValidationImages == 0) :
+        if performFullInferenceOnValidationImagesEveryFewEpochsBool and (cnn3dInstance.numberOfEpochsTrained != 0) and (cnn3dInstance.numberOfEpochsTrained % everyThatManyEpochsComputeDiceOnTheFullValidationImages == 0) :
             myLogger.print3("***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #"+str(epoch)+"...***")
             validation0orTesting1 = 0
             #do_validation_or_testing(myLogger,
@@ -1432,7 +1432,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
     numberOfCentralVoxelsClassified = cnn3dInstance.finalTargetLayer.outputShapeTest[2:]
     strideOfImagePartsPerDimensionInVoxels = numberOfCentralVoxelsClassified
     
-    rczHalfRecFieldCnn = [ (recFieldCnn[i]-1)/2 for i in xrange(3) ]
+    rczHalfRecFieldCnn = [ (recFieldCnn[i]-1)//2 for i in xrange(3) ]
     
     #Find the total number of feature maps that will be created:
     #NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just []. If not [], the list should contain one entry per layer of the pathway, even if just []. The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
@@ -1440,10 +1440,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         totalNumberOfFMsToProcess = 0
         for pathway in cnn3dInstance.pathways :
             indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]
-            if indicesOfFmsToVisualisePerLayerOfCertainPathway<>[] :
+            if indicesOfFmsToVisualisePerLayerOfCertainPathway!=[] :
                 for layer_i in xrange(len(pathway.getLayers())) :
                     indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-                    if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
+                    if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway!=[] :
                         #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
                         numberOfFeatureMapsInThisLayer = pathway.getLayer(layer_i).getNumberOfFeatureMaps()
                         indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] = min(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1], numberOfFeatureMapsInThisLayer)
@@ -1514,9 +1514,9 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         
         #Here I calculate how many imageParts can fit in each r-c-z direction/dimension.
         #It is how many times the stride (originally 9^3) can fit in the niiDimension-1patch (half up, half bottom)
-        imagePartsPerRdirection = (niiDimensions[0]-recFieldCnn[0]+1) / strideOfImagePartsPerDimensionInVoxels[0]
-        imagePartsPerCdirection = (niiDimensions[1]-recFieldCnn[1]+1) / strideOfImagePartsPerDimensionInVoxels[1]
-        imagePartsPerZdirection = (niiDimensions[2]-recFieldCnn[2]+1) / strideOfImagePartsPerDimensionInVoxels[2]
+        imagePartsPerRdirection = (niiDimensions[0]-recFieldCnn[0]+1) // strideOfImagePartsPerDimensionInVoxels[0]
+        imagePartsPerCdirection = (niiDimensions[1]-recFieldCnn[1]+1) // strideOfImagePartsPerDimensionInVoxels[1]
+        imagePartsPerZdirection = (niiDimensions[2]-recFieldCnn[2]+1) // strideOfImagePartsPerDimensionInVoxels[2]
         imagePartsPerZSlice = imagePartsPerRdirection*imagePartsPerCdirection
         
         totalNumberOfImagePartsToProcessForThisImage = len(sliceCoordsOfSegmentsInImage)
@@ -1524,11 +1524,11 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
-        number_of_batches = totalNumberOfImagePartsToProcessForThisImage/batch_size
+        number_of_batches = totalNumberOfImagePartsToProcessForThisImage//batch_size
         extractTimePerSubject = 0; loadingTimePerSubject = 0; fwdPassTimePerSubject = 0
         for batch_i in xrange(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
             
-            printProgressStep = max(1, number_of_batches/5)
+            printProgressStep = max(1, number_of_batches//5)
             if batch_i%printProgressStep == 0:
                 myLogger.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
                 
@@ -1602,15 +1602,15 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                         #====the following calculations could be move OUTSIDE THE FOR LOOPS, by using the kernel-size parameter (from the cnn instance) instead of the shape of the returned value.
                         #====fmsReturnedForATestBatchForCertainLayer.shape[2] - (numberOfCentralVoxelsClassified[0]-1) is essentially the width of the patch left after the convolutions.
                         #====These calculations are pathway and layer-specific. So they could be done once, prior to image processing, and results cached in a list to be accessed during the loop.
-                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_R =  numberOfCentralVoxelsClassified[0]-1 if pathway.pType() <> pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/pathway.subsFactor()[0]) -1)
-                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_C =  numberOfCentralVoxelsClassified[1]-1 if pathway.pType() <> pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/pathway.subsFactor()[1]) -1)
-                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z =  numberOfCentralVoxelsClassified[2]-1 if pathway.pType() <> pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/pathway.subsFactor()[2]) -1)
+                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_R =  numberOfCentralVoxelsClassified[0]-1 if pathway.pType() != pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/pathway.subsFactor()[0]) -1)
+                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_C =  numberOfCentralVoxelsClassified[1]-1 if pathway.pType() != pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/pathway.subsFactor()[1]) -1)
+                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z =  numberOfCentralVoxelsClassified[2]-1 if pathway.pType() != pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/pathway.subsFactor()[2]) -1)
                         rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[2] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_R
                         cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[3] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_C
                         zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[4] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z
-                        rOfTopLeftCentralVoxelAtTheFm = (rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2 #-1 so that if width is even, I'll get the left voxel from the centre as 1st, which I THINK is how I am getting the patches from the original image.
-                        cOfTopLeftCentralVoxelAtTheFm = (cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2
-                        zOfTopLeftCentralVoxelAtTheFm = (zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2
+                        rOfTopLeftCentralVoxelAtTheFm = (rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)//2 #-1 so that if width is even, I'll get the left voxel from the centre as 1st, which I THINK is how I am getting the patches from the original image.
+                        cOfTopLeftCentralVoxelAtTheFm = (cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)//2
+                        zOfTopLeftCentralVoxelAtTheFm = (zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)//2
                         
                         #the math.ceil / subsamplingFactor is a trick to make it work for even subsamplingFactor too. Eg 9/2=4.5 => Get 5. Combined with the trick at repeat, I get my correct number of central voxels hopefully.
                         numberOfCentralVoxelsToGetInDirectionR = int(math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/pathway.subsFactor()[0])) if pathway.pType() == pt.SUBS else numberOfCentralVoxelsClassified[0]
@@ -1655,6 +1655,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                     ] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[imagePart_in_this_batch_i]
                         currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding
                 imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
+
             #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
             
         #Clear GPU from testing data.
@@ -1703,10 +1704,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
             for pathway_i in xrange( len(cnn3dInstance.pathways) ) :
                 pathway = cnn3dInstance.pathways[pathway_i]
                 indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]
-                if indicesOfFmsToVisualisePerLayerOfCertainPathway<>[] :
+                if indicesOfFmsToVisualisePerLayerOfCertainPathway!=[] :
                     for layer_i in xrange( len(pathway.getLayers()) ) :
                         indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-                        if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
+                        if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway!=[] :
                             #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
                             for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
                                 fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
@@ -1765,13 +1766,13 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                 #Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinBrainMask / AllLesions , Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask.
                 #Dice1 = Allpredicted/allLesions
                 diceCoeff1 = calculateDiceCoefficient(booleanPredictedLabelImage, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-                diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 <> -1 else NA_PATTERN
+                diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 != -1 else NA_PATTERN
                 #Dice2 = PredictedWithinBrainMask / AllLesions
                 diceCoeff2 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-                diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 <> -1 else NA_PATTERN
+                diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 != -1 else NA_PATTERN
                 #Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask
                 diceCoeff3 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped * multiplyWithBrainMaskOr1)
-                diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 <> -1 else NA_PATTERN
+                diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 != -1 else NA_PATTERN
                 
             myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
             printExplanationsAboutDice(myLogger)
@@ -1796,5 +1797,4 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 def printExplanationsAboutDice(myLogger) :
     myLogger.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0 we calculate DICE for the whole foreground (useful for multi-class problems).")
     myLogger.print3("EXPLANATION: DICE1 is calculated whole segmentation vs whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
-    
     

@@ -5,6 +5,8 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 import numpy
 import numpy as np
 import random
@@ -15,8 +17,11 @@ import theano.tensor as T
 from theano.tensor.nnet import conv
 import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
 
-
-from sys import maxint as MAX_INT
+try:
+    from sys import maxint as MAX_INT
+except ImportError:
+    # python3 compatibility
+    from sys import maxsize as MAX_INT
 
 from deepmedic.maxPoolingModule import myMaxPooling3d
 
@@ -414,11 +419,9 @@ class ConvLayer(Block):
             self._activationFunctionType = "linear"
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = (inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
         elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 0 :
-            #print "Layer: Activation function used = ReLu"
             self._activationFunctionType = "relu"
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyRelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
         elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 1 :
-            #print "Layer: Activation function used = PReLu"
             self._activationFunctionType = "prelu"
             numberOfInputChannels = inputToLayerShapeTrain[1]
             ( self._aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest, numberOfInputChannels)
@@ -547,9 +550,9 @@ class LowRankConvLayer(ConvLayer):
                                 cSubconvOutputShape[3],
                                 zSubconvOutputShape[4]
                                 ]
-        rCropSlice = slice( (filterShape[2]-1)/2, (filterShape[2]-1)/2 + concatOutputShape[2] )
-        cCropSlice = slice( (filterShape[3]-1)/2, (filterShape[3]-1)/2 + concatOutputShape[3] )
-        zCropSlice = slice( (filterShape[4]-1)/2, (filterShape[4]-1)/2 + concatOutputShape[4] )
+        rCropSlice = slice( (filterShape[2]-1)//2, (filterShape[2]-1)//2 + concatOutputShape[2] )
+        cCropSlice = slice( (filterShape[3]-1)//2, (filterShape[3]-1)//2 + concatOutputShape[3] )
+        zCropSlice = slice( (filterShape[4]-1)//2, (filterShape[4]-1)//2 + concatOutputShape[4] )
         rSubconvOutputCropped = rSubconvOutput[:,:, :, cCropSlice if self._rank == 1 else slice(0, MAX_INT), zCropSlice  ]
         cSubconvOutputCropped = cSubconvOutput[:,:, rCropSlice, :, zCropSlice if self._rank == 1 else slice(0, MAX_INT) ]
         zSubconvOutputCropped = zSubconvOutput[:,:, rCropSlice if self._rank == 1 else slice(0, MAX_INT), cCropSlice, : ]
@@ -569,15 +572,15 @@ class LowRankConvLayer(ConvLayer):
         #----- Initialise the weights and Convolve for 3 separate, low rank filters, R,C,Z. -----
         # W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
         
-        rSubconvFilterShape = [ filterShape[0]/3, filterShape[1], filterShape[2], 1 if self._rank == 1 else filterShape[3], 1 ]
+        rSubconvFilterShape = [ filterShape[0]//3, filterShape[1], filterShape[2], 1 if self._rank == 1 else filterShape[3], 1 ]
         rSubconvW = createAndInitializeWeightsTensor(rSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
         rSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(rSubconvW, rSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
         
-        cSubconvFilterShape = [ filterShape[0]/3, filterShape[1], 1, filterShape[3], 1 if self._rank == 1 else filterShape[4] ]
+        cSubconvFilterShape = [ filterShape[0]//3, filterShape[1], 1, filterShape[3], 1 if self._rank == 1 else filterShape[4] ]
         cSubconvW = createAndInitializeWeightsTensor(cSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
         cSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(cSubconvW, cSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
         
-        numberOfFmsForTotalToBeExact = filterShape[0] - 2*(filterShape[0]/3) # Cause of possibly inexact integer division.
+        numberOfFmsForTotalToBeExact = filterShape[0] - 2*(filterShape[0]//3) # Cause of possibly inexact integer division.
         zSubconvFilterShape = [ numberOfFmsForTotalToBeExact, filterShape[1], 1 if self._rank == 1 else filterShape[2], 1, filterShape[4] ]
         zSubconvW = createAndInitializeWeightsTensor(zSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
         zSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(zSubconvW, zSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
@@ -613,7 +616,7 @@ class LowRankConvLayer(ConvLayer):
         for wOfSubconv in self._WperSubconv : l2Cost += (wOfSubconv ** 2).sum()
         return l2Cost
     def getW(self):
-        print "ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"; exit(1)
+        print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
         
         
 class SoftmaxLayer(Block):

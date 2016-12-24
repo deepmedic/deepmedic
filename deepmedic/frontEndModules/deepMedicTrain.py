@@ -5,6 +5,9 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
+
 import os
 
 from deepmedic import myLoggerModule
@@ -124,17 +127,17 @@ class TrainConfig(object):
     
     def checkIfConfigIsCorrectForParticularCnnModel(self, cnnInstance) :
         # DEPRECATED
-        print "Checking if configuration is correct in relation to the loaded model (correct number of input channels, number of classes, etc) ..."
+        print("Checking if configuration is correct in relation to the loaded model (correct number of input channels, number of classes, etc) ...")
         #Check whether the given channels are as many as the channels when the model was built.
-        if len(self.configStruct[self.CHANNELS]) <> cnnInstance.numberOfImageChannelsPath1 :
-            print "ERROR:\tConfiguration parameter \"", self.configStruct[self.CHANNELS], "\" should have the same number of elements as the number of channels specified when constructing the cnnModel!\n\tCnnModel was constructed to take as input #", cnnInstance.numberOfImageChannelsPath1, " while the list given in the config-file contained #", len(self.configStruct[self.CHANNELS]), " elements."
-            print "ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConst.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"; exit(1)
+        if len(self.configStruct[self.CHANNELS]) != cnnInstance.numberOfImageChannelsPath1 :
+            print("ERROR:\tConfiguration parameter \"", self.configStruct[self.CHANNELS], "\" should have the same number of elements as the number of channels specified when constructing the cnnModel!\n\tCnnModel was constructed to take as input #", cnnInstance.numberOfImageChannelsPath1, " while the list given in the config-file contained #", len(self.configStruct[self.CHANNELS]), " elements.")
+            print("ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConst.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"); exit(1)
         #NOTE: Currently not checking the subsampled path, cause user is only allowed to use the same channels as the normal pathway. But should be possible in the future.
         
         #Check whether the boolean list that saves whether to save the prob-maps has same number of elements as the classes the model has.
-        if self.configStruct[self.SAVE_PROBMAPS_PER_CLASS] and len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]) <> cnnInstance.numberOfOutputClasses :
-            print "ERROR:\tConfiguration parameter \"", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], "\" should have the same number of elements as the number of classes in the task! CnnModel was constructed to predict #", cnnInstance.numberOfOutputClasses, " while the list for the parameter contained #", len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]), " elements."
-            print "ERROR:\tConfiguration parameter \"", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], "\" should be a list of booleans, one for each class of the task (including the background as class-0). True to save the predicted probability map for the corresponding class, False otherwise.\n\tAs an example, it should be given in the form: ", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], " = [False, True, False] (python style boolean list).\n\tThis would result in not saving the prob-maps for the class-0 (background), save for class-1, and not save for class-2. Please correct it or ommit it completely for default.\nExiting!"; exit(1)
+        if self.configStruct[self.SAVE_PROBMAPS_PER_CLASS] and len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]) != cnnInstance.numberOfOutputClasses :
+            print("ERROR:\tConfiguration parameter \"", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], "\" should have the same number of elements as the number of classes in the task! CnnModel was constructed to predict #", cnnInstance.numberOfOutputClasses, " while the list for the parameter contained #", len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]), " elements.")
+            print("ERROR:\tConfiguration parameter \"", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], "\" should be a list of booleans, one for each class of the task (including the background as class-0). True to save the predicted probability map for the corresponding class, False otherwise.\n\tAs an example, it should be given in the form: ", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], " = [False, True, False] (python style boolean list).\n\tThis would result in not saving the prob-maps for the class-0 (background), save for class-1, and not save for class-2. Please correct it or ommit it completely for default.\nExiting!"); exit(1)
             
             
         #Check that the lists that say which featureMaps to save in each layer have the correct amount of entries, same as each pathway's layers.
@@ -144,56 +147,57 @@ class TrainConfig(object):
         numLayerEntriesGivenSubs =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED])
         numLayerEntriesGivenFc =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC])
         
-        wrongFmsEntryForNormal = True if (savingFms and numLayerEntriesGivenNorm <> None and numLayerEntriesGivenNorm <> numNormLayers) else False
-        wrongFmsEntryForSubsampled = True if (savingFms and numLayerEntriesGivenSubs <> None and numLayerEntriesGivenSubs <> numSubsLayers) else False
-        wrongFmsEntryForFc = True if (savingFms and numLayerEntriesGivenFc <> None and numLayerEntriesGivenFc <> numFcLayers) else False
+        wrongFmsEntryForNormal = True if (savingFms and numLayerEntriesGivenNorm != None and numLayerEntriesGivenNorm != numNormLayers) else False
+        wrongFmsEntryForSubsampled = True if (savingFms and numLayerEntriesGivenSubs != None and numLayerEntriesGivenSubs != numSubsLayers) else False
+        wrongFmsEntryForFc = True if (savingFms and numLayerEntriesGivenFc != None and numLayerEntriesGivenFc != numFcLayers) else False
         wrongEntryGiven = wrongFmsEntryForNormal or wrongFmsEntryForSubsampled or wrongFmsEntryForFc
         if wrongEntryGiven :
-            print "ERROR:\tIn order to save the feature maps during inference, the min and max indeces of the feature maps wanted need to be specified. A pair of (min,max) must be specified for each layer, for each pathway of the CNN (normal/subsampled(if used), fully-connected). The given lists for each of the pathway-types need to have the same number of elements as the number of layers in that pathway. They were found inconsistent in comparison to the number of layers in the loaded CNN model:"
+            print("ERROR:\tIn order to save the feature maps during inference, the min and max indeces of the feature maps wanted need to be specified. A pair of (min,max) must be specified for each layer, for each pathway of the CNN (normal/subsampled(if used), fully-connected). The given lists for each of the pathway-types need to have the same number of elements as the number of layers in that pathway. They were found inconsistent in comparison to the number of layers in the loaded CNN model:")
         if wrongFmsEntryForNormal :
-            print "\tNormal pathway: In config file: ", self.configStruct[self.INDICES_OF_FMS_TO_SAVE_NORMAL], " given #", numLayerEntriesGivenNorm, " elements, while the CNN-model has #", numNormLayers, " layers in this pathway."
+            print("\tNormal pathway: In config file: ", self.configStruct[self.INDICES_OF_FMS_TO_SAVE_NORMAL], " given #", numLayerEntriesGivenNorm, " elements, while the CNN-model has #", numNormLayers, " layers in this pathway.")
         if wrongFmsEntryForSubsampled :
-            print "\tSubsampled pathway: In config file: ", self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED], " given #", numLayerEntriesGivenSubs, " elements, while the CNN-model has #", numSubsLayers, " layers in this pathway."
+            print("\tSubsampled pathway: In config file: ", self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED], " given #", numLayerEntriesGivenSubs, " elements, while the CNN-model has #", numSubsLayers, " layers in this pathway.")
         if wrongFmsEntryForFc :
-            print "\tFully-Connected pathway: In config file: ", self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC], " given #", numLayerEntriesGivenFc, " elements, while the CNN-model has #", numFcLayers, " layers in this pathway."
+            print("\tFully-Connected pathway: In config file: ", self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC], " given #", numLayerEntriesGivenFc, " elements, while the CNN-model has #", numFcLayers, " layers in this pathway.")
         if wrongEntryGiven :
-            print "\tExiting!"; exit(1)
+            print("\tExiting!"); exit(1)
             
-        print "The given configuration looks correct in comparison to the CNN-model's parameters. Very nice! We are almost ready for inference!"
+        print("The given configuration looks correct in comparison to the CNN-model's parameters. Very nice! We are almost ready for inference!")
+        
         
 #Checks whether the main test-config has the REQUIRED parameters.
 def checkIfMainTestConfigIsCorrect(testConfig, testConfigFilepath, absPathToSavedModelFromCmdLine) :
     configStruct = testConfig.configStruct
-    print "Checking whether the given test-configuration file is correct..."
+    print("Checking whether the given test-configuration file is correct...")
     if not configStruct[testConfig.FOLDER_FOR_OUTPUT] or not isinstance(configStruct[testConfig.FOLDER_FOR_OUTPUT], str) :
-        print "ERROR:\tPlease provide the path to an output folder for this session, by providing an entry: ", testConfig.FOLDER_FOR_OUTPUT, " = \"path-to-folder\" in the configuration file (python-like-string).\n\tExiting!"
+        print("ERROR:\tPlease provide the path to an output folder for this session, by providing an entry: ", testConfig.FOLDER_FOR_OUTPUT, " = \"path-to-folder\" in the configuration file (python-like-string).\n\tExiting!")
         exit(1)
     if not (configStruct[testConfig.CNN_MODEL_FILEPATH] and isinstance(configStruct[testConfig.CNN_MODEL_FILEPATH], str) ) and not absPathToSavedModelFromCmdLine :
-        print "ERROR:\tPlease provide the path to an existing and trained cnn model folder for this session, by providing an entry: ", testConfig.CNN_MODEL_FILEPATH, " = \"path-to-saved-model\" in the configuration file, or using the corresponding option of the main deepmedic script.\n\tExiting!"
+        print("ERROR:\tPlease provide the path to an existing and trained cnn model folder for this session, by providing an entry: ", testConfig.CNN_MODEL_FILEPATH, " = \"path-to-saved-model\" in the configuration file, or using the corresponding option of the main deepmedic script.\n\tExiting!")
         exit(1)
     if not configStruct[testConfig.CHANNELS] or not isinstance(configStruct[testConfig.CHANNELS], list) or not all(isinstance(item, str) for item in configStruct[testConfig.CHANNELS]) :
-        print "ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConfig.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file (list of strings, python style).\n\tExiting!"
+        print("ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConfig.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file (list of strings, python style).\n\tExiting!")
         exit(1)
     if not configStruct[testConfig.NAMES_FOR_PRED_PER_CASE] or not isinstance(configStruct[testConfig.NAMES_FOR_PRED_PER_CASE], str) :
-        print "ERROR:\tPlease provide the path to a file, which contains a name for each case, in order to name the inference's output correspondingly.\n\tThis parameter should be given in the format : ", testConfig.NAMES_FOR_PRED_PER_CASE, " = \"path-to-file-with-paths-for-channel1-for-each-patient\" in the configuration file.\n\tExiting!"
+        print("ERROR:\tPlease provide the path to a file, which contains a name for each case, in order to name the inference's output correspondingly.\n\tThis parameter should be given in the format : ", testConfig.NAMES_FOR_PRED_PER_CASE, " = \"path-to-file-with-paths-for-channel1-for-each-patient\" in the configuration file.\n\tExiting!")
         exit(1)
         
     #absPathToSavedModelFromCmdLine should be absolute path already!
     absPathToCnnModelGiven = absPathToSavedModelFromCmdLine if absPathToSavedModelFromCmdLine else getAbsPathEvenIfRelativeIsGiven(configStruct[testConfig.CNN_MODEL_FILEPATH], testConfigFilepath)
     if not os.path.isfile(absPathToCnnModelGiven) :
-        print "ERROR: Specified path to a cnn-model (", absPathToCnnModelGiven, ") does not point to an existing file! Exiting!"
+        print("ERROR: Specified path to a cnn-model (", absPathToCnnModelGiven, ") does not point to an existing file! Exiting!")
         exit(1)
         
-    print "Test-configuration file seems correctly completed at first check. I hope this was not too complicated!"
+    print("Test-configuration file seems correctly completed at first check. I hope this was not too complicated!")
     
     
 #Checks whether testing-config's listing-files are correct (channels, masks etc)
 def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
     configStruct = testConfig.configStruct
-    print "Checking whether the given files that list channels, masks, etc per case are correctly filled..."
+    print("Checking whether the given files that list channels, masks, etc per case are correctly filled...")
     numberOfChannels = len(configStruct[testConfig.CHANNELS])
     numberOfCases = -1
-    print "Number of given files that list the channels per case were: ", numberOfChannels
+    print("Number of given files that list the channels per case were: ", numberOfChannels)
     
     listOfListingFilesProvided = configStruct[testConfig.CHANNELS]
     listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.ROI_MASKS] else listOfListingFilesProvided + [configStruct[testConfig.ROI_MASKS]]
@@ -202,8 +206,8 @@ def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
         pathToCurrentFileListingPaths = listOfListingFilesProvided[pathToListingFile_i]
         absolutePathToCurrentFileListingPaths = getAbsPathEvenIfRelativeIsGiven(pathToCurrentFileListingPaths, testConfigFilepath)
         if not os.path.isfile(absolutePathToCurrentFileListingPaths) :
-            print "ERROR: path provided does not correspond to a file:", absolutePathToCurrentFileListingPaths
-            print "Exiting!"
+            print("ERROR: path provided does not correspond to a file:", absolutePathToCurrentFileListingPaths)
+            print("Exiting!")
             exit(1)
         listOfFilepathsForEachCaseInCurrentListingFile = parseAbsFileLinesInList(absolutePathToCurrentFileListingPaths)
         
@@ -218,24 +222,24 @@ def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
     listingFileWithNamesForPredictionsPerCase = configStruct[testConfig.NAMES_FOR_PRED_PER_CASE]
     absolutePathToListingFileWithPredictionNamesPerCase = getAbsPathEvenIfRelativeIsGiven(listingFileWithNamesForPredictionsPerCase, testConfigFilepath)
     if not os.path.isfile(absolutePathToListingFileWithPredictionNamesPerCase) :
-        print "ERROR: path provided does not correspond to a file:", absolutePathToListingFileWithPredictionNamesPerCase
-        print "Exiting!"; exit(1)
+        print("ERROR: path provided does not correspond to a file:", absolutePathToListingFileWithPredictionNamesPerCase)
+        print("Exiting!"); exit(1)
     listOfPredictionNamesForEachCaseInListingFile = parseFileLinesInList(absolutePathToListingFileWithPredictionNamesPerCase) #CAREFUL: Here we use a different parsing function!
     checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile)
-    print "Files that list the channels for each case seem fine. Thanks."
+    print("Files that list the channels for each case seem fine. Thanks.")
     
 def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
-    print "Checking optional parameters..."
+    print("Checking optional parameters...")
     
     configStruct = testConfig.configStruct
     
     if configStruct[testConfig.SESSION_NAME] and not isinstance(configStruct[testConfig.SESSION_NAME], str) :
-        print "ERROR: Optional parameter ", configStruct[testConfig.SESSION_NAME], " should be a string, given in the format: ", configStruct[testConfig.SESSION_NAME]," = \"yourTestSessionName\".\nExiting!"; exit(1)
+        print("ERROR: Optional parameter ", configStruct[testConfig.SESSION_NAME], " should be a string, given in the format: ", configStruct[testConfig.SESSION_NAME]," = \"yourTestSessionName\".\nExiting!"); exit(1)
         
     listOfBooleanParametersStrings = [testConfig.PAD_INPUT, testConfig.SAVE_SEGM, testConfig.SAVE_INDIV_FMS, testConfig.SAVE_4DIM_FMS, ]
     for booleanParameterString in listOfBooleanParametersStrings :
         if (configStruct[booleanParameterString]) and not (configStruct[booleanParameterString] in [True,False]) :
-            print "ERROR: Optional parameter ", configStruct[booleanParameterString], " should be given either True or False in the format: ", configStruct[booleanParameterString]," = True/False (No quotes, first letter capital. Python-Boolean style!).\nExiting!"; exit(1)
+            print("ERROR: Optional parameter ", configStruct[booleanParameterString], " should be given either True or False in the format: ", configStruct[booleanParameterString]," = True/False (No quotes, first letter capital. Python-Boolean style!).\nExiting!"); exit(1)
             
     #ROI and GT masks already checked.
     
@@ -250,7 +254,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
         else :
             valid1 = False
         if not valid1 :
-            print "ERROR: Configuration parameter \"", testConfig.SAVE_PROBMAPS_PER_CLASS, "\" should be a list of booleans, one for each class of the task (including the background). True to save the predicted probability map for the corresponding class, False otherwise. As an example, it should be given in the form: ", testConfig.SAVE_PROBMAPS_PER_CLASS, " = [False, True, False] (python style boolean list). This would result in not saving the prob-maps for the class-0 (background), save for class-1, and not save for class-2. Please correct it or ommit it completely for default.\nExiting!"
+            print("ERROR: Configuration parameter \"", testConfig.SAVE_PROBMAPS_PER_CLASS, "\" should be a list of booleans, one for each class of the task (including the background). True to save the predicted probability map for the corresponding class, False otherwise. As an example, it should be given in the form: ", testConfig.SAVE_PROBMAPS_PER_CLASS, " = [False, True, False] (python style boolean list). This would result in not saving the prob-maps for the class-0 (background), save for class-1, and not save for class-2. Please correct it or ommit it completely for default.\nExiting!")
             exit(1)
             
     #INDICES_OF_FMS_TO_SAVE
@@ -271,16 +275,16 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
                     else :
                         valid1 = False
             if not valid1 :
-                print "ERROR: Configuration parameter \"", indicesOfFmsPerPathwayTypeString ,"\" should be given in the form: ", indicesOfFmsPerPathwayTypeString, " = [[minFmOfLayer0, maxFmOfLayer0], , ..., [minFmOfLayerN, maxFmOfLayerN]] (python style list of lists of two integers). min/maxFmOfLayerN are integers (equal/greater than 0), that are the minimum and maximum indices of the Feature Maps that I want to visualise from this particular pathway type. An entry can be given [] if I don't want to visualise any FMs from a pathway or a certain layer. Please correct it or ommit it completely for default.\nExiting!"; exit(1)
+                print("ERROR: Configuration parameter \"", indicesOfFmsPerPathwayTypeString ,"\" should be given in the form: ", indicesOfFmsPerPathwayTypeString, " = [[minFmOfLayer0, maxFmOfLayer0], , ..., [minFmOfLayerN, maxFmOfLayerN]] (python style list of lists of two integers). min/maxFmOfLayerN are integers (equal/greater than 0), that are the minimum and maximum indices of the Feature Maps that I want to visualise from this particular pathway type. An entry can be given [] if I don't want to visualise any FMs from a pathway or a certain layer. Please correct it or ommit it completely for default.\nExiting!"); exit(1)
                 
-    print "Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded..."
+    print("Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded...")
     
-#Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be <> None.
+#Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be != None.
 def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas, resetOptimizer) :
-    print "Given Training-Configuration File: ", trainConfigFilepath
+    print("Given Training-Configuration File: ", trainConfigFilepath)
     #Parse the config file in this naive fashion...
     trainConfig = TrainConfig()
-    execfile(trainConfigFilepath, trainConfig.configStruct)
+    exec(open(trainConfigFilepath).read(), trainConfig.configStruct)
     configGet = trainConfig.get #Main interface
     
     """
@@ -497,4 +501,5 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
     trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Training session finished =================")
     trainSessionParameters.sessionLogger.print3("=======================================================")
+    
     

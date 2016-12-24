@@ -5,6 +5,8 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 import numpy
 import numpy as np
 
@@ -29,15 +31,15 @@ def padImageWithMirroring(inputImage, voxelsPerDimToPad) :
     # If voxelsPerDimToPad is odd, 1 more voxel is added to the right side.
     # r-axis
     assert np.all(voxelsPerDimToPad) >= 0
-    padLeft = int(voxelsPerDimToPad[0] / 2); padRight = int((voxelsPerDimToPad[0] + 1) / 2);
-    paddedImage = T.concatenate([inputImage[:, :, int(voxelsPerDimToPad[0] / 2) - 1::-1 , :, :], inputImage], axis=2) if padLeft > 0 else inputImage
-    paddedImage = T.concatenate([paddedImage, paddedImage[ :, :, -1:-1 - int((voxelsPerDimToPad[0] + 1) / 2):-1, :, :]], axis=2) if padRight > 0 else paddedImage
+    padLeft = int(voxelsPerDimToPad[0] // 2); padRight = int((voxelsPerDimToPad[0] + 1) // 2);
+    paddedImage = T.concatenate([inputImage[:, :, int(voxelsPerDimToPad[0] // 2) - 1::-1 , :, :], inputImage], axis=2) if padLeft > 0 else inputImage
+    paddedImage = T.concatenate([paddedImage, paddedImage[ :, :, -1:-1 - int((voxelsPerDimToPad[0] + 1) // 2):-1, :, :]], axis=2) if padRight > 0 else paddedImage
     # c-axis
-    padLeft = int(voxelsPerDimToPad[1] / 2); padRight = int((voxelsPerDimToPad[1] + 1) / 2);
+    padLeft = int(voxelsPerDimToPad[1] // 2); padRight = int((voxelsPerDimToPad[1] + 1) // 2);
     paddedImage = T.concatenate([paddedImage[:, :, :, padLeft - 1::-1 , :], paddedImage], axis=3) if padLeft > 0 else paddedImage
     paddedImage = T.concatenate([paddedImage, paddedImage[:, :, :, -1:-1 - padRight:-1, :]], axis=3) if padRight > 0 else paddedImage
     # z-axis
-    padLeft = int(voxelsPerDimToPad[2] / 2); padRight = int((voxelsPerDimToPad[2] + 1) / 2)
+    padLeft = int(voxelsPerDimToPad[2] // 2); padRight = int((voxelsPerDimToPad[2] + 1) // 2)
     paddedImage = T.concatenate([paddedImage[:, :, :, :, padLeft - 1::-1 ], paddedImage], axis=4) if padLeft > 0 else paddedImage
     paddedImage = T.concatenate([paddedImage, paddedImage[:, :, :, :, -1:-1 - padRight:-1]], axis=4) if padRight > 0 else paddedImage
     
@@ -161,7 +163,7 @@ class Cnn3d(object):
     def getNumPathwaysThatRequireInput(self):
         count = 0
         for pathway in self.pathways :
-            if pathway.pType() <> pt.FC :
+            if pathway.pType() != pt.FC :
                 count += 1
         return count
     
@@ -176,10 +178,10 @@ class Cnn3d(object):
         
     def change_learning_rate_of_a_cnn(self, newValueForLearningRate, myLogger=None) :
         stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) + ") Changing the Cnn's Learning Rate to: " + str(newValueForLearningRate)
-        if myLogger <> None :
+        if myLogger != None :
             myLogger.print3(stringToPrint)
         else :
-            print stringToPrint
+            print(stringToPrint)
         self.learning_rate.set_value(newValueForLearningRate)
         self.lastEpochAtTheEndOfWhichLrWasLowered = self.numberOfEpochsTrained
         
@@ -190,10 +192,10 @@ class Cnn3d(object):
         
     def change_momentum_of_a_cnn(self, newValueForMomentum, myLogger=None):
         stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) + ") Changing the Cnn's Momentum to: " + str(newValueForMomentum)
-        if myLogger <> None :
+        if myLogger != None :
             myLogger.print3(stringToPrint)
         else :
-            print stringToPrint
+            print(stringToPrint)
         self.momentum.set_value(newValueForMomentum)
         
     def multiply_momentum_of_a_cnn_by(self, multiplyMomentumBy, myLogger=None) :
@@ -470,7 +472,7 @@ class Cnn3d(object):
         self.indicesOfLayersPerPathwayTypeToFreeze = indicesOfLayersPerPathwayTypeToFreeze
         
         # Cost function
-        if costFunctionLetter <> "previous" :
+        if costFunctionLetter != "previous" :
             self.costFunctionLetter = costFunctionLetter
             
         # Regularization
@@ -644,6 +646,7 @@ class Cnn3d(object):
         return (self.inputTensorNormTrain, self.inputTensorNormVal, self.inputTensorNormTest,
                 self.listInputTensorPerSubsTrain, self.listInputTensorPerSubsVal, self.listInputTensorPerSubsTest)
         
+    @staticmethod
     def _getClassificationLayer(self):
         return SoftmaxLayer()
         
@@ -774,7 +777,7 @@ class Cnn3d(object):
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
         
         thisPathwayActivFuncPerLayer = [activationFunctionToUseRelu0orPrelu1] * thisPathwayNumOfLayers
-        thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType <> pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
+        thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType != pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
         
         thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                          inputToPathwayTrain,
@@ -822,7 +825,7 @@ class Cnn3d(object):
             thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
             
             thisPathwayActivFuncPerLayer = [activationFunctionToUseRelu0orPrelu1] * thisPathwayNumOfLayers
-            thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType <> pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
+            thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType != pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
             
             inputToPathwayShapeTrain = [self.batchSize, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayTrain);
             inputToPathwayShapeVal = [self.batchSizeValidation, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayVal)
@@ -866,9 +869,9 @@ class Cnn3d(object):
             [outputNormResOfPathTrain, outputNormResOfPathVal, outputNormResOfPathTest] = self.pathways[path_i].getOutputAtNormalRes()
             [dimsOfOutputNormResOfPathTrain, dimsOfOutputNormResOfPathVal, dimsOfOutputNormResOfPathTest] = self.pathways[path_i].getShapeOfOutputAtNormalRes()
             
-            inputToFirstFcLayerTrain =  T.concatenate([inputToFirstFcLayerTrain, outputNormResOfPathTrain], axis=1) if path_i <> 0 else outputNormResOfPathTrain
-            inputToFirstFcLayerVal = T.concatenate([inputToFirstFcLayerVal, outputNormResOfPathVal], axis=1) if path_i <> 0 else outputNormResOfPathVal
-            inputToFirstFcLayerTest = T.concatenate([inputToFirstFcLayerTest, outputNormResOfPathTest], axis=1) if path_i <> 0 else outputNormResOfPathTest
+            inputToFirstFcLayerTrain =  T.concatenate([inputToFirstFcLayerTrain, outputNormResOfPathTrain], axis=1) if path_i != 0 else outputNormResOfPathTrain
+            inputToFirstFcLayerVal = T.concatenate([inputToFirstFcLayerVal, outputNormResOfPathVal], axis=1) if path_i != 0 else outputNormResOfPathVal
+            inputToFirstFcLayerTest = T.concatenate([inputToFirstFcLayerTest, outputNormResOfPathTest], axis=1) if path_i != 0 else outputNormResOfPathTest
             numberOfFmsOfInputToFirstFcLayer += dimsOfOutputNormResOfPathTrain[1]
             
         #======================= Make the Fully Connected Layers =======================
@@ -904,7 +907,7 @@ class Cnn3d(object):
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
         
         thisPathwayActivFuncPerLayer = [activationFunctionToUseRelu0orPrelu1] * thisPathwayNumOfLayers
-        thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType <> pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
+        thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType != pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
         
         thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                          inputToPathwayTrain,

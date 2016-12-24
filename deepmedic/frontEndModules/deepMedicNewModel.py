@@ -88,7 +88,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
     print "Given Model-Configuration File: ", modelConfigFilepath
     #Parse the config file in this naive fashion...
     modelConfig = ModelConfig()
-    execfile(modelConfigFilepath, modelConfig.configStruct)
+    exec(open(modelConfigFilepath).read(), modelConfig.configStruct)
     configGet = modelConfig.get #Main interface
     
     #Create Folders and Logger

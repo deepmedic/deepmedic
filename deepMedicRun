@@ -6,6 +6,7 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
 import sys
 import os
 import argparse
@@ -61,7 +62,7 @@ def setupArgParser() :
     return parser
 
 def checkDevicePassedCorrectly(devArg) :
-    if devArg <> "cpu" and devArg <> "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) ) :
+    if devArg != "cpu" and devArg != "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) ) :
         print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu] or [gpu] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
         
 def setEnvironment(deviceString) :
