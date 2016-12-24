@@ -6,7 +6,6 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 import os
 
 def getAbsPathEvenIfRelativeIsGiven(pathGiven, absolutePathToWhereRelativePathRelatesTo) :
@@ -53,6 +52,7 @@ def parseAbsFileLinesInList(pathToListingFile) :
     return list1
 
 def checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCasesPreviously, pathToGivenListFile, listOfFilepathsToChannelIForEachCase) :
+<<<<<<< HEAD
     numberOfContainedCasesInList = len(listOfFilepathsToChannelIForEachCase)
     if numberOfCasesPreviously != numberOfContainedCasesInList :
         print("ERROR: Given file:", pathToGivenListFile, " contains #", numberOfContainedCasesInList," entries, whereas previously checked files contained #", numberOfCasesPreviously,". All listing-files for channels, masks, etc, should contain the same number of entries, one for each case.\nExiting!")
@@ -63,3 +63,20 @@ def checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEach
         if entry.find("/") > -1 or entry.startswith(".") :
             print("ERROR: in [checkThatAllEntriesOfAListFollowNameConventions()] while checking that all entries follow name-conventions. Entry \"", entry, "\" was found to begin with \'.\' or contain \'/\'. Please correct. Exiting!")
             exit(1)
+=======
+	numberOfContainedCasesInList = len(listOfFilepathsToChannelIForEachCase)
+	if numberOfCasesPreviously != numberOfContainedCasesInList :
+		print("ERROR: Given file:", pathToGivenListFile, " contains #", numberOfContainedCasesInList," entries, whereas previously checked files contained #", numberOfCasesPreviously,". All listing-files for channels, masks, etc, should contain the same number of entries, one for each case.\nExiting!")
+		exit(1)
+
+def checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile) :
+	for entry in listOfPredictionNamesForEachCaseInListingFile :
+		if entry.find("/") > -1 or entry.startswith(".") :
+			print("ERROR: in [checkThatAllEntriesOfAListFollowNameConventions()] while checking that all entries follow name-conventions. Entry \"", entry, "\" was found to begin with \'.\' or contain \'/\'. Please correct. Exiting!")
+			exit(1)
+
+
+
+
+
+>>>>>>> fixing print commands
