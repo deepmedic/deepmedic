@@ -42,7 +42,7 @@ def strFlList4Dec(listWithFloats) :
 # Returns a string, which is the float with 4 decimals, or the "Not Applicable" string if that's the case.
 def strFlXfNA(floatOrNotAppl, numDec, notApplicPattern) :
 	stringThatSaysHowManyDecimals = "{:." + str(numDec) + "f}"
-	return stringThatSaysHowManyDecimals.format(floatOrNotAppl) if floatOrNotAppl <> notApplicPattern else notApplicPattern
+	return stringThatSaysHowManyDecimals.format(floatOrNotAppl) if floatOrNotAppl != notApplicPattern else notApplicPattern
 def strFl4fNA(floatOrNotAppl, notApplicPattern) :
 	return strFlXfNA(floatOrNotAppl, 4, notApplicPattern)
 def strFl5fNA(floatOrNotAppl, notApplicPattern) :
@@ -52,7 +52,7 @@ def strListFlXfNA(listWithFloatsOrNotAppl, numDec, notApplicPattern) : # If you 
 	stringThatSaysHowManyDecimals = "%." + str(numDec) + "f"
 	strList = "[ "
 	for element in listWithFloatsOrNotAppl :
-		strList += stringThatSaysHowManyDecimals % element + " " if element <> notApplicPattern else notApplicPattern + " "
+		strList += stringThatSaysHowManyDecimals % element + " " if element != notApplicPattern else notApplicPattern + " "
 	strList += "]"
 	return strList
 def strListFl4fNA(listWithFloatsOrNotAppl, notApplicPattern) : # If you just print a normal list, the internal string-floats are printed with quotes ' '. To avoit it we use this.
@@ -66,7 +66,7 @@ def getMeanOfListExclNA(list1, notApplicPattern) :
 	addedValuesForMeanCalc = 0
 	numberOfApplicableEntries = 0
 	for subep_i in xrange(len(list1)) :
-		if list1[subep_i] <> notApplicPattern :
+		if list1[subep_i] != notApplicPattern :
 			addedValuesForMeanCalc += list1[subep_i]
 			numberOfApplicableEntries += 1
 	return addedValuesForMeanCalc / float(numberOfApplicableEntries) if numberOfApplicableEntries > 0 else notApplicPattern
@@ -98,7 +98,7 @@ def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
 	unionCorrectlyPredicted = predictedBinaryLabels * groundTruthBinaryLabels
 	numberOfTruePositives = np.sum(unionCorrectlyPredicted)
 	numberOfGtPositives = np.sum(groundTruthBinaryLabels)
-	diceCoeff = (2.0 * numberOfTruePositives) / (np.sum(predictedBinaryLabels) + numberOfGtPositives) if numberOfGtPositives<>0 else -1 
+	diceCoeff = (2.0 * numberOfTruePositives) / (np.sum(predictedBinaryLabels) + numberOfGtPositives) if numberOfGtPositives!=0 else -1
 	return diceCoeff
 
 
@@ -155,8 +155,8 @@ def get_random_subject_indices_to_load_on_GPU(total_number_of_subjects,
                 random.shuffle(subjects_indices)
                 number_of_extra_subjects_to_get_to_fill_gpu = min(max_subjects_on_gpu_for_subepoch - len(random_order_chosen_subjects), total_number_of_subjects)
                 random_order_chosen_subjects += (subjects_indices[:number_of_extra_subjects_to_get_to_fill_gpu])
-            if len(random_order_chosen_subjects)<>max_subjects_on_gpu_for_subepoch :
-		if myLogger<>None :
+            if len(random_order_chosen_subjects)!=max_subjects_on_gpu_for_subepoch :
+		if myLogger!=None :
                     myLogger.print3("ERROR: in get_random_subjects_indices_to_load_on_GPU(), something is wrong!")
 		else :
                     print "ERROR: in get_random_subjects_indices_to_load_on_GPU(), something is wrong!"
@@ -176,7 +176,7 @@ def getSuggestedStdForSubsampledImage(subsampleFactor) :
 	arraySubsampledFactor = np.asarray(subsampleFactor)
 	suggestedStdsForSubsampledChannels = arraySubsampledFactor/2.0
 	#if subsampledFactor == 1 for a certain axis (eg z axis), it means I am actually doing 2D processing. In this case, use std=0 on this axis, and I dont smooth at all. I do clean slice-by-slice.
-	suggestedStdsForSubsampledChannels = suggestedStdsForSubsampledChannels * (arraySubsampledFactor<>1)
+	suggestedStdsForSubsampledChannels = suggestedStdsForSubsampledChannels * (arraySubsampledFactor!=1)
 	return suggestedStdsForSubsampledChannels
 
 #This is the generic function.
@@ -205,7 +205,7 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedBy
             fullFilenameToSaveWith = fullFilenameToSaveWith + ".nii.gz"
     nib.save(newLabelImg, fullFilenameToSaveWith)
 
-    if myLogger<>None :
+    if myLogger!=None :
         myLogger.print3("Image saved at: " + str(fullFilenameToSaveWith))
     else :
 	print("Image saved at: " + str(fullFilenameToSaveWith)) 
@@ -223,7 +223,7 @@ def savePredictedImageToANewNiiWithHeaderFromOther(labelImageCreatedByPrediction
 
     #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
-    if myLogger<>None :
+    if myLogger!=None :
         myLogger.print3("Saving the new label (segmentation) image for the subject #"+str(case_i))
     else :
 	print("Saving the new label (segmentation) image for the subject #"+str(case_i))
@@ -263,7 +263,7 @@ def saveFmActivationImageToANewNiiWithHeaderFromOther(fmImageCreatedByVisualisat
     
     stringToPrint = "Saving the new Fm-activation image for the subject #"+str(image_i)+", pathway:" + str(index_of_typeOfPathway_to_visualize)\
            + ", layer: " + str(index_of_layer_in_pathway_to_visualize) + " FM: " + str(index_of_FM_in_pathway_to_visualize)	
-    if myLogger<>None :
+    if myLogger!=None :
         myLogger.print3(stringToPrint)
     else :
 	print(stringToPrint)
@@ -299,7 +299,7 @@ def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(mu
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
     
     stringToPrint = "Saving a multi-dimensional image, with all the FMs as a 4th dimension, for the subject #"+str(image_i)	
-    if myLogger<>None :
+    if myLogger!=None :
         myLogger.print3(stringToPrint)
     else :
 	print(stringToPrint)

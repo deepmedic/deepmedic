@@ -4,7 +4,8 @@
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
-
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 import numpy
 import numpy as np
 
@@ -244,7 +245,7 @@ class Cnn3d(object):
         
     def change_learning_rate_of_a_cnn(self, newValueForLearningRate, myLogger=None) :
 	stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Learning Rate to: "+str(newValueForLearningRate)
-	if myLogger<>None :
+	if myLogger!=None :
         	myLogger.print3( stringToPrint )
 	else :
 		print stringToPrint
@@ -259,7 +260,7 @@ class Cnn3d(object):
 	
     def change_momentum_of_a_cnn(self, newValueForMomentum, myLogger=None):
 	stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Momentum to: "+str(newValueForMomentum)
-	if myLogger<>None :
+	if myLogger != None :
         	myLogger.print3( stringToPrint )
 	else :
 		print stringToPrint
@@ -366,7 +367,7 @@ class Cnn3d(object):
 		thisLayerMaxPoolingParameters = maxPoolingParamsStructureForThisPathwayType[layer_i]
         
                 useBnInThisLayer = applyBnToInputOfPathway if layer_i == 0 and rollingAverageForBatchNormalizationOverThatManyBatches > 0 else rollingAverageForBatchNormalizationOverThatManyBatches > 0
-                activationFunctionToUseRelu0orPrelu1orMinus1ForLinear = -1 if layer_i == 0 and thisPathwayType <> self.CNN_PATHWAY_FC else activationFunctionToUseRelu0orPrelu1
+                activationFunctionToUseRelu0orPrelu1orMinus1ForLinear = -1 if layer_i == 0 and thisPathwayType != self.CNN_PATHWAY_FC else activationFunctionToUseRelu0orPrelu1
                 if layer_i in indicesOfLowerRankLayersForPathway :
                     layer = cnnLayerTypes.LowRankConvLayer(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
                 else : # normal conv layer
@@ -452,7 +453,7 @@ class Cnn3d(object):
 
 	layersInThisPathway = self.typesOfCnnLayers[typeOfLayers_index]
 
-	if typeOfLayers_index <> self.CNN_PATHWAY_SUBSAMPLED :
+	if typeOfLayers_index != self.CNN_PATHWAY_SUBSAMPLED :
 		numberOfCentralVoxelsToGet = self.numberOfCentralVoxelsClassifiedPerDimension
 		numberOfCentralVoxelsToGetValidation = self.numberOfCentralVoxelsClassifiedPerDimensionValidation
 		numberOfCentralVoxelsToGetTesting = self.numberOfCentralVoxelsClassifiedPerDimensionTesting
@@ -696,7 +697,7 @@ class Cnn3d(object):
         self.layersOfLayerTypesToTrain = layersOfLayerTypesToTrain
         
         # Cost function
-        if costFunctionLetter <> "previous" :
+        if costFunctionLetter != "previous" :
             self.costFunctionLetter = costFunctionLetter
             
         # Regularization
@@ -867,6 +868,7 @@ class Cnn3d(object):
         return (self.layer0_input, self.layer0_inputValidation, self.layer0_inputTesting,
                 self.layer0_inputSubsampled, self.layer0_inputSubsampledValidation, self.layer0_inputSubsampledTesting)
 
+    @staticmethod
     def _getClassificationLayer(self):
         return cnnLayerTypes.ConvLayerWithSoftmax()
         

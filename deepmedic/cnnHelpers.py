@@ -13,14 +13,14 @@ def dump_cnn_to_gzip_file_dotSave(cnn_instance, filenameWithPathToSaveTo, logger
     filenameWithPathToSaveToDotSave = os.path.abspath(filenameWithPathToSaveTo + ".save")
     cnn_instance.freeGpuTrainingData(); cnn_instance.freeGpuValidationData(); cnn_instance.freeGpuTestingData();
 
-    if logger <> None :
+    if logger != None :
 	logger.print3("Saving network to: "+str(filenameWithPathToSaveToDotSave))
     else: 
 	print("Saving network to: "+str(filenameWithPathToSaveToDotSave))
 
     dump_object_to_gzip_file(cnn_instance, filenameWithPathToSaveToDotSave)
 
-    if logger <> None :
+    if logger != None :
 	logger.print3("Model saved.")
     else: 
 	print("Model saved.")
@@ -124,7 +124,7 @@ def calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWi
 def checkReceptiveFieldFineInComparisonToSegmentSize(receptiveFieldDim, segmentDim) :
 	numberOfRFDim = len(receptiveFieldDim)
 	numberOfSegmDim = len(segmentDim)
-	if numberOfRFDim <> numberOfSegmDim :
+	if numberOfRFDim != numberOfSegmDim :
 		print "ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : Receptive field and image segment have different number of dimensions! (should be 3 for both! Exiting!)"
 		exit(1)
 	for dim_i in xrange(numberOfRFDim) :
@@ -135,17 +135,17 @@ def checkReceptiveFieldFineInComparisonToSegmentSize(receptiveFieldDim, segmentD
 
 def checkKernDimPerLayerCorrect3dAndNumLayers(kernDimensionsPerLayer, numOfLayers) :
 	#kernDimensionsPerLayer : a list with sublists. One sublist per layer. Each sublist should have 3 integers, specifying the dimensions of the kernel at the corresponding layer of the pathway. eg: kernDimensionsPerLayer = [ [3,3,3], [3,3,3], [5,5,5] ] 
-	if kernDimensionsPerLayer == None or len(kernDimensionsPerLayer) <> numOfLayers :
+	if kernDimensionsPerLayer == None or len(kernDimensionsPerLayer) != numOfLayers :
 		return False
 	for kernDimInLayer in kernDimensionsPerLayer :
-		if len(kernDimInLayer) <> 3 :
+		if len(kernDimInLayer) != 3 :
 			return False
 	return True
 
 
 def checkSubsampleFactorEven(subFactor) :
 	for dim_i in xrange(len(subFactor)) :
-		if subFactor[dim_i]%2 <> 1 :
+		if subFactor[dim_i]%2 != 1 :
 			return False
 	return True
 

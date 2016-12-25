@@ -104,7 +104,7 @@ class TrainConfig(object):
 	def checkIfConfigIsCorrectForParticularCnnModel(self, cnnInstance) :
 		print "Checking if configuration is correct in relation to the loaded model (correct number of input channels, number of classes, etc) ..."
 		#Check whether the given channels are as many as the channels when the model was built.
-		if len(self.configStruct[self.CHANNELS]) <> cnnInstance.numberOfImageChannelsPath1 :
+		if len(self.configStruct[self.CHANNELS]) != cnnInstance.numberOfImageChannelsPath1 :
 			print "ERROR:\tConfiguration parameter \"", self.configStruct[self.CHANNELS], "\" should have the same number of elements as the number of channels specified when constructing the cnnModel!\n\tCnnModel was constructed to take as input #", cnnInstance.numberOfImageChannelsPath1, " while the list given in the config-file contained #", len(self.configStruct[self.CHANNELS]), " elements."
 			print "ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConst.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"; exit(1)
 		#NOTE: Currently not checking the subsampled path, cause user is only allowed to use the same channels as the normal pathway. But should be possible in the future.
@@ -112,7 +112,7 @@ class TrainConfig(object):
 		usingSubsampledWaypath = len(cnnInstance.cnnLayersSubsampled)>0
 
 		#Check whether the boolean list that saves whether to save the prob-maps has same number of elements as the classes the model has.
-		if self.configStruct[self.SAVE_PROBMAPS_PER_CLASS] and len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]) <> cnnInstance.numberOfOutputClasses :
+		if self.configStruct[self.SAVE_PROBMAPS_PER_CLASS] and len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]) != cnnInstance.numberOfOutputClasses :
 			print "ERROR:\tConfiguration parameter \"", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], "\" should have the same number of elements as the number of classes in the task! CnnModel was constructed to predict #", cnnInstance.numberOfOutputClasses, " while the list for the parameter contained #", len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]), " elements."
 			print "ERROR:\tConfiguration parameter \"", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], "\" should be a list of booleans, one for each class of the task (including the background as class-0). True to save the predicted probability map for the corresponding class, False otherwise.\n\tAs an example, it should be given in the form: ", self.configStruct[self.SAVE_PROBMAPS_PER_CLASS], " = [False, True, False] (python style boolean list).\n\tThis would result in not saving the prob-maps for the class-0 (background), save for class-1, and not save for class-2. Please correct it or ommit it completely for default.\nExiting!"; exit(1)
 
@@ -124,9 +124,9 @@ class TrainConfig(object):
 		numLayerEntriesGivenSubs =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED])
 		numLayerEntriesGivenFc =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC])
 
-		wrongFmsEntryForNormal = True if (savingFms and numLayerEntriesGivenNorm <> None and numLayerEntriesGivenNorm <> numNormLayers) else False
-		wrongFmsEntryForSubsampled = True if (savingFms and numLayerEntriesGivenSubs <> None and numLayerEntriesGivenSubs <> numSubsLayers) else False
-		wrongFmsEntryForFc = True if (savingFms and numLayerEntriesGivenFc <> None and numLayerEntriesGivenFc <> numFcLayers) else False
+		wrongFmsEntryForNormal = True if (savingFms and numLayerEntriesGivenNorm != None and numLayerEntriesGivenNorm != numNormLayers) else False
+		wrongFmsEntryForSubsampled = True if (savingFms and numLayerEntriesGivenSubs != None and numLayerEntriesGivenSubs != numSubsLayers) else False
+		wrongFmsEntryForFc = True if (savingFms and numLayerEntriesGivenFc != None and numLayerEntriesGivenFc != numFcLayers) else False
 		wrongEntryGiven = wrongFmsEntryForNormal or wrongFmsEntryForSubsampled or wrongFmsEntryForFc
 		if wrongEntryGiven :
 			print "ERROR:\tIn order to save the feature maps during inference, the min and max indeces of the feature maps wanted need to be specified. A pair of (min,max) must be specified for each layer, for each pathway of the CNN (normal/subsampled(if used), fully-connected). The given lists for each of the pathway-types need to have the same number of elements as the number of layers in that pathway. They were found inconsistent in comparison to the number of layers in the loaded CNN model:"
@@ -253,18 +253,18 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
 					else :
 						valid1 = False
 			if not valid1 :
-				print "ERROR: Configuration parameter \"", indicesOfFmsPerPathwayTypeString ,"\" should be given in the form: ", indicesOfFmsPerPathwayTypeString, " = [[minFmOfLayer0, maxFmOfLayer0], , ..., [minFmOfLayerN, maxFmOfLayerN]] (python style list of lists of two integers). min/maxFmOfLayerN are integers (equal/greater than 0), that are the minimum and maximum indices of the Feature Maps that I want to visualise from this particular pathway type. An entry can be given [] if I don't want to visualise any FMs from a pathway or a certain layer. Please correct it or ommit it completely for default.\nExiting!"; exit(1)
+				print("ERROR: Configuration parameter \"", indicesOfFmsPerPathwayTypeString ,"\" should be given in the form: ", indicesOfFmsPerPathwayTypeString, " = [[minFmOfLayer0, maxFmOfLayer0], , ..., [minFmOfLayerN, maxFmOfLayerN]] (python style list of lists of two integers). min/maxFmOfLayerN are integers (equal/greater than 0), that are the minimum and maximum indices of the Feature Maps that I want to visualise from this particular pathway type. An entry can be given [] if I don't want to visualise any FMs from a pathway or a certain layer. Please correct it or ommit it completely for default.\nExiting!"); exit(1)
 
-	print "Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded..."
+	print("Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded...")
 
-#Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be <> None.
+#Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be != None.
 def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas) :
 
 
-	print "Given Training-Configuration File: ", trainConfigFilepath
+	print("Given Training-Configuration File: ", trainConfigFilepath)
 	#Parse the config file in this naive fashion...
 	trainConfig = TrainConfig()
-	execfile(trainConfigFilepath, trainConfig.configStruct)
+	exec(open(trainConfigFilepath).read(), trainConfig.configStruct)
 	configGet = trainConfig.get #Main interface
 
 	"""

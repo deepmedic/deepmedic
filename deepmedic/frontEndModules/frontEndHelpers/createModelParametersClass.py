@@ -197,20 +197,20 @@ class CreateModelSessionParameters(object) :
 		self.pathAndFilenameToSaveModel = os.path.abspath(folderForSessionCnnModels + "/" + self.cnnModelName)
 
 		#===========MODEL PARAMETERS==========
-		self.numberClasses = numberClasses if numberClasses <> None else self.errReqNumClasses()
-		self.numberOfInputChannelsNormal = numberOfInputChannelsNormal if numberOfInputChannelsNormal <> None or\
+		self.numberClasses = numberClasses if numberClasses != None else self.errReqNumClasses()
+		self.numberOfInputChannelsNormal = numberOfInputChannelsNormal if numberOfInputChannelsNormal != None or\
 								numberOfInputChannelsNormal<1 else self.errReqNumChannels()
 
 		#===Normal pathway===
-		self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal <> None and numFMsNormal > 0 else self.errReqFMsNormal()
+		self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal != None and numFMsNormal > 0 else self.errReqFMsNormal()
 		numOfLayers = len(self.numFMsPerLayerNormal)
 		self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
 		self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal)
-		residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
-		lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+		residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+		lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
 		
 		#==Subsampled pathway==
-		self.useSubsampledBool = useSubsampledBool if useSubsampledBool <> None else False
+		self.useSubsampledBool = useSubsampledBool if useSubsampledBool != None else False
 		if not self.useSubsampledBool :
 			self.numFMsPerLayerSubsampled = []
 			self.kernDimPerLayerSubsampled = []
@@ -220,13 +220,13 @@ class CreateModelSessionParameters(object) :
 			lowerRankLayersSubsampled = []
 		
 		else :
-			self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled <> None else self.numFMsPerLayerNormal
+			self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled != None else self.numFMsPerLayerNormal
 			if kernDimSubsampled == None and\
 					len(self.numFMsPerLayerSubsampled) == len(self.numFMsPerLayerNormal) :
 				self.kernDimPerLayerSubsampled = self.kernDimPerLayerNormal
 				self.receptiveFieldSubsampled = self.receptiveFieldNormal
 			elif kernDimSubsampled == None and\
-					len(self.numFMsPerLayerSubsampled) <> len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
+					len(self.numFMsPerLayerSubsampled) != len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
 				self.errorRequireKernelDimensionsSubsampled(self.kernDimPerLayerNormal, numFMsSubsampled)
 			# kernDimSubsampled was specified. Now it's going to be tricky to make sure everything alright.
 			elif not checkKernDimPerLayerCorrect3dAndNumLayers(kernDimSubsampled, len(self.numFMsPerLayerSubsampled)) :
@@ -234,85 +234,85 @@ class CreateModelSessionParameters(object) :
 			else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
 				self.kernDimPerLayerSubsampled = kernDimSubsampled
 				self.receptiveFieldSubsampled = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerSubsampled)
-				if self.receptiveFieldNormal <> self.receptiveFieldSubsampled :
+				if self.receptiveFieldNormal != self.receptiveFieldSubsampled :
 					self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
 				#Everything alright, finally. Proceed safely...
-			self.subsampleFactor = subsampleFactor if subsampleFactor <> None else [3,3,3]
-			if len(self.subsampleFactor) <> 3 :
+			self.subsampleFactor = subsampleFactor if subsampleFactor != None else [3,3,3]
+			if len(self.subsampleFactor) != 3 :
 				self.errorSubFactor3d()
 			if not checkSubsampleFactorEven(self.subsampleFactor) :
 				self.warnSubFactorOdd()
-			residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled <> None else residConnAtLayersNormal
-			lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled <> None else lowerRankLayersNormal
+			residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled != None else residConnAtLayersNormal
+			lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled != None else lowerRankLayersNormal
 			
 		#==FC Layers==
-		self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
-		self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer <> None else [1,1,1]
+		self.numFMsInExtraFcs = numFMsFc if numFMsFc != None else []
+		self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer != None else [1,1,1]
 		assert len(self.kernelDimensionsFirstFcLayer) == 3 and (False not in [ dim > 0 for dim in self.kernelDimensionsFirstFcLayer] )
-		residConnAtLayersFc = residConnAtLayersFc if residConnAtLayersFc <> None else []
+		residConnAtLayersFc = residConnAtLayersFc if residConnAtLayersFc != None else []
 						
 		#==Size of Image Segments ==
-		self.segmDimNormalTrain = segmDimTrain if segmDimTrain <> None else self.errReqSegmDimTrain()
-		self.segmDimNormalVal = segmDimVal if segmDimVal <> None else self.receptiveFieldNormal
-		self.segmDimNormalInfer = segmDimInfer if segmDimInfer <> None else self.segmDimNormalTrain
+		self.segmDimNormalTrain = segmDimTrain if segmDimTrain != None else self.errReqSegmDimTrain()
+		self.segmDimNormalVal = segmDimVal if segmDimVal != None else self.receptiveFieldNormal
+		self.segmDimNormalInfer = segmDimInfer if segmDimInfer != None else self.segmDimNormalTrain
 		for (tr0_val1_inf2, segmentDimensions) in [ (0,self.segmDimNormalTrain), (1,self.segmDimNormalVal), (2,self.segmDimNormalInfer) ] :
 			if not checkReceptiveFieldFineInComparisonToSegmentSize(self.receptiveFieldNormal, segmentDimensions) :
 				self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, tr0_val1_inf2)
 
 
 		#=== Batch Sizes ===
-		self.batchSizeTrain = batchSizeTrain if batchSizeTrain <> None else self.errReqBatchSizeTr()
-		self.batchSizeVal = batchSizeVal if batchSizeVal <> None else self.batchSizeTrain
-		self.batchSizeInfer = batchSizeInfer if batchSizeInfer <> None else self.batchSizeTrain
+		self.batchSizeTrain = batchSizeTrain if batchSizeTrain != None else self.errReqBatchSizeTr()
+		self.batchSizeVal = batchSizeVal if batchSizeVal != None else self.batchSizeTrain
+		self.batchSizeInfer = batchSizeInfer if batchSizeInfer != None else self.batchSizeTrain
 
 		#=== Dropout rates ===
-		self.dropNormal = dropNormal if dropNormal <> None else []
-		self.dropSubsampled = dropSubsampled if dropSubsampled <> None else []
-		self.dropFc = dropFc if dropFc <> None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
+		self.dropNormal = dropNormal if dropNormal != None else []
+		self.dropSubsampled = dropSubsampled if dropSubsampled != None else []
+		self.dropFc = dropFc if dropFc != None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
 		self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc, []]
 
 		#==Regularization==
-		self.l1Reg = l1Reg if l1Reg <> None else 0.000001
-		self.l2Reg = l2Reg if l2Reg <> None else 0.0001
+		self.l1Reg = l1Reg if l1Reg != None else 0.000001
+		self.l2Reg = l2Reg if l2Reg != None else 0.0001
 
 		#== Weight Initialization==
-		self.initialMethodClassic0Delving1 = initialMethod if initialMethod <> None else 1
+		self.initialMethodClassic0Delving1 = initialMethod if initialMethod != None else 1
 		if not self.initialMethodClassic0Delving1 in [0,1]:
 			self.errorReqInitializationMethod01()
 		#== Activation Function ==
-		self.activationFunctionRelu0Prelu1 = activationFunction if activationFunction <> None else 1
+		self.activationFunctionRelu0Prelu1 = activationFunction if activationFunction != None else 1
 		if not self.activationFunctionRelu0Prelu1 in [0,1]:
 			self.errorReqActivFunction01()
 
 		#==BATCH NORMALIZATION==
 		self.applyBnToInputOfPathways = [False, False, "Placeholder", False] # the 3 entry, for FC, is always True internally.
-		self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches <> None else 60
+		self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches != None else 60
 		
 		#====Optimization=====
-		self.learningRate = learningRate if learningRate <> None else 0.001
-		self.optimizerSgd0Adam1Rms2 = optimizerSgd0Adam1Rms2 if optimizerSgd0Adam1Rms2 <> None else 2
+		self.learningRate = learningRate if learningRate != None else 0.001
+		self.optimizerSgd0Adam1Rms2 = optimizerSgd0Adam1Rms2 if optimizerSgd0Adam1Rms2 != None else 2
 		if self.optimizerSgd0Adam1Rms2 == 0 :
 			self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
 			self.rhoRms = "placeholder"; self.eRms = "placeholder";
 		elif self.optimizerSgd0Adam1Rms2 == 1 :
-			self.b1Adam = b1Adam if b1Adam <> None else 0.9 #default in paper and seems good
-			self.b2Adam = b2Adam if b2Adam <> None else 0.999 #default in paper and seems good
+			self.b1Adam = b1Adam if b1Adam != None else 0.9 #default in paper and seems good
+			self.b2Adam = b2Adam if b2Adam != None else 0.999 #default in paper and seems good
 			self.eAdam = eAdam if eAdam else 10**(-8)
 			self.rhoRms = "placeholder"; self.eRms = "placeholder";
 		elif self.optimizerSgd0Adam1Rms2 == 2 :
 			self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
-			self.rhoRms = rhoRms if rhoRms <> None else 0.9 #default in paper and seems good
-			self.eRms = eRms if eRms <> None else 10**(-4) # 1e-6 was the default in the paper, but blew up the gradients in first try. Never tried 1e-5 yet.
+			self.rhoRms = rhoRms if rhoRms != None else 0.9 #default in paper and seems good
+			self.eRms = eRms if eRms != None else 10**(-4) # 1e-6 was the default in the paper, but blew up the gradients in first try. Never tried 1e-5 yet.
 		else :
 			self.errorRequireOptimizer012()
 
-		self.classicMom0Nesterov1 = classicMom0Nesterov1 if classicMom0Nesterov1 <> None else 1
+		self.classicMom0Nesterov1 = classicMom0Nesterov1 if classicMom0Nesterov1 != None else 1
 		if self.classicMom0Nesterov1 not in [0,1]:
 			self.errorRequireMomentumClass0Nestov1()
-		self.momNonNormalized0Normalized1 = momNonNormalized0Normalized1 if momNonNormalized0Normalized1 <> None else 1
+		self.momNonNormalized0Normalized1 = momNonNormalized0Normalized1 if momNonNormalized0Normalized1 != None else 1
 		if self.momNonNormalized0Normalized1 not in [0,1] :
 			self.errorRequireMomNonNorm0Norm1()
-		self.momentumValue = momentumValue if momentumValue <> None else 0.6
+		self.momentumValue = momentumValue if momentumValue != None else 0.6
 		if self.momentumValue < 0. or self.momentumValue > 1:
 			self.errorRequireMomValueBetween01()
 
