@@ -324,7 +324,7 @@ class TrainSessionParameters(object) :
 		#Output:
 		#Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
 		self.namesToSavePredictionsAndFeaturesVal = namesToSavePredictionsAndFeaturesVal  
-		if not self.namesToSavePredictionsAndFeaturesVal and self.performFullInferenceOnValidationImagesEveryFewEpochs and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImages or self.saveMultidimensionalImageWithAllFms) :
+		if not self.namesToSavePredictionsAndFeaturesVal and self.performFullInferenceOnValidationImagesEveryFewEpochs and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
 			self.errorRequireNamesOfPredictionsVal()
 
 		#===================== OTHERS======================
