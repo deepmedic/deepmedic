@@ -1535,7 +1535,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 
     for image_i in xrange(total_number_of_images) :
 	fullFilenameToSaveWith = listOfNamesToGiveToPredictions[image_i][:-4] + '_Segm.mat'
-	if os.path.exists(fullFilenameToSaveWith):   
+	if not os.path.exists(fullFilenameToSaveWith):   
 		myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 		myLogger.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #"+str(image_i)+" ~~~~~~~~~~~~~~~~~~~~")
 
