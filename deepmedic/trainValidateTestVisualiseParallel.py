@@ -1534,338 +1534,340 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
 				
 
     for image_i in xrange(total_number_of_images) :
-        myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        myLogger.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #"+str(image_i)+" ~~~~~~~~~~~~~~~~~~~~")
-                                                  
-        #load the image channels in cpu
+	fullFilenameToSaveWith = listOfNamesToGiveToPredictions[image_i][:-4] + '_Segm.mat'
+	if os.path.exists(fullFilenameToSaveWith):   
+		myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+		myLogger.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #"+str(image_i)+" ~~~~~~~~~~~~~~~~~~~~")
 
-        [imageChannels, #a nparray(channels,dim0,dim1,dim2)
-	gtLabelsImage, #only for accurate/correct DICE1-2 calculation
-        brainMask, 
-        arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
-        allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
-	tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
-        ] = actual_load_patient_images_from_filepath_and_return_nparrays(
-                                                    myLogger,
-                                                    2,
+		#load the image channels in cpu
 
-                                                    image_i,
+		[imageChannels, #a nparray(channels,dim0,dim1,dim2)
+		gtLabelsImage, #only for accurate/correct DICE1-2 calculation
+		brainMask, 
+		arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
+		allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
+		tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
+		] = actual_load_patient_images_from_filepath_and_return_nparrays(
+							    myLogger,
+							    2,
 
-                                                    listOfFilepathsToEachChannelOfEachPatient,
-						
-                                                    providedGtLabelsBool,
-                                                    listOfFilepathsToGtLabelsOfEachPatient,
+							    image_i,
 
-                                                    providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
-                                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
+							    listOfFilepathsToEachChannelOfEachPatient,
 
-                                                    providedRoiMaskBool = providedRoiMaskForFastInfBool,
-                                                    listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
+							    providedGtLabelsBool,
+							    listOfFilepathsToGtLabelsOfEachPatient,
 
-                                                    useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
-                                                    usingSubsampledWaypath = usingSubsampledWaypath,
-                                                    listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
+							    providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
+							    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
 
-                                                    padInputImagesBool = padInputImagesBool,
-                                                    cnnReceptiveField = patchDimensions, # only used if padInputsBool
-                                                    imagePartDimensions = imagePartDimensions, # only used if padInputsBool
+							    providedRoiMaskBool = providedRoiMaskForFastInfBool,
+							    listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
 
-                                                    smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                                                    normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc = [0, -1,-1,-1],
-                                                    reflectImageWithHalfProb = [0,0,0]
-                                                    )
-	niiDimensions = list(imageChannels[0].shape)
-        #The probability-map that will be constructed by the predictions.
-        labelImageCreatedByPredictions = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
-	#create the big array that will hold all the fms (for feature extraction, to save as a big multi-dim image).
-	if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
-		multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
+							    useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
+							    usingSubsampledWaypath = usingSubsampledWaypath,
+							    listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
 
-        #get all the parts of the image on the cpu
-        [imagePartsChannelsToLoadOnGpuForThisImage,
-         coordsOfTopLeftVoxelForPartsToReturn,
-         subsampledImagePartsChannelsToLoadOnGpuForThisImage
-         ] = getImagePartsAndTheirSlices(myLogger=myLogger,
-                                         strideOfImagePartsPerDimensionInVoxels=strideOfImagePartsPerDimensionInVoxels,
-                                         imagePartDimensions = imagePartDimensions,
-                                         batch_size = batch_size,
-                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
-                                         brainMask = brainMask,
-                                         channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
-                                         patchDimensions=patchDimensions,
-                                         subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
-                                         subSamplingFactor=subSamplingFactor,
-                                         subsampledImagePartDimensions=subsampledImagePartDimensions,
-                                         )
-        
-        myLogger.print3("Loading data for subject #"+str(image_i)+" on sharedvariable...")
-        cnn3dInstance.sharedTestingNiiData_x.set_value(np.asarray(imagePartsChannelsToLoadOnGpuForThisImage, dtype='float32'), borrow=borrowFlag)
-        if usingSubsampledWaypath :
-            cnn3dInstance.sharedTestingSubsampledData_x.set_value(np.asarray(subsampledImagePartsChannelsToLoadOnGpuForThisImage, dtype='float32'), borrow=borrowFlag)
- 
-        myLogger.print3("All the Segments for the current subject were loaded on the shared variable.")
-        myLogger.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
-        
-        #In the next part, for each imagePart in a batch I get from the cnn a vector with labels for the central voxels of the imagepart (9^3 originally).
-        #I will reshape the 9^3 vector to a cube and "put it" in the new-segmentation-image, where it corresponds.
-        #I have to find exactly to which voxels these labels correspond to. Consider that the image part is bigger than the 9^3 label box...
-        #by half-patch at the top and half-patch at the bottom of each dimension.
-        
-        #Here I calculate how many imageParts can fit in each r-c-z direction/dimension.
-        #It is how many times the stride (originally 9^3) can fit in the niiDimension-1patch (half up, half bottom)
-        imagePartsPerRdirection = (niiDimensions[0]-patchDimensions[0]+1) / strideOfImagePartsPerDimensionInVoxels[0]
-        imagePartsPerCdirection = (niiDimensions[1]-patchDimensions[1]+1) / strideOfImagePartsPerDimensionInVoxels[1]
-        imagePartsPerZdirection = (niiDimensions[2]-patchDimensions[2]+1) / strideOfImagePartsPerDimensionInVoxels[2]
-        imagePartsPerZSlice = imagePartsPerRdirection*imagePartsPerCdirection
-                
-        totalNumberOfImagePartsToProcessForThisImage = len(imagePartsChannelsToLoadOnGpuForThisImage)
-        myLogger.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
+							    padInputImagesBool = padInputImagesBool,
+							    cnnReceptiveField = patchDimensions, # only used if padInputsBool
+							    imagePartDimensions = imagePartDimensions, # only used if padInputsBool
 
-        imagePartOfConstructedProbMap_i = 0
-        imagePartOfConstructedFeatureMaps_i = 0
-	number_of_batches = totalNumberOfImagePartsToProcessForThisImage/batch_size
-        for batch_i in xrange(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
+							    smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
+							    normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc = [0, -1,-1,-1],
+							    reflectImageWithHalfProb = [0,0,0]
+							    )
+		niiDimensions = list(imageChannels[0].shape)
+		#The probability-map that will be constructed by the predictions.
+		labelImageCreatedByPredictions = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
+		#create the big array that will hold all the fms (for feature extraction, to save as a big multi-dim image).
+		if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
+			multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
 
-            printProgressStep = max(1, number_of_batches/5)
-            if batch_i%printProgressStep == 0:
-		myLogger.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
+		#get all the parts of the image on the cpu
+		[imagePartsChannelsToLoadOnGpuForThisImage,
+		 coordsOfTopLeftVoxelForPartsToReturn,
+		 subsampledImagePartsChannelsToLoadOnGpuForThisImage
+		 ] = getImagePartsAndTheirSlices(myLogger=myLogger,
+						 strideOfImagePartsPerDimensionInVoxels=strideOfImagePartsPerDimensionInVoxels,
+						 imagePartDimensions = imagePartDimensions,
+						 batch_size = batch_size,
+						 channelsOfImageNpArray = imageChannels,#chans,niiDims
+						 brainMask = brainMask,
+						 channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
+						 patchDimensions=patchDimensions,
+						 subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
+						 subSamplingFactor=subSamplingFactor,
+						 subsampledImagePartDimensions=subsampledImagePartDimensions,
+						 )
 
-            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(batch_i)
-            predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[-1]
-            listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[:-1]
-            #No reshape needed, cause I now do it internally. But to dimensions (batchSize, FMs, R,C,Z).
+		myLogger.print3("Loading data for subject #"+str(image_i)+" on sharedvariable...")
+		cnn3dInstance.sharedTestingNiiData_x.set_value(np.asarray(imagePartsChannelsToLoadOnGpuForThisImage, dtype='float32'), borrow=borrowFlag)
+		if usingSubsampledWaypath :
+		    cnn3dInstance.sharedTestingSubsampledData_x.set_value(np.asarray(subsampledImagePartsChannelsToLoadOnGpuForThisImage, dtype='float32'), borrow=borrowFlag)
 
-            #~~~~~~~~~~~~~~~~CONSTRUCT THE PREDICTED PROBABILITY MAPS~~~~~~~~~~~~~~
-            #From the results of this batch, create the prediction image by putting the predictions to the correct place in the image.
-            for imagePart_in_this_batch_i in xrange(batch_size) :
+		myLogger.print3("All the Segments for the current subject were loaded on the shared variable.")
+		myLogger.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
 
-                #Now put the label-cube in the new-label-segmentation-image, at the correct position. 
-                #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
-                coordsOfTopLeftVoxelForThisPart = coordsOfTopLeftVoxelForPartsToReturn[imagePartOfConstructedProbMap_i]
-                labelImageCreatedByPredictions[
-			:,
-                        coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
-                        coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[1],
-                        coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[2],
-                                                ] = predictionForATestBatch[imagePart_in_this_batch_i]
-                imagePartOfConstructedProbMap_i += 1
-            #~~~~~~~~~~~~~FINISHED CONSTRUCTING THE PREDICTED PROBABILITY MAPS~~~~~~~
+		#In the next part, for each imagePart in a batch I get from the cnn a vector with labels for the central voxels of the imagepart (9^3 originally).
+		#I will reshape the 9^3 vector to a cube and "put it" in the new-segmentation-image, where it corresponds.
+		#I have to find exactly to which voxels these labels correspond to. Consider that the image part is bigger than the 9^3 label box...
+		#by half-patch at the top and half-patch at the bottom of each dimension.
 
-            #~~~~~~~~~~~~~~CONSTRUCT THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~~~~~~~~
-            if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
+		#Here I calculate how many imageParts can fit in each r-c-z direction/dimension.
+		#It is how many times the stride (originally 9^3) can fit in the niiDimension-1patch (half up, half bottom)
+		imagePartsPerRdirection = (niiDimensions[0]-patchDimensions[0]+1) / strideOfImagePartsPerDimensionInVoxels[0]
+		imagePartsPerCdirection = (niiDimensions[1]-patchDimensions[1]+1) / strideOfImagePartsPerDimensionInVoxels[1]
+		imagePartsPerZdirection = (niiDimensions[2]-patchDimensions[2]+1) / strideOfImagePartsPerDimensionInVoxels[2]
+		imagePartsPerZSlice = imagePartsPerRdirection*imagePartsPerCdirection
 
-		    fmsReturnedForATestBatchForCertainLayer = None
-		    #currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray is the index in the multidimensional array that holds all the to-be-visualised-fms. It is the one that corresponds to the next to-be-visualised indexOfTheLayerInTheReturnedListByTheBatchTraining.
-		    currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
-		    #indexOfTheLayerInTheReturnedListByTheBatchTraining is the index over all the layers in the returned list. I will work only with the ones specified to visualise.
-		    indexOfTheLayerInTheReturnedListByTheBatchTraining = -1
+		totalNumberOfImagePartsToProcessForThisImage = len(imagePartsChannelsToLoadOnGpuForThisImage)
+		myLogger.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
 
-		    for typeOfPathway_i in xrange(len(cnn3dInstance.typesOfCnnLayers)) :
-			layersOfThePathwayToVisualiseOfTheCnnInstance = cnn3dInstance.typesOfCnnLayers[typeOfPathway_i]
-			for layer_i in xrange(len(layersOfThePathwayToVisualiseOfTheCnnInstance)) :
-				indexOfTheLayerInTheReturnedListByTheBatchTraining += 1
-				if indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[typeOfPathway_i]==[] or indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[typeOfPathway_i][layer_i]==[] :
-					continue
-				indicesOfFmsToExtractFromThisLayer = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[typeOfPathway_i][layer_i]
-				
-				fmsReturnedForATestBatchForCertainLayer = listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch[indexOfTheLayerInTheReturnedListByTheBatchTraining][:, indicesOfFmsToExtractFromThisLayer[0]:indicesOfFmsToExtractFromThisLayer[1],:,:,:]
-				#We specify a range of fms to visualise from a layer. currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray : highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding defines were to put them in the multidimensional-image-array.
-				highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding = currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray + indicesOfFmsToExtractFromThisLayer[1] - indicesOfFmsToExtractFromThisLayer[0]
-				fmImageInMultidimArrayToReconstructInThisIteration = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray: highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding]
+		imagePartOfConstructedProbMap_i = 0
+		imagePartOfConstructedFeatureMaps_i = 0
+		number_of_batches = totalNumberOfImagePartsToProcessForThisImage/batch_size
+		for batch_i in xrange(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
 
-		    		#=========================================================================================================================================
-		    		#====the following calculations could be move OUTSIDE THE FOR LOOPS, by using the kernel-size parameter (from the cnn instance) instead of the shape of the returned value.
-		    		#====fmsReturnedForATestBatchForCertainLayer.shape[2] - (numberOfCentralVoxelsClassified[0]-1) is essentially the width of the patch left after the convolutions.
-				#====These calculations are pathway and layer-specific. So they could be done once, prior to image processing, and results cached in a list to be accessed during the loop.
-		    		numberOfVoxToSubtrToGetPatchWidthAtThisFm_R =  numberOfCentralVoxelsClassified[0]-1 if typeOfPathway_i <> 1 else math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/subSamplingFactor[0]) -1
-		    		numberOfVoxToSubtrToGetPatchWidthAtThisFm_C =  numberOfCentralVoxelsClassified[1]-1 if typeOfPathway_i <> 1 else math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/subSamplingFactor[1]) -1
-		    		numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z =  numberOfCentralVoxelsClassified[2]-1 if typeOfPathway_i <> 1 else math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/subSamplingFactor[2]) -1
-		    		rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[2] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_R
-		    		cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[3] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_C
-		    		zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[4] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z
-		    		rOfTopLeftCentralVoxelAtTheFm = (rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2 #-1 so that if width is even, I'll get the left voxel from the centre as 1st, which I THINK is how I am getting the patches from the original image.
-		    		cOfTopLeftCentralVoxelAtTheFm = (cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2
-		    		zOfTopLeftCentralVoxelAtTheFm = (zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2
-		    
-		    		#the math.ceil / subsamplingFactor is a trick to make it work for even subsamplingFactor too. Eg 9/2=4.5 => Get 5. Combined with the trick at repeat, I get my correct number of central voxels hopefully.
-		    		numberOfCentralVoxelsToGetInDirectionR = math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/subSamplingFactor[0]) if typeOfPathway_i == 1 else numberOfCentralVoxelsClassified[0]
-		    		numberOfCentralVoxelsToGetInDirectionC = math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/subSamplingFactor[1]) if typeOfPathway_i == 1 else numberOfCentralVoxelsClassified[1]
-		    		numberOfCentralVoxelsToGetInDirectionZ = math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/subSamplingFactor[2]) if typeOfPathway_i == 1 else numberOfCentralVoxelsClassified[2]
-		    		#=========================================================================================================================================
+		    printProgressStep = max(1, number_of_batches/5)
+		    if batch_i%printProgressStep == 0:
+			myLogger.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
 
-				#Grab the central voxels of the predicted fms from the cnn in this batch.
-		    		centralVoxelsOfAllFmsInLayer = fmsReturnedForATestBatchForCertainLayer[:, #batchsize
-									:, #number of featuremaps
-		                                                        rOfTopLeftCentralVoxelAtTheFm:rOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionR,
-		                                                        cOfTopLeftCentralVoxelAtTheFm:cOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionC,
-		                                                        zOfTopLeftCentralVoxelAtTheFm:zOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionZ
-		                                                        ]
-				#If the pathway that is visualised currently is the subsampled, I need to upsample the central voxels to the normal resolution, before reconstructing the image-fm.
-		    		if typeOfPathway_i == 1: #subsampled layer. Remember that this returns smaller dimension outputs, cause it works in the subsampled space. I need to repeat it, to bring it to the dimensions of the normal-voxel-space.
-		        		expandedOutputOfFmsR = np.repeat(centralVoxelsOfAllFmsInLayer, subSamplingFactor[0],axis = 2)
-		        		expandedOutputOfFmsRC = np.repeat(expandedOutputOfFmsR, subSamplingFactor[1],axis = 3)
-					expandedOutputOfFmsRCZ = np.repeat(expandedOutputOfFmsRC, subSamplingFactor[2],axis = 4)
-					#The below is a trick to get correct number of voxels even when subsampling factor is even or not exact divisor of the number of central voxels.
-					#...This trick is coupled with the ceil() when getting the numberOfCentralVoxelsToGetInDirectionR above.
-					centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = expandedOutputOfFmsRCZ[:,
-														:,
-							                                                        0:numberOfCentralVoxelsClassified[0],
-							                                                        0:numberOfCentralVoxelsClassified[1],
-							                                                        0:numberOfCentralVoxelsClassified[2]
-							                                                        ]
-		   		else :
-		        		centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = centralVoxelsOfAllFmsInLayer
+		    featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(batch_i)
+		    predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[-1]
+		    listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[:-1]
+		    #No reshape needed, cause I now do it internally. But to dimensions (batchSize, FMs, R,C,Z).
 
-				#----For every image part within this batch, reconstruct the corresponding part of the feature maps of the layer we are currently visualising in this loop.
-		    		for imagePart_in_this_batch_i in xrange(batch_size) :
-		        		#Now put the label-cube in the new-label-segmentation-image, at the correct position. 
-		        		#The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
-		       			coordsOfTopLeftVoxelForThisPart = coordsOfTopLeftVoxelForPartsToReturn[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
-		       			fmImageInMultidimArrayToReconstructInThisIteration[ # I put the central-predicted-voxels of all FMs to the corresponding, newly created images all at once.
-						:, #last dimension is the number-of-Fms, I create an image for each.	
-						coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
-						coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[1],
-						coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[2]
-						] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[imagePart_in_this_batch_i]
-				currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding
-		    imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
-            #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
+		    #~~~~~~~~~~~~~~~~CONSTRUCT THE PREDICTED PROBABILITY MAPS~~~~~~~~~~~~~~
+		    #From the results of this batch, create the prediction image by putting the predictions to the correct place in the image.
+		    for imagePart_in_this_batch_i in xrange(batch_size) :
 
-	#Clear GPU from testing data.
-	cnn3dInstance.freeGpuTestingData()
+			#Now put the label-cube in the new-label-segmentation-image, at the correct position. 
+			#The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
+			coordsOfTopLeftVoxelForThisPart = coordsOfTopLeftVoxelForPartsToReturn[imagePartOfConstructedProbMap_i]
+			labelImageCreatedByPredictions[
+				:,
+				coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
+				coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[1],
+				coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[2],
+							] = predictionForATestBatch[imagePart_in_this_batch_i]
+			imagePartOfConstructedProbMap_i += 1
+		    #~~~~~~~~~~~~~FINISHED CONSTRUCTING THE PREDICTED PROBABILITY MAPS~~~~~~~
 
+		    #~~~~~~~~~~~~~~CONSTRUCT THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~~~~~~~~
+		    if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
 
-	#=================Save Predicted-Probability-Map and Evaluate Dice====================
-	segmentationImage = np.argmax(labelImageCreatedByPredictions, axis=0) #The SEGMENTATION.
+			    fmsReturnedForATestBatchForCertainLayer = None
+			    #currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray is the index in the multidimensional array that holds all the to-be-visualised-fms. It is the one that corresponds to the next to-be-visualised indexOfTheLayerInTheReturnedListByTheBatchTraining.
+			    currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
+			    #indexOfTheLayerInTheReturnedListByTheBatchTraining is the index over all the layers in the returned list. I will work only with the ones specified to visualise.
+			    indexOfTheLayerInTheReturnedListByTheBatchTraining = -1
 
-	#Save Result:
-        if savePredictionImagesSegmentationAndProbMapsList[0] == True : #save predicted segmentation
-            npDtypeForPredictedImage = np.dtype(np.int16)
-            suffixToAdd = "_Segm"
-            #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
-            unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
-            savePredictedImageToANewNiiWithHeaderFromOther(unpaddedSegmentationImage,
-                               listOfNamesToGiveToPredictionsIfSavingResults,
+			    for typeOfPathway_i in xrange(len(cnn3dInstance.typesOfCnnLayers)) :
+				layersOfThePathwayToVisualiseOfTheCnnInstance = cnn3dInstance.typesOfCnnLayers[typeOfPathway_i]
+				for layer_i in xrange(len(layersOfThePathwayToVisualiseOfTheCnnInstance)) :
+					indexOfTheLayerInTheReturnedListByTheBatchTraining += 1
+					if indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[typeOfPathway_i]==[] or indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[typeOfPathway_i][layer_i]==[] :
+						continue
+					indicesOfFmsToExtractFromThisLayer = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[typeOfPathway_i][layer_i]
 
-                               listOfFilepathsToEachChannelOfEachPatient,
+					fmsReturnedForATestBatchForCertainLayer = listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch[indexOfTheLayerInTheReturnedListByTheBatchTraining][:, indicesOfFmsToExtractFromThisLayer[0]:indicesOfFmsToExtractFromThisLayer[1],:,:,:]
+					#We specify a range of fms to visualise from a layer. currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray : highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding defines were to put them in the multidimensional-image-array.
+					highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding = currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray + indicesOfFmsToExtractFromThisLayer[1] - indicesOfFmsToExtractFromThisLayer[0]
+					fmImageInMultidimArrayToReconstructInThisIteration = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray: highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding]
 
-                               image_i,
-                               suffixToAdd,
-                               npDtypeForPredictedImage,
-                               myLogger
-                               )
-	for class_i in xrange(0, NUMBER_OF_CLASSES) :
-		if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
-			npDtypeForPredictedImage = np.dtype(np.float32)
-			suffixToAdd = "_ProbMapClass" + str(class_i)
-			#Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
-			predictedLabelImageForSpecificClass = labelImageCreatedByPredictions[class_i,:,:,:]
-			unpaddedPredictedLabelImageForSpecificClass = predictedLabelImageForSpecificClass if not padInputImagesBool else unpadCnnOutputs(predictedLabelImageForSpecificClass, tupleOfPaddingPerAxesLeftRight)
-			savePredictedImageToANewNiiWithHeaderFromOther(unpaddedPredictedLabelImageForSpecificClass,
-				               listOfNamesToGiveToPredictionsIfSavingResults,
+					#=========================================================================================================================================
+					#====the following calculations could be move OUTSIDE THE FOR LOOPS, by using the kernel-size parameter (from the cnn instance) instead of the shape of the returned value.
+					#====fmsReturnedForATestBatchForCertainLayer.shape[2] - (numberOfCentralVoxelsClassified[0]-1) is essentially the width of the patch left after the convolutions.
+					#====These calculations are pathway and layer-specific. So they could be done once, prior to image processing, and results cached in a list to be accessed during the loop.
+					numberOfVoxToSubtrToGetPatchWidthAtThisFm_R =  numberOfCentralVoxelsClassified[0]-1 if typeOfPathway_i <> 1 else math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/subSamplingFactor[0]) -1
+					numberOfVoxToSubtrToGetPatchWidthAtThisFm_C =  numberOfCentralVoxelsClassified[1]-1 if typeOfPathway_i <> 1 else math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/subSamplingFactor[1]) -1
+					numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z =  numberOfCentralVoxelsClassified[2]-1 if typeOfPathway_i <> 1 else math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/subSamplingFactor[2]) -1
+					rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[2] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_R
+					cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[3] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_C
+					zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[4] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z
+					rOfTopLeftCentralVoxelAtTheFm = (rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2 #-1 so that if width is even, I'll get the left voxel from the centre as 1st, which I THINK is how I am getting the patches from the original image.
+					cOfTopLeftCentralVoxelAtTheFm = (cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2
+					zOfTopLeftCentralVoxelAtTheFm = (zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions-1)/2
 
-				               listOfFilepathsToEachChannelOfEachPatient,
+					#the math.ceil / subsamplingFactor is a trick to make it work for even subsamplingFactor too. Eg 9/2=4.5 => Get 5. Combined with the trick at repeat, I get my correct number of central voxels hopefully.
+					numberOfCentralVoxelsToGetInDirectionR = math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/subSamplingFactor[0]) if typeOfPathway_i == 1 else numberOfCentralVoxelsClassified[0]
+					numberOfCentralVoxelsToGetInDirectionC = math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/subSamplingFactor[1]) if typeOfPathway_i == 1 else numberOfCentralVoxelsClassified[1]
+					numberOfCentralVoxelsToGetInDirectionZ = math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/subSamplingFactor[2]) if typeOfPathway_i == 1 else numberOfCentralVoxelsClassified[2]
+					#=========================================================================================================================================
 
-				               image_i,
-				               suffixToAdd,
-				               npDtypeForPredictedImage,
-				               myLogger
-				               )
+					#Grab the central voxels of the predicted fms from the cnn in this batch.
+					centralVoxelsOfAllFmsInLayer = fmsReturnedForATestBatchForCertainLayer[:, #batchsize
+										:, #number of featuremaps
+										rOfTopLeftCentralVoxelAtTheFm:rOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionR,
+										cOfTopLeftCentralVoxelAtTheFm:cOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionC,
+										zOfTopLeftCentralVoxelAtTheFm:zOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionZ
+										]
+					#If the pathway that is visualised currently is the subsampled, I need to upsample the central voxels to the normal resolution, before reconstructing the image-fm.
+					if typeOfPathway_i == 1: #subsampled layer. Remember that this returns smaller dimension outputs, cause it works in the subsampled space. I need to repeat it, to bring it to the dimensions of the normal-voxel-space.
+						expandedOutputOfFmsR = np.repeat(centralVoxelsOfAllFmsInLayer, subSamplingFactor[0],axis = 2)
+						expandedOutputOfFmsRC = np.repeat(expandedOutputOfFmsR, subSamplingFactor[1],axis = 3)
+						expandedOutputOfFmsRCZ = np.repeat(expandedOutputOfFmsRC, subSamplingFactor[2],axis = 4)
+						#The below is a trick to get correct number of voxels even when subsampling factor is even or not exact divisor of the number of central voxels.
+						#...This trick is coupled with the ceil() when getting the numberOfCentralVoxelsToGetInDirectionR above.
+						centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = expandedOutputOfFmsRCZ[:,
+															:,
+															0:numberOfCentralVoxelsClassified[0],
+															0:numberOfCentralVoxelsClassified[1],
+															0:numberOfCentralVoxelsClassified[2]
+															]
+					else :
+						centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = centralVoxelsOfAllFmsInLayer
+
+					#----For every image part within this batch, reconstruct the corresponding part of the feature maps of the layer we are currently visualising in this loop.
+					for imagePart_in_this_batch_i in xrange(batch_size) :
+						#Now put the label-cube in the new-label-segmentation-image, at the correct position. 
+						#The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
+						coordsOfTopLeftVoxelForThisPart = coordsOfTopLeftVoxelForPartsToReturn[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
+						fmImageInMultidimArrayToReconstructInThisIteration[ # I put the central-predicted-voxels of all FMs to the corresponding, newly created images all at once.
+							:, #last dimension is the number-of-Fms, I create an image for each.	
+							coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
+							coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[1],
+							coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[2]
+							] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[imagePart_in_this_batch_i]
+					currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding
+			    imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
+		    #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
+
+		#Clear GPU from testing data.
+		cnn3dInstance.freeGpuTestingData()
 
 
-	#=================Save FEATURE MAPS ====================
-	if saveIndividualFmImagesForVisualisation :
-		currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
-		for pathwayType_i in xrange(len(cnn3dInstance.typesOfCnnLayers)) :
-			indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[pathwayType_i]
-			if indicesOfFmsToVisualisePerLayerOfCertainPathway<>[] :
-				for layer_i in xrange(len(cnn3dInstance.typesOfCnnLayers[pathwayType_i])) :
-					indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-					if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
-						#If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
-						for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
-							fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
-							unpaddedFmToSave =  fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
-							saveFmActivationImageToANewNiiWithHeaderFromOther(unpaddedFmToSave,
-													   listOfNamesToGiveToFmVisualisationsIfSaving,
+		#=================Save Predicted-Probability-Map and Evaluate Dice====================
+		segmentationImage = np.argmax(labelImageCreatedByPredictions, axis=0) #The SEGMENTATION.
 
-													   listOfFilepathsToEachChannelOfEachPatient,
+		#Save Result:
+		if savePredictionImagesSegmentationAndProbMapsList[0] == True : #save predicted segmentation
+		    npDtypeForPredictedImage = np.dtype(np.int16)
+		    suffixToAdd = "_Segm"
+		    #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
+		    unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
+		    savePredictedImageToANewNiiWithHeaderFromOther(unpaddedSegmentationImage,
+				       listOfNamesToGiveToPredictionsIfSavingResults,
 
-													   image_i,
-													   pathwayType_i,
-													   layer_i,
-													   fmActualNumber,
-													   myLogger
-													   ) 
-							currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
-	if saveMultidimensionalImageWithAllFms :
-		"""
-		multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.zeros(niiDimensions + [totalNumberOfFMsToProcess], dtype = "float32")
-		for fm_i in xrange(0, totalNumberOfFMsToProcess) :
-			multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms[:,:,:,fm_i] = multidimensionalImageWithAllToBeVisualisedFmsArray[fm_i]
-		"""
-		multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.transpose(multidimensionalImageWithAllToBeVisualisedFmsArray, (1,2,3, 0) )
+				       listOfFilepathsToEachChannelOfEachPatient,
 
-		unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms = multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms if not padInputImagesBool else \
-			unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms, tupleOfPaddingPerAxesLeftRight)
-
-		#Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
-		saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
-                                          listOfNamesToGiveToFmVisualisationsIfSaving,
-
-                                          listOfFilepathsToEachChannelOfEachPatient,
-
-                                          image_i,
-                                          myLogger)
-	#=================IMAGES SAVED. PROBABILITY MAPS AND FEATURE MAPS TOO (if wanted). ====================
-
-	#=================EVALUATE DSC FROM THE PROBABILITY MAPS FOR EACH IMAGE. ====================
-	if providedGtLabelsBool : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
-		myLogger.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) + " ++++++++++++++++++++++++++")
-		#Unpad all segmentation map, gt, brainmask
-		unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
-		unpaddedGtLabelsImage = gtLabelsImage if not padInputImagesBool else unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
-		#Hack, for it to work for the case that I do not use a brainMask.
-		if isinstance(brainMask, (np.ndarray)) : #If brainmask was given:
-			multiplyWithBrainMaskOr1 = brainMask if not padInputImagesBool else unpadCnnOutputs(brainMask, tupleOfPaddingPerAxesLeftRight)
-		else :
-			multiplyWithBrainMaskOr1 = 1
-		#calculate DSC per class.
+				       image_i,
+				       suffixToAdd,
+				       npDtypeForPredictedImage,
+				       myLogger
+				       )
 		for class_i in xrange(0, NUMBER_OF_CLASSES) :
-			if class_i == 0 : #in this case, do the evaluation for the WHOLE segmentation (not background)
-				booleanPredictedLabelImage = unpaddedSegmentationImage>0 #Whatever is not background
-				booleanGtLesionLabelsForDiceEvaluation_unstripped = unpaddedGtLabelsImage>0
+			if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
+				npDtypeForPredictedImage = np.dtype(np.float32)
+				suffixToAdd = "_ProbMapClass" + str(class_i)
+				#Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
+				predictedLabelImageForSpecificClass = labelImageCreatedByPredictions[class_i,:,:,:]
+				unpaddedPredictedLabelImageForSpecificClass = predictedLabelImageForSpecificClass if not padInputImagesBool else unpadCnnOutputs(predictedLabelImageForSpecificClass, tupleOfPaddingPerAxesLeftRight)
+				savePredictedImageToANewNiiWithHeaderFromOther(unpaddedPredictedLabelImageForSpecificClass,
+						       listOfNamesToGiveToPredictionsIfSavingResults,
+
+						       listOfFilepathsToEachChannelOfEachPatient,
+
+						       image_i,
+						       suffixToAdd,
+						       npDtypeForPredictedImage,
+						       myLogger
+						       )
+
+
+		#=================Save FEATURE MAPS ====================
+		if saveIndividualFmImagesForVisualisation :
+			currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
+			for pathwayType_i in xrange(len(cnn3dInstance.typesOfCnnLayers)) :
+				indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[pathwayType_i]
+				if indicesOfFmsToVisualisePerLayerOfCertainPathway<>[] :
+					for layer_i in xrange(len(cnn3dInstance.typesOfCnnLayers[pathwayType_i])) :
+						indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
+						if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
+							#If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
+							for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
+								fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
+								unpaddedFmToSave =  fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
+								saveFmActivationImageToANewNiiWithHeaderFromOther(unpaddedFmToSave,
+														   listOfNamesToGiveToFmVisualisationsIfSaving,
+
+														   listOfFilepathsToEachChannelOfEachPatient,
+
+														   image_i,
+														   pathwayType_i,
+														   layer_i,
+														   fmActualNumber,
+														   myLogger
+														   ) 
+								currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
+		if saveMultidimensionalImageWithAllFms :
+			"""
+			multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.zeros(niiDimensions + [totalNumberOfFMsToProcess], dtype = "float32")
+			for fm_i in xrange(0, totalNumberOfFMsToProcess) :
+				multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms[:,:,:,fm_i] = multidimensionalImageWithAllToBeVisualisedFmsArray[fm_i]
+			"""
+			multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.transpose(multidimensionalImageWithAllToBeVisualisedFmsArray, (1,2,3, 0) )
+
+			unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms = multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms if not padInputImagesBool else \
+				unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms, tupleOfPaddingPerAxesLeftRight)
+
+			#Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
+			saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
+						  listOfNamesToGiveToFmVisualisationsIfSaving,
+
+						  listOfFilepathsToEachChannelOfEachPatient,
+
+						  image_i,
+						  myLogger)
+		#=================IMAGES SAVED. PROBABILITY MAPS AND FEATURE MAPS TOO (if wanted). ====================
+
+		#=================EVALUATE DSC FROM THE PROBABILITY MAPS FOR EACH IMAGE. ====================
+		if providedGtLabelsBool : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
+			myLogger.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) + " ++++++++++++++++++++++++++")
+			#Unpad all segmentation map, gt, brainmask
+			unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
+			unpaddedGtLabelsImage = gtLabelsImage if not padInputImagesBool else unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
+			#Hack, for it to work for the case that I do not use a brainMask.
+			if isinstance(brainMask, (np.ndarray)) : #If brainmask was given:
+				multiplyWithBrainMaskOr1 = brainMask if not padInputImagesBool else unpadCnnOutputs(brainMask, tupleOfPaddingPerAxesLeftRight)
 			else :
-				booleanPredictedLabelImage = unpaddedSegmentationImage==class_i
-				booleanGtLesionLabelsForDiceEvaluation_unstripped = unpaddedGtLabelsImage==class_i
+				multiplyWithBrainMaskOr1 = 1
+			#calculate DSC per class.
+			for class_i in xrange(0, NUMBER_OF_CLASSES) :
+				if class_i == 0 : #in this case, do the evaluation for the WHOLE segmentation (not background)
+					booleanPredictedLabelImage = unpaddedSegmentationImage>0 #Whatever is not background
+					booleanGtLesionLabelsForDiceEvaluation_unstripped = unpaddedGtLabelsImage>0
+				else :
+					booleanPredictedLabelImage = unpaddedSegmentationImage==class_i
+					booleanGtLesionLabelsForDiceEvaluation_unstripped = unpaddedGtLabelsImage==class_i
 
-			predictedLabelImageConvolvedWithBrainMask = booleanPredictedLabelImage*multiplyWithBrainMaskOr1
+				predictedLabelImageConvolvedWithBrainMask = booleanPredictedLabelImage*multiplyWithBrainMaskOr1
 
 
-			#Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinBrainMask / AllLesions , Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask.
-			#Dice1 = Allpredicted/allLesions
-			diceCoeff1 = calculateDiceCoefficient(booleanPredictedLabelImage, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-			diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 <> -1 else NA_PATTERN
-			#Dice2 = PredictedWithinBrainMask / AllLesions
-			diceCoeff2 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-			diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 <> -1 else NA_PATTERN
-			#Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask
-			diceCoeff3 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped * multiplyWithBrainMaskOr1)
-			diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 <> -1 else NA_PATTERN
+				#Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinBrainMask / AllLesions , Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask.
+				#Dice1 = Allpredicted/allLesions
+				diceCoeff1 = calculateDiceCoefficient(booleanPredictedLabelImage, booleanGtLesionLabelsForDiceEvaluation_unstripped)
+				diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 <> -1 else NA_PATTERN
+				#Dice2 = PredictedWithinBrainMask / AllLesions
+				diceCoeff2 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped)
+				diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 <> -1 else NA_PATTERN
+				#Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask
+				diceCoeff3 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped * multiplyWithBrainMaskOr1)
+				diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 <> -1 else NA_PATTERN
 
-		myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
-		printExplanationsAboutDice(myLogger)
+			myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
+			printExplanationsAboutDice(myLogger)
 
-    #================= Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. ====================
-    if providedGtLabelsBool and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
-	    myLogger.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
-	    myLogger.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
-	    meanDiceCoeffs1 = getMeanPerColOf2dListExclNA(diceCoeffs1, NA_PATTERN)
-	    meanDiceCoeffs2 = getMeanPerColOf2dListExclNA(diceCoeffs2, NA_PATTERN)
-	    meanDiceCoeffs3 = getMeanPerColOf2dListExclNA(diceCoeffs3, NA_PATTERN)
+	    #================= Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. ====================
+	    if providedGtLabelsBool and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
+		    myLogger.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
+		    myLogger.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
+		    meanDiceCoeffs1 = getMeanPerColOf2dListExclNA(diceCoeffs1, NA_PATTERN)
+		    meanDiceCoeffs2 = getMeanPerColOf2dListExclNA(diceCoeffs2, NA_PATTERN)
+		    meanDiceCoeffs3 = getMeanPerColOf2dListExclNA(diceCoeffs3, NA_PATTERN)
 
-	    myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) + " DICE2="+strListFl4fNA(meanDiceCoeffs2, NA_PATTERN)+" DICE3="+strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
-	    printExplanationsAboutDice(myLogger)
+		    myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) + " DICE2="+strListFl4fNA(meanDiceCoeffs2, NA_PATTERN)+" DICE3="+strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
+		    printExplanationsAboutDice(myLogger)
 
 
     end_validationOrTesting_time = time.clock()
