@@ -269,16 +269,16 @@ class TrainSessionParameters(object) :
 		else :
 			self.channelsFilepathsVal = []
 		if self.performValidationOnSamplesThroughoutTraining :
-			self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal else self.errorReqGtLabelsVal()
+			self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal <> None else self.errorReqGtLabelsVal()
 		elif self.performFullInferenceOnValidationImagesEveryFewEpochs :
-			self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal else []
+			self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal <> None else []
 		else : # Dont perform either of the two validations.
 			self.gtLabelsFilepathsVal = []
-		self.providedGtVal = True if self.gtLabelsFilepathsVal else False
+		self.providedGtVal = True if self.gtLabelsFilepathsVal <> None else False
 		
 		#[Optionals]
-		self.providedRoiMasksVal = True if roiMasksFilepathsVal else False #For fast inf.
-		self.roiMasksFilepathsVal = roiMasksFilepathsVal if roiMasksFilepathsVal else [] #Also for default sampling of neg segs.
+		self.providedRoiMasksVal = True if roiMasksFilepathsVal <> None else False #For fast inf.
+		self.roiMasksFilepathsVal = roiMasksFilepathsVal if roiMasksFilepathsVal <> None else [] #Also for default sampling of neg segs.
 
 		#~~~~~Validation on Samples~~~~~~~~
 		self.segmentsLoadedOnGpuPerSubepochVal = segmentsLoadedOnGpuPerSubepochVal if segmentsLoadedOnGpuPerSubepochVal <> None else 3000
@@ -312,19 +312,19 @@ class TrainSessionParameters(object) :
 
 		#predictions
 		self.saveSegmentationVal = saveSegmentationVal if saveSegmentationVal <> None else True
-		self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if saveProbMapsBoolPerClassVal else [True]*cnn3dInstance.numberOfOutputClasses
+		self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if (saveProbMapsBoolPerClassVal<>None and saveProbMapsBoolPerClassVal<>[]) else [True]*cnn3dInstance.numberOfOutputClasses
 		self.filepathsToSavePredictionsForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
 		#features:
 		self.saveIndividualFmImagesVal = saveIndividualFmImagesVal if saveIndividualFmImagesVal <> None else False
 		self.saveMultidimensionalImageWithAllFmsVal = saveMultidimensionalImageWithAllFmsVal if saveMultidimensionalImageWithAllFmsVal <> None else False
-		self.indicesOfFmsToVisualisePerPathwayAndLayerVal = [item if item else [] for item in indicesOfFmsToVisualisePerPathwayAndLayerVal] #By default, save none.
+		self.indicesOfFmsToVisualisePerPathwayAndLayerVal = [item if item <> None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayerVal] #By default, save none.
 		self.indicesOfFmsToVisualisePerPathwayAndLayerVal.append([]) #for the Zoomed-in pathway. HIDDEN
 		self.filepathsToSaveFeaturesForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
 
 		#Output:
 		#Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
 		self.namesToSavePredictionsAndFeaturesVal = namesToSavePredictionsAndFeaturesVal  
-		if not self.namesToSavePredictionsAndFeaturesVal and self.performFullInferenceOnValidationImagesEveryFewEpochs and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImages or self.saveMultidimensionalImageWithAllFms) :
+		if not self.namesToSavePredictionsAndFeaturesVal and self.performFullInferenceOnValidationImagesEveryFewEpochs and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
 			self.errorRequireNamesOfPredictionsVal()
 
 		#===================== OTHERS======================
@@ -527,13 +527,10 @@ class TrainSessionParameters(object) :
 						) :
 		self.filepathsToSavePredictionsForEachPatientVal = []
 		self.filepathsToSaveFeaturesForEachPatientVal = []
-		for case_i in xrange(self.numberOfCasesVal) :
-			if self.saveSegmentationVal :
+		if self.namesToSavePredictionsAndFeaturesVal <> None :
+			for case_i in xrange(self.numberOfCasesVal) :
 				filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
 				self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
-			
-
-			if True in self.saveProbMapsBoolPerClassVal :
 				filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
 				self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
 

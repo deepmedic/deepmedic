@@ -60,7 +60,7 @@ class TestSessionParameters(object) :
 		self.namesToSavePredictionsAndFeatures = namesToSavePredictionsAndFeatures #Required. Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
 		#predictions
 		self.saveSegmentation = saveSegmentation if saveSegmentation <> None else True
-		self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if saveProbMapsBoolPerClass <> None else [True]*cnn3dInstance.numberOfOutputClasses
+		self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if (saveProbMapsBoolPerClass<>None and saveProbMapsBoolPerClass<>[]) else [True]*cnn3dInstance.numberOfOutputClasses
 		self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
 		#features:
 		self.saveIndividualFmImages = saveIndividualFmImages if saveIndividualFmImages <> None else False
