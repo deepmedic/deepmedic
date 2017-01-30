@@ -86,6 +86,7 @@ if __name__ == '__main__':
 
         cnnInstanceLoaded = None
         filenameAndPathWhereNewlyCreatedModelWasSaved = None
+        print "TEST to check it's consistent across platforms and IDEs."
 
         #Find out what procedure we are being asked to perform:
         if args.model_conf :#and not args.training_conf and not args.testing_conf:
