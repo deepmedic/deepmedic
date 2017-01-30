@@ -133,15 +133,14 @@ def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic
         stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
     
     W = theano.shared(
-					numpy.asarray(
-								rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
-								dtype='float32'#theano.config.floatX
-								),
-					borrow=True
-					)
+                      numpy.asarray(rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
+                                    dtype='float32'#theano.config.floatX
+                                    ),
+                      borrow=True
+                      )
     # W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
     return W
-       
+    
 def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
     # input weight matrix W has shape: [ Number of filters (outputFMs), number of input channels, rKernelDim, cKernelDim, zKernelDim ] == filterShape
     # filterShape is the shape of W.
@@ -717,8 +716,8 @@ class ConvLayerWithSoftmax(ConvLayer):
         return meanError
 
     def meanErrorValidation(self, y):
-    	# y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-
+        # y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
+        
         # check if y has same dimension of y_pred
         checkDimsOfYpredAndYEqual(y, self.y_pred_val, "validation")
         
