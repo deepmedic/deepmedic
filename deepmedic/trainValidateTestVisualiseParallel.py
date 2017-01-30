@@ -44,8 +44,7 @@ def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions) : #Works for 2D
 
 #In the 3 first axes. Which means it can take a 4-dim image.
 def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight) :
-     #tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
-
+    #tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
     unpaddedArray1 = array1[tupleOfPaddingPerAxesLeftRight[0][0]:, tupleOfPaddingPerAxesLeftRight[1][0]:, tupleOfPaddingPerAxesLeftRight[2][0]:]
     #The checks below are to make it work if padding == 0, which may happen for 2D on the 3rd axis.
     unpaddedArray1 = unpaddedArray1[:-tupleOfPaddingPerAxesLeftRight[0][1],:,:] if tupleOfPaddingPerAxesLeftRight[0][1] > 0 else unpaddedArray1 
@@ -65,7 +64,7 @@ def smoothImageWithGaussianFilterIfNeeded(smoothImageWithGaussianFilterStds, ima
     if smoothImageWithGaussianFilterStds == None :
         return imageArray
     else :
-        return gaussian_filter(imageArray, smoothImageWithGaussianFilterStds)          
+        return gaussian_filter(imageArray, smoothImageWithGaussianFilterStds)
     
 # roi_mask_filename and roiMinusLesion_mask_filename can be passed "no". In this case, the corresponding return result is nothing.
 # This is so because: the do_training() function only needs the roiMinusLesion_mask, whereas the do_testing() only needs the roi_mask.        
@@ -156,9 +155,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
             allChannelsOfPatientInNpArray[channel_i] = channelData[:,:,:,0] #np.asarray(channelData[:,:,:,0], dtype="float32") #[:,:,:,0] because the nii image actually is of 4 dims, with 4th being time.
         """
         img_proxy.uncache()
-
-    
-
+        
         #-------For Data Augmentation when it comes to normalisation values--------------
         #The normalization-augmentation variable should be [0]==0 for no normAug, eg in the case of validation. [0] == 1 if I want it to be applied on per-image basis.
         if training0orValidation1orTest2 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 1 : #[0] should be ==0 for no normAug, eg in the case of validation
@@ -169,7 +166,6 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
                 else : #no roi mask provided:
                     stdOfChannel = np.std(allChannelsOfPatientInNpArray[channel_i])
             #Get parameters by how much to renormalize-augment mean and std.
-            
             #Draw from gaussian
             howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][0] = random.normalvariate(normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[1][0], normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[1][1]) * stdOfChannel
             howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][1] = random.normalvariate(normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][0], normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][1])
@@ -177,7 +173,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
             valueToAddToEachVoxel = howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][0]
             valueToMultiplyEachVoxel = howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][1]
             allChannelsOfPatientInNpArray[channel_i] = (allChannelsOfPatientInNpArray[channel_i] + valueToAddToEachVoxel)*valueToMultiplyEachVoxel
-             
+            
     #LOAD the class-labels.
     if providedGtLabelsBool : #For training (exact target labels) or validation on samples labels.
         fullFilenamePathOfGtLabels = listOfFilepathsToGtLabelsOfEachPatient[index_of_wanted_image]
@@ -242,27 +238,27 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
                 valueToAddToEachVoxel = howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][0]
                 valueToMultiplyEachVoxel = howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][1]
                 allSubsampledChannelsOfPatientInNpArray[channel_i] = (allSubsampledChannelsOfPatientInNpArray[channel_i] + valueToAddToEachVoxel)*valueToMultiplyEachVoxel
-        
+                
     return [allChannelsOfPatientInNpArray, imageGtLabels, roiMask, arrayWithWeightMapsWhereToSampleForEachCategory, allSubsampledChannelsOfPatientInNpArray, tupleOfPaddingPerAxesLeftRight]
 
 
 #made for 3d
-def sampleImageParts(myLogger,
-                    numOfSegmentsToExtractForThisSubject,
-                    imagePartDimensions,
-                    dimensionsOfImageChannel,# the dimensions of the images of this subject. All channels etc should have the same dimensions
-                    weightMapToSampleFrom
-                    ) :
+def sampleImageParts(   myLogger,
+                        numOfSegmentsToExtractForThisSubject,
+                        imagePartDimensions,
+                        dimensionsOfImageChannel,# the dimensions of the images of this subject. All channels etc should have the same dimensions
+                        weightMapToSampleFrom
+                        ) :
     """
     This function returns the coordinates (index) of the "central" voxel of sampled image parts (1voxel to the left if even part-dimension).
     It also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
     
     Return value: [ rcz-coordsOfCentralVoxelsOfPartsSampled, rcz-sliceCoordsOfImagePartsSampled ]
     > coordsOfCentralVoxelsOfPartsSampled : an array with shape: 3(rcz) x numOfSegmentsToExtractForThisSubject. 
-            Example: [ rCoordsForCentralVoxelOfEachPart, cCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
-            >> r/c/z-CoordsForCentralVoxelOfEachPart : A 1-dim array with numOfSegmentsToExtractForThisSubject, that holds the r-index within the image of each sampled part.
+        Example: [ rCoordsForCentralVoxelOfEachPart, cCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
+        >> r/c/z-CoordsForCentralVoxelOfEachPart : A 1-dim array with numOfSegmentsToExtractForThisSubject, that holds the r-index within the image of each sampled part.
     > sliceCoordsOfImagePartsSampled : 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
-            Example: [ r-sliceCoordsOfImagePart, c-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
+        Example: [ r-sliceCoordsOfImagePart, c-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
     """
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called. Which is still fine.
@@ -297,9 +293,9 @@ def sampleImageParts(myLogger,
             halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwoFloor, dimensionDividedByTwoFloor] 
     #used to be [halfImagePartBoundaries[0][0]: -halfImagePartBoundaries[0][1]], but in 2D case halfImagePartBoundaries might be ==0, causes problem and you get a null slice.
     booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries[halfImagePartBoundaries[0][0]: dimensionsOfImageChannel[0] - halfImagePartBoundaries[0][1],
-                                            halfImagePartBoundaries[1][0]: dimensionsOfImageChannel[1] - halfImagePartBoundaries[1][1],
-                                            halfImagePartBoundaries[2][0]: dimensionsOfImageChannel[2] - halfImagePartBoundaries[2][1]] = 1
-                                            
+                                                            halfImagePartBoundaries[1][0]: dimensionsOfImageChannel[1] - halfImagePartBoundaries[1][1],
+                                                            halfImagePartBoundaries[2][0]: dimensionsOfImageChannel[2] - halfImagePartBoundaries[2][1]] = 1
+                                                            
     constrainedWithImageBoundariesMaskToSample = weightMapToSampleFrom * booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries
     #normalize the probabilities to sum to 1, cause the function needs it as so.
     constrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample / (1.0* np.sum(constrainedWithImageBoundariesMaskToSample))
@@ -317,13 +313,10 @@ def sampleImageParts(myLogger,
                                                                     constrainedWithImageBoundariesMaskToSample.shape #the shape of the brainmask/scan.
                                                                     )
                                                     )
-    
     #Array with shape: 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
     sliceCoordsOfImagePartsSampled = np.zeros(list(coordsOfCentralVoxelsOfPartsSampled.shape) + [2], dtype="int32")
     sliceCoordsOfImagePartsSampled[:,:,0] = coordsOfCentralVoxelsOfPartsSampled - halfImagePartBoundaries[ :, np.newaxis, 0 ] #np.newaxis broadcasts. To broadcast the -+.
     sliceCoordsOfImagePartsSampled[:,:,1] = coordsOfCentralVoxelsOfPartsSampled + halfImagePartBoundaries[ :, np.newaxis, 1 ]
-    
-    
     """
     The slice coordinates returned are INCLUSIVE BOTH sides.
     """
@@ -334,13 +327,13 @@ def sampleImageParts(myLogger,
     return imagePartsSampled
 
 
-def getImagePartFromSubsampledImageForTraining(imagePartDimensions,
-                                               patchDimensions,
-                                               subsampledImageChannels,
-                                               image_part_slices_coords,
-                                               subSamplingFactor,
-                                               subsampledImagePartDimensions
-                                               ) :
+def getImagePartFromSubsampledImageForTraining( imagePartDimensions,
+                                                patchDimensions,
+                                                subsampledImageChannels,
+                                                image_part_slices_coords,
+                                                subSamplingFactor,
+                                                subsampledImagePartDimensions
+                                                ) :
     """
     This returns an image part from the sampled data, given the image_part_slices_coords, which has the coordinates where the normal-scale image part starts and ends (inclusive).
     Actually, in this case, the right (end) part of image_part_slices_coords is not used.
@@ -352,10 +345,10 @@ def getImagePartFromSubsampledImageForTraining(imagePartDimensions,
     """
     subsampledImageDimensions = subsampledImageChannels[0].shape
     
-    subsampledChannelsForThisImagePart = np.ones((len(subsampledImageChannels), 
-                                                  subsampledImagePartDimensions[0],
-                                                  subsampledImagePartDimensions[1],
-                                                  subsampledImagePartDimensions[2]), 
+    subsampledChannelsForThisImagePart = np.ones(   (len(subsampledImageChannels), 
+                                                    subsampledImagePartDimensions[0],
+                                                    subsampledImagePartDimensions[1],
+                                                    subsampledImagePartDimensions[2]), 
                                                 dtype = 'float32')
     
     numberOfCentralVoxelsClassifiedForEachImagePart_rDim = imagePartDimensions[0] - patchDimensions[0] + 1
@@ -373,7 +366,6 @@ def getImagePartFromSubsampledImageForTraining(imagePartDimensions,
     rToCentralVoxelOfAnAveragedArea = subSamplingFactor[0]/2 if subSamplingFactor[0]%2==1 else (subSamplingFactor[0]/2 - 1) #one closer to the beginning of the dim. Same happens when I get parts of image.
     cToCentralVoxelOfAnAveragedArea = subSamplingFactor[1]/2 if subSamplingFactor[1]%2==1 else (subSamplingFactor[1]/2 - 1)
     zToCentralVoxelOfAnAveragedArea =  subSamplingFactor[2]/2 if subSamplingFactor[2]%2==1 else (subSamplingFactor[2]/2 - 1)
-    
     #This is where to start taking voxels from the subsampled image. From the beginning of the imagePart(1 st patch)...
     #... go forward a few steps to the voxel that is like the "central" in this subsampled (eg 3x3) area. 
     #...Then go backwards -Patchsize to find the first voxel of the subsampled. 
@@ -400,40 +392,37 @@ def getImagePartFromSubsampledImageForTraining(imagePartDimensions,
     
     #print "DEBUG: rlow=",rlow, " rhighNonIncl=",rhighNonIncl," rlowCorrected=",rlowCorrected," rhighNonInclCorrected=",rhighNonInclCorrected," rLowToPutTheNotPaddedInSubsampledImPart=", rLowToPutTheNotPaddedInSubsampledImPart, " rHighNonInclToPutTheNotPaddedInSubsampledImPart=",rHighNonInclToPutTheNotPaddedInSubsampledImPart
     
-    
-    dimensionsOfTheSliceOfSubsampledImageNotPadded = [int(math.ceil((rhighNonInclCorrected - rlowCorrected)*1.0/subSamplingFactor[0])),
-                                                int(math.ceil((chighNonInclCorrected - clowCorrected)*1.0/subSamplingFactor[1])),
-                                                int(math.ceil((zhighNonInclCorrected - zlowCorrected)*1.0/subSamplingFactor[2]))
-                                                ]
+    dimensionsOfTheSliceOfSubsampledImageNotPadded = [  int(math.ceil((rhighNonInclCorrected - rlowCorrected)*1.0/subSamplingFactor[0])),
+                                                        int(math.ceil((chighNonInclCorrected - clowCorrected)*1.0/subSamplingFactor[1])),
+                                                        int(math.ceil((zhighNonInclCorrected - zlowCorrected)*1.0/subSamplingFactor[2]))
+                                                        ]
     
     #I now have exactly where to get the slice from and where to put it in the new array.
-    
     for channel_i in xrange(len(subsampledImageChannels)) :
         intensityZeroOfChannel = calculateTheZeroIntensityOf3dImage(subsampledImageChannels[channel_i])        
         subsampledChannelsForThisImagePart[channel_i] *= intensityZeroOfChannel
         
-        sliceOfSubsampledImageNotPadded = subsampledImageChannels[channel_i][rlowCorrected : rhighNonInclCorrected : subSamplingFactor[0],
-                                                                             clowCorrected : chighNonInclCorrected : subSamplingFactor[1],
-                                                                             zlowCorrected : zhighNonInclCorrected : subSamplingFactor[2]
-                                                                             ]
+        sliceOfSubsampledImageNotPadded = subsampledImageChannels[channel_i][   rlowCorrected : rhighNonInclCorrected : subSamplingFactor[0],
+                                                                                clowCorrected : chighNonInclCorrected : subSamplingFactor[1],
+                                                                                zlowCorrected : zhighNonInclCorrected : subSamplingFactor[2]
+                                                                            ]
         subsampledChannelsForThisImagePart[
             channel_i,
             rLowToPutTheNotPaddedInSubsampledImPart : rLowToPutTheNotPaddedInSubsampledImPart+dimensionsOfTheSliceOfSubsampledImageNotPadded[0],
             cLowToPutTheNotPaddedInSubsampledImPart : cLowToPutTheNotPaddedInSubsampledImPart+dimensionsOfTheSliceOfSubsampledImageNotPadded[1],
             zLowToPutTheNotPaddedInSubsampledImPart : zLowToPutTheNotPaddedInSubsampledImPart+dimensionsOfTheSliceOfSubsampledImageNotPadded[2]] = sliceOfSubsampledImageNotPadded
             
-            
     #placeholderReturn = np.ones([3,19,19,19], dtype="float32") #channel, dims 
     return subsampledChannelsForThisImagePart
 
 
 def getCoordsOfAllSegmentsOfAnImage(myLogger,
-                                strideOfImagePartsPerDimensionInVoxels,
-                                imagePartDimensions,
-                                batch_size,
-                                channelsOfImageNpArray,#chans,niiDims
-                                brainMask
-                                ) :
+                                    strideOfImagePartsPerDimensionInVoxels,
+                                    imagePartDimensions,
+                                    batch_size,
+                                    channelsOfImageNpArray,#chans,niiDims
+                                    brainMask
+                                    ) :
     myLogger.print3("Starting to (tile) extract Segments from the images of the subject for Segmentation...")
     
     sliceCoordsOfSegmentsToReturn = []
@@ -453,7 +442,7 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
             cLowBoundary = cFarBoundary - imagePartDimensions[1]
             cLowBoundaryNext = cLowBoundaryNext + strideOfImagePartsPerDimensionInVoxels[1]
             cAxisCentralPartPredicted = False if cFarBoundary < niiDimensions[1] else True
-
+            
             rLowBoundaryNext=0; rAxisCentralPartPredicted = False;
             while not rAxisCentralPartPredicted :
                 rFarBoundary = min(rLowBoundaryNext+imagePartDimensions[0], niiDimensions[0]) #Excluding.
@@ -469,7 +458,7 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
                         continue
                     
                 sliceCoordsOfSegmentsToReturn.append([ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ])
-
+                
     #I need to have a total number of image-parts that can be exactly-divided by the 'batch_size'. For this reason, I add in the far end of the list multiple copies of the last element. I NEED THIS IN THEANO. I TRIED WITHOUT. NO.
     total_number_of_image_parts = len(sliceCoordsOfSegmentsToReturn)
     number_of_imageParts_missing_for_exact_division =  batch_size - total_number_of_image_parts%batch_size if total_number_of_image_parts%batch_size <> 0 else 0
@@ -483,28 +472,28 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
     
     # sliceCoordsOfSegmentsToReturn: list with 3 dimensions. numberOfSegments x 3(rcz) x 2 (lower and upper limit of the segment, INCLUSIVE both sides)
     return [sliceCoordsOfSegmentsToReturn]
-    
-    
+
+
 def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
-            training0orValidation1,
-            
-            sliceCoordsOfThisImagePart,
-            numberOfNormalScaleChannels,
-            imagePartDimensions,
-            patchDimensions,
-            
-            allChannelsOfPatientInNpArray,
-            gtLabelsImage,
-            
-            usingSubsampledWaypath,
-            useSameSubChannelsAsSingleScale,
-            allSubsampledChannelsOfPatientInNpArray,
-            subSamplingFactor,
-            subsampledImagePartDimensions,
-            # Intensity Augmentation
-            normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
-            stdsOfTheChannsOfThisImage
-            ) :
+                                                        training0orValidation1,
+                                                        
+                                                        sliceCoordsOfThisImagePart,
+                                                        numberOfNormalScaleChannels,
+                                                        imagePartDimensions,
+                                                        patchDimensions,
+                                                        
+                                                        allChannelsOfPatientInNpArray,
+                                                        gtLabelsImage,
+                                                        
+                                                        usingSubsampledWaypath,
+                                                        useSameSubChannelsAsSingleScale,
+                                                        allSubsampledChannelsOfPatientInNpArray,
+                                                        subSamplingFactor,
+                                                        subsampledImagePartDimensions,
+                                                        # Intensity Augmentation
+                                                        normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
+                                                        stdsOfTheChannsOfThisImage
+                                                        ) :
     
     channelsForThisImagePart = np.zeros((numberOfNormalScaleChannels, imagePartDimensions[0],imagePartDimensions[1],imagePartDimensions[2]), dtype = 'float32')
     #Inclusive both sides. That's the slice I should grab to get the imagePart, centrered around [0].
@@ -657,7 +646,7 @@ def getNumberOfSegmentsToExtractPerCategoryFromEachSubject( numberOfImagePartsTo
     indicesOfCategoriesToGiveUndistrSamples = np.random.choice(numberOfSamplingCategories, size=numOfUndistributedSamples, replace=True, p=percentOfSamplesPerCategoryToSample)
     for cat_i in indicesOfCategoriesToGiveUndistrSamples : # they will be as many as the undistributed samples
         arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += 1
-
+        
     for cat_i in xrange(numberOfSamplingCategories) :
         numberOfSamplesFromThisCategoryPerSubepochPerImage = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] / numOfSubjectsLoadingThisSubepochForSampling                
         arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
@@ -709,12 +698,11 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
     
     myLogger.print3(":=:=:=:=:=:=:=:=: Starting to extract Segments from the images for next " + trainingOrValidationString + "... :=:=:=:=:=:=:=:=:")
     
-    
     total_number_of_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
     randomIndicesList_for_gpu = get_random_subject_indices_to_load_on_GPU(total_number_of_subjects = total_number_of_subjects,
-                                                                    max_subjects_on_gpu_for_subepoch = n_subjects_per_subepoch,
-                                                                    get_max_subjects_for_gpu_even_if_total_less = False,
-                                                                    myLogger=myLogger)
+                                                                        max_subjects_on_gpu_for_subepoch = n_subjects_per_subepoch,
+                                                                        get_max_subjects_for_gpu_even_if_total_less = False,
+                                                                        myLogger=myLogger)
     myLogger.print3("Out of [" + str(total_number_of_subjects) + "] subjects given for [" + trainingOrValidationString + "], it was specified to extract Segments from maximum [" + str(n_subjects_per_subepoch) + "] per subepoch.")
     myLogger.print3("Shuffled indices of subjects that were randomly chosen: "+str(randomIndicesList_for_gpu))
     
@@ -771,8 +759,7 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
                                                 imagePartDimensions=imagePartDimensions, # only used if padInputsBool
                                                 
                                                 smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                                                normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc=\
-                                                    normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
+                                                normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc=normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
                                                 reflectImageWithHalfProb = reflectImageWithHalfProbDuringTraining
                                                 )
         myLogger.print3("DEBUG: Index of this case in the original user-defined list of subjects: " + str(randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu]))
@@ -870,6 +857,7 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
     return [np.asarray(imagePartsChannelsToLoadOnGpuForSubepoch, dtype="float32"),
             np.asarray(lesionLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch, dtype="float32"),
             np.asarray(subsampledImagePartsChannelsToLoadOnGpuForSubepoch, dtype="float32")]
+    
     
 #A main routine in do_training, that runs for every batch of validation and training.
 def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
@@ -1010,71 +998,71 @@ def do_training(myLogger,
     job_server = pp.Server(ncpus=1, ppservers=ppservers) # Creates jobserver with automatically detected number of workers
     
     tupleWithParametersForTraining = (myLogger,
-                        0,
-                        n_subjects_per_subepoch,
-                        
-                        imagePartsLoadedInGpuPerSubepoch,
-                        samplingTypeInstanceTraining,
-                        
-                        usingSubsampledWaypath,
-                        
-                        listOfFilepathsToEachChannelOfEachPatientTraining,
-                        
-                        listOfFilepathsToGtLabelsOfEachPatientTraining,
-                        
-                        providedRoiMaskForTrainingBool,
-                        listOfFilepathsToRoiMaskOfEachPatientTraining,
-                        
-                        providedWeightMapsToSampleForEachCategoryTraining,
-                        forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
-                        
-                        useSameSubChannelsAsSingleScale,
-                        
-                        listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
-                        
-                        imagePartDimensionsTraining,
-                        patchDimensions,
-                        subSamplingFactor,
-                        subsampledImagePartDimensionsTraining,
-                        
-                        padInputImagesBool,
-                        smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                        normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
-                        reflectImageWithHalfProbDuringTraining
-                        )
+                                    0,
+                                    n_subjects_per_subepoch,
+                                    
+                                    imagePartsLoadedInGpuPerSubepoch,
+                                    samplingTypeInstanceTraining,
+                                    
+                                    usingSubsampledWaypath,
+                                    
+                                    listOfFilepathsToEachChannelOfEachPatientTraining,
+                                    
+                                    listOfFilepathsToGtLabelsOfEachPatientTraining,
+                                    
+                                    providedRoiMaskForTrainingBool,
+                                    listOfFilepathsToRoiMaskOfEachPatientTraining,
+                                    
+                                    providedWeightMapsToSampleForEachCategoryTraining,
+                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+                                    
+                                    useSameSubChannelsAsSingleScale,
+                                    
+                                    listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
+                                    
+                                    imagePartDimensionsTraining,
+                                    patchDimensions,
+                                    subSamplingFactor,
+                                    subsampledImagePartDimensionsTraining,
+                                    
+                                    padInputImagesBool,
+                                    smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
+                                    normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc,
+                                    reflectImageWithHalfProbDuringTraining
+                                    )
     tupleWithParametersForValidation = (myLogger,
-                        1,
-                        len(listOfFilepathsToEachChannelOfEachPatientValidation),
-                        
-                        imagePartsLoadedInGpuPerSubepochValidation,
-                        samplingTypeInstanceValidation,
-                        
-                        usingSubsampledWaypath,
-                        
-                        listOfFilepathsToEachChannelOfEachPatientValidation,
-                        
-                        listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
-                        
-                        providedRoiMaskForValidationBool,
-                        listOfFilepathsToRoiMaskOfEachPatientValidation,
-                        
-                        providedWeightMapsToSampleForEachCategoryValidation,
-                        forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
-                        
-                        useSameSubChannelsAsSingleScale,
-                        
-                        listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
-                        
-                        imagePartDimensionsValidation,
-                        patchDimensions,
-                        subSamplingFactor,
-                        subsampledImagePartDimensionsValidation,
-                        
-                        padInputImagesBool,
-                        smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                        [0, -1,-1,-1], #don't perform intensity-augmentation during validation.
-                        [0,0,0] #don't perform reflection-augmentation during validation.
-                        )
+                                    1,
+                                    len(listOfFilepathsToEachChannelOfEachPatientValidation),
+                                    
+                                    imagePartsLoadedInGpuPerSubepochValidation,
+                                    samplingTypeInstanceValidation,
+                                    
+                                    usingSubsampledWaypath,
+                                    
+                                    listOfFilepathsToEachChannelOfEachPatientValidation,
+                                    
+                                    listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
+                                    
+                                    providedRoiMaskForValidationBool,
+                                    listOfFilepathsToRoiMaskOfEachPatientValidation,
+                                    
+                                    providedWeightMapsToSampleForEachCategoryValidation,
+                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
+                                    
+                                    useSameSubChannelsAsSingleScale,
+                                    
+                                    listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
+                                    
+                                    imagePartDimensionsValidation,
+                                    patchDimensions,
+                                    subSamplingFactor,
+                                    subsampledImagePartDimensionsValidation,
+                                    
+                                    padInputImagesBool,
+                                    smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
+                                    [0, -1,-1,-1], #don't perform intensity-augmentation during validation.
+                                    [0,0,0] #don't perform reflection-augmentation during validation.
+                                    )
     tupleWithLocalFunctionsThatWillBeCalledByTheMainJob = ( get_random_subject_indices_to_load_on_GPU,
                                                             actual_load_patient_images_from_filepath_and_return_nparrays,
                                                             smoothImageWithGaussianFilterIfNeeded,
@@ -1089,7 +1077,6 @@ def do_training(myLogger,
     tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ("random", "time", "numpy as np", "nibabel as nib", "math", "from deepmedic.genericHelpers import *", "from scipy.ndimage.filters import gaussian_filter")
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequencially load the data for it.
     #------End for parallel------
-    
     
     while cnn3dInstance.numberOfEpochsTrained < n_epochs :
         epoch = cnn3dInstance.numberOfEpochsTrained
@@ -1107,7 +1094,7 @@ def do_training(myLogger,
             myLogger.print3("**************************************************************************************************")
             myLogger.print3("************* Starting new Subepoch: #"+str(subepoch)+"/"+str(number_of_subepochs)+" *************")
             myLogger.print3("**************************************************************************************************")
-                     
+            
             #-------------------------GET DATA FOR THIS SUBEPOCH's VALIDATION---------------------------------
             
             if performValidationOnSamplesDuringTrainingProcessBool :
@@ -1293,15 +1280,15 @@ def do_training(myLogger,
                 #submit the parallel job
                 myLogger.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Validation.")
                 parallelJobToGetDataForNextValidation = job_server.submit(getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch, #local function to call and execute in parallel.
-                                                                             tupleWithParametersForValidation, #tuple with the arguments required
-                                                                             tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
-                                                                             tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling functions (not the mods of the ext-functions).
+                                                                            tupleWithParametersForValidation, #tuple with the arguments required
+                                                                            tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
+                                                                            tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling functions (not the mods of the ext-functions).
             else : #extract in parallel the samples for the next subepoch's training.
                 myLogger.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Training.")
                 parallelJobToGetDataForNextTraining = job_server.submit(getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch, #local function to call and execute in parallel.
-                                                                             tupleWithParametersForTraining, #tuple with the arguments required
-                                                                             tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
-                                                                             tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling
+                                                                            tupleWithParametersForTraining, #tuple with the arguments required
+                                                                            tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
+                                                                            tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling
                 
             #-------------------------------START TRAINING IN BATCHES------------------------------
             myLogger.print3("-T-T-T-T-T- Now Training for this subepoch... This may take a few minutes... -T-T-T-T-T-")
@@ -1341,7 +1328,7 @@ def do_training(myLogger,
                 myLogger.print3("ERROR: For Auto-schedule I need to be performing validation-on-samples during the training-process. The flag performValidationOnSamplesDuringTrainingProcessBool should have been set to True. Instead it seems it was False and no validation was performed. This is a bug. Contact the developer, this should not have happened. Try another Learning Rate schedule for now! Exiting.")
                 exit(1)
             if (cnn3dInstance.numberOfEpochsTrained >= cnn3dInstance.topMeanValidationAccuracyAchievedInEpoch[1] + numEpochsToWaitBeforeLowerLR) and \
-                        (cnn3dInstance.numberOfEpochsTrained >= cnn3dInstance.lastEpochAtTheEndOfWhichLrWasLowered + numEpochsToWaitBeforeLowerLR) :
+                    (cnn3dInstance.numberOfEpochsTrained >= cnn3dInstance.lastEpochAtTheEndOfWhichLrWasLowered + numEpochsToWaitBeforeLowerLR) :
                 myLogger.print3("DEBUG: Going to lower Learning Rate because of AUTO schedule! The CNN has now been trained for: " + str(cnn3dInstance.numberOfEpochsTrained) + " epochs. Epoch with last highest achieved validation accuracy: " + str(cnn3dInstance.topMeanValidationAccuracyAchievedInEpoch[1]) + ", and epoch that Learning Rate was last lowered: " + str(cnn3dInstance.lastEpochAtTheEndOfWhichLrWasLowered) + ". I waited for increase in accuracy for: " +str(numEpochsToWaitBeforeLowerLR) + " epochs. Going to lower Learning Rate...")
                 cnn3dInstance.divide_learning_rate_of_a_cnn_by(divideLrBy, myLogger)
         elif (lowerLrByStable0orAuto1orPredefined2orExponential3Schedule == 2) and (cnn3dInstance.numberOfEpochsTrained in lowerLrAtTheEndOfTheseEpochsPredefinedScheduleList) :
@@ -1411,45 +1398,46 @@ def do_training(myLogger,
     end_training_time = time.clock()
     myLogger.print3("TIMING: Training process took time: "+str(end_training_time-start_training_time)+"(s)")
     myLogger.print3("The whole do_training() function has finished.")
-
-
+    
+    
 #---------------------------------------------TESTING-------------------------------------
 
 def performInferenceForTestingOnWholeVolumes(myLogger,
-                                validation0orTesting1,
-                                savePredictionImagesSegmentationAndProbMapsList,
-                                cnn3dInstance,
-                                    
-                                listOfFilepathsToEachChannelOfEachPatient,
-                                    
-                                providedGtLabelsBool, #boolean. DSC calculation will be performed if this is provided.
-                                listOfFilepathsToGtLabelsOfEachPatient,
-                                
-                                providedRoiMaskForFastInfBool,
-                                listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                                borrowFlag,
-                                listOfNamesToGiveToPredictionsIfSavingResults,
-                                
-                                #----Preprocessing------
-                                padInputImagesBool,
-                                smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                                
-                                useSameSubChannelsAsSingleScale,
-                                listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                                
-                                #--------For FM visualisation---------
-                                saveIndividualFmImagesForVisualisation,
-                                saveMultidimensionalImageWithAllFms,
-                                indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,#NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just []. If not [], the list should contain one entry per layer of the pathway, even if just []. The layer entries, if not [], they should have to integers, lower and upper FM to visualise. Excluding the highest index.
-                                listOfNamesToGiveToFmVisualisationsIfSaving
-                                ) :
+                            validation0orTesting1,
+                            savePredictionImagesSegmentationAndProbMapsList,
+                            cnn3dInstance,
+                            
+                            listOfFilepathsToEachChannelOfEachPatient,
+                            
+                            providedGtLabelsBool, #boolean. DSC calculation will be performed if this is provided.
+                            listOfFilepathsToGtLabelsOfEachPatient,
+                            
+                            providedRoiMaskForFastInfBool,
+                            listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                            
+                            borrowFlag,
+                            listOfNamesToGiveToPredictionsIfSavingResults,
+                            
+                            #----Preprocessing------
+                            padInputImagesBool,
+                            smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
+                            
+                            useSameSubChannelsAsSingleScale,
+                            listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                            
+                            #--------For FM visualisation---------
+                            saveIndividualFmImagesForVisualisation,
+                            saveMultidimensionalImageWithAllFms,
+                            indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,#NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just []. If not [], the list should contain one entry per layer of the pathway, even if just []. The layer entries, if not [], they should have to integers, lower and upper FM to visualise. Excluding the highest index.
+                            listOfNamesToGiveToFmVisualisationsIfSaving
+                            ) :
     validationOrTestingString = "Validation" if validation0orTesting1 == 0 else "Testing"
     myLogger.print3("###########################################################################################################")
     myLogger.print3("############################# Starting full Segmentation of " + str(validationOrTestingString) + " subjects ##########################")
     myLogger.print3("###########################################################################################################")
     
     start_validationOrTesting_time = time.clock()
-        
+    
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     
     NUMBER_OF_CLASSES = cnn3dInstance.numberOfOutputClasses
@@ -1672,11 +1660,11 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                         
                         #Grab the central voxels of the predicted fms from the cnn in this batch.
                         centralVoxelsOfAllFmsInLayer = fmsReturnedForATestBatchForCertainLayer[:, #batchsize
-                                                                :, #number of featuremaps
-                                                                rOfTopLeftCentralVoxelAtTheFm:rOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionR,
-                                                                cOfTopLeftCentralVoxelAtTheFm:cOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionC,
-                                                                zOfTopLeftCentralVoxelAtTheFm:zOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionZ
-                                                                ]
+                                                            :, #number of featuremaps
+                                                            rOfTopLeftCentralVoxelAtTheFm:rOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionR,
+                                                            cOfTopLeftCentralVoxelAtTheFm:cOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionC,
+                                                            zOfTopLeftCentralVoxelAtTheFm:zOfTopLeftCentralVoxelAtTheFm+numberOfCentralVoxelsToGetInDirectionZ
+                                                            ]
                         #If the pathway that is visualised currently is the subsampled, I need to upsample the central voxels to the normal resolution, before reconstructing the image-fm.
                         if typeOfPathway_i == 1: #subsampled layer. Remember that this returns smaller dimension outputs, cause it works in the subsampled space. I need to repeat it, to bring it to the dimensions of the normal-voxel-space.
                             expandedOutputOfFmsR = np.repeat(centralVoxelsOfAllFmsInLayer, subSamplingFactor[0],axis = 2)
@@ -1686,10 +1674,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                             #...This trick is coupled with the ceil() when getting the numberOfCentralVoxelsToGetInDirectionR above.
                             centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = expandedOutputOfFmsRCZ[:,
                                                                                                     :,
-                                                                                                        0:numberOfCentralVoxelsClassified[0],
-                                                                                                        0:numberOfCentralVoxelsClassified[1],
-                                                                                                        0:numberOfCentralVoxelsClassified[2]
-                                                                                                        ]
+                                                                                                    0:numberOfCentralVoxelsClassified[0],
+                                                                                                    0:numberOfCentralVoxelsClassified[1],
+                                                                                                    0:numberOfCentralVoxelsClassified[2]
+                                                                                                    ]
                         else :
                             centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = centralVoxelsOfAllFmsInLayer
                             
@@ -1700,11 +1688,11 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                             sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
                             coordsOfTopLeftVoxelForThisPart = [ sliceCoordsOfThisSegment[0][0], sliceCoordsOfThisSegment[1][0], sliceCoordsOfThisSegment[2][0] ]
                             fmImageInMultidimArrayToReconstructInThisIteration[ # I put the central-predicted-voxels of all FMs to the corresponding, newly created images all at once.
-                                        :, #last dimension is the number-of-Fms, I create an image for each.        
-                                        coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
-                                        coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[1],
-                                        coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[2]
-                                        ] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[imagePart_in_this_batch_i]
+                                    :, #last dimension is the number-of-Fms, I create an image for each.        
+                                    coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[0] + rPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[0],
+                                    coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[1] + cPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[1],
+                                    coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth : coordsOfTopLeftVoxelForThisPart[2] + zPatchHalfWidth + strideOfImagePartsPerDimensionInVoxels[2]
+                                    ] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[imagePart_in_this_batch_i]
                         currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding
                 imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
             #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
@@ -1725,16 +1713,16 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
             suffixToAdd = "_Segm"
             #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
             unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
-            savePredictedImageToANewNiiWithHeaderFromOther(unpaddedSegmentationImage,
-                               listOfNamesToGiveToPredictionsIfSavingResults,
-                               
-                               listOfFilepathsToEachChannelOfEachPatient,
-                               
-                               image_i,
-                               suffixToAdd,
-                               npDtypeForPredictedImage,
-                               myLogger
-                               )
+            savePredictedImageToANewNiiWithHeaderFromOther( unpaddedSegmentationImage,
+                                                            listOfNamesToGiveToPredictionsIfSavingResults,
+                                                            
+                                                            listOfFilepathsToEachChannelOfEachPatient,
+                                                            
+                                                            image_i,
+                                                            suffixToAdd,
+                                                            npDtypeForPredictedImage,
+                                                            myLogger
+                                                            )
         for class_i in xrange(0, NUMBER_OF_CLASSES) :
             if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
                 npDtypeForPredictedImage = np.dtype(np.float32)
@@ -1743,16 +1731,15 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                 predictedLabelImageForSpecificClass = labelImageCreatedByPredictions[class_i,:,:,:]
                 unpaddedPredictedLabelImageForSpecificClass = predictedLabelImageForSpecificClass if not padInputImagesBool else unpadCnnOutputs(predictedLabelImageForSpecificClass, tupleOfPaddingPerAxesLeftRight)
                 savePredictedImageToANewNiiWithHeaderFromOther(unpaddedPredictedLabelImageForSpecificClass,
-                                       listOfNamesToGiveToPredictionsIfSavingResults,
-                                       
-                                       listOfFilepathsToEachChannelOfEachPatient,
-                                       
-                                       image_i,
-                                       suffixToAdd,
-                                       npDtypeForPredictedImage,
-                                       myLogger
-                                       )
-                
+                                        listOfNamesToGiveToPredictionsIfSavingResults,
+                                        
+                                        listOfFilepathsToEachChannelOfEachPatient,
+                                        
+                                        image_i,
+                                        suffixToAdd,
+                                        npDtypeForPredictedImage,
+                                        myLogger
+                                        )
         #=================Save FEATURE MAPS ====================
         if saveIndividualFmImagesForVisualisation :
             currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
@@ -1765,18 +1752,16 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                             #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
                             for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
                                 fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
-                                unpaddedFmToSave =  fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
-                                saveFmActivationImageToANewNiiWithHeaderFromOther(unpaddedFmToSave,
-                                                                                   listOfNamesToGiveToFmVisualisationsIfSaving,
-                                                                                   
-                                                                                   listOfFilepathsToEachChannelOfEachPatient,
-                                                                                   
-                                                                                   image_i,
-                                                                                   pathwayType_i,
-                                                                                   layer_i,
-                                                                                   fmActualNumber,
-                                                                                   myLogger
-                                                                                   ) 
+                                unpaddedFmToSave = fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
+                                saveFmActivationImageToANewNiiWithHeaderFromOther(  unpaddedFmToSave,
+                                                                                    listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                                                    listOfFilepathsToEachChannelOfEachPatient,
+                                                                                    image_i,
+                                                                                    pathwayType_i,
+                                                                                    layer_i,
+                                                                                    fmActualNumber,
+                                                                                    myLogger
+                                                                                    ) 
                                 currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
         if saveMultidimensionalImageWithAllFms :
             """
@@ -1790,11 +1775,11 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                 unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms, tupleOfPaddingPerAxesLeftRight)
                 
             #Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
-            saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
-                                                                                    listOfNamesToGiveToFmVisualisationsIfSaving,
-                                                                                    listOfFilepathsToEachChannelOfEachPatient,
-                                                                                    image_i,
-                                                                                    myLogger)
+            saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(  unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
+                                                                                        listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                                                        listOfFilepathsToEachChannelOfEachPatient,
+                                                                                        image_i,
+                                                                                        myLogger)
         #=================IMAGES SAVED. PROBABILITY MAPS AND FEATURE MAPS TOO (if wanted). ====================
         
         #=================EVALUATE DSC FROM THE PROBABILITY MAPS FOR EACH IMAGE. ====================
@@ -1849,8 +1834,9 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
     myLogger.print3("###########################################################################################################")
     myLogger.print3("############################# Finished full Segmentation of " + str(validationOrTestingString) + " subjects ##########################")
     myLogger.print3("###########################################################################################################")
-
+    
 def printExplanationsAboutDice(myLogger) :
     myLogger.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0 we calculate DICE for the whole foreground (useful for multi-class problems).")
     myLogger.print3("EXPLANATION: DICE1 is calculated whole segmentation vs whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
-
+    
+    
