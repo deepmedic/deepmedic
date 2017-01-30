@@ -14,101 +14,94 @@ sys.setrecursionlimit(20000)
 
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
 
-
-
 def strIsInt(s):
     try: 
         int(s)
         return True
     except ValueError:
         return False
-
-
+    
 def setupArgParser() :
-        parser = argparse.ArgumentParser( prog='DeepMedic', formatter_class=argparse.RawTextHelpFormatter,
-        description='''\nThis software allows creation and supervised training of 3D, multi-scale CNN models for segmentation of structures in biomedical NIFTI volumes.\nThe project is hosted at: https://github.com/Kamnitsask/deepmedic \nSee the documentation for details on its use.\nThis software accompanies the research presented in:\nKamnitsas et al, "Efficient Multi-Scale 3D CNN with Fully Connected CRF for Accurate Brain Lesion Segmentation", arXiv:1603.05959, 2016.\nWe hope our work aids you in your endeavours.\nFor questions and feedback contact: konstantinos.kamnitsas12@ic.ac.uk''')
-
-        parser.add_argument("-newModel", dest='model_conf', type=str, help="Create a new CNN model with model parameters at given config file [MODEL_CONF].")
-        parser.add_argument("-train", dest='training_conf', type=str, help="Train a CNN model with training parameters at given config file [TRAINING_CONF].\nThis option can follow a [-newModel MODEL_CONF] option, to create a new model and start training it immediately.\nOtherwise, existing model can be specified in the training-config file or by the additional option [-model].")
-        parser.add_argument("-test", dest='testing_conf', type=str, help="Test with an existing CNN model. The testing session's parameters should be given in config file [TESTING_CONF].\nExisting model can be specified in the given training-config file or by the additional option [-model].\nThis option cannot be used in combination with [-newModel] or [-train].")
-        parser.add_argument("-model", dest='saved_model', type=str, help="The path to a saved existing cnn model, to train or test with.\nThis option can follow a [-train] or [-test] option. Not in combination with a [-newModel].\nIf given, this option will overide any \"model\" parameters given in the train or testing configuration file.")
-        parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\nNOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
-
-        return parser
+    parser = argparse.ArgumentParser( prog='DeepMedic', formatter_class=argparse.RawTextHelpFormatter,
+    description='''\nThis software allows creation and supervised training of 3D, multi-scale CNN models for segmentation of structures in biomedical NIFTI volumes.\nThe project is hosted at: https://github.com/Kamnitsask/deepmedic \nSee the documentation for details on its use.\nThis software accompanies the research presented in:\nKamnitsas et al, "Efficient Multi-Scale 3D CNN with Fully Connected CRF for Accurate Brain Lesion Segmentation", arXiv:1603.05959, 2016.\nWe hope our work aids you in your endeavours.\nFor questions and feedback contact: konstantinos.kamnitsas12@ic.ac.uk''')
+    
+    parser.add_argument("-newModel", dest='model_conf', type=str, help="Create a new CNN model with model parameters at given config file [MODEL_CONF].")
+    parser.add_argument("-train", dest='training_conf', type=str, help="Train a CNN model with training parameters at given config file [TRAINING_CONF].\nThis option can follow a [-newModel MODEL_CONF] option, to create a new model and start training it immediately.\nOtherwise, existing model can be specified in the training-config file or by the additional option [-model].")
+    parser.add_argument("-test", dest='testing_conf', type=str, help="Test with an existing CNN model. The testing session's parameters should be given in config file [TESTING_CONF].\nExisting model can be specified in the given training-config file or by the additional option [-model].\nThis option cannot be used in combination with [-newModel] or [-train].")
+    parser.add_argument("-model", dest='saved_model', type=str, help="The path to a saved existing cnn model, to train or test with.\nThis option can follow a [-train] or [-test] option. Not in combination with a [-newModel].\nIf given, this option will overide any \"model\" parameters given in the train or testing configuration file.")
+    parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\nNOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
+    
+    return parser
 
 def checkDevicePassedCorrectly(devArg) :
-        if devArg <> "cpu" and devArg <> "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) ) :
-                print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu] or [gpu] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
-
-def setEnvironment(deviceString) :
-        #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt
-        #Finally, sets the necessary theano flags.
-        pathToEnvironmentFile = os.getcwd() + "/environment.txt"
-        if os.path.isfile(pathToEnvironmentFile) :
-                envGivenInFile = {}
-                execfile(pathToEnvironmentFile, envGivenInFile)
-
-                if "path_to_theano" in envGivenInFile :
-                        sys.path.insert(1, envGivenInFile["path_to_theano"])
-                if "path_to_nose" in envGivenInFile :
-                        sys.path.insert(1, envGivenInFile["path_to_nose"])
-                if "path_to_nibabel" in envGivenInFile :
-                        sys.path.insert(1, envGivenInFile["path_to_nibabel"])
-                if "path_to_parallelPython" in envGivenInFile :
-                        sys.path.insert(1, envGivenInFile["path_to_parallelPython"])
+    if devArg <> "cpu" and devArg <> "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) ) :
+        print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu] or [gpu] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
         
-        os.environ['THEANO_FLAGS']='on_unused_input=warn, mode=FAST_RUN,device=' + deviceString + ',floatX=float32,force_device=True'
+def setEnvironment(deviceString) :
+    #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt
+    #Finally, sets the necessary theano flags.
+    pathToEnvironmentFile = os.getcwd() + "/environment.txt"
+    if os.path.isfile(pathToEnvironmentFile) :
+        envGivenInFile = {}
+        execfile(pathToEnvironmentFile, envGivenInFile)
+        
+        if "path_to_theano" in envGivenInFile :
+            sys.path.insert(1, envGivenInFile["path_to_theano"])
+        if "path_to_nose" in envGivenInFile :
+            sys.path.insert(1, envGivenInFile["path_to_nose"])
+        if "path_to_nibabel" in envGivenInFile :
+            sys.path.insert(1, envGivenInFile["path_to_nibabel"])
+        if "path_to_parallelPython" in envGivenInFile :
+            sys.path.insert(1, envGivenInFile["path_to_parallelPython"])
+            
+    os.environ['THEANO_FLAGS']='on_unused_input=warn, mode=FAST_RUN,device=' + deviceString + ',floatX=float32,force_device=True'
 
 #################################################
 #                        MAIN                        #
 #################################################
 if __name__ == '__main__':
-        cwd = os.getcwd()
-        parser = setupArgParser()
-        args = parser.parse_args()
-
-        if len(sys.argv) == 1:
-                print("For help on the usage of this program, please use the option -h."); exit(1)
-
-        if not (args.model_conf or args.training_conf or args.testing_conf) :
-                print("ERROR: One of the options must be specified:\n\t[-newModel] to create a new model.\n\t[-train] to start a training session on a model.\n\t[-test] to test with an existing model.\nPlease try [-h] for more information. Exiting."); exit(1)
-
-        #Preliminary checks:
-        if args.model_conf and args.saved_model :
-                print("ERROR:\t[-newModel] and [-model] options cannot be used together.\n\tUse [-newModel] to create a new cnn model.\n\t[-model] can follow a [-train] or [-test] option, to specify which saved model to use.\n\tPlease try -h for more information. Exiting."); exit(1)
-        if args.testing_conf and (args.model_conf or args.training_conf) :
-                print("ERROR: [-test] cannot be used in conjuction with [-newModel] or [-train]. To test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model to use for the inference. Exiting."); exit(1)
-
-        checkDevicePassedCorrectly(args.device)
-
-        #Set the environment for Theano.
-        setEnvironment(args.device)
-
-        cnnInstanceLoaded = None
-        filenameAndPathWhereNewlyCreatedModelWasSaved = None
-
-        #Find out what procedure we are being asked to perform:
-        if args.model_conf :#and not args.training_conf and not args.testing_conf:
-                #Just create and save a new CNN model.
-                from deepmedic.frontEndModules import deepMedicNewModel
-                absPathToModelConf = getAbsPathEvenIfRelativeIsGiven(args.model_conf, cwd)
-                (cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved) = deepMedicNewModel.deepMedicNewModelMain(absPathToModelConf)
-                        
-        if args.training_conf : #and not args.model_conf and not args.testing_conf: #Second part was checked already.
-                #Run training
-                from deepmedic.frontEndModules import deepMedicTrain
-                absPathToTrainConf = getAbsPathEvenIfRelativeIsGiven(args.training_conf, cwd)
-                absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
-                deepMedicTrain.deepMedicTrainMain(absPathToTrainConf, absPathToCnnModelGivenInCmdLine, cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved)
-                
-        if args.testing_conf : #and not args.model_conf and not args.training_conf : #Second part was checked already.
-                #Test with an existing model.
-                from deepmedic.frontEndModules import deepMedicTest
-                absPathToTestConf = getAbsPathEvenIfRelativeIsGiven(args.testing_conf, cwd)
-                absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
-                deepMedicTest.deepMedicTestMain(absPathToTestConf, absPathToCnnModelGivenInCmdLine)
-
-
+    cwd = os.getcwd()
+    parser = setupArgParser()
+    args = parser.parse_args()
+    
+    if len(sys.argv) == 1:
+        print("For help on the usage of this program, please use the option -h."); exit(1)
         
+    if not (args.model_conf or args.training_conf or args.testing_conf) :
+        print("ERROR: One of the options must be specified:\n\t[-newModel] to create a new model.\n\t[-train] to start a training session on a model.\n\t[-test] to test with an existing model.\nPlease try [-h] for more information. Exiting."); exit(1)
         
-
+    #Preliminary checks:
+    if args.model_conf and args.saved_model :
+        print("ERROR:\t[-newModel] and [-model] options cannot be used together.\n\tUse [-newModel] to create a new cnn model.\n\t[-model] can follow a [-train] or [-test] option, to specify which saved model to use.\n\tPlease try -h for more information. Exiting."); exit(1)
+    if args.testing_conf and (args.model_conf or args.training_conf) :
+        print("ERROR: [-test] cannot be used in conjuction with [-newModel] or [-train]. To test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model to use for the inference. Exiting."); exit(1)
+        
+    checkDevicePassedCorrectly(args.device)
+    
+    #Set the environment for Theano.
+    setEnvironment(args.device)
+    
+    cnnInstanceLoaded = None
+    filenameAndPathWhereNewlyCreatedModelWasSaved = None
+    
+    #Find out what procedure we are being asked to perform:
+    if args.model_conf :#and not args.training_conf and not args.testing_conf:
+        #Just create and save a new CNN model.
+        from deepmedic.frontEndModules import deepMedicNewModel
+        absPathToModelConf = getAbsPathEvenIfRelativeIsGiven(args.model_conf, cwd)
+        (cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved) = deepMedicNewModel.deepMedicNewModelMain(absPathToModelConf)
+        
+    if args.training_conf : #and not args.model_conf and not args.testing_conf: #Second part was checked already.
+        #Run training
+        from deepmedic.frontEndModules import deepMedicTrain
+        absPathToTrainConf = getAbsPathEvenIfRelativeIsGiven(args.training_conf, cwd)
+        absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
+        deepMedicTrain.deepMedicTrainMain(absPathToTrainConf, absPathToCnnModelGivenInCmdLine, cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved)
+        
+    if args.testing_conf : #and not args.model_conf and not args.training_conf : #Second part was checked already.
+        #Test with an existing model.
+        from deepmedic.frontEndModules import deepMedicTest
+        absPathToTestConf = getAbsPathEvenIfRelativeIsGiven(args.testing_conf, cwd)
+        absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
+        deepMedicTest.deepMedicTestMain(absPathToTestConf, absPathToCnnModelGivenInCmdLine)
+        
