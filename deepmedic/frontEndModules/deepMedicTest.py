@@ -55,7 +55,7 @@ class TestConfig(object):
     INDICES_OF_FMS_TO_SAVE_NORMAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathway"
     INDICES_OF_FMS_TO_SAVE_SUBSAMPLED = "minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathway"
     INDICES_OF_FMS_TO_SAVE_FC = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathway"
-
+    
     def checkIfConfigIsCorrectForParticularCnnModel(self, cnnInstance) :
         print "Checking if configuration is correct in relation to the loaded model (correct number of input channels, number of classes, etc) ..."
         #Check whether the given channels are as many as the channels when the model was built.
@@ -95,7 +95,7 @@ class TestConfig(object):
             print "\tExiting!"; exit(1)
             
         print "The given configuration looks correct in comparison to the CNN-model's parameters. Very nice! We are almost ready for inference!"
-
+        
 #Checks whether the main test-config has the REQUIRED parameters.
 def checkIfMainTestConfigIsCorrect(testConfig, testConfigFilepath, absPathToSavedModelFromCmdLine) :
     configStruct = testConfig.configStruct
@@ -120,46 +120,45 @@ def checkIfMainTestConfigIsCorrect(testConfig, testConfigFilepath, absPathToSave
         exit(1)
         
     print "Test-configuration file seems correctly completed at first check. I hope this was not too complicated!"
-
-
-
+    
+    
 #Checks whether testing-config's listing-files are correct (channels, masks etc)
 def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
-        configStruct = testConfig.configStruct
-        print "Checking whether the given files that list channels, masks, etc per case are correctly filled..."
-        numberOfChannels = len(configStruct[testConfig.CHANNELS])
-        numberOfCases = -1
-        print "Number of given files that list the channels per case were: ", numberOfChannels
+    configStruct = testConfig.configStruct
+    print "Checking whether the given files that list channels, masks, etc per case are correctly filled..."
+    numberOfChannels = len(configStruct[testConfig.CHANNELS])
+    numberOfCases = -1
+    print "Number of given files that list the channels per case were: ", numberOfChannels
+    
+    listOfListingFilesProvided = configStruct[testConfig.CHANNELS]
+    listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.ROI_MASKS] else listOfListingFilesProvided + [configStruct[testConfig.ROI_MASKS]]
+    listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.GT_LABELS] else listOfListingFilesProvided + [configStruct[testConfig.GT_LABELS]]
+    for pathToListingFile_i in xrange(len(listOfListingFilesProvided)) :
+        pathToCurrentFileListingPaths = listOfListingFilesProvided[pathToListingFile_i]
+        absolutePathToCurrentFileListingPaths = getAbsPathEvenIfRelativeIsGiven(pathToCurrentFileListingPaths, testConfigFilepath)
+        if not os.path.isfile(absolutePathToCurrentFileListingPaths) :
+            print "ERROR: path provided does not correspond to a file:", absolutePathToCurrentFileListingPaths
+            print "Exiting!"
+            exit(1)
+        listOfFilepathsForEachCaseInCurrentListingFile = parseAbsFileLinesInList(absolutePathToCurrentFileListingPaths)
         
-        listOfListingFilesProvided = configStruct[testConfig.CHANNELS]
-        listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.ROI_MASKS] else listOfListingFilesProvided + [configStruct[testConfig.ROI_MASKS]]
-        listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.GT_LABELS] else listOfListingFilesProvided + [configStruct[testConfig.GT_LABELS]]
-        for pathToListingFile_i in xrange(len(listOfListingFilesProvided)) :
-            pathToCurrentFileListingPaths = listOfListingFilesProvided[pathToListingFile_i]
-            absolutePathToCurrentFileListingPaths = getAbsPathEvenIfRelativeIsGiven(pathToCurrentFileListingPaths, testConfigFilepath)
-            if not os.path.isfile(absolutePathToCurrentFileListingPaths) :
-                print "ERROR: path provided does not correspond to a file:", absolutePathToCurrentFileListingPaths
-                print "Exiting!"
-                exit(1)
-            listOfFilepathsForEachCaseInCurrentListingFile = parseAbsFileLinesInList(absolutePathToCurrentFileListingPaths)
+        if numberOfCases == -1 :
+            numberOfCases = len(listOfFilepathsForEachCaseInCurrentListingFile)
+        else :
+            checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCases, absolutePathToCurrentFileListingPaths, listOfFilepathsForEachCaseInCurrentListingFile)
             
-            if numberOfCases == -1 :
-                numberOfCases = len(listOfFilepathsForEachCaseInCurrentListingFile)
-            else :
-                checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCases, absolutePathToCurrentFileListingPaths, listOfFilepathsForEachCaseInCurrentListingFile)
-                
-            checkIfAllElementsOfAListAreFilesAndExitIfNot(absolutePathToCurrentFileListingPaths, listOfFilepathsForEachCaseInCurrentListingFile)
-            
-        #Check the list of names to give to predictions, cause it is a different case...
-        listingFileWithNamesForPredictionsPerCase = configStruct[testConfig.NAMES_FOR_PRED_PER_CASE]
-        absolutePathToListingFileWithPredictionNamesPerCase = getAbsPathEvenIfRelativeIsGiven(listingFileWithNamesForPredictionsPerCase, testConfigFilepath)
-        if not os.path.isfile(absolutePathToListingFileWithPredictionNamesPerCase) :
-            print "ERROR: path provided does not correspond to a file:", absolutePathToListingFileWithPredictionNamesPerCase
-            print "Exiting!"; exit(1)
-        listOfPredictionNamesForEachCaseInListingFile = parseFileLinesInList(absolutePathToListingFileWithPredictionNamesPerCase) #CAREFUL: Here we use a different parsing function!
-        checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile)
-        print "Files that list the channels for each case seem fine. Thanks."
+        checkIfAllElementsOfAListAreFilesAndExitIfNot(absolutePathToCurrentFileListingPaths, listOfFilepathsForEachCaseInCurrentListingFile)
         
+    #Check the list of names to give to predictions, cause it is a different case...
+    listingFileWithNamesForPredictionsPerCase = configStruct[testConfig.NAMES_FOR_PRED_PER_CASE]
+    absolutePathToListingFileWithPredictionNamesPerCase = getAbsPathEvenIfRelativeIsGiven(listingFileWithNamesForPredictionsPerCase, testConfigFilepath)
+    if not os.path.isfile(absolutePathToListingFileWithPredictionNamesPerCase) :
+        print "ERROR: path provided does not correspond to a file:", absolutePathToListingFileWithPredictionNamesPerCase
+        print "Exiting!"; exit(1)
+    listOfPredictionNamesForEachCaseInListingFile = parseFileLinesInList(absolutePathToListingFileWithPredictionNamesPerCase) #CAREFUL: Here we use a different parsing function!
+    checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile)
+    print "Files that list the channels for each case seem fine. Thanks."
+    
 def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     print "Checking optional parameters..."
     
@@ -210,7 +209,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
                 print "ERROR: Configuration parameter \"", indicesOfFmsPerPathwayTypeString ,"\" should be given in the form: ", indicesOfFmsPerPathwayTypeString, " = [[minFmOfLayer0, maxFmOfLayer0], , ..., [minFmOfLayerN, maxFmOfLayerN]] (python style list of lists of two integers). min/maxFmOfLayerN are integers (equal/greater than 0), that are the minimum and maximum indices of the Feature Maps that I want to visualise from this particular pathway type. An entry can be given [] if I don't want to visualise any FMs from a pathway or a certain layer. Please correct it or ommit it completely for default.\nExiting!"; exit(1)
                 
     print "Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded..."
-
+    
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line.
 def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     print "Given Test-Configuration File: ", testConfigFilepath
@@ -270,19 +269,19 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
                     mainOutputAbsFolder = mainOutputAbsFolder,
                     cnn3dInstance = cnn3dInstance,
                     cnnModelFilepath = filepathToCnnModelToLoad,
-
+                    
                     #Input:
                     listWithAListPerCaseWithFilepathPerChannel = listWithAListPerCaseWithFilepathPerChannel,
                     gtLabelsFilepaths = gtLabelsFilepaths,
                     roiMasksFilepaths = roiMasksFilepaths,
-
+                    
                     #Output                                
                     namesToSavePredictionsAndFeatures = namesToSavePredsAndFeats,
                     #predictions
                     saveSegmentation = configGet(testConfig.SAVE_SEGM),
                     saveProbMapsBoolPerClass = configGet(testConfig.SAVE_PROBMAPS_PER_CLASS),
                     folderForPredictions = folderForPredictions,
-
+                    
                     #features:
                     saveIndividualFmImages = configGet(testConfig.SAVE_INDIV_FMS),
                     saveMultidimensionalImageWithAllFms = configGet(testConfig.SAVE_4DIM_FMS),
@@ -305,5 +304,5 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     testSessionParameters.sessionLogger.print3("======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing session finished =================")
     testSessionParameters.sessionLogger.print3("======================================================")
-
-        
+    
+    

@@ -164,8 +164,8 @@ def checkIfMainTestConfigIsCorrect(testConfig, testConfigFilepath, absPathToSave
         exit(1)
         
     print "Test-configuration file seems correctly completed at first check. I hope this was not too complicated!"
-
-
+    
+    
 #Checks whether testing-config's listing-files are correct (channels, masks etc)
 def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
     configStruct = testConfig.configStruct
@@ -173,7 +173,7 @@ def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
     numberOfChannels = len(configStruct[testConfig.CHANNELS])
     numberOfCases = -1
     print "Number of given files that list the channels per case were: ", numberOfChannels
-
+    
     listOfListingFilesProvided = configStruct[testConfig.CHANNELS]
     listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.ROI_MASKS] else listOfListingFilesProvided + [configStruct[testConfig.ROI_MASKS]]
     listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.GT_LABELS] else listOfListingFilesProvided + [configStruct[testConfig.GT_LABELS]]
@@ -202,7 +202,7 @@ def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
     listOfPredictionNamesForEachCaseInListingFile = parseFileLinesInList(absolutePathToListingFileWithPredictionNamesPerCase) #CAREFUL: Here we use a different parsing function!
     checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile)
     print "Files that list the channels for each case seem fine. Thanks."
-
+    
 def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     print "Checking optional parameters..."
     
@@ -210,7 +210,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     
     if configStruct[testConfig.SESSION_NAME] and not isinstance(configStruct[testConfig.SESSION_NAME], str) :
         print "ERROR: Optional parameter ", configStruct[testConfig.SESSION_NAME], " should be a string, given in the format: ", configStruct[testConfig.SESSION_NAME]," = \"yourTestSessionName\".\nExiting!"; exit(1)
-
+        
     listOfBooleanParametersStrings = [testConfig.PAD_INPUT, testConfig.SAVE_SEGM, testConfig.SAVE_INDIV_FMS, testConfig.SAVE_4DIM_FMS, ]
     for booleanParameterString in listOfBooleanParametersStrings :
         if (configStruct[booleanParameterString]) and not (configStruct[booleanParameterString] in [True,False]) :
@@ -253,7 +253,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
                 print "ERROR: Configuration parameter \"", indicesOfFmsPerPathwayTypeString ,"\" should be given in the form: ", indicesOfFmsPerPathwayTypeString, " = [[minFmOfLayer0, maxFmOfLayer0], , ..., [minFmOfLayerN, maxFmOfLayerN]] (python style list of lists of two integers). min/maxFmOfLayerN are integers (equal/greater than 0), that are the minimum and maximum indices of the Feature Maps that I want to visualise from this particular pathway type. An entry can be given [] if I don't want to visualise any FMs from a pathway or a certain layer. Please correct it or ommit it completely for default.\nExiting!"; exit(1)
                 
     print "Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded..."
-
+    
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be <> None.
 def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas) :
     print "Given Training-Configuration File: ", trainConfigFilepath
