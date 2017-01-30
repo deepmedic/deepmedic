@@ -27,11 +27,11 @@ class SamplingType(object) :
             self.arrayWithStringPerCategoryToSample = ["Class-" + str(i) for i in xrange(numberOfClassesInclBackgr) ]
         else :
             self.logger.print3("ERROR: Tried to create a SamplingType instance, but the samplingType passed was invalid. Should be [0,1,2,3]. Exiting!"); exit(1)
-
+            
     def setPercentOfSamplesPerCategoryToSample(self, percentageOfSamplesPerCategoryOfSampling) :
         if self.samplingType in [0,3] and len(percentageOfSamplesPerCategoryOfSampling) <> self.getNumberOfCategoriesToSample() :
             self.logger.print3("ERROR: In class [SamplingType], the list percentageOfSamplesPerCategoryOfSampling had [" + str(len(percentageOfSamplesPerCategoryOfSampling)) + "] elements. In this case of [" + self.stringOfSamplingType + "], it should have [" + str(self.getNumberOfCategoriesToSample()) + "]! Exiting!"); exit(1)
-
+            
         if self.samplingType == 0 :
             self.percentOfSamplesPerCategoryToSample = self.normalizePercentages(percentageOfSamplesPerCategoryOfSampling)
         elif self.samplingType == 1 :
@@ -59,16 +59,16 @@ class SamplingType(object) :
         return len(self.arrayWithStringPerCategoryToSample)
     
     
-    def logicDecidingAndGivingFinalSamplingMapsForEachCategory( self, 
+    def logicDecidingAndGivingFinalSamplingMapsForEachCategory( self,
                                                                 providedWeightMapsToSampleForEachCategory,
                                                                 arrayWithWeightMapsWhereToSampleForEachCategory,
-        
+                                                                
                                                                 providedGtLabelsBool, #Always true both for training and validation. So, I can take this out.
                                                                 gtLabelsImage,
-        
+                                                                
                                                                 providedRoiMaskBool,
                                                                 roiMask,
-        
+                                                                
                                                                 dimensionsOfImageChannel
                                                                 ) :
         # CURRENTLY, REQUIRES THAT IF YOU PROVIDE WEIGHT MAPS, YOU SHOULD PROVIDE FOR ALL CLASSES OF THE SAMPLING-TYPE!!!
@@ -108,7 +108,7 @@ class SamplingType(object) :
             if providedWeightMapsToSampleForEachCategory :
                 numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
                 if numOfProvidedWeightMaps <> 1 :
-                        self.logger.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! One was expected! Exiting!"); exit(1)
+                    self.logger.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! One was expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should be an array with dim1==1 already.
             elif providedRoiMaskBool :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ roiMask ] #Be careful to not change either of the two arrays later or there'll be a problem.

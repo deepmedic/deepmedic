@@ -15,14 +15,14 @@ def dump_cnn_to_gzip_file_dotSave(cnn_instance, filenameWithPathToSaveTo, logger
     
     if logger <> None :
         logger.print3("Saving network to: "+str(filenameWithPathToSaveToDotSave))
-    else: 
+    else:
         print("Saving network to: "+str(filenameWithPathToSaveToDotSave))
         
     dump_object_to_gzip_file(cnn_instance, filenameWithPathToSaveToDotSave)
     
     if logger <> None :
         logger.print3("Model saved.")
-    else: 
+    else:
         print("Model saved.")
         
     return filenameWithPathToSaveToDotSave
@@ -103,7 +103,6 @@ def calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsample
         centralVoxelsInThisDimensionForSubsampledPart = int(ceil(centralVoxelsInThisDimension*1.0/subsampleFactor[rcz_i]))
         sizeOfSubsampledImagePartInThisDimension = patchDimensions[rcz_i] + centralVoxelsInThisDimensionForSubsampledPart - 1
         subsampledImagePartDimensions.append(sizeOfSubsampledImagePartInThisDimension)
-        
     return subsampledImagePartDimensions
 
 def calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(kernDimPerLayerList) :
@@ -115,9 +114,7 @@ def calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWi
     for dimension_i in xrange(numberOfDimensions) :
         for layer_i in xrange(len(kernDimPerLayerList)) :
             receptiveField[dimension_i] += kernDimPerLayerList[layer_i][dimension_i] - 1
-            
     return receptiveField
-
 
 def checkReceptiveFieldFineInComparisonToSegmentSize(receptiveFieldDim, segmentDim) :
     numberOfRFDim = len(receptiveFieldDim)

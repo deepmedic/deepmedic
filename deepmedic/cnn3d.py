@@ -274,7 +274,7 @@ class Cnn3d(object):
     def changeRhoParameterOfRmsProp(self, rhoParamForRmsProp, myLogger) :
         myLogger.print3("UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Rho parameter for RMSProp optimization to: Rho = "+str(rhoParamForRmsProp))
         self.rho_rmsProp = rhoParamForRmsProp
-
+        
     def checkMeanValidationAccOfLastEpochAndUpdateCnnsTopAccAchievedIfNeeded(self,
                                                                             myLogger,
                                                                             meanValidationAccuracyOfLastEpoch,
@@ -502,20 +502,19 @@ class Cnn3d(object):
     (1) v_t = mu * v_t-1 - lr * gradient_f(params_t)
     (2) params_t = params_t-1 + v_t
     (3) params_t = params_t-1 + mu * v_t-1 - lr * gradient_f(params_t-1)
-
+    
     Nesterov momentum:
     (4) v_t = mu * v_t-1 - lr * gradient_f(params_t-1 + mu * v_t-1)
     (5) params_t = params_t-1 + v_t
-
+    
     alternate formulation for Nesterov momentum:
     (6) v_t = mu * v_t-1 - lr * gradient_f(params_t-1)
     (7) params_t = params_t-1 + mu * v_t - lr * gradient_f(params_t-1)
     (8) params_t = params_t-1 + mu**2 * v_t-1 - (1+mu) * lr * gradient_f(params_t-1)
-
+    
     Can also find help for optimizers in Lasagne: https://github.com/Lasagne/Lasagne/blob/master/lasagne/updates.py
     """
-
-
+    
     def getUpdatesAccordingToSgd(self, cost, paramsToOptDuringTraining) :
         # create a list of gradients for all model parameters
         grads = T.grad(cost, paramsToOptDuringTraining)
@@ -666,7 +665,7 @@ class Cnn3d(object):
     # However, if I need to use a pretrained model, and train it in a second stage, I should recall this, with the new stage's parameters, and then recompile trainFunction.
     def initializeTrainingState(self,
                                 myLogger,
-                                layersOfLayerTypesToTrain, 
+                                layersOfLayerTypesToTrain,
                                 costFunctionLetter,
                                 learning_rate,
                                 sgd0orAdam1orRmsProp2,
@@ -1251,5 +1250,5 @@ class Cnn3d(object):
         self.finalLayer = classificationLayer
         
         myLogger.print3("Finished building the CNN's model.")
-
-    
+        
+        

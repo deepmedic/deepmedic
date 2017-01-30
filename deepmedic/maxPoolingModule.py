@@ -52,11 +52,11 @@ def myMaxPooling3d(image3dBC012, image3dBC012Shape, maxPoolingParameters) :
     
     #calculate the shape of the image after the max pooling.
     #This calculation is for ignore_border=True! Pooling should only be done in full areas in the mirror-padded image.
-    shapeOfImageAfterMaxPoolingAfterMirroring = [image3dBC012Shape[0],
+    shapeOfImageAfterMaxPoolingAfterMirroring = [   image3dBC012Shape[0],
                                                     image3dBC012Shape[1],
                                                     int(ceil( (image3dBC012Shape[2] + maxPoolingParameters[2][0] - ds[0] + 1) / (1.0*stride[0])) ),
                                                     int(ceil( (image3dBC012Shape[3] + maxPoolingParameters[2][1] - ds[1] + 1) / (1.0*stride[1])) ),
                                                     int(ceil( (image3dBC012Shape[4] + maxPoolingParameters[2][2] - ds[2] + 1) / (1.0*stride[2])) )
                                                 ]
-    
     return (pooled_out, shapeOfImageAfterMaxPoolingAfterMirroring)
+

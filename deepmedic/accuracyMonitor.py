@@ -113,9 +113,9 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         for class_i in xrange(self.numberOfClasses) :
             classString = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
-
+            
             self.logger.print3( "+++++++++++++++ Reporting Accuracy over whole subepoch for " + classString + " ++++++++ " + extraDescription + " ++++++++++++++++" )
-
+            
             [meanAccClassOfSubep,
             meanAccOnPosOfSubep,
             meanAccOnNegOfSubep,
@@ -126,7 +126,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             numOfTpInSubep,
             numOfTnInSubep] = self.listPerSubepPerClassRpRnTpTn[currSubep][class_i] if class_i <> 0 else \
                                     self.listPerSubepForegrRpRnTpTn[currSubep] # If class-0, report foreground.
-
+                                    
             logStrClass = logStr + ", " + classString + ":"
             self.logger.print3(logStrClass+"\t mean accuracy:   \t"+ strFl4fNA(meanAccClassOfSubep, self.NA_PATTERN)+"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels = "+str(numOfTpInSubep+numOfTnInSubep)+"/"+str(numOfRpInSubep+numOfRnInSubep))        
             self.logger.print3(logStrClass+"\t mean sensitivity:\t"+ strFl4fNA(meanAccOnPosOfSubep, self.NA_PATTERN)+"\t=> TruePos/RealPos = "+str(numOfTpInSubep)+"/"+str(numOfRpInSubep))
@@ -187,4 +187,5 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             
         self.logger.print3( ">>>>>>>>>>>>>>>>>>>>>>>>> End Of Accuracy Report at the end of Epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
         self.logger.print3( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
-
+        
+        

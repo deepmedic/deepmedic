@@ -35,7 +35,6 @@ def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputInference, 
         inputImgAfterDropout = inputTrain
         inputImgAfterDropoutInference = inputInference
         inputImgAfterDropoutTesting = inputTesting
-        
     return (inputImgAfterDropout, inputImgAfterDropoutInference, inputImgAfterDropoutTesting)
 
 
@@ -131,7 +130,7 @@ def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic
         stdForInitialization = 0.01
     elif initializationTechniqueClassic0orDelvingInto1 == 1 :
         stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
-    
+        
     W = theano.shared(
                       numpy.asarray(rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
                                     dtype='float32'#theano.config.floatX
@@ -140,7 +139,7 @@ def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic
                       )
     # W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
     return W
-    
+
 def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
     # input weight matrix W has shape: [ Number of filters (outputFMs), number of input channels, rKernelDim, cKernelDim, zKernelDim ] == filterShape
     # filterShape is the shape of W.
@@ -154,7 +153,7 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
     inputToConvReshapedShapeTrain = (inputToConvShapeTrain[0], inputToConvShapeTrain[4], inputToConvShapeTrain[1], inputToConvShapeTrain[2], inputToConvShapeTrain[3]) # batch_size, time, num_of_input_channels, rows, columns
     outputOfConvTrain = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
                                   filters = wReshapedForConv, # Number_of_output_filters, Z, Numb_of_input_Channels, r, c
-                                  signals_shape = inputToConvReshapedShapeTrain, 
+                                  signals_shape = inputToConvReshapedShapeTrain,
                                   filters_shape = wReshapedForConvShape,
                                   border_mode = 'valid')
     #Output is in the shape of the input image (signals_shape).
@@ -164,7 +163,7 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
     inputToConvReshapedShapeVal = (inputToConvShapeVal[0], inputToConvShapeVal[4], inputToConvShapeVal[1], inputToConvShapeVal[2], inputToConvShapeVal[3])
     outputOfConvVal = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedVal, # batch_size, time, num_of_input_channels, rows, columns
                                   filters = wReshapedForConv, # Number_of_output_filters, Time, Numb_of_input_Channels, Height/rows, Width/columns
-                                  signals_shape = inputToConvReshapedShapeVal, 
+                                  signals_shape = inputToConvReshapedShapeVal,
                                   filters_shape = wReshapedForConvShape,
                                   border_mode = 'valid')
     #Testing
@@ -172,7 +171,7 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
     inputToConvReshapedShapeTest = (inputToConvShapeTest[0], inputToConvShapeTest[4], inputToConvShapeTest[1], inputToConvShapeTest[2], inputToConvShapeTest[3])
     outputOfConvTest = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedTest, # batch_size, time, num_of_input_channels, rows, columns
                                   filters = wReshapedForConv, # Number_of_output_filters, Time, Numb_of_input_Channels, Height/rows, Width/columns
-                                  signals_shape = inputToConvReshapedShapeTest, 
+                                  signals_shape = inputToConvReshapedShapeTest,
                                   filters_shape = wReshapedForConvShape,
                                   border_mode = 'valid')
     
@@ -228,7 +227,7 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
     return ( p_y_given_x, y_pred )
 
 #################################################################
-#                                     Layer Types                                                #
+#                         Layer Types                           #
 #################################################################
 # Inheritance:
 # Block -> ConvLayer -> LowRankConvLayer
@@ -312,13 +311,13 @@ class Block(object):
     def getL2RegCost(self) : #Called for L2 weigths regularisation
         raise NotImplementedMethod()
     
-    
     def updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(self):
         # This function should be erazed when I reimplement the Rolling average.
         if self._appliedBnInLayer :
             muArrayValue = self._muBnsArrayForRollingAverage.get_value()
             muArrayValue[self._indexWhereRollingAverageIs] = self._sharedNewMu_B.get_value()
             self._muBnsArrayForRollingAverage.set_value(muArrayValue, borrow=True)
+            
             varArrayValue = self._varBnsArrayForRollingAverage.get_value()
             varArrayValue[self._indexWhereRollingAverageIs] = self._sharedNewVar_B.get_value()
             self._varBnsArrayForRollingAverage.set_value(varArrayValue, borrow=True)
@@ -332,7 +331,6 @@ class Block(object):
                     (self._sharedNewVar_B, self._newVar_B) ]
         else :
             return []
-        
         
 class ConvLayer(Block):
     
@@ -748,7 +746,8 @@ class ConvLayerWithSoftmax(ConvLayer):
             returnedListWithNumberOfRpRnTpTnForEachClass.append( T.sum(tensorOneAtTrueNeg) )
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
-
+    
     def predictionProbabilities(self) :
         return self.p_y_given_x_test
-
+    
+    

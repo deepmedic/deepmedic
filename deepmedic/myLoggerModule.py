@@ -15,7 +15,8 @@ class MyLogger :
         f = open(self.loggerFileName,'a')
         f.write(str(datetime.datetime.now())+" >> "+string+"\n")
         f.close()
-    
+        
     def __init__(self, filenameAndPathOfLoggerTxt="logs/defaultLogFile.txt") :
         self.loggerFileName = filenameAndPathOfLoggerTxt
+        
         

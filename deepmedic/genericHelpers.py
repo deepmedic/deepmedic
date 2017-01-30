@@ -36,7 +36,7 @@ def strFlListXDec(listWithFloats, numDec) :
     return strList
 def strFlList4Dec(listWithFloats) :
     return strFlListXDec(listWithFloats, 4)
-
+    
 # Gets floatOrNotAppl that is either a float or a "Not Applicable" string.
 # Returns a string, which is the float with 4 decimals, or the "Not Applicable" string if that's the case.
 def strFlXfNA(floatOrNotAppl, numDec, notApplicPattern) :
@@ -46,7 +46,7 @@ def strFl4fNA(floatOrNotAppl, notApplicPattern) :
     return strFlXfNA(floatOrNotAppl, 4, notApplicPattern)
 def strFl5fNA(floatOrNotAppl, notApplicPattern) :
     return strFlXfNA(floatOrNotAppl, 5, notApplicPattern)
-
+    
 def strListFlXfNA(listWithFloatsOrNotAppl, numDec, notApplicPattern) : # If you just do a normal list, the internal string-floats are printed with quotes ' '
     stringThatSaysHowManyDecimals = "%." + str(numDec) + "f"
     strList = "[ "
@@ -82,14 +82,14 @@ def getMeanPerColOf2dListExclNA(list2d, notApplicPattern) :
 
 def calculateTheZeroIntensityOf3dImage(image3d) :
     intensityZeroOfChannel = np.mean([image3d[0,0,0],
-                                    image3d[-1,0,0],
-                                    image3d[0,-1,0],
-                                    image3d[-1,-1,0],
-                                    image3d[0,0,-1],
-                                    image3d[-1,0,-1],
-                                    image3d[0,-1,-1],
-                                    image3d[-1,-1,-1]
-                                    ])
+                                      image3d[-1,0,0],
+                                      image3d[0,-1,0],
+                                      image3d[-1,-1,0],
+                                      image3d[0,0,-1],
+                                      image3d[-1,0,-1],
+                                      image3d[0,-1,-1],
+                                      image3d[-1,-1,-1]
+                                      ])
     return intensityZeroOfChannel
 
 def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
@@ -119,7 +119,7 @@ def dump_object_to_file(my_obj, filenameWithPath) :
     f = file(filenameWithPath, 'wb')
     cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
     f.close()
-
+    
 def load_object_from_gzip_file(filenameWithPath) :
     f = gzip.open(filenameWithPath, 'rb')
     loaded_obj = cPickle.load(f)
@@ -130,7 +130,7 @@ def dump_object_to_gzip_file(my_obj, filenameWithPath) :
     f = gzip.open(filenameWithPath, 'wb')
     cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
     f.close()
-
+    
 #This could be renamed to be more generic.
 def get_random_subject_indices_to_load_on_GPU(total_number_of_subjects, 
                                             max_subjects_on_gpu_for_subepoch, 
@@ -163,11 +163,11 @@ def get_random_subject_indices_to_load_on_GPU(total_number_of_subjects,
 
 
 def getSuggestedStdForSubsampledImage(subsampleFactor) :
-        arraySubsampledFactor = np.asarray(subsampleFactor)
-        suggestedStdsForSubsampledChannels = arraySubsampledFactor/2.0
-        #if subsampledFactor == 1 for a certain axis (eg z axis), it means I am actually doing 2D processing. In this case, use std=0 on this axis, and I dont smooth at all. I do clean slice-by-slice.
-        suggestedStdsForSubsampledChannels = suggestedStdsForSubsampledChannels * (arraySubsampledFactor<>1)
-        return suggestedStdsForSubsampledChannels
+    arraySubsampledFactor = np.asarray(subsampleFactor)
+    suggestedStdsForSubsampledChannels = arraySubsampledFactor/2.0
+    #if subsampledFactor == 1 for a certain axis (eg z axis), it means I am actually doing 2D processing. In this case, use std=0 on this axis, and I dont smooth at all. I do clean slice-by-slice.
+    suggestedStdsForSubsampledChannels = suggestedStdsForSubsampledChannels * (arraySubsampledFactor<>1)
+    return suggestedStdsForSubsampledChannels
     
 #This is the generic function.
 def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedByPredictions,
@@ -184,7 +184,7 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedBy
     
     newLabelImg = nib.Nifti1Image(labelImageCreatedByPredictions, affine_trans_to_ras) #Nifti Constructor. data is the image itself, dimensions x,y,z,time. The second argument is the affine RAS transf.
     newLabelImg.set_data_dtype(npDtype)
-
+    
     dimensionsOfTheGivenArrayImageToSave = len(labelImageCreatedByPredictions.shape)
     newZooms = list(hdr_for_orig_image.get_zooms()[:dimensionsOfTheGivenArrayImageToSave])
     if len(newZooms) < dimensionsOfTheGivenArrayImageToSave : #Eg if original image was 3D, but I need to save a multichannel image.
@@ -203,9 +203,7 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedBy
         
 def savePredictedImageToANewNiiWithHeaderFromOther(labelImageCreatedByPredictions,
                                                    listOfNamesToGiveToPredictions,
-                                                   
                                                    listOfFilepathsToEachChannelOfEachPatient,
-                                                   
                                                    case_i, #the index (in the list of filepathnames) of the current image segmented.
                                                    suffixToAdd = "",
                                                    npDtype = np.dtype(np.float32),
@@ -228,24 +226,22 @@ def savePredictedImageToANewNiiWithHeaderFromOther(labelImageCreatedByPrediction
     else :
         fullFilenameToSaveWith = listOfNamesToGiveToPredictions[case_i] + suffixToAdd + ".nii.gz"
         
-        
-    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(labelImageCreatedByPredictions,
-                                                            fullFilenameToSaveWith,
-                                                            fullFilenameOfOriginalImageToCopyHeader,
-                                                            npDtype,
-                                                            myLogger)
+    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(   labelImageCreatedByPredictions,
+                                                                fullFilenameToSaveWith,
+                                                                fullFilenameOfOriginalImageToCopyHeader,
+                                                                npDtype,
+                                                                myLogger)
     
-    
-def saveFmActivationImageToANewNiiWithHeaderFromOther(fmImageCreatedByVisualisation,
-                                        listOfNamesToGiveToPredictions,
-                                        
-                                        listOfFilepathsToEachChannelOfEachPatient,
-                                        
-                                        image_i,
-                                        index_of_typeOfPathway_to_visualize,
-                                        index_of_layer_in_pathway_to_visualize,
-                                        index_of_FM_in_pathway_to_visualize,
-                                        myLogger=None) : #the index (in the list of filepathnames) of the current image segmented :
+def saveFmActivationImageToANewNiiWithHeaderFromOther(  fmImageCreatedByVisualisation,
+                                                        listOfNamesToGiveToPredictions,
+                                                        
+                                                        listOfFilepathsToEachChannelOfEachPatient,
+                                                        
+                                                        image_i,
+                                                        index_of_typeOfPathway_to_visualize,
+                                                        index_of_layer_in_pathway_to_visualize,
+                                                        index_of_FM_in_pathway_to_visualize,
+                                                        myLogger=None) : #the index (in the list of filepathnames) of the current image segmented :
     #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
     
@@ -268,19 +264,18 @@ def saveFmActivationImageToANewNiiWithHeaderFromOther(fmImageCreatedByVisualisat
         fullFilenameToSaveWith = listOfNamesToGiveToPredictions[image_i] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
         + "_layer" + str(index_of_layer_in_pathway_to_visualize) + "_fm" + str(index_of_FM_in_pathway_to_visualize) + ".nii.gz"
         
-    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(fmImageCreatedByVisualisation,
-                                          fullFilenameToSaveWith,
-                                          fullFilenameOfOriginalImageToCopyHeader,
-                                          np.dtype(np.float32),
-                                          myLogger)
-
-def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(multidimImageWithAllVisualisedFms,
-                                        listOfNamesToGiveToFmVisualisationsIfSaving,
-                                        
-                                        listOfFilepathsToEachChannelOfEachPatient,
-                                        
-                                        image_i,
-                                        myLogger=None) : #the index (in the list of filepathnames) of the current image segmented :
+    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(   fmImageCreatedByVisualisation,
+                                                                fullFilenameToSaveWith,
+                                                                fullFilenameOfOriginalImageToCopyHeader,
+                                                                np.dtype(np.float32),
+                                                                myLogger)
+    
+    
+def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(  multidimImageWithAllVisualisedFms,
+                                                                                listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                                                listOfFilepathsToEachChannelOfEachPatient,
+                                                                                image_i,
+                                                                                myLogger=None) : #the index (in the list of filepathnames) of the current image segmented :
     #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
     
@@ -299,11 +294,11 @@ def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(mu
     else :
         fullFilenameToSaveWith = listOfNamesToGiveToFmVisualisationsIfSaving[image_i] + "_allFmsMultiDim.nii.gz"
         
-    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(multidimImageWithAllVisualisedFms,
-                                          fullFilenameToSaveWith,
-                                          fullFilenameOfOriginalImageToCopyHeader,
-                                          np.dtype(np.float32),
-                                          myLogger)
+    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(   multidimImageWithAllVisualisedFms,
+                                                                fullFilenameToSaveWith,
+                                                                fullFilenameOfOriginalImageToCopyHeader,
+                                                                np.dtype(np.float32),
+                                                                myLogger)
     
 def datetimeNowAsStr() :
     #datetime returns in the format: YYYY-MM-DD HH:MM:SS.millis but ':' is not supported for Windows' naming convention.
@@ -311,3 +306,4 @@ def datetimeNowAsStr() :
     dateTimeNowStr = dateTimeNowStr.replace(':','.')
     dateTimeNowStr = dateTimeNowStr.replace(' ','.')
     return dateTimeNowStr
+
