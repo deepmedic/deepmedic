@@ -21,7 +21,7 @@ from deepmedic import cnnLayerTypes
 def getListOfNumberOfCentralVoxelsClassifiedPerDimension(imagePartDimensions, patchDimensions) :
     numberOfCentralVoxelsClassifiedPerDimension = []
     for dimension_i in xrange(0, len(imagePartDimensions)) :
-	numberOfCentralVoxelsClassifiedPerDimension.append(imagePartDimensions[dimension_i] - patchDimensions[dimension_i] + 1)
+        numberOfCentralVoxelsClassifiedPerDimension.append(imagePartDimensions[dimension_i] - patchDimensions[dimension_i] + 1)
     return numberOfCentralVoxelsClassifiedPerDimension
 
 def getMiddlePartOfFms(fms, fmsShape, listOfNumberOfCentralVoxelsToGetPerDimension) :
@@ -133,22 +133,22 @@ def makeResidualConnectionBetweenLayersAndReturnOutput( myLogger,
 class Cnn3d(object):
     def __init__(self):
 
-	self.cnnModelName = None
+        self.cnnModelName = None
 
         self.cnnLayers = []
         self.cnnLayersSubsampled = []
         self.fcLayers = []
-	self.cnnLayersZoomed1 = []
-	self.CNN_PATHWAY_NORMAL = 0; self.CNN_PATHWAY_SUBSAMPLED = 1; self.CNN_PATHWAY_FC = 2; self.CNN_PATHWAY_ZOOMED1 = 3;
+        self.cnnLayersZoomed1 = []
+        self.CNN_PATHWAY_NORMAL = 0; self.CNN_PATHWAY_SUBSAMPLED = 1; self.CNN_PATHWAY_FC = 2; self.CNN_PATHWAY_ZOOMED1 = 3;
         self.typesOfCnnLayers = [self.cnnLayers,
-				self.cnnLayersSubsampled,
-				self.fcLayers,
-				self.cnnLayersZoomed1
-				];
+                                self.cnnLayersSubsampled,
+                                self.fcLayers,
+                                self.cnnLayersZoomed1
+                                ];
 
-	self.finalLayer = ""
+        self.finalLayer = ""
 
-	self.numberOfOutputClasses = None
+        self.numberOfOutputClasses = None
 
         #=== Compiled Functions for API ====
         self.cnnTrainModel = ""
@@ -156,7 +156,7 @@ class Cnn3d(object):
         self.cnnTestModel = ""
         self.cnnVisualiseFmFunction = ""
 
-	#=====================================
+        #=====================================
         self.sharedTrainingNiiData_x = ""
         self.sharedValidationNiiData_x = ""
         self.sharedTestingNiiData_x = ""
@@ -179,17 +179,17 @@ class Cnn3d(object):
         self.batchSizeTesting = ""
 
         self.dataTypeX = ""
-	self.subsampleFactor = ""
+        self.subsampleFactor = ""
         self.patchDimensions = ""
-	#Fully Connected Layers
+        #Fully Connected Layers
         self.numberOfCentralVoxelsClassifiedPerDimension = ""
         self.numberOfCentralVoxelsClassifiedPerDimensionTesting = ""   
 
 
-	#Automatically lower CNN's learning rate by looking at validation accuracy:
-	self.topMeanValidationAccuracyAchievedInEpoch = [-1,-1]
-	self.lastEpochAtTheEndOfWhichLrWasLowered = 0 #refers to CnnTrained epochs, not the epochs in the do_training loop.
-	
+        #Automatically lower CNN's learning rate by looking at validation accuracy:
+        self.topMeanValidationAccuracyAchievedInEpoch = [-1,-1]
+        self.lastEpochAtTheEndOfWhichLrWasLowered = 0 #refers to CnnTrained epochs, not the epochs in the do_training loop.
+        
         # Residual Learning
         self.indicesOfLayersToConnectResidualsInOutput = ""
 
@@ -243,68 +243,68 @@ class Cnn3d(object):
         self.numberOfEpochsTrained += 1
         
     def change_learning_rate_of_a_cnn(self, newValueForLearningRate, myLogger=None) :
-	stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Learning Rate to: "+str(newValueForLearningRate)
-	if myLogger<>None :
-        	myLogger.print3( stringToPrint )
-	else :
-		print stringToPrint
+        stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Learning Rate to: "+str(newValueForLearningRate)
+        if myLogger<>None :
+                myLogger.print3( stringToPrint )
+        else :
+                print stringToPrint
         self.learning_rate.set_value(newValueForLearningRate)
-	self.lastEpochAtTheEndOfWhichLrWasLowered = self.numberOfEpochsTrained
+        self.lastEpochAtTheEndOfWhichLrWasLowered = self.numberOfEpochsTrained
 
     def divide_learning_rate_of_a_cnn_by(self, divideLrBy, myLogger=None) :
-	oldLR = self.learning_rate.get_value()
+        oldLR = self.learning_rate.get_value()
         newValueForLearningRate = oldLR*1.0/divideLrBy
-	self.change_learning_rate_of_a_cnn(newValueForLearningRate, myLogger)
+        self.change_learning_rate_of_a_cnn(newValueForLearningRate, myLogger)
 
-	
+        
     def change_momentum_of_a_cnn(self, newValueForMomentum, myLogger=None):
-	stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Momentum to: "+str(newValueForMomentum)
-	if myLogger<>None :
-        	myLogger.print3( stringToPrint )
-	else :
-		print stringToPrint
+        stringToPrint = "UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Momentum to: "+str(newValueForMomentum)
+        if myLogger<>None :
+                myLogger.print3( stringToPrint )
+        else :
+                print stringToPrint
         self.momentum.set_value(newValueForMomentum)
 
     def multiply_momentum_of_a_cnn_by(self, multiplyMomentumBy, myLogger=None) :
-	oldMom = self.momentum.get_value()
+        oldMom = self.momentum.get_value()
         newValueForMomentum = oldMom*multiplyMomentumBy
-	self.change_momentum_of_a_cnn(newValueForMomentum, myLogger)
+        self.change_momentum_of_a_cnn(newValueForMomentum, myLogger)
 
     def changeB1AndB2ParametersOfAdam(self, b1ParamForAdam, b2ParamForAdam, myLogger) :
-	myLogger.print3("UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's B1 and B2 parameters for ADAM optimization to: B1 = "+str(b1ParamForAdam) + " || B2 = " + str(b2ParamForAdam))
-	self.b1_adam = b1ParamForAdam
-	self.b2_adam = b2ParamForAdam
+        myLogger.print3("UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's B1 and B2 parameters for ADAM optimization to: B1 = "+str(b1ParamForAdam) + " || B2 = " + str(b2ParamForAdam))
+        self.b1_adam = b1ParamForAdam
+        self.b2_adam = b2ParamForAdam
 
     def changeRhoParameterOfRmsProp(self, rhoParamForRmsProp, myLogger) :
-	myLogger.print3("UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Rho parameter for RMSProp optimization to: Rho = "+str(rhoParamForRmsProp))
-	self.rho_rmsProp = rhoParamForRmsProp
+        myLogger.print3("UPDATE: (epoch-cnn-trained#" + str(self.numberOfEpochsTrained) +") Changing the Cnn's Rho parameter for RMSProp optimization to: Rho = "+str(rhoParamForRmsProp))
+        self.rho_rmsProp = rhoParamForRmsProp
 
 
     def checkMeanValidationAccOfLastEpochAndUpdateCnnsTopAccAchievedIfNeeded(self,
-									myLogger,
-									meanValidationAccuracyOfLastEpoch,
-									minIncreaseInValidationAccuracyConsideredForLrSchedule) :
-	#Called at the end of an epoch, right before increasing self.numberOfEpochsTrained
-	highestAchievedValidationAccuracyOfCnn = self.topMeanValidationAccuracyAchievedInEpoch[0]
-	if meanValidationAccuracyOfLastEpoch > highestAchievedValidationAccuracyOfCnn + minIncreaseInValidationAccuracyConsideredForLrSchedule :
-		self.topMeanValidationAccuracyAchievedInEpoch[0] = meanValidationAccuracyOfLastEpoch
-		self.topMeanValidationAccuracyAchievedInEpoch[1] = self.numberOfEpochsTrained
-		myLogger.print3("UPDATE: In this last epoch (cnnTrained) #" + str(self.topMeanValidationAccuracyAchievedInEpoch[1]) + " the CNN achieved a new highest mean validation accuracy of: " + str(self.topMeanValidationAccuracyAchievedInEpoch[0]) )
+                                                                        myLogger,
+                                                                        meanValidationAccuracyOfLastEpoch,
+                                                                        minIncreaseInValidationAccuracyConsideredForLrSchedule) :
+        #Called at the end of an epoch, right before increasing self.numberOfEpochsTrained
+        highestAchievedValidationAccuracyOfCnn = self.topMeanValidationAccuracyAchievedInEpoch[0]
+        if meanValidationAccuracyOfLastEpoch > highestAchievedValidationAccuracyOfCnn + minIncreaseInValidationAccuracyConsideredForLrSchedule :
+                self.topMeanValidationAccuracyAchievedInEpoch[0] = meanValidationAccuracyOfLastEpoch
+                self.topMeanValidationAccuracyAchievedInEpoch[1] = self.numberOfEpochsTrained
+                myLogger.print3("UPDATE: In this last epoch (cnnTrained) #" + str(self.topMeanValidationAccuracyAchievedInEpoch[1]) + " the CNN achieved a new highest mean validation accuracy of: " + str(self.topMeanValidationAccuracyAchievedInEpoch[0]) )
 
 
     def freeGpuTrainingData(self) :
-	self.sharedTrainingNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
-	self.sharedTrainingSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
-	self.sharedTrainingNiiLabels_y.set_value(np.zeros([1,1,1,1], dtype="float32"))# = []
+        self.sharedTrainingNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
+        self.sharedTrainingSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
+        self.sharedTrainingNiiLabels_y.set_value(np.zeros([1,1,1,1], dtype="float32"))# = []
 
     def freeGpuValidationData(self) :
-	self.sharedValidationNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
-	self.sharedValidationSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
-	self.sharedValidationNiiLabels_y.set_value(np.zeros([1,1,1,1], dtype="float32"))# = []
+        self.sharedValidationNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
+        self.sharedValidationSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
+        self.sharedValidationNiiLabels_y.set_value(np.zeros([1,1,1,1], dtype="float32"))# = []
 
     def freeGpuTestingData(self) :
-	self.sharedTestingNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
-	self.sharedTestingSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
+        self.sharedTestingNiiData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))# = []
+        self.sharedTestingSubsampledData_x.set_value(np.zeros([1,1,1,1,1], dtype="float32"))
 
     def _checkTrainingStateAttributesInitialized(self):
         return self._trainingStateAttributesInitialized
@@ -320,50 +320,50 @@ class Cnn3d(object):
 
     def makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(self,
                                                         myLogger,
-							thisPathwayType,
-							thisPathWayNKerns,
-							thisPathWayKernelDimensions,
-							inputImageToPathway,
-							inputImageToPathwayInference,
-							inputImageToPathwayTesting,
-							numberOfImageChannelsToPathway,
-							imagePartDimensionsTraining,
-							imagePartDimensionsValidation,
-							imagePartDimensionsTesting,
+                                                        thisPathwayType,
+                                                        thisPathWayNKerns,
+                                                        thisPathWayKernelDimensions,
+                                                        inputImageToPathway,
+                                                        inputImageToPathwayInference,
+                                                        inputImageToPathwayTesting,
+                                                        numberOfImageChannelsToPathway,
+                                                        imagePartDimensionsTraining,
+                                                        imagePartDimensionsValidation,
+                                                        imagePartDimensionsTesting,
                                                         applyBnToInputOfPathway, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
-							rollingAverageForBatchNormalizationOverThatManyBatches,
-							maxPoolingParamsStructureForThisPathwayType,
-							initializationTechniqueClassic0orDelvingInto1,
-							activationFunctionToUseRelu0orPrelu1,
-							thisPathwayDropoutRates=[],
+                                                        rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                        maxPoolingParamsStructureForThisPathwayType,
+                                                        initializationTechniqueClassic0orDelvingInto1,
+                                                        activationFunctionToUseRelu0orPrelu1,
+                                                        thisPathwayDropoutRates=[],
                                                         indicesOfLayersToConnectResidualsInOutputForPathway=[],
                                                         indicesOfLowerRankLayersForPathway=[],
                                                         ranksOfLowerRankLayersForPathway = []
-							) :
+                                                        ) :
 
-	rng = numpy.random.RandomState(55789)
+        rng = numpy.random.RandomState(55789)
 
-	shapeOfInputImageToPathway = [self.batchSize, numberOfImageChannelsToPathway] + imagePartDimensionsTraining
-	shapeOfInputImageToPathwayValidation = [self.batchSizeValidation, numberOfImageChannelsToPathway] + imagePartDimensionsValidation
-	shapeOfInputImageToPathwayTesting = [self.batchSizeTesting, numberOfImageChannelsToPathway] + imagePartDimensionsTesting
+        shapeOfInputImageToPathway = [self.batchSize, numberOfImageChannelsToPathway] + imagePartDimensionsTraining
+        shapeOfInputImageToPathwayValidation = [self.batchSizeValidation, numberOfImageChannelsToPathway] + imagePartDimensionsValidation
+        shapeOfInputImageToPathwayTesting = [self.batchSizeTesting, numberOfImageChannelsToPathway] + imagePartDimensionsTesting
 
-	inputImageToNextLayer = inputImageToPathway
-	inputImageToNextLayerInference = inputImageToPathwayInference
-	inputImageToNextLayerTesting = inputImageToPathwayTesting
-	inputImageToNextLayerShape = shapeOfInputImageToPathway
-	inputImageToNextLayerShapeValidation = shapeOfInputImageToPathwayValidation
-	inputImageToNextLayerShapeTesting = shapeOfInputImageToPathwayTesting
+        inputImageToNextLayer = inputImageToPathway
+        inputImageToNextLayerInference = inputImageToPathwayInference
+        inputImageToNextLayerTesting = inputImageToPathwayTesting
+        inputImageToNextLayerShape = shapeOfInputImageToPathway
+        inputImageToNextLayerShapeValidation = shapeOfInputImageToPathwayValidation
+        inputImageToNextLayerShapeTesting = shapeOfInputImageToPathwayTesting
 
-	for layer_i in xrange(0, len(thisPathWayNKerns)) :
-		thisLayerFilterShape = [thisPathWayNKerns[layer_i],
-					inputImageToNextLayerShape[1], #number of feature maps of last layer.
-					thisPathWayKernelDimensions[layer_i][0],
-					thisPathWayKernelDimensions[layer_i][1],
-					thisPathWayKernelDimensions[layer_i][2]]
+        for layer_i in xrange(0, len(thisPathWayNKerns)) :
+                thisLayerFilterShape = [thisPathWayNKerns[layer_i],
+                                        inputImageToNextLayerShape[1], #number of feature maps of last layer.
+                                        thisPathWayKernelDimensions[layer_i][0],
+                                        thisPathWayKernelDimensions[layer_i][1],
+                                        thisPathWayKernelDimensions[layer_i][2]]
 
-		thisLayerDropoutRate = thisPathwayDropoutRates[layer_i] if thisPathwayDropoutRates else 0
+                thisLayerDropoutRate = thisPathwayDropoutRates[layer_i] if thisPathwayDropoutRates else 0
 
-		thisLayerMaxPoolingParameters = maxPoolingParamsStructureForThisPathwayType[layer_i]
+                thisLayerMaxPoolingParameters = maxPoolingParamsStructureForThisPathwayType[layer_i]
         
                 useBnInThisLayer = applyBnToInputOfPathway if layer_i == 0 and rollingAverageForBatchNormalizationOverThatManyBatches > 0 else rollingAverageForBatchNormalizationOverThatManyBatches > 0
                 activationFunctionToUseRelu0orPrelu1orMinus1ForLinear = -1 if layer_i == 0 and thisPathwayType <> self.CNN_PATHWAY_FC else activationFunctionToUseRelu0orPrelu1
@@ -371,7 +371,7 @@ class Cnn3d(object):
                     layer = cnnLayerTypes.LowRankConvLayer(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
                 else : # normal conv layer
                     layer = cnnLayerTypes.ConvLayer()
-		layer.makeLayer(rng,
+                layer.makeLayer(rng,
                         inputToLayerTrain=inputImageToNextLayer,
                         inputToLayerVal=inputImageToNextLayerInference,
                         inputToLayerTest=inputImageToNextLayerTesting,
@@ -387,7 +387,7 @@ class Cnn3d(object):
                         activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
                         dropoutRate=thisLayerDropoutRate
                         ) 
-		self.typesOfCnnLayers[thisPathwayType].append(layer)
+                self.typesOfCnnLayers[thisPathwayType].append(layer)
 
                 if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here
                     inputImageToNextLayer = layer.outputTrain
@@ -417,7 +417,7 @@ class Cnn3d(object):
                 inputImageToNextLayerShapeTesting = layer.outputShapeTest
 
         
-	return [inputImageToNextLayer, inputImageToNextLayerInference, inputImageToNextLayerTesting, inputImageToNextLayerShape, inputImageToNextLayerShapeValidation, inputImageToNextLayerShapeTesting]
+        return [inputImageToNextLayer, inputImageToNextLayerInference, inputImageToNextLayerTesting, inputImageToNextLayerShape, inputImageToNextLayerShapeValidation, inputImageToNextLayerShapeTesting]
 
 
     def repeatRczTheOutputOfLayerBySubsampleFactor(self, layerOutputToRepeat):
@@ -428,99 +428,99 @@ class Cnn3d(object):
         return expandedOutputRCZ
     
     def repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(self,
-									   layerOutputToRepeat,
-									   dimensionsOfFmToMatch ) :
-	# dimensionsOfFmToMatch should be [batch_size, numberOfFms, r, c , z]. I care for RCZ.
+                                                                           layerOutputToRepeat,
+                                                                           dimensionsOfFmToMatch ) :
+        # dimensionsOfFmToMatch should be [batch_size, numberOfFms, r, c , z]. I care for RCZ.
         expandedOutput = self.repeatRczTheOutputOfLayerBySubsampleFactor(layerOutputToRepeat)
-	# If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
+        # If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
         # I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
-	expandedOutput = expandedOutput[:,
-					:,
-					:dimensionsOfFmToMatch[2],
-					:dimensionsOfFmToMatch[3],
-					:dimensionsOfFmToMatch[4]]
-	return expandedOutput
+        expandedOutput = expandedOutput[:,
+                                        :,
+                                        :dimensionsOfFmToMatch[2],
+                                        :dimensionsOfFmToMatch[3],
+                                        :dimensionsOfFmToMatch[4]]
+        return expandedOutput
 
 
     def makeMultiscaleConnectionsForLayerType(self,
-					typeOfLayers_index,
-					convLayersToConnectToFirstFcForMultiscaleFromThisLayerType,
-					numberOfFmsOfInputToFirstFcLayer,
-					inputToFirstFcLayer,
-					inputToFirstFcLayerInference,
-					inputToFirstFcLayerTesting) :
+                                        typeOfLayers_index,
+                                        convLayersToConnectToFirstFcForMultiscaleFromThisLayerType,
+                                        numberOfFmsOfInputToFirstFcLayer,
+                                        inputToFirstFcLayer,
+                                        inputToFirstFcLayerInference,
+                                        inputToFirstFcLayerTesting) :
 
-	layersInThisPathway = self.typesOfCnnLayers[typeOfLayers_index]
+        layersInThisPathway = self.typesOfCnnLayers[typeOfLayers_index]
 
-	if typeOfLayers_index <> self.CNN_PATHWAY_SUBSAMPLED :
-		numberOfCentralVoxelsToGet = self.numberOfCentralVoxelsClassifiedPerDimension
-		numberOfCentralVoxelsToGetValidation = self.numberOfCentralVoxelsClassifiedPerDimensionValidation
-		numberOfCentralVoxelsToGetTesting = self.numberOfCentralVoxelsClassifiedPerDimensionTesting
+        if typeOfLayers_index <> self.CNN_PATHWAY_SUBSAMPLED :
+                numberOfCentralVoxelsToGet = self.numberOfCentralVoxelsClassifiedPerDimension
+                numberOfCentralVoxelsToGetValidation = self.numberOfCentralVoxelsClassifiedPerDimensionValidation
+                numberOfCentralVoxelsToGetTesting = self.numberOfCentralVoxelsClassifiedPerDimensionTesting
 
-	else : #subsampled pathway... You get one more voxel if they do not get divited by subsampleFactor exactly.
-		numberOfCentralVoxelsToGet = [ int(ceil(self.numberOfCentralVoxelsClassifiedPerDimension[0]*1.0/self.subsampleFactor[0])),
-						int(ceil(self.numberOfCentralVoxelsClassifiedPerDimension[1]*1.0/self.subsampleFactor[1])),
-						int(ceil(self.numberOfCentralVoxelsClassifiedPerDimension[2]*1.0/self.subsampleFactor[2]))]
-		numberOfCentralVoxelsToGetValidation = [ int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionValidation[0]*1.0/self.subsampleFactor[0])),
-						int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionValidation[1]*1.0/self.subsampleFactor[1])),
-						int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionValidation[2]*1.0/self.subsampleFactor[2]))]
-		numberOfCentralVoxelsToGetTesting = [ int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionTesting[0]*1.0/self.subsampleFactor[0])),
-						int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionTesting[1]*1.0/self.subsampleFactor[1])),
-						int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionTesting[2]*1.0/self.subsampleFactor[2]))
-						]
+        else : #subsampled pathway... You get one more voxel if they do not get divited by subsampleFactor exactly.
+                numberOfCentralVoxelsToGet = [ int(ceil(self.numberOfCentralVoxelsClassifiedPerDimension[0]*1.0/self.subsampleFactor[0])),
+                                                int(ceil(self.numberOfCentralVoxelsClassifiedPerDimension[1]*1.0/self.subsampleFactor[1])),
+                                                int(ceil(self.numberOfCentralVoxelsClassifiedPerDimension[2]*1.0/self.subsampleFactor[2]))]
+                numberOfCentralVoxelsToGetValidation = [ int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionValidation[0]*1.0/self.subsampleFactor[0])),
+                                                int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionValidation[1]*1.0/self.subsampleFactor[1])),
+                                                int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionValidation[2]*1.0/self.subsampleFactor[2]))]
+                numberOfCentralVoxelsToGetTesting = [ int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionTesting[0]*1.0/self.subsampleFactor[0])),
+                                                int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionTesting[1]*1.0/self.subsampleFactor[1])),
+                                                int(ceil(self.numberOfCentralVoxelsClassifiedPerDimensionTesting[2]*1.0/self.subsampleFactor[2]))
+                                                ]
 
-	for convLayer_i in convLayersToConnectToFirstFcForMultiscaleFromThisLayerType :
-		thisLayer = layersInThisPathway[convLayer_i]
-		outputOfLayer = thisLayer.outputTrain
-		outputOfLayerInference = thisLayer.outputVal
-		outputOfLayerTesting = thisLayer.outputTest
-			
-		middlePartOfFms = getMiddlePartOfFms(outputOfLayer, thisLayer.outputShapeTrain, numberOfCentralVoxelsToGet)
-		middlePartOfFmsInference = getMiddlePartOfFms(outputOfLayerInference, thisLayer.outputShapeVal, numberOfCentralVoxelsToGetValidation)
-		middlePartOfFmsTesting = getMiddlePartOfFms(outputOfLayerTesting, thisLayer.outputShapeTest, numberOfCentralVoxelsToGetTesting)
+        for convLayer_i in convLayersToConnectToFirstFcForMultiscaleFromThisLayerType :
+                thisLayer = layersInThisPathway[convLayer_i]
+                outputOfLayer = thisLayer.outputTrain
+                outputOfLayerInference = thisLayer.outputVal
+                outputOfLayerTesting = thisLayer.outputTest
+                        
+                middlePartOfFms = getMiddlePartOfFms(outputOfLayer, thisLayer.outputShapeTrain, numberOfCentralVoxelsToGet)
+                middlePartOfFmsInference = getMiddlePartOfFms(outputOfLayerInference, thisLayer.outputShapeVal, numberOfCentralVoxelsToGetValidation)
+                middlePartOfFmsTesting = getMiddlePartOfFms(outputOfLayerTesting, thisLayer.outputShapeTest, numberOfCentralVoxelsToGetTesting)
 
 
-		if typeOfLayers_index == self.CNN_PATHWAY_SUBSAMPLED :
-			shapeOfOutputOfLastLayerOf1stPathway = self.typesOfCnnLayers[self.CNN_PATHWAY_NORMAL][-1].outputShapeTrain
-			shapeOfOutputOfLastLayerOf1stPathwayValidation = self.typesOfCnnLayers[self.CNN_PATHWAY_NORMAL][-1].outputShapeVal
-			shapeOfOutputOfLastLayerOf1stPathwayTesting = self.typesOfCnnLayers[self.CNN_PATHWAY_NORMAL][-1].outputShapeTest
-			middlePartOfFms = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													middlePartOfFms,
-													shapeOfOutputOfLastLayerOf1stPathway )
-			middlePartOfFmsInference = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													middlePartOfFmsInference,
-													shapeOfOutputOfLastLayerOf1stPathwayValidation )
-			middlePartOfFmsTesting = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													middlePartOfFmsTesting,
-													shapeOfOutputOfLastLayerOf1stPathwayTesting )
+                if typeOfLayers_index == self.CNN_PATHWAY_SUBSAMPLED :
+                        shapeOfOutputOfLastLayerOf1stPathway = self.typesOfCnnLayers[self.CNN_PATHWAY_NORMAL][-1].outputShapeTrain
+                        shapeOfOutputOfLastLayerOf1stPathwayValidation = self.typesOfCnnLayers[self.CNN_PATHWAY_NORMAL][-1].outputShapeVal
+                        shapeOfOutputOfLastLayerOf1stPathwayTesting = self.typesOfCnnLayers[self.CNN_PATHWAY_NORMAL][-1].outputShapeTest
+                        middlePartOfFms = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
+                                                                                                        middlePartOfFms,
+                                                                                                        shapeOfOutputOfLastLayerOf1stPathway )
+                        middlePartOfFmsInference = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
+                                                                                                        middlePartOfFmsInference,
+                                                                                                        shapeOfOutputOfLastLayerOf1stPathwayValidation )
+                        middlePartOfFmsTesting = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
+                                                                                                        middlePartOfFmsTesting,
+                                                                                                        shapeOfOutputOfLastLayerOf1stPathwayTesting )
 
-		numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + thisLayer.getNumberOfFeatureMaps()
-		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, middlePartOfFms], axis=1)
-		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, middlePartOfFmsInference], axis=1)
-		inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, middlePartOfFmsTesting], axis=1)
+                numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + thisLayer.getNumberOfFeatureMaps()
+                inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, middlePartOfFms], axis=1)
+                inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, middlePartOfFmsInference], axis=1)
+                inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, middlePartOfFmsTesting], axis=1)
 
-	return [numberOfFmsOfInputToFirstFcLayer, inputToFirstFcLayer, inputToFirstFcLayerInference, inputToFirstFcLayerTesting]
+        return [numberOfFmsOfInputToFirstFcLayer, inputToFirstFcLayer, inputToFirstFcLayerInference, inputToFirstFcLayerTesting]
 
 
 
     #========================================OPTIMIZERS========================================
     """
-	From https://github.com/lisa-lab/pylearn2/pull/136#issuecomment-10381617 :
-	ClassicMomentum:
-	(1) v_t = mu * v_t-1 - lr * gradient_f(params_t)
-	(2) params_t = params_t-1 + v_t
-	(3) params_t = params_t-1 + mu * v_t-1 - lr * gradient_f(params_t-1)
+        From https://github.com/lisa-lab/pylearn2/pull/136#issuecomment-10381617 :
+        ClassicMomentum:
+        (1) v_t = mu * v_t-1 - lr * gradient_f(params_t)
+        (2) params_t = params_t-1 + v_t
+        (3) params_t = params_t-1 + mu * v_t-1 - lr * gradient_f(params_t-1)
 
-	Nesterov momentum:
-	(4) v_t = mu * v_t-1 - lr * gradient_f(params_t-1 + mu * v_t-1)
-	(5) params_t = params_t-1 + v_t
+        Nesterov momentum:
+        (4) v_t = mu * v_t-1 - lr * gradient_f(params_t-1 + mu * v_t-1)
+        (5) params_t = params_t-1 + v_t
 
-	alternate formulation for Nesterov momentum:
-	(6) v_t = mu * v_t-1 - lr * gradient_f(params_t-1)
-	(7) params_t = params_t-1 + mu * v_t - lr * gradient_f(params_t-1)
-	(8) params_t = params_t-1 + mu**2 * v_t-1 - (1+mu) * lr * gradient_f(params_t-1)
+        alternate formulation for Nesterov momentum:
+        (6) v_t = mu * v_t-1 - lr * gradient_f(params_t-1)
+        (7) params_t = params_t-1 + mu * v_t - lr * gradient_f(params_t-1)
+        (8) params_t = params_t-1 + mu**2 * v_t-1 - (1+mu) * lr * gradient_f(params_t-1)
 
-	Can also find help for optimizers in Lasagne: https://github.com/Lasagne/Lasagne/blob/master/lasagne/updates.py
+        Can also find help for optimizers in Lasagne: https://github.com/Lasagne/Lasagne/blob/master/lasagne/updates.py
     """
 
 
@@ -529,11 +529,11 @@ class Cnn3d(object):
         grads = T.grad(cost, paramsToOptDuringTraining)
         
         #========================= Momentum ===========================
-	self.velocities_forMom = []
+        self.velocities_forMom = []
         updates = []
 
-	#The below will be 1 if nonNormalized momentum, and (1-momentum) if I am using normalized momentum.
-	multiplierForCurrentGradUpdateForNonNormalizedOrNormalizedMomentum = 1.0 - self.momentum*self.momentumTypeNONNormalized0orNormalized1
+        #The below will be 1 if nonNormalized momentum, and (1-momentum) if I am using normalized momentum.
+        multiplierForCurrentGradUpdateForNonNormalizedOrNormalizedMomentum = 1.0 - self.momentum*self.momentumTypeNONNormalized0orNormalized1
 
         for param, grad  in zip(paramsToOptDuringTraining, grads) :
 
@@ -544,26 +544,26 @@ class Cnn3d(object):
             newVelocity = self.momentum*v - stepToGradientDirection
 
             if self.classicMomentum0OrNesterov1 == 0 :
-            	updateToParam = newVelocity
+                    updateToParam = newVelocity
             else : #Nesterov
-            	updateToParam = self.momentum*newVelocity - stepToGradientDirection
+                    updateToParam = self.momentum*newVelocity - stepToGradientDirection
 
             updates.append((v, newVelocity)) #I can do (1-mom)*learnRate*grad.
             updates.append((param, param + updateToParam))
 
-	return updates
+        return updates
 
     def getUpdatesAccordingToRmsProp(self, cost, params) :
-	#epsilon=1e-4 in paper. I got NaN in cost function when I ran it with this value. Worked ok with epsilon=1e-6.
+        #epsilon=1e-4 in paper. I got NaN in cost function when I ran it with this value. Worked ok with epsilon=1e-6.
 
-	#Code taken and updated (it was V2 of paper, updated to V8) from https://gist.github.com/Newmu/acb738767acb4788bac3
+        #Code taken and updated (it was V2 of paper, updated to V8) from https://gist.github.com/Newmu/acb738767acb4788bac3
         grads = T.grad(cost, params)
         updates = []
         self.accuGradSquare_listForAllParamsRmsProp = []
-	self.velocities_forMom = []
+        self.velocities_forMom = []
 
-	#The below will be 1 if nonNormalized momentum, and (1-momentum) if I am using normalized momentum.
-	multiplierForCurrentGradUpdateForNonNormalizedOrNormalizedMomentum = 1.0 - self.momentum*self.momentumTypeNONNormalized0orNormalized1
+        #The below will be 1 if nonNormalized momentum, and (1-momentum) if I am using normalized momentum.
+        multiplierForCurrentGradUpdateForNonNormalizedOrNormalizedMomentum = 1.0 - self.momentum*self.momentumTypeNONNormalized0orNormalized1
 
         for param, grad in zip(params, grads):
             accu = theano.shared(param.get_value()*0., broadcastable=param.broadcastable) #accumulates the mean of the grad's square.
@@ -579,9 +579,9 @@ class Cnn3d(object):
             newVelocity = self.momentum*v - stepToGradientDirection
 
             if self.classicMomentum0OrNesterov1 == 0 :
-            	updateToParam = newVelocity
+                    updateToParam = newVelocity
             else : #Nesterov
-            	updateToParam = self.momentum*newVelocity - stepToGradientDirection
+                    updateToParam = self.momentum*newVelocity - stepToGradientDirection
 
             updates.append((accu, accu_new))
             updates.append((v, newVelocity)) #I can do (1-mom)*learnRate*grad.
@@ -592,16 +592,16 @@ class Cnn3d(object):
 
     def getUpdatesAccordingToAdam(self, cost, params) :
         # Epsilon on paper was 10**(-8).
-	# Code is on par with version V8 of Kingma's paper.
+        # Code is on par with version V8 of Kingma's paper.
         grads = T.grad(cost, params)
 
         updates = []
 
-	self.i_adam = theano.shared(np.cast["float32"](0.)) #Current iteration
-	self.m_listForAllParamsAdam = [] #list of mean of grads for all parameters, for ADAM optimizer.
-	self.v_listForAllParamsAdam = [] #list of variances of grads for all parameters, for ADAM optimizer.
+        self.i_adam = theano.shared(np.cast["float32"](0.)) #Current iteration
+        self.m_listForAllParamsAdam = [] #list of mean of grads for all parameters, for ADAM optimizer.
+        self.v_listForAllParamsAdam = [] #list of variances of grads for all parameters, for ADAM optimizer.
 
-	i = self.i_adam
+        i = self.i_adam
         i_t = i + 1.
         fix1 = 1. - (self.b1_adam)**i_t
         fix2 = 1. - (self.b2_adam)**i_t
@@ -734,7 +734,7 @@ class Cnn3d(object):
         
     #NOTE: compileTrainFunction() changes the self.initialLearningRate. Which is used for the exponential schedule!
     def compileTrainFunction(self, myLogger) :
-	myLogger.print3("...Building the training function...")
+        myLogger.print3("...Building the training function...")
 
         if not self._checkTrainingStateAttributesInitialized() :
             myLogger.print3("ERROR: Prior to compiling the training function, training state attributes need to be initialized via a call of [Cnn3d.setTrainingStateAttributes(...)]. Exiting!"); exit(1)
@@ -742,114 +742,114 @@ class Cnn3d(object):
         self._initializeSharedVarsForXInputs()
         self._initializeSharedVarsForYInputs()
         
-	#symbolic variables needed:
-	index = T.lscalar()
-	x = self.layer0_input
-	xSubsampled = self.layer0_inputSubsampled
-	y = T.itensor4('y') # Input of the theano-compiled-function. Dimensions of y labels: [batchSize, r, c, z]
+        #symbolic variables needed:
+        index = T.lscalar()
+        x = self.layer0_input
+        xSubsampled = self.layer0_inputSubsampled
+        y = T.itensor4('y') # Input of the theano-compiled-function. Dimensions of y labels: [batchSize, r, c, z]
         # When storing data on the GPU it has to be stored as floats (floatX). Thus the sharedVariable is FloatX/32. Here this variable is cast as "int", to be used correctly in computations.
         intCastSharedTrainingNiiLabels_y = T.cast( self.sharedTrainingNiiLabels_y, 'int32')
-	inputVectorWeightsOfClassesInCostFunction = T.fvector() #These two were added to counter class imbalance by changing the weights in the cost function
-	weightPerClass = T.fvector() # a vector with 1 element per class.
+        inputVectorWeightsOfClassesInCostFunction = T.fvector() #These two were added to counter class imbalance by changing the weights in the cost function
+        weightPerClass = T.fvector() # a vector with 1 element per class.
 
         # ======= Create List Of Trained Parameters to be fit by gradient descent=======
-	paramsToOptDuringTraining = self._getTrainableParameters()
+        paramsToOptDuringTraining = self._getTrainableParameters()
 
         #==========================COST FUNCTION=======================
-	#The cost Function to use.
-	if self.costFunctionLetter == "L" :
-		costFromLastLayer = self.finalLayer.negativeLogLikelihood(y, weightPerClass)
-	else :
-		myLogger.print3("ERROR: Problem in make_cnn_model(). The parameter self.costFunctionLetter did not have an acceptable value( L,D,J ). Exiting."); exit(1)
+        #The cost Function to use.
+        if self.costFunctionLetter == "L" :
+                costFromLastLayer = self.finalLayer.negativeLogLikelihood(y, weightPerClass)
+        else :
+                myLogger.print3("ERROR: Problem in make_cnn_model(). The parameter self.costFunctionLetter did not have an acceptable value( L,D,J ). Exiting."); exit(1)
         
         cost = (costFromLastLayer
                 + self.L1_reg_constant * self._getL1RegCost()
                 + self.L2_reg_constant * self._getL2RegCost())
       
-	#============================OPTIMIZATION=============================
+        #============================OPTIMIZATION=============================
         updates = self._getUpdatesOfTrainableParameters(myLogger, cost, paramsToOptDuringTraining)
 
-	#================BATCH NORMALIZATION ROLLING AVERAGE UPDATES======================
-	updates = updates + self._getUpdatesForBnRollingAverage()
+        #================BATCH NORMALIZATION ROLLING AVERAGE UPDATES======================
+        updates = updates + self._getUpdatesForBnRollingAverage()
     
         #========================COMPILATION OF FUNCTIONS =================
 
-	if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
-		givensSet = { x: self.sharedTrainingNiiData_x[index * self.batchSize: (index + 1) * self.batchSize],
-				y: intCastSharedTrainingNiiLabels_y[index * self.batchSize: (index + 1) * self.batchSize],
-				weightPerClass: inputVectorWeightsOfClassesInCostFunction }
-	else :
-		givensSet = { x: self.sharedTrainingNiiData_x[index * self.batchSize: (index + 1) * self.batchSize],
-                		xSubsampled: self.sharedTrainingSubsampledData_x[index * self.batchSize: (index + 1) * self.batchSize],
-				y: intCastSharedTrainingNiiLabels_y[index * self.batchSize: (index + 1) * self.batchSize],
-				weightPerClass: inputVectorWeightsOfClassesInCostFunction }
+        if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
+                givensSet = { x: self.sharedTrainingNiiData_x[index * self.batchSize: (index + 1) * self.batchSize],
+                                y: intCastSharedTrainingNiiLabels_y[index * self.batchSize: (index + 1) * self.batchSize],
+                                weightPerClass: inputVectorWeightsOfClassesInCostFunction }
+        else :
+                givensSet = { x: self.sharedTrainingNiiData_x[index * self.batchSize: (index + 1) * self.batchSize],
+                                xSubsampled: self.sharedTrainingSubsampledData_x[index * self.batchSize: (index + 1) * self.batchSize],
+                                y: intCastSharedTrainingNiiLabels_y[index * self.batchSize: (index + 1) * self.batchSize],
+                                weightPerClass: inputVectorWeightsOfClassesInCostFunction }
 
-	myLogger.print3("...Compiling the function for training... (This may take a few minutes...)")
+        myLogger.print3("...Compiling the function for training... (This may take a few minutes...)")
         self.cnnTrainModel = theano.function(
-				[index, inputVectorWeightsOfClassesInCostFunction],
-				[cost] + self.finalLayer.getRpRnTpTnForTrain0OrVal1(y,0),
-				updates=updates,
-				givens = givensSet
-				)
+                                [index, inputVectorWeightsOfClassesInCostFunction],
+                                [cost] + self.finalLayer.getRpRnTpTnForTrain0OrVal1(y,0),
+                                updates=updates,
+                                givens = givensSet
+                                )
 
-	myLogger.print3("The training function was compiled.")
+        myLogger.print3("The training function was compiled.")
 
     def compileValidationFunction(self, myLogger) :
-	myLogger.print3("...Building the validation function...")
-	
-	#symbolic variables needed:
-	index = T.lscalar()
-	x = self.layer0_inputValidation
-	xSubsampled = self.layer0_inputSubsampledValidation
+        myLogger.print3("...Building the validation function...")
+        
+        #symbolic variables needed:
+        index = T.lscalar()
+        x = self.layer0_inputValidation
+        xSubsampled = self.layer0_inputSubsampledValidation
         y = T.itensor4('y') # Input of the theano-compiled-function. Dimensions of y labels: [batchSize, r, c, z]
         # When storing data on the GPU it has to be stored as floats (floatX). Thus the sharedVariable is FloatX/32. Here this variable is cast as "int", to be used correctly in computations.
         intCastSharedValidationNiiLabels_y = T.cast( self.sharedValidationNiiLabels_y, 'int32')
 
-	if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
-		givensSet = { x: self.sharedValidationNiiData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
-                		y: intCastSharedValidationNiiLabels_y[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation] }
-	else :
-		givensSet = { x: self.sharedValidationNiiData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
-                		xSubsampled: self.sharedValidationSubsampledData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
-                		y: intCastSharedValidationNiiLabels_y[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation] }
+        if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
+                givensSet = { x: self.sharedValidationNiiData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
+                                y: intCastSharedValidationNiiLabels_y[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation] }
+        else :
+                givensSet = { x: self.sharedValidationNiiData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
+                                xSubsampled: self.sharedValidationSubsampledData_x[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation],
+                                y: intCastSharedValidationNiiLabels_y[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation] }
 
-	myLogger.print3("...Compiling the function for validation... (This may take a few minutes...)")
+        myLogger.print3("...Compiling the function for validation... (This may take a few minutes...)")
         self.cnnValidateModel = theano.function(
-				[index],
-				self.finalLayer.getRpRnTpTnForTrain0OrVal1(y,1),
-				givens = givensSet
-				)
-   	myLogger.print3("The validation function was compiled.")
+                                [index],
+                                self.finalLayer.getRpRnTpTnForTrain0OrVal1(y,1),
+                                givens = givensSet
+                                )
+        myLogger.print3("The validation function was compiled.")
 
 
     def compileTestAndVisualisationFunction(self, myLogger) :
-	myLogger.print3("...Building the function for testing and visualisation of FMs...")
-	
-	#symbolic variables needed:
-	index = T.lscalar()
-	x = self.layer0_inputTesting
-	xSubsampled = self.layer0_inputSubsampledTesting
+        myLogger.print3("...Building the function for testing and visualisation of FMs...")
+        
+        #symbolic variables needed:
+        index = T.lscalar()
+        x = self.layer0_inputTesting
+        xSubsampled = self.layer0_inputSubsampledTesting
 
-	listToReturnWithAllTheFmActivationsAndPredictionsAppended = []
+        listToReturnWithAllTheFmActivationsAndPredictionsAppended = []
         for type_of_layer_i in xrange(0,len(self.typesOfCnnLayers)) : #0=simple pathway, 1 = subsampled pathway, 2 = fc layers, 3 = zoomedIn1.
             for layer_i in xrange(0, len(self.typesOfCnnLayers[type_of_layer_i])) : #each layer that this pathway/fc has.
-		listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(self.typesOfCnnLayers[type_of_layer_i][layer_i].fmsActivations([0,9999]))
+                listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(self.typesOfCnnLayers[type_of_layer_i][layer_i].fmsActivations([0,9999]))
 
         listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(self.finalLayer.predictionProbabilities())
         
-	if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
-		givensSet = { x: self.sharedTestingNiiData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] }
-	else :
-		givensSet = { x: self.sharedTestingNiiData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting],
-				xSubsampled: self.sharedTestingSubsampledData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] }
+        if not self.usingSubsampledPathway : # This is to avoid warning from theano for unused input (xSubsampled), in case I am not using the pathway.
+                givensSet = { x: self.sharedTestingNiiData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] }
+        else :
+                givensSet = { x: self.sharedTestingNiiData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting],
+                                xSubsampled: self.sharedTestingSubsampledData_x[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] }
 
-	myLogger.print3("...Compiling the function for testing and visualisation of FMs... (This may take a few minutes...)")
-	self.cnnTestAndVisualiseAllFmsFunction = theano.function(
-				                        [index],
-				                        listToReturnWithAllTheFmActivationsAndPredictionsAppended,
-				                        givens = givensSet
-				                    	)
-	myLogger.print3("The function for testing and visualisation of FMs was compiled.")
+        myLogger.print3("...Compiling the function for testing and visualisation of FMs... (This may take a few minutes...)")
+        self.cnnTestAndVisualiseAllFmsFunction = theano.function(
+                                                        [index],
+                                                        listToReturnWithAllTheFmActivationsAndPredictionsAppended,
+                                                        givens = givensSet
+                                                            )
+        myLogger.print3("The function for testing and visualisation of FMs was compiled.")
 
 
     def _getInputTensorsXToCnn(self):
@@ -934,12 +934,12 @@ class Cnn3d(object):
                        dataTypeX = 'float32',
                        ):
         """
-	maxPoolingParamsStructure: The padding of the function further below adds zeros. Zeros are not good, especially if I use PreLus. So I made mine, that pads by mirroring.
-	Be careful that, without this, if I have ds=2, str=1 and ignoreBorder=False, it still reduces the dimension of the image by 1. That's why I need this. To keep the dimensions stable.
-	It mirrors the last elements of each dimension as many times as it is given as arg.
-	"""
+        maxPoolingParamsStructure: The padding of the function further below adds zeros. Zeros are not good, especially if I use PreLus. So I made mine, that pads by mirroring.
+        Be careful that, without this, if I have ds=2, str=1 and ignoreBorder=False, it still reduces the dimension of the image by 1. That's why I need this. To keep the dimensions stable.
+        It mirrors the last elements of each dimension as many times as it is given as arg.
+        """
 
-	self.cnnModelName = cnnModelName
+        self.cnnModelName = cnnModelName
 
         # ============= Model Parameters Passed as arguments ================
         self.numberOfOutputClasses = numberOfOutputClasses
@@ -986,193 +986,193 @@ class Cnn3d(object):
         ######################
         myLogger.print3("...Building the CNN model...")
 
-	# Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
+        # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
         (layer0_input, layer0_inputValidation, layer0_inputTesting,
          layer0_inputSubsampled, layer0_inputSubsampledValidation, layer0_inputSubsampledTesting) = self._getInputTensorsXToCnn()
          
-	inputImageShape = (self.batchSize, numberOfImageChannelsPath1, imagePartDimensionsTraining[0], imagePartDimensionsTraining[1], imagePartDimensionsTraining[2])
-	inputImageShapeValidation = (self.batchSizeValidation, numberOfImageChannelsPath1, imagePartDimensionsValidation[0], imagePartDimensionsValidation[1], imagePartDimensionsValidation[2])
-	inputImageShapeTesting = (self.batchSizeTesting, numberOfImageChannelsPath1, imagePartDimensionsTesting[0], imagePartDimensionsTesting[1], imagePartDimensionsTesting[2])
+        inputImageShape = (self.batchSize, numberOfImageChannelsPath1, imagePartDimensionsTraining[0], imagePartDimensionsTraining[1], imagePartDimensionsTraining[2])
+        inputImageShapeValidation = (self.batchSizeValidation, numberOfImageChannelsPath1, imagePartDimensionsValidation[0], imagePartDimensionsValidation[1], imagePartDimensionsValidation[2])
+        inputImageShapeTesting = (self.batchSizeTesting, numberOfImageChannelsPath1, imagePartDimensionsTesting[0], imagePartDimensionsTesting[1], imagePartDimensionsTesting[2])
 
-	if self.usingSubsampledPathway : #Using subsampled pathway.
-		inputImageSubsampledShape = (self.batchSize, numberOfImageChannelsPath2, subsampledImagePartDimensionsTraining[0], subsampledImagePartDimensionsTraining[1], subsampledImagePartDimensionsTraining[2])
-		inputImageSubsampledShapeValidation = (self.batchSizeValidation, numberOfImageChannelsPath2, subsampledImagePartDimensionsValidation[0], subsampledImagePartDimensionsValidation[1], subsampledImagePartDimensionsValidation[2])
-		inputImageSubsampledShapeTesting = (self.batchSizeTesting, numberOfImageChannelsPath2, subsampledImagePartDimensionsTesting[0], subsampledImagePartDimensionsTesting[1], subsampledImagePartDimensionsTesting[2])
+        if self.usingSubsampledPathway : #Using subsampled pathway.
+                inputImageSubsampledShape = (self.batchSize, numberOfImageChannelsPath2, subsampledImagePartDimensionsTraining[0], subsampledImagePartDimensionsTraining[1], subsampledImagePartDimensionsTraining[2])
+                inputImageSubsampledShapeValidation = (self.batchSizeValidation, numberOfImageChannelsPath2, subsampledImagePartDimensionsValidation[0], subsampledImagePartDimensionsValidation[1], subsampledImagePartDimensionsValidation[2])
+                inputImageSubsampledShapeTesting = (self.batchSizeTesting, numberOfImageChannelsPath2, subsampledImagePartDimensionsTesting[0], subsampledImagePartDimensionsTesting[1], subsampledImagePartDimensionsTesting[2])
 
 
 
-	#=======================Make the FIRST (NORMAL) PATHWAY of the CNN=======================
-	thisPathwayType = self.CNN_PATHWAY_NORMAL
-	thisPathWayNKerns = nkerns
-	thisPathWayKernelDimensions = kernelDimensions
-	inputImageToPathway =  layer0_input
-	inputImageToPathwayInference = layer0_inputValidation
-	inputImageToPathwayTesting = layer0_inputTesting
+        #=======================Make the FIRST (NORMAL) PATHWAY of the CNN=======================
+        thisPathwayType = self.CNN_PATHWAY_NORMAL
+        thisPathWayNKerns = nkerns
+        thisPathWayKernelDimensions = kernelDimensions
+        inputImageToPathway =  layer0_input
+        inputImageToPathwayInference = layer0_inputValidation
+        inputImageToPathwayTesting = layer0_inputTesting
 
-	[outputNormalPathTrain,
+        [outputNormalPathTrain,
         outputNormalPathVal,
         outputNormalPathTest,
         dimensionsOfOutputFrom1stPathway,
-	dimensionsOfOutputFrom1stPathwayValidation,
-	dimensionsOfOutputFrom1stPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+        dimensionsOfOutputFrom1stPathwayValidation,
+        dimensionsOfOutputFrom1stPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                                                                 thisPathwayType,
-														thisPathWayNKerns,
-														thisPathWayKernelDimensions,
-														inputImageToPathway,
-														inputImageToPathwayInference,
-														inputImageToPathwayTesting,
-														numberOfImageChannelsPath1,
-														imagePartDimensionsTraining,
-														imagePartDimensionsValidation,
-														imagePartDimensionsTesting,
+                                                                                                                thisPathWayNKerns,
+                                                                                                                thisPathWayKernelDimensions,
+                                                                                                                inputImageToPathway,
+                                                                                                                inputImageToPathwayInference,
+                                                                                                                inputImageToPathwayTesting,
+                                                                                                                numberOfImageChannelsPath1,
+                                                                                                                imagePartDimensionsTraining,
+                                                                                                                imagePartDimensionsValidation,
+                                                                                                                imagePartDimensionsTesting,
                                                                                                                 applyBnToInputOfPathways[thisPathwayType],
-														rollingAverageForBatchNormalizationOverThatManyBatches,
-														maxPoolingParamsStructure[thisPathwayType],
-														initializationTechniqueClassic0orDelvingInto1,
-														activationFunctionToUseRelu0orPrelu1,
-														dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                                                                maxPoolingParamsStructure[thisPathwayType],
+                                                                                                                initializationTechniqueClassic0orDelvingInto1,
+                                                                                                                activationFunctionToUseRelu0orPrelu1,
+                                                                                                                dropoutRatesForAllPathways[thisPathwayType],
                                                                                                                 indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
                                                                                                                 indicesOfLowerRankLayersPerPathway[thisPathwayType],
                                                                                                                 ranksOfLowerRankLayersForEachPathway[thisPathwayType]
-														)
-	myLogger.print3("DEBUG: Shape of output of the FIRST PATH: (Train) "+str(dimensionsOfOutputFrom1stPathway)+\
+                                                                                                                )
+        myLogger.print3("DEBUG: Shape of output of the FIRST PATH: (Train) "+str(dimensionsOfOutputFrom1stPathway)+\
                          ", (Val) "+str(dimensionsOfOutputFrom1stPathwayValidation)+", (Test) "+str(dimensionsOfOutputFrom1stPathwayTesting))
         
-	inputToFirstFcLayer = outputNormalPathTrain
-	inputToFirstFcLayerInference = outputNormalPathVal
-	inputToFirstFcLayerTesting = outputNormalPathTest
-	numberOfFmsOfInputToFirstFcLayer = dimensionsOfOutputFrom1stPathway[1]
+        inputToFirstFcLayer = outputNormalPathTrain
+        inputToFirstFcLayerInference = outputNormalPathVal
+        inputToFirstFcLayerTesting = outputNormalPathTest
+        numberOfFmsOfInputToFirstFcLayer = dimensionsOfOutputFrom1stPathway[1]
 
-	#====================== Make the Multi-scale-in-net connections for Path-1 ===========================	
-	[numberOfFmsOfInputToFirstFcLayer, #updated after concatenations
-	inputToFirstFcLayer,
-	inputToFirstFcLayerInference,
-	inputToFirstFcLayerTesting] = self.makeMultiscaleConnectionsForLayerType(self.CNN_PATHWAY_NORMAL,
-										convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes[self.CNN_PATHWAY_NORMAL],
-										numberOfFmsOfInputToFirstFcLayer,
-										inputToFirstFcLayer,
-										inputToFirstFcLayerInference,
-										inputToFirstFcLayerTesting)
+        #====================== Make the Multi-scale-in-net connections for Path-1 ===========================        
+        [numberOfFmsOfInputToFirstFcLayer, #updated after concatenations
+        inputToFirstFcLayer,
+        inputToFirstFcLayerInference,
+        inputToFirstFcLayerTesting] = self.makeMultiscaleConnectionsForLayerType(self.CNN_PATHWAY_NORMAL,
+                                                                                convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes[self.CNN_PATHWAY_NORMAL],
+                                                                                numberOfFmsOfInputToFirstFcLayer,
+                                                                                inputToFirstFcLayer,
+                                                                                inputToFirstFcLayerInference,
+                                                                                inputToFirstFcLayerTesting)
 
 
-	#=======================Make the SECOND (SUBSAMPLED) PATHWAY of the CNN=============================
+        #=======================Make the SECOND (SUBSAMPLED) PATHWAY of the CNN=============================
 
-	if self.usingSubsampledPathway : #If there is actually a 2nd pathway in this model...
-		
-		thisPathwayType = self.CNN_PATHWAY_SUBSAMPLED
-		thisPathWayNKerns = nkernsSubsampled
-		thisPathWayKernelDimensions = kernelDimensionsSubsampled
-		inputImageToPathway =  layer0_inputSubsampled
-		inputImageToPathwayInference = layer0_inputSubsampledValidation
-		inputImageToPathwayTesting = layer0_inputSubsampledTesting
+        if self.usingSubsampledPathway : #If there is actually a 2nd pathway in this model...
+                
+                thisPathwayType = self.CNN_PATHWAY_SUBSAMPLED
+                thisPathWayNKerns = nkernsSubsampled
+                thisPathWayKernelDimensions = kernelDimensionsSubsampled
+                inputImageToPathway =  layer0_inputSubsampled
+                inputImageToPathwayInference = layer0_inputSubsampledValidation
+                inputImageToPathwayTesting = layer0_inputSubsampledTesting
 
-		[outputSubsampledPathTrain,
+                [outputSubsampledPathTrain,
                 outputSubsampledPathVal,
                 outputSubsampledPathTest,
                 dimensionsOfOutputFrom2ndPathway,
-		dimensionsOfOutputFrom2ndPathwayValidation,
-		dimensionsOfOutputFrom2ndPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                dimensionsOfOutputFrom2ndPathwayValidation,
+                dimensionsOfOutputFrom2ndPathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                                                                         thisPathwayType,
-															thisPathWayNKerns,
-															thisPathWayKernelDimensions,
-															inputImageToPathway,
-															inputImageToPathwayInference,
-															inputImageToPathwayTesting,
-															numberOfImageChannelsPath2,
-															subsampledImagePartDimensionsTraining,
-															subsampledImagePartDimensionsValidation,
-															subsampledImagePartDimensionsTesting,
+                                                                                                                        thisPathWayNKerns,
+                                                                                                                        thisPathWayKernelDimensions,
+                                                                                                                        inputImageToPathway,
+                                                                                                                        inputImageToPathwayInference,
+                                                                                                                        inputImageToPathwayTesting,
+                                                                                                                        numberOfImageChannelsPath2,
+                                                                                                                        subsampledImagePartDimensionsTraining,
+                                                                                                                        subsampledImagePartDimensionsValidation,
+                                                                                                                        subsampledImagePartDimensionsTesting,
                                                                                                                         applyBnToInputOfPathways[thisPathwayType],
-															rollingAverageForBatchNormalizationOverThatManyBatches,
-															maxPoolingParamsStructure[thisPathwayType],
-															initializationTechniqueClassic0orDelvingInto1,
-															activationFunctionToUseRelu0orPrelu1,
-															dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                        rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                                                                        maxPoolingParamsStructure[thisPathwayType],
+                                                                                                                        initializationTechniqueClassic0orDelvingInto1,
+                                                                                                                        activationFunctionToUseRelu0orPrelu1,
+                                                                                                                        dropoutRatesForAllPathways[thisPathwayType],
                                                                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
                                                                                                                         indicesOfLowerRankLayersPerPathway[thisPathwayType],
                                                                                                                         ranksOfLowerRankLayersForEachPathway[thisPathwayType]
                                                                                                                         )
-		myLogger.print3("DEBUG: Shape of output of the SECOND PATH: (Train) "+str(dimensionsOfOutputFrom2ndPathway)+\
+                myLogger.print3("DEBUG: Shape of output of the SECOND PATH: (Train) "+str(dimensionsOfOutputFrom2ndPathway)+\
                          ", (Val) "+str(dimensionsOfOutputFrom2ndPathwayValidation)+", (Test) "+str(dimensionsOfOutputFrom2ndPathwayTesting))
-		
-		expandedOutputOfLastLayerOfSecondCnnPathway = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													outputSubsampledPathTrain,
-													dimensionsOfOutputFrom1stPathway )
-		#For Validation with Subsampled pathway:
-		expandedOutputOfLastLayerOfSecondCnnPathwayInference = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													outputSubsampledPathVal,
-													dimensionsOfOutputFrom1stPathwayValidation )
-		#For Testing with Subsampled pathway:
-		expandedOutputOfLastLayerOfSecondCnnPathwayTesting = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
-													outputSubsampledPathTest,
-													dimensionsOfOutputFrom1stPathwayTesting )
-		
-		#====================================CONCATENATE the output of the 2 cnn-pathways=============================
-		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, expandedOutputOfLastLayerOfSecondCnnPathway], axis=1)
-		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, expandedOutputOfLastLayerOfSecondCnnPathwayInference], axis=1)
-		inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, expandedOutputOfLastLayerOfSecondCnnPathwayTesting], axis=1)
-		numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + dimensionsOfOutputFrom2ndPathway[1]
+                
+                expandedOutputOfLastLayerOfSecondCnnPathway = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
+                                                                                                        outputSubsampledPathTrain,
+                                                                                                        dimensionsOfOutputFrom1stPathway )
+                #For Validation with Subsampled pathway:
+                expandedOutputOfLastLayerOfSecondCnnPathwayInference = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
+                                                                                                        outputSubsampledPathVal,
+                                                                                                        dimensionsOfOutputFrom1stPathwayValidation )
+                #For Testing with Subsampled pathway:
+                expandedOutputOfLastLayerOfSecondCnnPathwayTesting = self.repeatRczTheOutputOfLayerBySubsampleFactorToMatchDimensionsOfOtherFm(
+                                                                                                        outputSubsampledPathTest,
+                                                                                                        dimensionsOfOutputFrom1stPathwayTesting )
+                
+                #====================================CONCATENATE the output of the 2 cnn-pathways=============================
+                inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, expandedOutputOfLastLayerOfSecondCnnPathway], axis=1)
+                inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, expandedOutputOfLastLayerOfSecondCnnPathwayInference], axis=1)
+                inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, expandedOutputOfLastLayerOfSecondCnnPathwayTesting], axis=1)
+                numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + dimensionsOfOutputFrom2ndPathway[1]
 
-		#====================== Make the Multi-scale-in-net connections for Path-2 ===========================	
-		[numberOfFmsOfInputToFirstFcLayer, #updated after concatenations
-		inputToFirstFcLayer,
-		inputToFirstFcLayerInference,
-		inputToFirstFcLayerTesting] = self.makeMultiscaleConnectionsForLayerType(self.CNN_PATHWAY_SUBSAMPLED,
-											convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes[self.CNN_PATHWAY_SUBSAMPLED],
-											numberOfFmsOfInputToFirstFcLayer,
-											inputToFirstFcLayer,
-											inputToFirstFcLayerInference,
-											inputToFirstFcLayerTesting)
+                #====================== Make the Multi-scale-in-net connections for Path-2 ===========================        
+                [numberOfFmsOfInputToFirstFcLayer, #updated after concatenations
+                inputToFirstFcLayer,
+                inputToFirstFcLayerInference,
+                inputToFirstFcLayerTesting] = self.makeMultiscaleConnectionsForLayerType(self.CNN_PATHWAY_SUBSAMPLED,
+                                                                                        convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes[self.CNN_PATHWAY_SUBSAMPLED],
+                                                                                        numberOfFmsOfInputToFirstFcLayer,
+                                                                                        inputToFirstFcLayer,
+                                                                                        inputToFirstFcLayerInference,
+                                                                                        inputToFirstFcLayerTesting)
 
 
 
-	#=======================Make the THIRD (ZOOMED IN) PATHWAY of the CNN=======================
-	if len(nkernsZoomedIn1)>0 :	
-		thisPathwayType = self.CNN_PATHWAY_ZOOMED1
-		thisPathWayNKerns = nkernsZoomedIn1
-		thisPathWayKernelDimensions = kernelDimensionsZoomedIn1
-		
-		imagePartDimensionsForZoomedPatch1Training = []; imagePartDimensionsForZoomedPatch1Validation=[]; imagePartDimensionsForZoomedPatch1Testing=[];
-		for dim_i in xrange(0, 3) :
-			imagePartDimensionsForZoomedPatch1Training.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimension[dim_i] -1)
-			imagePartDimensionsForZoomedPatch1Validation.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimensionValidation[dim_i] -1)
-			imagePartDimensionsForZoomedPatch1Testing.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimensionTesting[dim_i] -1)
+        #=======================Make the THIRD (ZOOMED IN) PATHWAY of the CNN=======================
+        if len(nkernsZoomedIn1)>0 :        
+                thisPathwayType = self.CNN_PATHWAY_ZOOMED1
+                thisPathWayNKerns = nkernsZoomedIn1
+                thisPathWayKernelDimensions = kernelDimensionsZoomedIn1
+                
+                imagePartDimensionsForZoomedPatch1Training = []; imagePartDimensionsForZoomedPatch1Validation=[]; imagePartDimensionsForZoomedPatch1Testing=[];
+                for dim_i in xrange(0, 3) :
+                        imagePartDimensionsForZoomedPatch1Training.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimension[dim_i] -1)
+                        imagePartDimensionsForZoomedPatch1Validation.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimensionValidation[dim_i] -1)
+                        imagePartDimensionsForZoomedPatch1Testing.append(self.zoomedInPatchDimensions[dim_i] + self.numberOfCentralVoxelsClassifiedPerDimensionTesting[dim_i] -1)
 
-		inputImageToPathway =  getMiddlePartOfFms(layer0_input, inputImageShape, imagePartDimensionsForZoomedPatch1Training)
-		inputImageToPathwayInference = getMiddlePartOfFms(layer0_inputValidation, inputImageShapeValidation, imagePartDimensionsForZoomedPatch1Validation)
-		inputImageToPathwayTesting = getMiddlePartOfFms(layer0_inputTesting, inputImageShapeTesting, imagePartDimensionsForZoomedPatch1Testing)
+                inputImageToPathway =  getMiddlePartOfFms(layer0_input, inputImageShape, imagePartDimensionsForZoomedPatch1Training)
+                inputImageToPathwayInference = getMiddlePartOfFms(layer0_inputValidation, inputImageShapeValidation, imagePartDimensionsForZoomedPatch1Validation)
+                inputImageToPathwayTesting = getMiddlePartOfFms(layer0_inputTesting, inputImageShapeTesting, imagePartDimensionsForZoomedPatch1Testing)
 
-		[outputZoomedPathTrain,
+                [outputZoomedPathTrain,
                 outputZoomedPathVal,
                 outputZoomedPathTest,
                 dimensionsOfOutputFromZoomed1Pathway,
-		dimensionsOfOutputFromZoomed1PathwayValidation,
-		dimensionsOfOutputFromZoomed1PathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                dimensionsOfOutputFromZoomed1PathwayValidation,
+                dimensionsOfOutputFromZoomed1PathwayTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                                                                         thisPathwayType,
-															thisPathWayNKerns,
-															thisPathWayKernelDimensions,
-															inputImageToPathway,
-															inputImageToPathwayInference,
-															inputImageToPathwayTesting,
-															numberOfImageChannelsPath1,
-															imagePartDimensionsForZoomedPatch1Training,
-															imagePartDimensionsForZoomedPatch1Validation,
-															imagePartDimensionsForZoomedPatch1Testing,
+                                                                                                                        thisPathWayNKerns,
+                                                                                                                        thisPathWayKernelDimensions,
+                                                                                                                        inputImageToPathway,
+                                                                                                                        inputImageToPathwayInference,
+                                                                                                                        inputImageToPathwayTesting,
+                                                                                                                        numberOfImageChannelsPath1,
+                                                                                                                        imagePartDimensionsForZoomedPatch1Training,
+                                                                                                                        imagePartDimensionsForZoomedPatch1Validation,
+                                                                                                                        imagePartDimensionsForZoomedPatch1Testing,
                                                                                                                         applyBnToInputOfPathways[thisPathwayType],
-															rollingAverageForBatchNormalizationOverThatManyBatches,
-															maxPoolingParamsStructure[thisPathwayType],
-															initializationTechniqueClassic0orDelvingInto1,
-															activationFunctionToUseRelu0orPrelu1,
-															dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                        rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                                                                        maxPoolingParamsStructure[thisPathwayType],
+                                                                                                                        initializationTechniqueClassic0orDelvingInto1,
+                                                                                                                        activationFunctionToUseRelu0orPrelu1,
+                                                                                                                        dropoutRatesForAllPathways[thisPathwayType],
                                                                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
                                                                                                                         indicesOfLowerRankLayersPerPathway[thisPathwayType],
                                                                                                                         ranksOfLowerRankLayersForEachPathway[thisPathwayType]
                                                                                                                         )
-		#====================================CONCATENATE the output of the ZoomedIn1 pathway=============================
-		inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, outputZoomedPathTrain], axis=1)
-		inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, outputZoomedPathVal], axis=1)
-		inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, outputZoomedPathTest], axis=1)
-		numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + dimensionsOfOutputFromZoomed1Pathway[1]
+                #====================================CONCATENATE the output of the ZoomedIn1 pathway=============================
+                inputToFirstFcLayer = T.concatenate([inputToFirstFcLayer, outputZoomedPathTrain], axis=1)
+                inputToFirstFcLayerInference = T.concatenate([inputToFirstFcLayerInference, outputZoomedPathVal], axis=1)
+                inputToFirstFcLayerTesting = T.concatenate([inputToFirstFcLayerTesting, outputZoomedPathTest], axis=1)
+                numberOfFmsOfInputToFirstFcLayer = numberOfFmsOfInputToFirstFcLayer + dimensionsOfOutputFromZoomed1Pathway[1]
 
 
 
@@ -1188,7 +1188,7 @@ class Cnn3d(object):
         inputOfFcPathwayImagePartDimsVal = [self.batchSizeValidation, numberOfFmsOfInputToFirstFcLayer] + dimensionsOfOutputFrom1stPathwayValidation[2:5]
         inputOfFcPathwayImagePartDimsTest = [self.batchSizeTesting, numberOfFmsOfInputToFirstFcLayer] + dimensionsOfOutputFrom1stPathwayTesting[2:5]
         voxelsToPadPerDim = [ kernelDim -1 for kernelDim in firstFcLayerAfterConcatenationKernelShape ]
-	(inputImageToPathway,
+        (inputImageToPathway,
         inputOfFcPathwayImagePartDimsTrain) = padImageWithMirroring( inputToFirstFcLayer, inputOfFcPathwayImagePartDimsTrain, voxelsToPadPerDim )
         (inputImageToPathwayInference,
          inputOfFcPathwayImagePartDimsVal) = padImageWithMirroring( inputToFirstFcLayerInference, inputOfFcPathwayImagePartDimsVal, voxelsToPadPerDim )
@@ -1197,62 +1197,62 @@ class Cnn3d(object):
         myLogger.print3("DEBUG: Shape of input to the FC PATH: (Train) "+str(inputOfFcPathwayImagePartDimsTrain)+\
                          ", (Val) "+str(inputOfFcPathwayImagePartDimsVal)+", (Test) "+str(inputOfFcPathwayImagePartDimsTest))
                 
-	if len(fcLayersFMs)>0 : 
-		thisPathwayType = self.CNN_PATHWAY_FC
-		thisPathWayNKerns = fcLayersFMs
-		thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape]
-		for fcLayer_i in xrange(1,len(fcLayersFMs)) :
-			thisPathWayKernelDimensions.append([1,1,1])
-		
-		[inputImageForFinalClassificationLayer,
+        if len(fcLayersFMs)>0 : 
+                thisPathwayType = self.CNN_PATHWAY_FC
+                thisPathWayNKerns = fcLayersFMs
+                thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape]
+                for fcLayer_i in xrange(1,len(fcLayersFMs)) :
+                        thisPathWayKernelDimensions.append([1,1,1])
+                
+                [inputImageForFinalClassificationLayer,
                 inputImageForFinalClassificationLayerInference,
                 inputImageForFinalClassificationLayerTesting,
                 shapeOfInputImageForFinalClassificationLayer,
-		shapeOfInputImageForFinalClassificationLayerValidation,
-		shapeOfInputImageForFinalClassificationLayerTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
+                shapeOfInputImageForFinalClassificationLayerValidation,
+                shapeOfInputImageForFinalClassificationLayerTesting] = self.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                                                                         thisPathwayType,
-															thisPathWayNKerns,
-															thisPathWayKernelDimensions,
-															inputImageToPathway,
-															inputImageToPathwayInference,
-															inputImageToPathwayTesting,
-															numberOfFmsOfInputToFirstFcLayer,
-															inputOfFcPathwayImagePartDimsTrain[2:5],
-															inputOfFcPathwayImagePartDimsVal[2:5],
-															inputOfFcPathwayImagePartDimsTest[2:5],
+                                                                                                                        thisPathWayNKerns,
+                                                                                                                        thisPathWayKernelDimensions,
+                                                                                                                        inputImageToPathway,
+                                                                                                                        inputImageToPathwayInference,
+                                                                                                                        inputImageToPathwayTesting,
+                                                                                                                        numberOfFmsOfInputToFirstFcLayer,
+                                                                                                                        inputOfFcPathwayImagePartDimsTrain[2:5],
+                                                                                                                        inputOfFcPathwayImagePartDimsVal[2:5],
+                                                                                                                        inputOfFcPathwayImagePartDimsTest[2:5],
                                                                                                                         True, # This should always be true for FC.
-															rollingAverageForBatchNormalizationOverThatManyBatches,
-															maxPoolingParamsStructure[thisPathwayType],
-															initializationTechniqueClassic0orDelvingInto1,
-															activationFunctionToUseRelu0orPrelu1,
-															dropoutRatesForAllPathways[thisPathwayType],
+                                                                                                                        rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                                                                        maxPoolingParamsStructure[thisPathwayType],
+                                                                                                                        initializationTechniqueClassic0orDelvingInto1,
+                                                                                                                        activationFunctionToUseRelu0orPrelu1,
+                                                                                                                        dropoutRatesForAllPathways[thisPathwayType],
                                                                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
                                                                                                                         indicesOfLowerRankLayersPerPathway[thisPathwayType],
                                                                                                                         ranksOfLowerRankLayersForEachPathway[thisPathwayType]
                                                                                                                         )
 
-		filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, fcLayersFMs[-1], 1, 1, 1]
-	else : #there is no extra FC layer, just the final FC-softmax.
-		inputImageForFinalClassificationLayer = inputImageToPathway
-		inputImageForFinalClassificationLayerInference = inputImageToPathwayInference
-		inputImageForFinalClassificationLayerTesting = inputImageToPathwayTesting
-		shapeOfInputImageForFinalClassificationLayer = inputOfFcPathwayImagePartDimsTrain
-		shapeOfInputImageForFinalClassificationLayerValidation = inputOfFcPathwayImagePartDimsVal
-		shapeOfInputImageForFinalClassificationLayerTesting = inputOfFcPathwayImagePartDimsTest
-		filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, numberOfFmsOfInputToFirstFcLayer] + firstFcLayerAfterConcatenationKernelShape
+                filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, fcLayersFMs[-1], 1, 1, 1]
+        else : #there is no extra FC layer, just the final FC-softmax.
+                inputImageForFinalClassificationLayer = inputImageToPathway
+                inputImageForFinalClassificationLayerInference = inputImageToPathwayInference
+                inputImageForFinalClassificationLayerTesting = inputImageToPathwayTesting
+                shapeOfInputImageForFinalClassificationLayer = inputOfFcPathwayImagePartDimsTrain
+                shapeOfInputImageForFinalClassificationLayerValidation = inputOfFcPathwayImagePartDimsVal
+                shapeOfInputImageForFinalClassificationLayerTesting = inputOfFcPathwayImagePartDimsTest
+                filterShapeForFinalClassificationLayer = [self.numberOfOutputClasses, numberOfFmsOfInputToFirstFcLayer] + firstFcLayerAfterConcatenationKernelShape
 
         #======================Make the FINAL FC CLASSIFICATION LAYER ===================================
-	myLogger.print3("DEBUG: Filter Shape of the final-FC-classification Layer: " + str(filterShapeForFinalClassificationLayer))
+        myLogger.print3("DEBUG: Filter Shape of the final-FC-classification Layer: " + str(filterShapeForFinalClassificationLayer))
         myLogger.print3("DEBUG: Shape of input to the Classification layer: (Train) "+str(shapeOfInputImageForFinalClassificationLayer)+\
                          ", (Val) "+str(shapeOfInputImageForFinalClassificationLayerValidation)+", (Test) "+str(shapeOfInputImageForFinalClassificationLayerTesting))
-	#The last classification FC layer + softmax.
-	dropoutRateForClassificationLayer = 0 if dropoutRatesForAllPathways[self.CNN_PATHWAY_FC] == [] else dropoutRatesForAllPathways[self.CNN_PATHWAY_FC][len(fcLayersFMs)]
+        #The last classification FC layer + softmax.
+        dropoutRateForClassificationLayer = 0 if dropoutRatesForAllPathways[self.CNN_PATHWAY_FC] == [] else dropoutRatesForAllPathways[self.CNN_PATHWAY_FC][len(fcLayersFMs)]
         classificationLayer = self._getClassificationLayer()
         classificationLayer.makeLayer(
             rng,
             inputToLayerTrain = inputImageForFinalClassificationLayer,
             inputToLayerVal = inputImageForFinalClassificationLayerInference,
-            inputToLayerTest = inputImageForFinalClassificationLayerTesting,		    
+            inputToLayerTest = inputImageForFinalClassificationLayerTesting,                    
             inputToLayerShapeTrain = shapeOfInputImageForFinalClassificationLayer,
             inputToLayerShapeVal = shapeOfInputImageForFinalClassificationLayerValidation,
             inputToLayerShapeTest = shapeOfInputImageForFinalClassificationLayerTesting,
