@@ -8,14 +8,13 @@
 import datetime
 
 class MyLogger :
-
-	loggerFileName = None
-
-	def print3(self, string) :
-	    print (string)    
-	    f = open(self.loggerFileName,'a')
-	    f.write(str(datetime.datetime.now())+" >> "+string+"\n")
-	    f.close()
-
-	def __init__(self, filenameAndPathOfLoggerTxt="logs/defaultLogFile.txt") :
-		self.loggerFileName = filenameAndPathOfLoggerTxt
+    loggerFileName = None
+    
+    def print3(self, string) :
+        print (string)    
+        f = open(self.loggerFileName,'a')
+        f.write(str(datetime.datetime.now())+" >> "+string+"\n")
+        f.close()
+    
+    def __init__(self, filenameAndPathOfLoggerTxt="logs/defaultLogFile.txt") :
+        self.loggerFileName = filenameAndPathOfLoggerTxt
