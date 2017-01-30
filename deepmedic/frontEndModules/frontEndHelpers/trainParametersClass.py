@@ -28,7 +28,7 @@ class TrainSessionParameters(object) :
     
     @staticmethod
     def errorRequireSamplMasksAreProbabMapsTrain() :
-            print "ERROR: Parameter \"samplingMasksAreProbabMapsTrain\" needed but not provided in config file. This parameters is needed when parameter \"useDefaultTrainingSamplingFromGtAndRoi\" = False, in order to know whether the provided masks are probability maps or segmentation labels. Please provide parameter in the form: samplingMasksAreProbabMapsTrain = True/False. True if the masks given at \"masksForPos(Neg)SamplingTrain\" are probability maps (can be non-normalized, like weights), or False if they are binary segmentation masks. Exiting."; exit(1) 
+        print "ERROR: Parameter \"samplingMasksAreProbabMapsTrain\" needed but not provided in config file. This parameters is needed when parameter \"useDefaultTrainingSamplingFromGtAndRoi\" = False, in order to know whether the provided masks are probability maps or segmentation labels. Please provide parameter in the form: samplingMasksAreProbabMapsTrain = True/False. True if the masks given at \"masksForPos(Neg)SamplingTrain\" are probability maps (can be non-normalized, like weights), or False if they are binary segmentation masks. Exiting."; exit(1) 
     errReqMasksTypeTr = errorRequireSamplMasksAreProbabMapsTrain
     @staticmethod
     def warnDefaultPosSamplMasksTrain() :
@@ -96,12 +96,12 @@ class TrainSessionParameters(object) :
                 mainOutputAbsFolder,
                 cnn3dInstance,
                 cnnModelFilepath,
-
+                
                 #==================TRAINING====================
                 folderForSessionCnnModels,
                 listWithAListPerCaseWithFilepathPerChannelTrain,
                 gtLabelsFilepathsTrain,
-
+                
                 #[Optionals]
                 #~~~~~~~~~Sampling~~~~~~~
                 roiMasksFilepathsTrain,
@@ -111,13 +111,13 @@ class TrainSessionParameters(object) :
                 samplingTypeTraining, # ForeBackgr0_uniform1_fullImage2_PerClass3
                 proportionOfSamplesPerCategoryTrain,
                 listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
-
+                
                 #~~~~~~~~Training Cycle ~~~~~~~
                 numberOfEpochs,
                 numberOfSubepochs,
                 numOfCasesLoadedPerSubepoch,
                 segmentsLoadedOnGpuPerSubepochTrain,
-
+                
                 #~~~~~~~ Learning Rate Schedule ~~~~~~~
                 #Auto requires performValidationOnSamplesThroughoutTraining and providedGtForValidationBool
                 stable0orAuto1orPredefined2orExponential3LrSchedule,
@@ -138,19 +138,19 @@ class TrainSessionParameters(object) :
                 performIntAugm,
                 sampleIntAugmShiftWithMuAndStd,
                 sampleIntAugmMultiWithMuAndStd,
-
+                
                 #==================VALIDATION=====================
                 performValidationOnSamplesThroughoutTraining,
                 performFullInferenceOnValidationImagesEveryFewEpochs,
                 #Required:
                 listWithAListPerCaseWithFilepathPerChannelVal,
                 gtLabelsFilepathsVal,
-
+                
                 segmentsLoadedOnGpuPerSubepochVal,
-
+                
                 #[Optionals]
                 roiMasksFilepathsVal, #For default sampling and for fast inference. Optional. Otherwise from whole image.
-
+                
                 #~~~~~~~~Full Inference~~~~~~~~
                 numberOfEpochsBetweenFullInferenceOnValImages,
                 #Output                                
@@ -164,13 +164,13 @@ class TrainSessionParameters(object) :
                 saveMultidimensionalImageWithAllFmsVal,
                 indicesOfFmsToVisualisePerPathwayAndLayerVal,
                 folderForFeaturesVal,
-
+                
                 #~~~~~~~~ Advanced Validation Sampling ~~~~~~~~~~
                 useDefaultUniformValidationSampling,
                 samplingTypeValidation, # ForeBackgr0_uniform1_fullImage2_PerClass3
                 proportionOfSamplesPerCategoryVal,
                 listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
-
+                
                 #==============Generic and Preprocessing===============
                 padInputImagesBool
 
@@ -272,7 +272,7 @@ class TrainSessionParameters(object) :
         else : # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
         self.providedGtVal = True if self.gtLabelsFilepathsVal <> None else False
-                
+        
         #[Optionals]
         self.providedRoiMasksVal = True if roiMasksFilepathsVal <> None else False #For fast inf.
         self.roiMasksFilepathsVal = roiMasksFilepathsVal if roiMasksFilepathsVal <> None else [] #Also for default sampling of neg segs.
@@ -306,7 +306,7 @@ class TrainSessionParameters(object) :
         self.numberOfEpochsBetweenFullInferenceOnValImages = numberOfEpochsBetweenFullInferenceOnValImages if numberOfEpochsBetweenFullInferenceOnValImages <> None else 1
         if self.numberOfEpochsBetweenFullInferenceOnValImages == 0 and self.performFullInferenceOnValidationImagesEveryFewEpochs :
             self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
-                
+            
         #predictions
         self.saveSegmentationVal = saveSegmentationVal if saveSegmentationVal <> None else True
         self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if (saveProbMapsBoolPerClassVal<>None and saveProbMapsBoolPerClassVal<>[]) else [True]*cnn3dInstance.numberOfOutputClasses

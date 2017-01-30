@@ -7,7 +7,7 @@
 
 import os
 def makeFoldersToSaveFilesForThisRun():
-        #Create folders for saving the prediction images:
+    #Create folders for saving the prediction images:
     parentFolderForSavingPredictedImages = folderToSavePredictionImages[:folderToSavePredictionImages.find("/")] #Usually should be ./predictions"
     if not os.path.exists(parentFolderForSavingPredictedImages) :
         os.mkdir(parentFolderForSavingPredictedImages)

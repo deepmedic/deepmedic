@@ -57,7 +57,7 @@ def setEnvironment(deviceString) :
     os.environ['THEANO_FLAGS']='on_unused_input=warn, mode=FAST_RUN,device=' + deviceString + ',floatX=float32,force_device=True'
 
 #################################################
-#                        MAIN                        #
+#                        MAIN                   #
 #################################################
 if __name__ == '__main__':
     cwd = os.getcwd()

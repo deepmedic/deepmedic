@@ -138,26 +138,26 @@ class TestSessionParameters(object) :
             validation0orTesting1,
             [self.saveSegmentation, self.saveProbMapsBoolPerClass],
             self.cnn3dInstance,
-
+            
             self.channelsFilepaths,
-
+            
             self.providedGt,
             self.gtLabelsFilepaths,
-
+            
             self.providedRoiMasks,
             self.roiMasksFilepaths,
-                
+            
             borrowFlag,
             self.filepathsToSavePredictionsForEachPatient,
-
+            
             #----Preprocessing------
             self.padInputImagesBool,
             self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-
+            
             #for extension
             self.useSameSubChannelsAsSingleScale,
             self.subsampledChannelsFilepaths,
-
+            
             #--------For FM visualisation---------
             self.saveIndividualFmImages,
             self.saveMultidimensionalImageWithAllFms,
@@ -166,7 +166,7 @@ class TestSessionParameters(object) :
             )
         
         return testTuple
-
+    
     def _makeFilepathsForPredictionsAndFeatures(self,
                                                 absPathToFolderForPredictionsFromSession,
                                                 absPathToFolderForFeaturesFromSession
