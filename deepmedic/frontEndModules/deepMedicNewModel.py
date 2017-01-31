@@ -48,7 +48,7 @@ class ModelConfig(object):
 	USE_SUBSAMPLED = "useSubsampledPathway"
 	#The below should be mirroring the pathway, otherwise let them specify them but throw warning all around that receptive field should stay the same!
 	N_FMS_SUBS = "numberFMsPerLayerSubsampled"
-	KERN_DIM_SUBS = "kernelDimensionsSubsampled"
+	KERN_DIM_SUBS = "kernelDimPerLayerSubsampled"
 	SUBS_FACTOR = "subsampleFactor"
 	RESID_CONN_LAYERS_SUBS = "layersWithResidualConnSubsampled"
 	LOWER_RANK_LAYERS_SUBS = "lowerRankLayersSubsampled"
