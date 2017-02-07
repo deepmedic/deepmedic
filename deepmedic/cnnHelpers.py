@@ -9,87 +9,74 @@ import numpy as np
 from genericHelpers import *
 import os
 
-def dump_cnn_to_gzip_file_dotSave(cnn_instance, filenameWithPathToSaveTo, logger=None) :
+# The API for these classes should resemble the API of Pathway and Cnn3d classes. But only what is needed by the sampling process of the training procedure.
+class PathwayWrapperForSampling(object):
+    # For CnnWrapperForSampling class.
+    def __init__(self, pathwayInstance) :
+        self._pType = pathwayInstance.pType()
+        self._subsFactor = pathwayInstance.subsFactor()
+        self._shapeOfInputTrainValTest = pathwayInstance.getShapeOfInput()
+        self._shapeOfOutputTrainValTest = pathwayInstance.getShapeOfOutput()
+    def pType(self):
+        return self._pType
+    def subsFactor(self):
+        return self._subsFactor
+    def getShapeOfInput(self):
+        return self._shapeOfInputTrainValTest
+    def getShapeOfOutput(self):
+        return self._shapeOfOutputTrainValTest
+        
+class CnnWrapperForSampling(object):
+    # Only for the parallel process used during training. So that it won't re-load theano etc. There was a problem with cnmem when reloading theano.
+    def __init__(self, cnn3dInstance) :
+        # Cnn
+        self.recFieldCnn = cnn3dInstance.recFieldCnn
+        self.batchSizeTrainValTest = [ cnn3dInstance.batchSize, cnn3dInstance.batchSizeValidation, cnn3dInstance.batchSizeTesting ]
+        self.finalTargetLayer_outputShapeTrainValTest = [cnn3dInstance.finalTargetLayer.outputShapeTrain,
+                                                        cnn3dInstance.finalTargetLayer.outputShapeVal,
+                                                        cnn3dInstance.finalTargetLayer.outputShapeTest ]
+        # Pathways related
+        self._numPathwaysThatRequireInput = cnn3dInstance.getNumPathwaysThatRequireInput()
+        self.numSubsPaths = cnn3dInstance.numSubsPaths
+        
+        self.pathways = []
+        for pathway_i in xrange(len(cnn3dInstance.pathways)) :
+            self.pathways.append( PathwayWrapperForSampling(cnn3dInstance.pathways[pathway_i]) )
+        
+    def getNumPathwaysThatRequireInput(self) :
+        return self._numPathwaysThatRequireInput
+    
+    
+def dump_cnn_to_gzip_file_dotSave(cnnInstance, filenameWithPathToSaveTo, logger=None) :
     filenameWithPathToSaveToDotSave = os.path.abspath(filenameWithPathToSaveTo + ".save")
-    cnn_instance.freeGpuTrainingData(); cnn_instance.freeGpuValidationData(); cnn_instance.freeGpuTestingData();
+    cnnInstance.freeGpuTrainingData(); cnnInstance.freeGpuValidationData(); cnnInstance.freeGpuTestingData();
+    # Clear out the compiled functions, so that they are not saved with the instance:
+    compiledFunctionTrain = cnnInstance.cnnTrainModel; cnnInstance.cnnTrainModel = ""
+    compiledFunctionVal = cnnInstance.cnnValidateModel; cnnInstance.cnnValidateModel = ""
+    compiledFunctionTest = cnnInstance.cnnTestModel; cnnInstance.cnnTestModel = ""
+    compiledFunctionVisualise = cnnInstance.cnnVisualiseFmFunction; cnnInstance.cnnVisualiseFmFunction = ""
     
     if logger <> None :
         logger.print3("Saving network to: "+str(filenameWithPathToSaveToDotSave))
     else:
         print("Saving network to: "+str(filenameWithPathToSaveToDotSave))
         
-    dump_object_to_gzip_file(cnn_instance, filenameWithPathToSaveToDotSave)
+    dump_object_to_gzip_file(cnnInstance, filenameWithPathToSaveToDotSave)
     
     if logger <> None :
         logger.print3("Model saved.")
     else:
         print("Model saved.")
         
+    # Restore instance's values, which were cleared for the saving of the instance:
+    cnnInstance.cnnTrainModel = compiledFunctionTrain
+    cnnInstance.cnnValidateModel = compiledFunctionVal
+    cnnInstance.cnnTestModel = compiledFunctionTest
+    cnnInstance.cnnVisualiseFmFunction = compiledFunctionVisualise
+    
     return filenameWithPathToSaveToDotSave
 
-def printParametersOfCnnRun(myLogger,
-                        costFunctionLetter,
-                        niiDimensions, imagePartDimensions, patchDimensions, nkerns, kernelDimensions,
-                        nkernsSubsampled, kernelDimensionsSubsampled, subsampleFactor, subsampledImagePartDimensions,
-                        fcLayersFMs,
-                        
-                        dropoutRatesForAllPathways, convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes, 
-                        
-                        imagePartDimensionsValidation, subsampledImagePartDimensionsValidation,
-                        imagePartDimensionsTesting, subsampledImagePartDimensionsTesting,
-                        
-                        learning_rate, lowerLrByStable0orAuto1schedule, minIncreaseInValidationAccuracyConsideredForLrSchedule, numEpochsToWaitBeforeLowerLR, divideLrBy, 
-                        numberOfEpochsToWeightTheClassesInTheCostFunction, momentum,  momentumTypeNONNormalized0orNormalized1, 
-                        L1_reg_constant, L2_reg_constant, softmaxTemperature,
-                        n_epochs,  number_of_subepochs, n_images_per_subepoch, batchSize, batchSizeValidation, batchSizeTesting,
-                        imagePartsLoadedInGpuPerSubepoch, imagePartsLoadedInGpuPerSubepochValidation,
-                        percentThatArePositiveSamplesTraining, percentThatArePositiveSamplesValidation,
-                        rollingAverageForBatchNormalizationOverThatManyBatches,
-                        
-                        listOfThePatientsFilepathNames, listOfThePatientsForValidationFilepathNames, channels_filenames,
-                        lesion_filename, maskWhereToGetPositiveSamplesDuringTraining_filename, 
-                        brain_mask_filename, maskWhereToGetNegativeSamplesDuringTraining_filename,
-                        maskWhereToGetPositiveSamplesDuringValidation_filename, maskWhereToGetNegativeSamplesDuringValidation_filename
-                        ) :
-    myLogger.print3("=================Printing parameters of this run===================")
-    myLogger.print3("*****Main architecture of the CNN*****")
-    myLogger.print3("costFunctionLetter="+str(costFunctionLetter))
-    myLogger.print3("niiDimensions="+str(niiDimensions)+", imagePartDimensions="+str(imagePartDimensions)+", patchDimensions="+str(patchDimensions))
-    myLogger.print3("nkerns="+str(nkerns)+" kernelDimensions="+str(kernelDimensions))
-    myLogger.print3("nkernsSubsampled="+str(nkernsSubsampled)+", kernelDimensionsSubsampled="+str(kernelDimensionsSubsampled)+", subsampleFactor="+str(subsampleFactor)+", subsampledImagePartDimensions="+str(subsampledImagePartDimensions))
-    myLogger.print3("fcLayersFMs="+str(fcLayersFMs))
-    
-    myLogger.print3("*****Secondary points of the architecture*****")
-    myLogger.print3("dropoutRatesForAllPathways="+str(dropoutRatesForAllPathways)+", convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes="+str(convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes))
-    
-    myLogger.print3("*****Part-dimesnions for efficient validation and testing*****")
-    myLogger.print3("imagePartDimensionsValidation="+str(imagePartDimensionsValidation)+" subsampledImagePartDimensionsValidation="+str(subsampledImagePartDimensionsValidation))
-    myLogger.print3("imagePartDimensionsTesting="+str(imagePartDimensionsTesting)+" subsampledImagePartDimensionsTesting="+str(subsampledImagePartDimensionsTesting))
-    
-    myLogger.print3("*****Training Schedule and relevant Parameters*****")
-    myLogger.print3("learning_rate="+str(learning_rate)+ " lowerLrByStable0orAuto1schedule=" +str(lowerLrByStable0orAuto1schedule) +" minIncreaseInValidationAccuracyConsideredForLrSchedule=" + str(minIncreaseInValidationAccuracyConsideredForLrSchedule))
-    myLogger.print3("numEpochsToWaitBeforeLowerLR="+str(numEpochsToWaitBeforeLowerLR)+", divideLrBy="+str(divideLrBy))
-    myLogger.print3("numberOfEpochsToWeightTheClassesInTheCostFunction="+str(numberOfEpochsToWeightTheClassesInTheCostFunction)+", momentum="+str(momentum) + " momentumTypeNONNormalized0orNormalized1=" + str(momentumTypeNONNormalized0orNormalized1))
-    myLogger.print3("L1_reg_constant="+str(L1_reg_constant)+", L2_reg_constant="+str(L2_reg_constant))
-    myLogger.print3("softmaxTemperature="+str(softmaxTemperature))
-    
-    myLogger.print3("n_epochs="+str(n_epochs)+", number_of_subepochs="+str(number_of_subepochs)+", n_images_per_subepoch="+str(n_images_per_subepoch))
-    myLogger.print3("batchSize="+str(batchSize)+" batchSizeValidation="+str(batchSizeValidation)+" batchSizeTesting="+str(batchSizeTesting))
-    myLogger.print3("imagePartsLoadedInGpuPerSubepoch="+str(imagePartsLoadedInGpuPerSubepoch)+", imagePartsLoadedInGpuPerSubepochValidation="+str(imagePartsLoadedInGpuPerSubepochValidation))
-    myLogger.print3("rollingAverageForBatchNormalizationOverThatManyBatches="+str(rollingAverageForBatchNormalizationOverThatManyBatches))
-    
-    myLogger.print3("***** The image files that were used *****")
-    myLogger.print3(">>>Filenames of the patients used for TRAINING in this run:"+str(listOfThePatientsFilepathNames))
-    myLogger.print3(">>>Filenames of the patients used for VALIDATION in this run:"+str(listOfThePatientsForValidationFilepathNames))
-    myLogger.print3(">>>Channels_filenames:"+str(channels_filenames))
-    myLogger.print3(">>>lesion_filename:"+str(lesion_filename)+", maskWhereToGetPositiveSamplesDuringTraining="+str(maskWhereToGetPositiveSamplesDuringTraining_filename))
-    myLogger.print3(">>>brain_mask_filename="+str(brain_mask_filename)+" maskWhereToGetNegativeSamplesDuringTraining_filename="+str(maskWhereToGetNegativeSamplesDuringTraining_filename))
-    myLogger.print3(">>>maskWhereToGetPositiveSamplesDuringValidation_filename="+str(maskWhereToGetPositiveSamplesDuringValidation_filename))
-    myLogger.print3(">>>maskWhereToGetNegativeSamplesDuringValidation_filename="+str(maskWhereToGetNegativeSamplesDuringValidation_filename))
-    
-    myLogger.print3("=================Finished printing all parameters of this model========")
-    
-    
+
 def calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(imagePartDimensions, patchDimensions, subsampleFactor) :
     """
     This function gives you how big your subsampled-image-part should be, so that it corresponds to the correct number of central-voxels in the normal-part. Currently, it's coupled with the patch-size of the normal-scale. I.e. the subsampled-patch HAS TO BE THE SAME SIZE as the normal-scale, and corresponds to subFactor*patchsize in context.
@@ -142,3 +129,4 @@ def checkSubsampleFactorEven(subFactor) :
         if subFactor[dim_i]%2 <> 1 :
             return False
     return True
+

@@ -73,10 +73,6 @@ class ModelConfig(object):
     DROP_R_SUBS = "dropoutRatesSubsampled"
     DROP_R_FC = "dropoutRatesFc"
     
-    #Regularization L1 and L2.
-    L1_REG = "L1_reg"
-    L2_REG = "L2_reg"
-    
     #Initialization method of the kernel weights. Classic is what I was using for my first year. "Delving Deep" for journal.
     INITIAL_METHOD = "initializeClassic0orDelving1"
     #Activation Function for all convolutional layers:
@@ -84,22 +80,8 @@ class ModelConfig(object):
     
     #Batch Normalization
     BN_ROLL_AV_BATCHES = "rollAverageForBNOverThatManyBatches"
-    
-    
-    #====OPTIMIZATION=====
-    LRATE = "learningRate"
-    OPTIMIZER = "sgd0orAdam1orRms2"
-    MOM_TYPE = "classicMom0OrNesterov1"
-    MOM = "momentumValue"
-    MOM_NORM_NONNORM = "momNonNorm0orNormalized1"
-    #Adam
-    B1_ADAM = "b1Adam"
-    B2_ADAM = "b2Adam"
-    EPS_ADAM = "epsilonAdam"
-    #RMS
-    RHO_RMS = "rhoRms"
-    EPS_RMS = "epsilonRms"
-    
+
+
 #The argument should be absolute path to the config file for the model to create.
 def deepMedicNewModelMain(modelConfigFilepath) :
     print "Given Model-Configuration File: ", modelConfigFilepath
@@ -166,26 +148,10 @@ def deepMedicNewModelMain(modelConfigFilepath) :
                     dropNormal=configGet(modelConfig.DROP_R_NORM),
                     dropSubsampled=configGet(modelConfig.DROP_R_SUBS),
                     dropFc=configGet(modelConfig.DROP_R_FC),
-                    #==Regularization==
-                    l1Reg=configGet(modelConfig.L1_REG),
-                    l2Reg=configGet(modelConfig.L2_REG),
                     #== Weight Initialization==
                     initialMethod=configGet(modelConfig.INITIAL_METHOD),
                     #== Batch Normalization ==
                     bnRollingAverOverThatManyBatches=configGet(modelConfig.BN_ROLL_AV_BATCHES),
-                    #====Optimization=====
-                    learningRate=configGet(modelConfig.LRATE),
-                    optimizerSgd0Adam1Rms2=configGet(modelConfig.OPTIMIZER),
-                    classicMom0Nesterov1=configGet(modelConfig.MOM_TYPE),
-                    momentumValue=configGet(modelConfig.MOM),
-                    momNonNormalized0Normalized1=configGet(modelConfig.MOM_NORM_NONNORM),
-                    #Adam
-                    b1Adam=configGet(modelConfig.B1_ADAM),
-                    b2Adam=configGet(modelConfig.B2_ADAM),
-                    eAdam=configGet(modelConfig.EPS_ADAM),
-                    #Rms
-                    rhoRms=configGet(modelConfig.RHO_RMS),
-                    eRms=configGet(modelConfig.EPS_RMS)
                     )
     
     
@@ -196,14 +162,9 @@ def deepMedicNewModelMain(modelConfigFilepath) :
     cnn3dInstance = Cnn3d()
     cnn3dInstance.make_cnn_model(*createModelSessionParameters.getTupleForCnnCreation())
     
-    cnn3dInstance.initializeTrainingState(*createModelSessionParameters.getTupleForInitializingTrainingState())
-    cnn3dInstance.compileTrainFunction(*createModelSessionParameters.getTupleForCompilationOfTrainFunc())
-    cnn3dInstance.compileValidationFunction(*createModelSessionParameters.getTupleForCompilationOfValFunc())
-    cnn3dInstance.compileTestAndVisualisationFunction(*createModelSessionParameters.getTupleForCompilationOfTestFunc())
-    
     filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial." + datetimeNowAsStr()
     filenameAndPathWhereModelWasSaved =  dump_cnn_to_gzip_file_dotSave(cnn3dInstance, filenameAndPathToSaveModel, sessionLogger)
-    
     createModelSessionParameters.sessionLogger.print3("=========== Creation of the model: \"" + str(createModelSessionParameters.cnnModelName) +"\" finished =================")
+    
     return (cnn3dInstance, filenameAndPathWhereModelWasSaved)
 

@@ -57,14 +57,13 @@ class TestConfig(object):
     INDICES_OF_FMS_TO_SAVE_FC = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathway"
     
     def checkIfConfigIsCorrectForParticularCnnModel(self, cnnInstance) :
+        # DEPRECATED
         print "Checking if configuration is correct in relation to the loaded model (correct number of input channels, number of classes, etc) ..."
         #Check whether the given channels are as many as the channels when the model was built.
         if len(self.configStruct[self.CHANNELS]) <> cnnInstance.numberOfImageChannelsPath1 :
             print "ERROR:\tConfiguration parameter \"", self.configStruct[self.CHANNELS], "\" should have the same number of elements as the number of channels specified when constructing the cnnModel!\n\tCnnModel was constructed to take as input #", cnnInstance.numberOfImageChannelsPath1, " while the list given in the config-file contained #", len(self.configStruct[self.CHANNELS]), " elements."
             print "ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConst.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"; exit(1)
         #NOTE: Currently not checking the subsampled path, cause user is only allowed to use the same channels as the normal pathway. But should be possible in the future.
-        #cnnInstance.numberOfImageChannelsPath2
-        usingSubsampledWaypath = len(cnnInstance.cnnLayersSubsampled)>0
         
         #Check whether the boolean list that saves whether to save the prob-maps has same number of elements as the classes the model has.
         if self.configStruct[self.SAVE_PROBMAPS_PER_CLASS] and len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]) <> cnnInstance.numberOfOutputClasses :
@@ -74,7 +73,7 @@ class TestConfig(object):
             
         #Check that the lists that say which featureMaps to save in each layer have the correct amount of entries, same as each pathway's layers.
         savingFms = self.configStruct[self.SAVE_INDIV_FMS] or self.configStruct[self.SAVE_4DIM_FMS]
-        numNormLayers = len(cnnInstance.cnnLayers); numSubsLayers = len(cnnInstance.cnnLayersSubsampled); numFcLayers = len(cnnInstance.fcLayers)
+        numNormLayers = len(cnnInstance.pathways[cnnInstance.CNN_PATHWAY_NORMAL].getLayers()); numSubsLayers = len(cnnInstance.pathways[cnnInstance.CNN_PATHWAY_SUBSAMPLED].getLayers()); numFcLayers = len(cnnInstance.pathways[cnnInstance.CNN_PATHWAY_FC].getLayers())
         numLayerEntriesGivenNorm =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_NORMAL] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_NORMAL])
         numLayerEntriesGivenSubs =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED])
         numLayerEntriesGivenFc =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC])
@@ -275,7 +274,7 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
                     gtLabelsFilepaths = gtLabelsFilepaths,
                     roiMasksFilepaths = roiMasksFilepaths,
                     
-                    #Output                                
+                    #Output
                     namesToSavePredictionsAndFeatures = namesToSavePredsAndFeats,
                     #predictions
                     saveSegmentation = configGet(testConfig.SAVE_SEGM),
@@ -285,9 +284,9 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
                     #features:
                     saveIndividualFmImages = configGet(testConfig.SAVE_INDIV_FMS),
                     saveMultidimensionalImageWithAllFms = configGet(testConfig.SAVE_4DIM_FMS),
-                    indicesOfFmsToVisualisePerPathwayAndLayer = [configGet(testConfig.INDICES_OF_FMS_TO_SAVE_NORMAL),
-                                                                configGet(testConfig.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED),
-                                                                configGet(testConfig.INDICES_OF_FMS_TO_SAVE_FC)
+                    indicesOfFmsToVisualisePerPathwayAndLayer = [configGet(testConfig.INDICES_OF_FMS_TO_SAVE_NORMAL)] +\
+                                                                [configGet(testConfig.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED)] +\
+                                                                [configGet(testConfig.INDICES_OF_FMS_TO_SAVE_FC)
                                                                 ],
                     folderForFeatures = folderForFeatures,
                     
@@ -296,6 +295,11 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     
     testSessionParameters.sessionLogger.print3("===========       NEW TESTING SESSION         ===============")
     testSessionParameters.printParametersOfThisSession()
+    
+    testSessionParameters.sessionLogger.print3("=======================================================")
+    testSessionParameters.sessionLogger.print3("=========== Compiling the Testing Function ============")
+    testSessionParameters.sessionLogger.print3("=======================================================")
+    cnn3dInstance.compileTestAndVisualisationFunction(*testSessionParameters.getTupleForCompilationOfTestFunc())
     
     testSessionParameters.sessionLogger.print3("======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing with the CNN model ===============")

@@ -83,7 +83,19 @@ class TrainSessionParameters(object) :
         return None
     warnDefNegMasksVal = warnDefaultNegSamplMasksVal
     
-    
+    @staticmethod
+    def errorRequireOptimizer012() :
+        print "ERROR: The parameter \"sgd0orAdam1orRms2\" must be given 0,1 or 2. Omit for default. Exiting!"; exit(1)
+    @staticmethod
+    def errorRequireMomentumClass0Nestov1() :
+        print "ERROR: The parameter \"classicMom0OrNesterov1\" must be given 0 or 1. Omit for default. Exiting!"; exit(1)
+    @staticmethod
+    def errorRequireMomValueBetween01() :
+        print "ERROR: The parameter \"momentumValue\" must be given between 0.0 and 1.0 Omit for default. Exiting!"; exit(1)
+    @staticmethod
+    def errorRequireMomNonNorm0Norm1() :
+        print "ERROR: The parameter \"momNonNorm0orNormalized1\" must be given 0 or 1. Omit for default. Exiting!"; exit(1)
+        
     # Deprecated :
     @staticmethod
     def errorDeprecatedPercPosTraining():
@@ -171,9 +183,25 @@ class TrainSessionParameters(object) :
                 proportionOfSamplesPerCategoryVal,
                 listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
                 
+                #====Optimization=====
+                learningRate,
+                optimizerSgd0Adam1Rms2,
+                classicMom0Nesterov1,
+                momentumValue,
+                momNonNormalized0Normalized1,
+                #Adam
+                b1Adam,
+                b2Adam,
+                eAdam,
+                #Rms
+                rhoRms,
+                eRms,
+                #Regularization
+                l1Reg,
+                l2Reg,
+                
                 #==============Generic and Preprocessing===============
                 padInputImagesBool
-
                 ):
         
         #Importants for running session.
@@ -309,13 +337,12 @@ class TrainSessionParameters(object) :
             
         #predictions
         self.saveSegmentationVal = saveSegmentationVal if saveSegmentationVal <> None else True
-        self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if (saveProbMapsBoolPerClassVal<>None and saveProbMapsBoolPerClassVal<>[]) else [True]*cnn3dInstance.numberOfOutputClasses
+        self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if (saveProbMapsBoolPerClassVal <> None and saveProbMapsBoolPerClassVal <> []) else [True]*cnn3dInstance.numberOfOutputClasses
         self.filepathsToSavePredictionsForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         #features:
         self.saveIndividualFmImagesVal = saveIndividualFmImagesVal if saveIndividualFmImagesVal <> None else False
         self.saveMultidimensionalImageWithAllFmsVal = saveMultidimensionalImageWithAllFmsVal if saveMultidimensionalImageWithAllFmsVal <> None else False
         self.indicesOfFmsToVisualisePerPathwayAndLayerVal = [item if item <> None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayerVal] #By default, save none.
-        self.indicesOfFmsToVisualisePerPathwayAndLayerVal.append([]) #for the Zoomed-in pathway. HIDDEN
         self.filepathsToSaveFeaturesForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Output:
@@ -342,11 +369,67 @@ class TrainSessionParameters(object) :
         
         self.numberOfEpochsToWeightTheClassesInTheCostFunction = 0
         
-        #layersOfLayerTypesToTrain = [[],[],[0,1,2],[]]# passing "all" to compileNewTrainFunction() trains them all. Else I need to have full entries for all layer-types, with the indices of the layers I want to get trained. Used with: cnn3dInstance.compileNewTrainFunction(myLogger, layersOfLayerTypesToTrain, learning_rate, momentum, costFunctionLetter)
-        
         self._makeFilepathsForPredictionsAndFeaturesVal( folderForPredictionsVal, folderForFeaturesVal )
         
+        #====Optimization=====
+        self.learningRate = learningRate if learningRate <> None else 0.001
+        self.optimizerSgd0Adam1Rms2 = optimizerSgd0Adam1Rms2 if optimizerSgd0Adam1Rms2 <> None else 2
+        if self.optimizerSgd0Adam1Rms2 == 0 :
+            self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
+            self.rhoRms = "placeholder"; self.eRms = "placeholder";
+        elif self.optimizerSgd0Adam1Rms2 == 1 :
+            self.b1Adam = b1Adam if b1Adam <> None else 0.9 #default in paper and seems good
+            self.b2Adam = b2Adam if b2Adam <> None else 0.999 #default in paper and seems good
+            self.eAdam = eAdam if eAdam else 10**(-8)
+            self.rhoRms = "placeholder"; self.eRms = "placeholder";
+        elif self.optimizerSgd0Adam1Rms2 == 2 :
+            self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
+            self.rhoRms = rhoRms if rhoRms <> None else 0.9 #default in paper and seems good
+            self.eRms = eRms if eRms <> None else 10**(-4) # 1e-6 was the default in the paper, but blew up the gradients in first try. Never tried 1e-5 yet.
+        else :
+            self.errorRequireOptimizer012()
+            
+        self.classicMom0Nesterov1 = classicMom0Nesterov1 if classicMom0Nesterov1 <> None else 1
+        if self.classicMom0Nesterov1 not in [0,1]:
+            self.errorRequireMomentumClass0Nestov1()
+        self.momNonNormalized0Normalized1 = momNonNormalized0Normalized1 if momNonNormalized0Normalized1 <> None else 1
+        if self.momNonNormalized0Normalized1 not in [0,1] :
+            self.errorRequireMomNonNorm0Norm1()
+        self.momentumValue = momentumValue if momentumValue <> None else 0.6
+        if self.momentumValue < 0. or self.momentumValue > 1:
+            self.errorRequireMomValueBetween01()
+            
+        #==Regularization==
+        self.l1Reg = l1Reg if l1Reg <> None else 0.000001
+        self.l2Reg = l2Reg if l2Reg <> None else 0.0001
         
+        #============= HIDDENS ==============
+        # passing "all" to layersOfLayerTypesToTrain trains them all. Else I need to have full entries for all layer-types, with the indices of the layers I want to get trained.
+        self.layersOfLayerTypesToTrain = "all" #[[],[],....,[0,1,2]
+        
+        self.costFunctionLetter = "L"
+        
+        """
+        #NOTES: variables that have to do with number of pathways: 
+                self.layersOfLayerTypesToTrain (="all" always currently. Hardcoded)
+                self.useSameSubChannelsAsSingleScale, (always True currently)
+                self.subsampledChannelsFilepathsTrain,
+                self.subsampledChannelsFilepathsVal, (Deprecated. But I should support it in future, cause it works well for non-scale pathways)
+                indicesOfFmsToVisualisePerPathwayAndLayerVal (Repeat subsampled!)
+        """
+    def _makeFilepathsForPredictionsAndFeaturesVal(self,
+                                            absPathToFolderForPredictionsFromSession,
+                                            absPathToFolderForFeaturesFromSession
+                                            ) :
+        self.filepathsToSavePredictionsForEachPatientVal = []
+        self.filepathsToSaveFeaturesForEachPatientVal = []
+        if self.namesToSavePredictionsAndFeaturesVal <> None :
+            for case_i in xrange(self.numberOfCasesVal) :
+                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
+                self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
+                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
+                self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
+                
     def printParametersOfThisSession(self) :
         logPrint = self.sessionLogger.print3
         logPrint("=============================================================")
@@ -434,6 +517,18 @@ class TrainSessionParameters(object) :
         logPrint("Min/Max Indices of FMs to visualise per pathway-type and per layer = " + str(self.indicesOfFmsToVisualisePerPathwayAndLayerVal))
         logPrint("Filepaths to save FMs per case = " + str(self.filepathsToSaveFeaturesForEachPatientVal))
         
+        logPrint("~~Optimization~~")
+        logPrint("Initial Learning rate = " + str(self.learningRate))
+        logPrint("Optimizer to use: SGD(0), Adam(1), RmsProp(2) = " + str(self.optimizerSgd0Adam1Rms2))
+        logPrint("Parameters for Adam: b1= " + str(self.b1Adam) + ", b2=" + str(self.b2Adam) + ", e= " + str(self.eAdam) )
+        logPrint("Parameters for RmsProp: rho= " + str(self.rhoRms) + ", e= " + str(self.eRms) )
+        logPrint("Momentum Type: Classic (0) or Nesterov (1) = " + str(self.classicMom0Nesterov1))
+        logPrint("Momentum Non-Normalized (0) or Normalized (1) = " + str(self.momNonNormalized0Normalized1))
+        logPrint("Momentum Value = " + str(self.momentumValue))
+        logPrint("~~L1/L2 Regularization~~")
+        logPrint("L1 Regularization term = " + str(self.l1Reg))
+        logPrint("L2 Regularization term = " + str(self.l2Reg))
+        
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
         logPrint("~~Pre Processing~~")
         logPrint("Pad Input Images = " + str(self.padInputImagesBool))
@@ -516,15 +611,43 @@ class TrainSessionParameters(object) :
         return trainTuple
     
     
-    def _makeFilepathsForPredictionsAndFeaturesVal( self,
-                                                    absPathToFolderForPredictionsFromSession,
-                                                    absPathToFolderForFeaturesFromSession
-                                                    ) :
-        self.filepathsToSavePredictionsForEachPatientVal = []
-        self.filepathsToSaveFeaturesForEachPatientVal = []
-        if self.namesToSavePredictionsAndFeaturesVal <> None :
-            for case_i in xrange(self.numberOfCasesVal) :
-                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
-                self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
-                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
-                self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
+    def getTupleForInitializingTrainingState(self) :
+        initializingTrainingStateTuple = (
+                        self.sessionLogger,
+                        
+                        self.layersOfLayerTypesToTrain,
+                        #=====COST FUNCTION=====
+                        self.costFunctionLetter,
+                        
+                        #=====OPTIMIZATION=====
+                        self.learningRate,
+                        self.optimizerSgd0Adam1Rms2,
+                        self.classicMom0Nesterov1, 
+                        self.momentumValue,
+                        self.momNonNormalized0Normalized1,
+                        self.b1Adam,
+                        self.b2Adam,
+                        self.eAdam,
+                        self.rhoRms,
+                        self.eRms,
+                        # Regularisation
+                        self.l1Reg,
+                        self.l2Reg
+                        )
+        
+        return initializingTrainingStateTuple
+
+    def getTupleForCompilationOfTrainFunc(self) :
+        trainFunctionCompilationTuple = ( self.sessionLogger, )
+        return trainFunctionCompilationTuple
+       
+    def getTupleForCompilationOfValFunc(self) :
+        valFunctionCompilationTuple = ( self.sessionLogger, )
+        return valFunctionCompilationTuple
+       
+    def getTupleForCompilationOfTestFunc(self) :
+        testFunctionCompilationTuple = ( self.sessionLogger, )
+        return testFunctionCompilationTuple
+
+
+

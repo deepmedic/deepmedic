@@ -59,13 +59,12 @@ class TestSessionParameters(object) :
         self.namesToSavePredictionsAndFeatures = namesToSavePredictionsAndFeatures #Required. Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
         #predictions
         self.saveSegmentation = saveSegmentation if saveSegmentation <> None else True
-        self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if (saveProbMapsBoolPerClass<>None and saveProbMapsBoolPerClass<>[]) else [True]*cnn3dInstance.numberOfOutputClasses
+        self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if (saveProbMapsBoolPerClass <> None and saveProbMapsBoolPerClass <> []) else [True]*cnn3dInstance.numberOfOutputClasses
         self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         #features:
         self.saveIndividualFmImages = saveIndividualFmImages if saveIndividualFmImages <> None else False
         self.saveMultidimensionalImageWithAllFms = saveMultidimensionalImageWithAllFms if saveMultidimensionalImageWithAllFms <> None else False
         self.indicesOfFmsToVisualisePerPathwayAndLayer = [item if item <> None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayer]
-        self.indicesOfFmsToVisualisePerPathwayAndLayer.append([]) #for the Zoomed-in pathway. HIDDEN
         self.filepathsToSaveFeaturesForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Preprocessing
@@ -83,6 +82,20 @@ class TestSessionParameters(object) :
         
         self._makeFilepathsForPredictionsAndFeatures( folderForPredictions, folderForFeatures )
         
+    def _makeFilepathsForPredictionsAndFeatures(self,
+                                            absPathToFolderForPredictionsFromSession,
+                                            absPathToFolderForFeaturesFromSession
+                                            ) :
+        self.filepathsToSavePredictionsForEachPatient = []
+        self.filepathsToSaveFeaturesForEachPatient = []
+        
+        if self.namesToSavePredictionsAndFeatures <> None :
+            for case_i in xrange(self.numberOfCases) :
+                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
+                self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
+                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
+                self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
+                
     def printParametersOfThisSession(self) :
         logPrint = self.sessionLogger.print3
         logPrint("=============================================================")
@@ -167,16 +180,11 @@ class TestSessionParameters(object) :
         
         return testTuple
     
-    def _makeFilepathsForPredictionsAndFeatures(self,
-                                                absPathToFolderForPredictionsFromSession,
-                                                absPathToFolderForFeaturesFromSession
-                                                ) :
-        self.filepathsToSavePredictionsForEachPatient = []
-        self.filepathsToSaveFeaturesForEachPatient = []
-        
-        if self.namesToSavePredictionsAndFeatures <> None :
-            for case_i in xrange(self.numberOfCases) :
-                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
-                self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
-                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
-                self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
+    def getTupleForCompilationOfTestFunc(self) :
+        testFunctionCompilationTuple = ( self.sessionLogger, )
+        return testFunctionCompilationTuple
+
+
+
+
+

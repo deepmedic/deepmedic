@@ -40,7 +40,9 @@ def parseAbsFileLinesInList(pathToListingFile) :
     list1 = []
     with open(pathToListingFile, "r") as inp :
         for line in inp :
-            if not line.startswith("#") and line.strip() <> "" :
+            if line.strip() == "-" : # symbol indicating the non existence of this channel. Will be zero-filled.
+                list1.append("-")
+            elif not line.startswith("#") and line.strip() <> "" :
                 pathToFileParsed = line.strip()
                 if os.path.isabs(pathToFileParsed) : #abs path.
                     list1.append(os.path.normpath(pathToFileParsed))

@@ -9,7 +9,6 @@ import os
 
 from deepmedic.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
 from deepmedic.cnnHelpers import checkReceptiveFieldFineInComparisonToSegmentSize
-from deepmedic.cnnHelpers import calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor
 from deepmedic.cnnHelpers import checkKernDimPerLayerCorrect3dAndNumLayers
 from deepmedic.cnnHelpers import checkSubsampleFactorEven
 
@@ -66,7 +65,7 @@ class CreateModelSessionParameters(object) :
     errReqKernDimNormal = errorRequireKernelDimensionsPerLayerNormal
     @staticmethod
     def errorRequireKernelDimensionsSubsampled(numFMsPerLayerNormal, numFMsPerLayerSubsampled) :
-        print "ERROR: It was requrested to use the 2-scale architecture, with a subsampled pathway. Because of limitations to the developed system, the two pathways must have the save size of receptive field. By default, if \"useSubsampledPathway\" = True, and the parameters \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" are not specified, the second pathway will be constructed symmetrical to the first. However, in this case, \"numberFMsPerLayerSubsampled\" was specified. It was found to have ", len(numFMsPerLayerSubsampled)," entries, which specified this amount of layers in the subsampled pathway. This is different than the number of layers in the Normal pathway, specified to be: ", len(numFMsPerLayerNormal),". In this case, we require you to also provide the parameter \"numberFMsPerLayerSubsampled\", specifying kernel dimensions in the subsampled pathway, in a fashion that results in same size of receptive field as the normal pathway."
+        print "ERROR: It was requested to use the 2-scale architecture, with a subsampled pathway. Because of limitations to the developed system, the two pathways must have the save size of receptive field. By default, if \"useSubsampledPathway\" = True, and the parameters \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" are not specified, the second pathway will be constructed symmetrical to the first. However, in this case, \"numberFMsPerLayerSubsampled\" was specified. It was found to have ", len(numFMsPerLayerSubsampled)," entries, which specified this amount of layers in the subsampled pathway. This is different than the number of layers in the Normal pathway, specified to be: ", len(numFMsPerLayerNormal),". In this case, we require you to also provide the parameter \"numberFMsPerLayerSubsampled\", specifying kernel dimensions in the subsampled pathway, in a fashion that results in same size of receptive field as the normal pathway."
         CreateModelSessionParameters.warnForSameReceptiveField()
         print "Exiting!"; exit(1)
     @staticmethod
@@ -97,18 +96,6 @@ class CreateModelSessionParameters(object) :
     errReqSegmDimTrain = errorRequireSegmentDimensionsTrain
     
     @staticmethod
-    def errorRequireOptimizer012() :
-        print "ERROR: The parameter \"sgd0orAdam1orRms2\" must be given 0,1 or 2. Omit for default. Exiting!"; exit(1)
-    @staticmethod
-    def errorRequireMomentumClass0Nestov1() :
-        print "ERROR: The parameter \"classicMom0OrNesterov1\" must be given 0 or 1. Omit for default. Exiting!"; exit(1)
-    @staticmethod
-    def errorRequireMomValueBetween01() :
-        print "ERROR: The parameter \"momentumValue\" must be given between 0.0 and 1.0 Omit for default. Exiting!"; exit(1)
-    @staticmethod
-    def errorRequireMomNonNorm0Norm1() :
-        print "ERROR: The parameter \"momNonNorm0orNormalized1\" must be given 0 or 1. Omit for default. Exiting!"; exit(1)
-    @staticmethod
     def errorRequireBatchSizeTrain() :
         print "ERROR: The parameter \"batchSizeTrain\" was not specified, although required. This parameter specifies how many training-samples (segments) to use to form a batch, on which a single training iteration is performed. The bigger the better, but larger batches add to the memory and computational burden. Depending on the segment-size, the batch size should be smaller (if big segment sizes are used) or larger (if small segment sizes are used). A number between 10 to 100 is suggested. Please specify in the format: batchSizeTrain = 10 (a number). Exiting!"; exit(1)
     errReqBatchSizeTr = errorRequireBatchSizeTrain
@@ -125,69 +112,75 @@ class CreateModelSessionParameters(object) :
     def warnSubFactorOdd() :
         print "WARN: The system was only thoroughly tested for ODD subsampling factor! (Eg subsampleFactor = [3,3,3])."
         
-    def __init__(self,
-                cnnModelName,
-                sessionLogger,
-                mainOutputAbsFolder,
-                folderForSessionCnnModels,
-                #===MODEL PARAMETERS===
-                numberClasses,
-                numberOfInputChannelsNormal,
-                #===Normal pathway===
-                numFMsNormal,
-                kernDimNormal,
-                residConnAtLayersNormal,
-                lowerRankLayersNormal,
-                #==Subsampled pathway==
-                useSubsampledBool,
-                numFMsSubsampled,
-                kernDimSubsampled,
-                subsampleFactor,
-                residConnAtLayersSubsampled,
-                lowerRankLayersSubsampled,
-                #==FC Layers====
-                numFMsFc,
-                kernelDimensionsFirstFcLayer,
-                residConnAtLayersFc,
-                
-                #==Size of Image Segments ==
-                segmDimTrain,
-                segmDimVal,
-                segmDimInfer,
-                #== Batch Sizes ==
-                batchSizeTrain,
-                batchSizeVal,
-                batchSizeInfer,
-                
-                #===Other Architectural Parameters ===
-                activationFunction,
-                #==Dropout Rates==
-                dropNormal,
-                dropSubsampled,
-                dropFc,
-                #==Regularization==
-                l1Reg,
-                l2Reg,
-                #== Weight Initialization==
-                initialMethod,
-
-                #== Batch Normalization ==
-                bnRollingAverOverThatManyBatches,
-
-                #====Optimization=====
-                learningRate,
-                optimizerSgd0Adam1Rms2,
-                classicMom0Nesterov1,
-                momentumValue,
-                momNonNormalized0Normalized1,
-                #Adam
-                b1Adam,
-                b2Adam,
-                eAdam,
-                #Rms
-                rhoRms,
-                eRms
-                ):
+    # OTHERS
+    @staticmethod
+    def changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(subsampleFactorFromConfig) :
+        # subsampleFactorFromConfig: whatever given in the config by the user (except None). 
+        if not isinstance(subsampleFactorFromConfig, list) :
+            print "ERROR: variable \"subsampleFactor\" given in modelConfig.cfg should be either a list of 3 integers, eg [3,3,3], or a list of lists of 3 integers, in case multiple multi-scale pathways are wanted. Please correct it. Exiting."; exit(1)
+        allElementsAreLists = True
+        noElementIsList = True
+        for element in subsampleFactorFromConfig :
+            if isinstance(element, list) :
+                noElementIsList = False
+            else :
+                allElementsAreLists = False
+        if not (allElementsAreLists or noElementIsList) : #some are lists and some are not
+            print "ERROR: variable \"subsampleFactor\" given in modelConfig.cfg should be either a list of 3 integers, eg [3,3,3], or a list of lists of 3 integers, in case multiple multi-scale pathways are wanted. Please correct it. Exiting."; exit(1)
+        elif noElementIsList :
+            #Seems ok, but the structure is not a list of lists. It's probably the old type, eg [3,3,3]. Lets change to list of lists.
+            return [ subsampleFactorFromConfig ]
+        else :
+            return subsampleFactorFromConfig
+           
+           
+    def __init__(   self,
+                    cnnModelName,
+                    sessionLogger,
+                    mainOutputAbsFolder,
+                    folderForSessionCnnModels,
+                    #===MODEL PARAMETERS===
+                    numberClasses,
+                    numberOfInputChannelsNormal,
+                    #===Normal pathway===
+                    numFMsNormal,
+                    kernDimNormal,
+                    residConnAtLayersNormal,
+                    lowerRankLayersNormal,
+                    #==Subsampled pathway==
+                    useSubsampledBool,
+                    numFMsSubsampled,
+                    kernDimSubsampled,
+                    subsampleFactor,
+                    residConnAtLayersSubsampled,
+                    lowerRankLayersSubsampled,
+                    #==FC Layers====
+                    numFMsFc,
+                    kernelDimensionsFirstFcLayer,
+                    residConnAtLayersFc,
+                    
+                    #==Size of Image Segments ==
+                    segmDimTrain,
+                    segmDimVal,
+                    segmDimInfer,
+                    #== Batch Sizes ==
+                    batchSizeTrain,
+                    batchSizeVal,
+                    batchSizeInfer,
+                    
+                    #===Other Architectural Parameters ===
+                    activationFunction,
+                    #==Dropout Rates==
+                    dropNormal,
+                    dropSubsampled,
+                    dropFc,
+                    
+                    #== Weight Initialization==
+                    initialMethod,
+                    
+                    #== Batch Normalization ==
+                    bnRollingAverOverThatManyBatches
+                    ):
         
         #Importants for running session.
         
@@ -199,13 +192,13 @@ class CreateModelSessionParameters(object) :
         #===========MODEL PARAMETERS==========
         self.numberClasses = numberClasses if numberClasses <> None else self.errReqNumClasses()
         self.numberOfInputChannelsNormal = numberOfInputChannelsNormal if numberOfInputChannelsNormal <> None or\
-                                                numberOfInputChannelsNormal<1 else self.errReqNumChannels()
-                                                
+                                                        numberOfInputChannelsNormal<1 else self.errReqNumChannels()
+                                                        
         #===Normal pathway===
         self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal <> None and numFMsNormal > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
         self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
-        self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal)
+        self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
         residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         
@@ -238,10 +231,13 @@ class CreateModelSessionParameters(object) :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...
             self.subsampleFactor = subsampleFactor if subsampleFactor <> None else [3,3,3]
-            if len(self.subsampleFactor) <> 3 :
-                self.errorSubFactor3d()
-            if not checkSubsampleFactorEven(self.subsampleFactor) :
-                self.warnSubFactorOdd()
+            #For multiple secondary pathways, via the subsampling factor config:
+            self.subsampleFactor = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.subsampleFactor)
+            for secondaryPathway_i in xrange(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
+                if len(self.subsampleFactor[secondaryPathway_i]) <> 3 :
+                    self.errorSubFactor3d()
+                if not checkSubsampleFactorEven(self.subsampleFactor[secondaryPathway_i]) :
+                    self.warnSubFactorOdd()
             residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled <> None else residConnAtLayersNormal
             lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled <> None else lowerRankLayersNormal
             
@@ -270,10 +266,6 @@ class CreateModelSessionParameters(object) :
         self.dropFc = dropFc if dropFc <> None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
         self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc, []]
         
-        #==Regularization==
-        self.l1Reg = l1Reg if l1Reg <> None else 0.000001
-        self.l2Reg = l2Reg if l2Reg <> None else 0.0001
-        
         #== Weight Initialization==
         self.initialMethodClassic0Delving1 = initialMethod if initialMethod <> None else 1
         if not self.initialMethodClassic0Delving1 in [0,1]:
@@ -284,45 +276,10 @@ class CreateModelSessionParameters(object) :
             self.errorReqActivFunction01()
             
         #==BATCH NORMALIZATION==
-        self.applyBnToInputOfPathways = [False, False, "Placeholder", False] # the 3 entry, for FC, is always True internally.
+        self.applyBnToInputOfPathways = [False, False, True, False] # the 3 entry, for FC, should always be True.
         self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches <> None else 60
         
-        #====Optimization=====
-        self.learningRate = learningRate if learningRate <> None else 0.001
-        self.optimizerSgd0Adam1Rms2 = optimizerSgd0Adam1Rms2 if optimizerSgd0Adam1Rms2 <> None else 2
-        if self.optimizerSgd0Adam1Rms2 == 0 :
-            self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
-            self.rhoRms = "placeholder"; self.eRms = "placeholder";
-        elif self.optimizerSgd0Adam1Rms2 == 1 :
-            self.b1Adam = b1Adam if b1Adam <> None else 0.9 #default in paper and seems good
-            self.b2Adam = b2Adam if b2Adam <> None else 0.999 #default in paper and seems good
-            self.eAdam = eAdam if eAdam else 10**(-8)
-            self.rhoRms = "placeholder"; self.eRms = "placeholder";
-        elif self.optimizerSgd0Adam1Rms2 == 2 :
-            self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
-            self.rhoRms = rhoRms if rhoRms <> None else 0.9 #default in paper and seems good
-            self.eRms = eRms if eRms <> None else 10**(-4) # 1e-6 was the default in the paper, but blew up the gradients in first try. Never tried 1e-5 yet.
-        else :
-            self.errorRequireOptimizer012()
-            
-        self.classicMom0Nesterov1 = classicMom0Nesterov1 if classicMom0Nesterov1 <> None else 1
-        if self.classicMom0Nesterov1 not in [0,1]:
-            self.errorRequireMomentumClass0Nestov1()
-        self.momNonNormalized0Normalized1 = momNonNormalized0Normalized1 if momNonNormalized0Normalized1 <> None else 1
-        if self.momNonNormalized0Normalized1 not in [0,1] :
-            self.errorRequireMomNonNorm0Norm1()
-        self.momentumValue = momentumValue if momentumValue <> None else 0.6
-        if self.momentumValue < 0. or self.momentumValue > 1:
-            self.errorRequireMomValueBetween01()
-            
         #==============CALCULATED=====================
-        if self.useSubsampledBool :
-            self.segmDimSubsampledTrain = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalTrain, self.receptiveFieldNormal, self.subsampleFactor)
-            self.segmDimSubsampledVal = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalVal, self.receptiveFieldNormal, self.subsampleFactor)
-            self.segmDimSubsampledInfer = calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(self.segmDimNormalInfer, self.receptiveFieldNormal, self.subsampleFactor)
-        else :
-            self.segmDimSubsampledTrain = []; self.segmDimSubsampledVal = []; self.segmDimSubsampledInfer = [];
-            
         # Residual Connections backwards, per pathway type :
         self.checkLayersForResidualsGivenDoNotInclude1st(residConnAtLayersNormal, residConnAtLayersSubsampled, residConnAtLayersFc)
         # The following variable passed to the system takes indices, ie number starts from 0. User specifies from 1.
@@ -343,14 +300,7 @@ class CreateModelSessionParameters(object) :
                                                      []
                                                      ]
         #============= HIDDENS ======================
-        self.costFunctionLetter = "L"
-        
         self.numberOfInputChannelsSubsampled = self.numberOfInputChannelsNormal
-        
-        #----for the zoomed-in pathway----
-        self.zoomedInPatchDimensions = [9, 9, 9]
-        self.nkernsZoomedIn1 = [] #[15,15,15,30]
-        self.kernelDimensionsZoomedIn1 = [[3,3,3], [3,3,3], [3,3,3], [3,3,3]]
         
         #MultiscaleConnections:
         self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes = [ [], [] ] #a sublist for each pathway. Starts from 0 index. Give a sublist, even empty for no connections.
@@ -363,8 +313,7 @@ class CreateModelSessionParameters(object) :
         self.maxPoolingParamsStructure = [ #If a pathway is not used, put an empty list in the first dimension entry. 
                                         [ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ], #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
                                         [ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled)) ], #second pathway
-                                        [ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ], #FC. This should NEVER be used for segmentation. Possible for classification though.
-                                        [[],[],[],[]] #zoomed in pathway.
+                                        [ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
                                         ]
         
         self.softmaxTemperature = 1.0 #Higher temperatures make the probabilities LESS distinctable. Actions have more similar probabilities. 
@@ -419,10 +368,6 @@ class CreateModelSessionParameters(object) :
         logPrint("Size of Segments for Training = " + str(self.segmDimNormalTrain))
         logPrint("Size of Segments for Validation = " + str(self.segmDimNormalVal))
         logPrint("Size of Segments for Testing = " + str(self.segmDimNormalInfer))
-        logPrint("~~Size Of Image Segments (Subsampled, auto-calculated)~~")
-        logPrint("Size of Segments for Training (Subsampled) = " + str(self.segmDimSubsampledTrain))
-        logPrint("Size of Segments for Validation (Subsampled) = " + str(self.segmDimSubsampledVal))
-        logPrint("Size of Segments for Testing (Subsampled) = " + str(self.segmDimSubsampledInfer))
         
         logPrint("~~Batch Sizes~~")
         logPrint("Batch Size for Training = " + str(self.batchSizeTrain))
@@ -434,10 +379,6 @@ class CreateModelSessionParameters(object) :
         logPrint("Drop.R. for each layer in Subsampled Pathway = " + str(self.dropoutRatesForAllPathways[1]))
         logPrint("Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = " + str(self.dropoutRatesForAllPathways[2]))
         
-        logPrint("~~L1/L2 Regularization~~")
-        logPrint("L1 Regularization term = " + str(self.l1Reg))
-        logPrint("L2 Regularization term = " + str(self.l2Reg))
-        
         logPrint("~~Weight Initialization~~")
         logPrint("Classic random N(0,0.01) initialization (0), or ala \"Delving Into Rectifier\" (1) = " + str(self.initialMethodClassic0Delving1))
         
@@ -447,15 +388,6 @@ class CreateModelSessionParameters(object) :
         logPrint("~~Batch Normalization~~")
         logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.applyBnToInputOfPathways))
         logPrint("Batch Normalization uses a rolling average for inference, over this many batches = " + str(self.bnRollingAverOverThatManyBatches))
-        
-        logPrint("~~Optimization~~")
-        logPrint("Initial Learning rate = " + str(self.learningRate))
-        logPrint("Optimizer to use: SGD(0), Adam(1), RmsProp(2) = " + str(self.optimizerSgd0Adam1Rms2))
-        logPrint("Parameters for Adam: b1= " + str(self.b1Adam) + ", b2=" + str(self.b2Adam) + ", e= " + str(self.eAdam) )
-        logPrint("Parameters for RmsProp: rho= " + str(self.rhoRms) + ", e= " + str(self.eRms) )
-        logPrint("Momentum Type: Classic (0) or Nesterov (1) = " + str(self.classicMom0Nesterov1))
-        logPrint("Momentum Non-Normalized (0) or Normalized (1) = " + str(self.momNonNormalized0Normalized1))
-        logPrint("Momentum Value = " + str(self.momentumValue))
         
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================")
@@ -474,16 +406,10 @@ class CreateModelSessionParameters(object) :
                         #=== Normal Pathway ===
                         self.numFMsPerLayerNormal, #ONLY for the convolutional layers, NOT the final convFCSoftmaxLayer!
                         self.kernDimPerLayerNormal,
-                        self.receptiveFieldNormal, # Should be automatically calculate it in the CNN.
                         #=== Subsampled Pathway ===
                         self.numFMsPerLayerSubsampled,
                         self.kernDimPerLayerSubsampled,
                         self.subsampleFactor,
-                        
-                        #=== Zoomed-in pathway === # Deprecated
-                        self.zoomedInPatchDimensions,
-                        self.nkernsZoomedIn1,
-                        self.kernelDimensionsZoomedIn1,
                         
                         #=== FC Layers ===
                         self.numFMsInExtraFcs,
@@ -506,9 +432,6 @@ class CreateModelSessionParameters(object) :
                         self.segmDimNormalTrain,
                         self.segmDimNormalVal,
                         self.segmDimNormalInfer,
-                        self.segmDimSubsampledTrain, # Should be automatically calculate it in the CNN.
-                        self.segmDimSubsampledVal,
-                        self.segmDimSubsampledInfer,
                         
                         #=== Batch Sizes ===
                         self.batchSizeTrain,
@@ -530,42 +453,3 @@ class CreateModelSessionParameters(object) :
                         )
         
         return cnnCreationTuple
-    
-    def getTupleForInitializingTrainingState(self) :
-
-        initializingTrainingStateTuple = (
-                        self.sessionLogger,
-                        
-                        "all",
-                        #=====COST FUNCTION=====
-                        self.costFunctionLetter,
-                        
-                        #=====OPTIMIZATION=====
-                        self.learningRate,
-                        self.optimizerSgd0Adam1Rms2,
-                        self.classicMom0Nesterov1, 
-                        self.momentumValue,
-                        self.momNonNormalized0Normalized1,
-                        self.b1Adam,
-                        self.b2Adam,
-                        self.eAdam,
-                        self.rhoRms,
-                        self.eRms,
-                        # Regularisation
-                        self.l1Reg,
-                        self.l2Reg
-                        )
-        
-        return initializingTrainingStateTuple
-    
-    def getTupleForCompilationOfTrainFunc(self) :
-        trainFunctionCompilationTuple = ( self.sessionLogger, )
-        return trainFunctionCompilationTuple
-    
-    def getTupleForCompilationOfValFunc(self) :
-        valFunctionCompilationTuple = ( self.sessionLogger, )
-        return valFunctionCompilationTuple
-    
-    def getTupleForCompilationOfTestFunc(self) :
-        testFunctionCompilationTuple = ( self.sessionLogger, )
-        return testFunctionCompilationTuple

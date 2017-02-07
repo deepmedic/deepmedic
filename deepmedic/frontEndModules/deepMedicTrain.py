@@ -96,19 +96,35 @@ class TrainConfig(object):
     PROP_OF_SAMPLES_PER_CAT_VAL = "proportionOfSamplesToExtractPerCategoryVal"
     WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = "weightedMapsForSamplingEachCategoryVal"
     
+    #====OPTIMIZATION=====
+    LRATE = "learningRate"
+    OPTIMIZER = "sgd0orAdam1orRms2"
+    MOM_TYPE = "classicMom0OrNesterov1"
+    MOM = "momentumValue"
+    MOM_NORM_NONNORM = "momNonNorm0orNormalized1"
+    #Adam
+    B1_ADAM = "b1Adam"
+    B2_ADAM = "b2Adam"
+    EPS_ADAM = "epsilonAdam"
+    #RMS
+    RHO_RMS = "rhoRms"
+    EPS_RMS = "epsilonRms"
+    #Regularization L1 and L2.
+    L1_REG = "L1_reg"
+    L2_REG = "L2_reg"
+    
     #========= GENERICS =========
     PAD_INPUT = "padInputImagesBool"
     
     
     def checkIfConfigIsCorrectForParticularCnnModel(self, cnnInstance) :
+        # DEPRECATED
         print "Checking if configuration is correct in relation to the loaded model (correct number of input channels, number of classes, etc) ..."
         #Check whether the given channels are as many as the channels when the model was built.
         if len(self.configStruct[self.CHANNELS]) <> cnnInstance.numberOfImageChannelsPath1 :
             print "ERROR:\tConfiguration parameter \"", self.configStruct[self.CHANNELS], "\" should have the same number of elements as the number of channels specified when constructing the cnnModel!\n\tCnnModel was constructed to take as input #", cnnInstance.numberOfImageChannelsPath1, " while the list given in the config-file contained #", len(self.configStruct[self.CHANNELS]), " elements."
             print "ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConst.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"; exit(1)
         #NOTE: Currently not checking the subsampled path, cause user is only allowed to use the same channels as the normal pathway. But should be possible in the future.
-        #cnnInstance.numberOfImageChannelsPath2
-        usingSubsampledWaypath = len(cnnInstance.cnnLayersSubsampled)>0
         
         #Check whether the boolean list that saves whether to save the prob-maps has same number of elements as the classes the model has.
         if self.configStruct[self.SAVE_PROBMAPS_PER_CLASS] and len(self.configStruct[self.SAVE_PROBMAPS_PER_CLASS]) <> cnnInstance.numberOfOutputClasses :
@@ -118,7 +134,7 @@ class TrainConfig(object):
             
         #Check that the lists that say which featureMaps to save in each layer have the correct amount of entries, same as each pathway's layers.
         savingFms = self.configStruct[self.SAVE_INDIV_FMS] or self.configStruct[self.SAVE_4DIM_FMS]
-        numNormLayers = len(cnnInstance.cnnLayers); numSubsLayers = len(cnnInstance.cnnLayersSubsampled); numFcLayers = len(cnnInstance.fcLayers)
+        numNormLayers = len(cnnInstance.pathways[cnnInstance.CNN_PATHWAY_NORMAL].getLayers()); numSubsLayers = len(cnnInstance.pathways[cnnInstance.CNN_PATHWAY_SUBSAMPLED].getLayers()); numFcLayers = len(cnnInstance.pathways[cnnInstance.CNN_PATHWAY_FC].getLayers())
         numLayerEntriesGivenNorm =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_NORMAL] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_NORMAL])
         numLayerEntriesGivenSubs =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED])
         numLayerEntriesGivenFc =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC])
@@ -416,9 +432,9 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     #features:
                     saveIndividualFmImagesVal = configGet(trainConfig.SAVE_INDIV_FMS_VAL),
                     saveMultidimensionalImageWithAllFmsVal = configGet(trainConfig.SAVE_4DIM_FMS_VAL),
-                    indicesOfFmsToVisualisePerPathwayAndLayerVal = [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL),
-                                                                    configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL),
-                                                                    configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_FC_VAL)
+                    indicesOfFmsToVisualisePerPathwayAndLayerVal = [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL)] +\
+                                                                    [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL)] +\
+                                                                    [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_FC_VAL)
                                                                     ],
                     folderForFeaturesVal = folderForFeatures,
                     
@@ -428,12 +444,40 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     proportionOfSamplesPerCategoryVal = configGet(trainConfig.PROP_OF_SAMPLES_PER_CAT_VAL),
                     listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal,
                     
+                    #====Optimization=====
+                    learningRate=configGet(trainConfig.LRATE),
+                    optimizerSgd0Adam1Rms2=configGet(trainConfig.OPTIMIZER),
+                    classicMom0Nesterov1=configGet(trainConfig.MOM_TYPE),
+                    momentumValue=configGet(trainConfig.MOM),
+                    momNonNormalized0Normalized1=configGet(trainConfig.MOM_NORM_NONNORM),
+                    #Adam
+                    b1Adam=configGet(trainConfig.B1_ADAM),
+                    b2Adam=configGet(trainConfig.B2_ADAM),
+                    eAdam=configGet(trainConfig.EPS_ADAM),
+                    #Rms
+                    rhoRms=configGet(trainConfig.RHO_RMS),
+                    eRms=configGet(trainConfig.EPS_RMS),
+                    #Regularization
+                    l1Reg=configGet(trainConfig.L1_REG),
+                    l2Reg=configGet(trainConfig.L2_REG),
+                    
                     #==============Generic and Preprocessing===============
                     padInputImagesBool = configGet(trainConfig.PAD_INPUT)
                     )
     
     trainSessionParameters.sessionLogger.print3("===========       NEW TRAINING SESSION         ===============")
     trainSessionParameters.printParametersOfThisSession()
+    
+    trainSessionParameters.sessionLogger.print3("=======================================================")
+    trainSessionParameters.sessionLogger.print3("=========== Compiling the Training Function ===========")
+    trainSessionParameters.sessionLogger.print3("=======================================================")
+    if not cnn3dInstance.checkTrainingStateAttributesInitialized() :
+        cnn3dInstance.initializeTrainingState(*trainSessionParameters.getTupleForInitializingTrainingState())
+    cnn3dInstance.compileTrainFunction(*trainSessionParameters.getTupleForCompilationOfTrainFunc())
+    trainSessionParameters.sessionLogger.print3("=========== Compiling the Validation Function =========")
+    cnn3dInstance.compileValidationFunction(*trainSessionParameters.getTupleForCompilationOfValFunc())
+    trainSessionParameters.sessionLogger.print3("=========== Compiling the Testing Function ============")
+    cnn3dInstance.compileTestAndVisualisationFunction(*trainSessionParameters.getTupleForCompilationOfTestFunc()) # For validation with full segmentation
     
     trainSessionParameters.sessionLogger.print3("=======================================================")
     trainSessionParameters.sessionLogger.print3("============== Training the CNN model =================")

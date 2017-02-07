@@ -7,13 +7,14 @@
 
 import numpy
 import numpy as np
+import random
 
 import theano
 import theano.tensor as T
 
 from theano.tensor.nnet import conv
 import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
-import random
+
 
 from sys import maxint as MAX_INT
 
@@ -127,7 +128,7 @@ def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
 def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic0orDelvingInto1, rng) :
     # filterShape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]
     if initializationTechniqueClassic0orDelvingInto1 == 0 :
-        stdForInitialization = 0.01
+        stdForInitialization = 0.01 #this is what I was using for my whole first year.
     elif initializationTechniqueClassic0orDelvingInto1 == 1 :
         stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
         
@@ -246,7 +247,7 @@ class Block(object):
         
         # === Basic architecture parameters === 
         self._numberOfFeatureMaps = None
-        self._maxPoolingParameters = None
+        self._poolingParameters = None
         
         #=== All Trainable Parameters of the Block ===
         self._appliedBnInLayer = None # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
@@ -276,6 +277,13 @@ class Block(object):
         self.outputShapeTrain = None
         self.outputShapeVal = None
         self.outputShapeTest = None
+        # New and probably temporary, for the residual connections to be "visible".
+        self.outputAfterResidualConnIfAnyAtOutpTrain = None
+        self.outputAfterResidualConnIfAnyAtOutpVal = None
+        self.outputAfterResidualConnIfAnyAtOutpTest = None
+        
+        # ==== Target Block Connected to that layer (softmax, regression, auxiliary loss etc), if any ======
+        self.targetBlock = None
         
     # Setters
     def _setBlocksInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest) :
@@ -286,10 +294,10 @@ class Block(object):
         self.inputShapeVal = inputToLayerShapeVal
         self.inputShapeTest = inputToLayerShapeTest
         
-    def _setBlocksArchitectureAttributes(self, filterShape, maxPoolingParameters) :
+    def _setBlocksArchitectureAttributes(self, filterShape, poolingParameters) :
         self._numberOfFeatureMaps = filterShape[0] # Of the output! Used in trainValidationVisualise.py. Not of the input!
         assert self.inputShapeTrain[1] == filterShape[1]
-        self._maxPoolingParameters = maxPoolingParameters
+        self._poolingParameters = poolingParameters
         
     def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest) :
         self.outputTrain = outputTrain
@@ -298,7 +306,14 @@ class Block(object):
         self.outputShapeTrain = outputShapeTrain
         self.outputShapeVal = outputShapeVal
         self.outputShapeTest = outputShapeTest
+        # New and probably temporary, for the residual connections to be "visible".
+        self.outputAfterResidualConnIfAnyAtOutpTrain = self.outputTrain
+        self.outputAfterResidualConnIfAnyAtOutpVal = self.outputVal
+        self.outputAfterResidualConnIfAnyAtOutpTest = self.outputTest
         
+    def setTargetBlock(self, targetBlockInstance):
+        # targetBlockInstance : eg softmax layer. Future: Regression layer, or other auxiliary classifiers.
+        self.targetBlock = targetBlockInstance
     # Getters
     def getNumberOfFeatureMaps(self):
         return self._numberOfFeatureMaps
@@ -310,7 +325,12 @@ class Block(object):
         raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
     def getL2RegCost(self) : #Called for L2 weigths regularisation
         raise NotImplementedMethod()
-    
+    def getTrainableParams(self):
+        if self.targetBlock == None :
+            return self.params
+        else :
+            return self.params + self.targetBlock.getTrainableParams()
+        
     def updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(self):
         # This function should be erazed when I reimplement the Rolling average.
         if self._appliedBnInLayer :
@@ -348,7 +368,6 @@ class ConvLayer(Block):
                 inputToLayerShapeTest,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-                maxPoolingParameters,
                 activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
                 dropoutRate) :
         # ---------------- Order of what is applied -----------------
@@ -411,7 +430,7 @@ class ConvLayer(Block):
         #-------------------------------------------------------
         #-----------  Pooling ----------------------------------
         #-------------------------------------------------------
-        if maxPoolingParameters == [] : #no max pooling before this conv
+        if self._poolingParameters == [] : #no max pooling before this conv
             inputToConvTrain = inputToPoolTrain
             inputToConvVal = inputToPoolVal
             inputToConvTest = inputToPoolTest
@@ -420,9 +439,9 @@ class ConvLayer(Block):
             inputToConvShapeVal = inputToLayerShapeVal
             inputToConvShapeTest = inputToLayerShapeTest
         else : #Max pooling is actually happening here...
-            (inputToConvTrain, inputToConvShapeTrain) = myMaxPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self._maxPoolingParameters)
-            (inputToConvVal, inputToConvShapeVal) = myMaxPooling3d(inputToPoolVal, inputToLayerShapeVal, self._maxPoolingParameters)
-            (inputToConvTest, inputToConvShapeTest) = myMaxPooling3d(inputToPoolTest, inputToLayerShapeTest, self._maxPoolingParameters)
+            (inputToConvTrain, inputToConvShapeTrain) = myMaxPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self._poolingParameters)
+            (inputToConvVal, inputToConvShapeVal) = myMaxPooling3d(inputToPoolVal, inputToLayerShapeVal, self._poolingParameters)
+            (inputToConvTest, inputToConvShapeTest) = myMaxPooling3d(inputToPoolTest, inputToLayerShapeTest, self._poolingParameters)
             
         return (inputToConvTrain, inputToConvVal, inputToConvTest,
                 inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest )
@@ -453,10 +472,10 @@ class ConvLayer(Block):
                 inputToLayerShapeVal,
                 inputToLayerShapeTest,
                 filterShape,
+                poolingParameters, # Can be []
+                initializationTechniqueClassic0orDelvingInto1,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-                maxPoolingParameters,
-                initializationTechniqueClassic0orDelvingInto1,
                 activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=0,
                 dropoutRate=0.0):
         """
@@ -475,11 +494,11 @@ class ConvLayer(Block):
                             image height, image width, filter depth)
         """
         self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest)
-        self._setBlocksArchitectureAttributes(filterShape, maxPoolingParameters)
+        self._setBlocksArchitectureAttributes(filterShape, poolingParameters)
         
         # Apply all the straightforward operations on the input, such as BN, activation function, dropout, pooling        
         (inputToConvTrain, inputToConvVal, inputToConvTest,
-        inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) = self._processInputWithBnNonLinearityDropoutPooling(        rng,
+        inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) = self._processInputWithBnNonLinearityDropoutPooling( rng,
                                                                                         inputToLayerTrain,
                                                                                         inputToLayerVal,
                                                                                         inputToLayerTest,
@@ -488,7 +507,6 @@ class ConvLayer(Block):
                                                                                         inputToLayerShapeTest,
                                                                                         useBnFlag,
                                                                                         rollingAverageForBatchNormalizationOverThatManyBatches,
-                                                                                        maxPoolingParameters,
                                                                                         activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
                                                                                         dropoutRate)
         
@@ -596,78 +614,47 @@ class LowRankConvLayer(ConvLayer):
         print "ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"; exit(1)
         
         
-class ConvLayerWithSoftmax(ConvLayer):
-    """ Final Classification layer with Softmax """
+class SoftmaxLayer(Block):
+    """ Softmax for classification. Note, this is simply the softmax function, after adding bias. Not a ConvLayer """
     
     def __init__(self):
-        ConvLayer.__init__(self)
-        
+        Block.__init__(self)
         self._numberOfOutputClasses = None
-        self._bClassLayer = None
-        
+        #self._b = None # The only type of trainable parameter that a softmax layer has.
         self._softmaxTemperature = None
         
     def makeLayer(  self,
                     rng,
-                    inputToLayerTrain,
-                    inputToLayerVal,
-                    inputToLayerTest,
-                    inputToLayerShapeTrain,
-                    inputToLayerShapeVal,
-                    inputToLayerShapeTest,
-                    filterShape,
-                    useBnFlag, # Must be true to do BN
-                    rollingAverageForBatchNormalizationOverThatManyBatches, #If this is 0, it means we are not using BatchNormalization
-                    maxPoolingParameters,
-                    initializationTechniqueClassic0orDelvingInto1,
-                    activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=0,
-                    dropoutRate=0.0,
+                    layerConnected, # the basic layer, at the output of which to connect this softmax.
                     softmaxTemperature = 1):
         
-        ConvLayer.makeLayer(self,
-                        rng,
-                        inputToLayerTrain,
-                        inputToLayerVal,
-                        inputToLayerTest,
-                        inputToLayerShapeTrain,
-                        inputToLayerShapeVal,
-                        inputToLayerShapeTest,
-                        filterShape,
-                        useBnFlag, # Must be true to do BN
-                        rollingAverageForBatchNormalizationOverThatManyBatches, #If this is 0, it means we are not using BatchNormalization
-                        maxPoolingParameters,
-                        initializationTechniqueClassic0orDelvingInto1,
-                        activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
-                        dropoutRate)
-        
-        self._numberOfOutputClasses = filterShape[0]
-        assert self._numberOfOutputClasses == self._numberOfFeatureMaps
+        self._numberOfOutputClasses = layerConnected.getNumberOfFeatureMaps()
         self._softmaxTemperature = softmaxTemperature
         
-        outputOfConvTrain = self.outputTrain
-        outputOfConvVal = self.outputVal
-        outputOfConvTest = self.outputTest
-        
-        outputOfConvShapeTrain = self.outputShapeTrain
-        outputOfConvShapeVal = self.outputShapeVal
-        outputOfConvShapeTest = self.outputShapeTest
+        self._setBlocksInputAttributes(layerConnected.outputTrain, layerConnected.outputVal, layerConnected.outputTest,
+                                        layerConnected.outputShapeTrain, layerConnected.outputShapeVal, layerConnected.outputShapeTest)
         
         # At this last classification layer, the conv output needs to have bias added before the softmax.
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
         # and this self._bClassLayer that is added only to this final output before the softmax.
-        (self._bClassLayer,
-        inputToSoftmaxTrain,
-        inputToSoftmaxVal,
-        inputToSoftmaxTest) = makeBiasParamsAndApplyToFms( outputOfConvTrain, outputOfConvVal, outputOfConvTest, self._numberOfFeatureMaps )
-        self.params = self.params + [self._bClassLayer]
+        (self._b,
+        biasedInputToSoftmaxTrain,
+        biasedInputToSoftmaxVal,
+        biasedInputToSoftmaxTest) = makeBiasParamsAndApplyToFms( self.inputTrain, self.inputVal, self.inputTest, self._numberOfOutputClasses )
+        self.params = self.params + [self._b]
         
         # ============ Softmax ==============
+        #self.p_y_given_x_2d_train = ? Can I implement negativeLogLikelihood without this ?
         ( self.p_y_given_x_train,
-        self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxTrain, outputOfConvShapeTrain, self._numberOfOutputClasses, softmaxTemperature)
+        self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTrain, self.inputShapeTrain, self._numberOfOutputClasses, softmaxTemperature)
         ( self.p_y_given_x_val,
-        self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxVal, outputOfConvShapeVal, self._numberOfOutputClasses, softmaxTemperature)
+        self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxVal, self.inputShapeVal, self._numberOfOutputClasses, softmaxTemperature)
         ( self.p_y_given_x_test,
-        self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmaxTest, outputOfConvShapeTest, self._numberOfOutputClasses, softmaxTemperature)
+        self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTest, self.inputShapeTest, self._numberOfOutputClasses, softmaxTemperature)
+        
+        self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShapeTrain, self.inputShapeVal, self.inputShapeTest)
+        
+        layerConnected.setTargetBlock(self)
         
         
     def negativeLogLikelihood(self, y, weightPerClass):
