@@ -314,11 +314,11 @@ python plotTrainingProgress.py examples/output/logs/trainSessionDeepMedic.txt -d
 
 **Resuming an Interrupted Training Session**
 
-A training session can be interrupted for various reasons. Because of this, the state of the model is saved in the end of each epoch and can be found in the output folder. Except for its trainable kernels, we also save the state of the optimizer and parameters of the training session (eg number of epochs trained, current learning rate) in order to be able to seamlessly continue it. **An interrupted training session can be continued** similarly to how it was started, following (a) or (b) above. Not (c), which will create a brand new model. Use the `-train` option to point to the config file of the training session. However, now point to a half-trained saved model, either within the config file or using the `-train` option.
+A training session can be interrupted for various reasons. Because of this, the state of the model is saved in the end of each epoch and can be found in the output folder. Except for its trainable kernels, we also save the state of the optimizer and parameters of the training session (eg number of epochs trained, current learning rate) in order to be able to seamlessly continue it. **An interrupted training session can be continued** similarly to how it was started, following (a) or (b) above. Not (c), which will create a brand new model. Use the `-train` option to point to the config file of the training session. However, now point to a half-trained saved model, either within the config file or using the `-model` option.
 
 **Fine-Tuning a Pre-Trained Model**
 
-A common strategy is to first train a model on some a data A, and then follow-up with a fine-tuning training session data B, for the particular task of interest. To do this, create a `-newModel` and `-train` it on data A as described above. To fine-tune it on data B, create a new training-config-file, for the fine-tuning training session, pointing to data B. Change training/optimization parameters if you wish. For instance possibly less epochs are required for fine-tuning. The pre-trained model, saved during the first training session, can be further trained using the new training-config file. An important detail is however, that we need to re-initialize the state of the optimization. For instance, to reinitialize the learning rate, set to 0 the number of epochs trained to reinitialize the optimizer's schedule etc. This can be done by passing the option `-resetOptimizer` in the command line when initializing the training. Following the example (a) above:
+A common strategy is to first train a model on some data A, and then follow-up with a fine-tuning training session data B, for the particular task of interest. To do this, create a `-newModel` and `-train` it on data A as described above. To **fine-tune it** on data B, create a new training-config-file pointing to data B. Change training/optimization parameters if you wish. For instance, possibly a shorter training schedule is required for fine-tuning. The pre-trained model, saved during the first training session, can now be refined with another `-train` session using the new training-config file. An important detail is however, that we need to **re-initialize the state of the optimization**. For instance, to reinitialize the learning rate, to set to 0 the number of trained epochs to restart the optimizer's schedule etc. This can be done by passing the option `-resetOptimizer` in the command line when initializing the training. Following the example (a) above, use:
 
 ```
 ./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedic/train/trainConfig.cfg -resetOptimizer \
@@ -327,9 +327,9 @@ A common strategy is to first train a model on some a data A, and then follow-up
 
 Note-1: This option **does not** re-initialize the trainable weights of the model. Only the optimization's state.
 
-Note-2: This reset of the optimizer needs to be done only at the very beginning of the refinement session! If the session is interrupted after a few epochs, do not use `-resetOptimizer` again when you continue it with another `-train` command! Your training will never finish this way!
+Note-2: This reset is needed **only at the very beginning of the refinement** session. If the session is interrupted after a few epochs, do not use `-resetOptimizer` again when you continue it with another `-train` command! Your training will never finish this way...
 
-Note-3: You can also specify layers you'd wish to be fixed and not get fine-tuned. For this, check the parameters `layersToFreeze` in the training config file of DeepMedic.
+Note-3: You can also specify **layers you wish to be fixed** and not get fine-tuned. For this, check the parameters `layersToFreeze` in the training config file of DeepMedic.
 
 
 **Training Parameters**
