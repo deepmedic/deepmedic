@@ -47,7 +47,7 @@ def setupArgParser() :
     parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument. Usage: ./deepMedicRun -train TRAINING_CONF -resetOptimizer ...etc...\n"+\
                                                                     "Resets the model\'s optimization state before starting the training session (eg number of epochs already trained, current learning rate etc).\n"+\
                                                                     "IMPORTANT: Trainable parameters are NOT reinitialized! \n"+\
-                                                                    "Useful to begin a secondary training session with new learning-rate schedule, in order to refine weights of a pre-trained model on new data.")
+                                                                    "Useful to begin a secondary training session with new learning-rate schedule, in order to fine-tune a pre-trained model (Documentation, Sec. 3.2)")
     
     return parser
 
