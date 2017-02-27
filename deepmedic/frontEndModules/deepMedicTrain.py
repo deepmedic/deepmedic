@@ -276,7 +276,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     print "Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded..."
     
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be <> None.
-def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas) :
+def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas, resetOptimizer) :
     print "Given Training-Configuration File: ", trainConfigFilepath
     #Parse the config file in this naive fashion...
     trainConfig = TrainConfig()
@@ -480,7 +480,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
     trainSessionParameters.sessionLogger.print3("=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Training Function ===========")
     trainSessionParameters.sessionLogger.print3("=======================================================")
-    if not cnn3dInstance.checkTrainingStateAttributesInitialized() :
+    if not cnn3dInstance.checkTrainingStateAttributesInitialized() or resetOptimizer :
         cnn3dInstance.initializeTrainingState(*trainSessionParameters.getTupleForInitializingTrainingState())
     cnn3dInstance.compileTrainFunction(*trainSessionParameters.getTupleForCompilationOfTrainFunc())
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Validation Function =========")

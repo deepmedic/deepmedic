@@ -406,7 +406,7 @@ class Cnn3d(object):
     
     def _getUpdatesOfTrainableParameters(self, myLogger, cost) :
         # ======= Get List Of Trained Parameters to be fit by gradient descent=======
-        paramsToOptDuringTraining = self._getTrainableParameters()
+        paramsToOptDuringTraining = self._getTrainableParameters(myLogger)
         if self.sgd0orAdam1orRmsProp2 == 0 :
             myLogger.print3("Optimizer used: [SGD]. Momentum used: Classic0 or Nesterov1 : " + str(self.classicMomentum0OrNesterov1))
             updates = self.getUpdatesAccordingToSgd(cost, paramsToOptDuringTraining)
@@ -418,13 +418,15 @@ class Cnn3d(object):
             updates = self.getUpdatesAccordingToRmsProp(cost, paramsToOptDuringTraining)
         return updates
     
-    def _getTrainableParameters(self):
+    def _getTrainableParameters(self, myLogger):
         # A getter. Don't alter anything here!
         paramsToOptDuringTraining = []  # Ws and Bs
         for pathway in self.pathways :
             for layer_i in xrange(0, len(pathway.getLayers())) :
                 if layer_i not in self.indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
                     paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).getTrainableParams()
+                else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
+                    myLogger.print3("WARN: ["+pathway.pName()+"] The weights of [Layer-"+str(layer_i)+"] will not be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
     
     def _getL1RegCost(self) :
@@ -461,7 +463,7 @@ class Cnn3d(object):
                                 L1_reg_constant,
                                 L2_reg_constant
                                 ) :
-        myLogger.print3("Setting the training-related attributes of the CNN.")
+        myLogger.print3("Initializing/Setting the optimization-related attributes of the CNN.")
         self.numberOfEpochsTrained = 0
         
         # Layers to train (rest are left untouched, eg for pretrained models.

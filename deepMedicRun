@@ -93,6 +93,8 @@ if __name__ == '__main__':
         print("ERROR:\t[-newModel] and [-model] options cannot be used together.\n\tUse [-newModel] to create a new cnn model.\n\t[-model] can follow a [-train] or [-test] option, to specify which saved model to use.\n\tPlease try -h for more information. Exiting."); exit(1)
     if args.testing_conf and (args.model_conf or args.training_conf) :
         print("ERROR: [-test] cannot be used in conjuction with [-newModel] or [-train]. To test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model to use for the inference. Exiting."); exit(1)
+    if args.reset_optimizer and not args.training_conf :
+        print("ERROR: The option [-resetOptimizer] can only be used together with the [-train] option.\n\tPlease try -h for more information. Exiting.")
         
     checkDevicePassedCorrectly(args.device)
     
@@ -114,7 +116,7 @@ if __name__ == '__main__':
         from deepmedic.frontEndModules import deepMedicTrain
         absPathToTrainConf = getAbsPathEvenIfRelativeIsGiven(args.training_conf, cwd)
         absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
-        deepMedicTrain.deepMedicTrainMain(absPathToTrainConf, absPathToCnnModelGivenInCmdLine, cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved)
+        deepMedicTrain.deepMedicTrainMain(absPathToTrainConf, absPathToCnnModelGivenInCmdLine, cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved, args.reset_optimizer)
         
     if args.testing_conf : #and not args.model_conf and not args.training_conf : #Second part was checked already.
         #Test with an existing model.
