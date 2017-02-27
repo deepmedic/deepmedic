@@ -481,6 +481,8 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Training Function ===========")
     trainSessionParameters.sessionLogger.print3("=======================================================")
     if not cnn3dInstance.checkTrainingStateAttributesInitialized() or resetOptimizer :
+        trainSessionParameters.sessionLogger.print3("(Re)Initializing parameters for the optimization. " \
+                        "Reason: Uninitialized: ["+str(not cnn3dInstance.checkTrainingStateAttributesInitialized())+"], Reset requested: ["+str(resetOptimizer)+"]" )
         cnn3dInstance.initializeTrainingState(*trainSessionParameters.getTupleForInitializingTrainingState())
     cnn3dInstance.compileTrainFunction(*trainSessionParameters.getTupleForCompilationOfTrainFunc())
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Validation Function =========")

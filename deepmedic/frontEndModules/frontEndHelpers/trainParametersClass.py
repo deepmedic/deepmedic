@@ -538,9 +538,9 @@ class TrainSessionParameters(object) :
         
         logPrint("~~Freeze Weights of Certain Layers~~")
         logPrint("Indices of layers from each type of pathway that will be kept fixed (first layer is 0):")
-        logPrint("[Normal] = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[0]))
-        logPrint("[Subsampled] = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[1]))
-        logPrint("[FC] = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
+        logPrint("Normal pathway's layers to freeze = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[0]))
+        logPrint("Subsampled pathway's layers to freeze = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[1]))
+        logPrint("FC pathway's layers to freeze = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
         
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
         logPrint("~~Pre Processing~~")

@@ -296,9 +296,9 @@ class Cnn3d(object):
     Can also find help for optimizers in Lasagne: https://github.com/Lasagne/Lasagne/blob/master/lasagne/updates.py
     """
     
-    def _initializeSharedVariablesOfOptimizer(self) :
+    def _initializeSharedVariablesOfOptimizer(self, myLogger) :
         # ======= Get List Of Trained Parameters to be fit by gradient descent=======
-        paramsToOptDuringTraining = self._getTrainableParameters()
+        paramsToOptDuringTraining = self._getTrainableParameters(myLogger)
         if self.sgd0orAdam1orRmsProp2 == 0 :
             self._initializeSharedVariablesOfSgd(paramsToOptDuringTraining)
         elif self.sgd0orAdam1orRmsProp2 == 1 :
@@ -426,7 +426,7 @@ class Cnn3d(object):
                 if layer_i not in self.indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
                     paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).getTrainableParams()
                 else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
-                    myLogger.print3("WARN: ["+pathway.pName()+"] The weights of [Layer-"+str(layer_i)+"] will not be trained as specified (index, first layer is 0).")
+                    myLogger.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(layer_i)+"] will NOT be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
     
     def _getL1RegCost(self) :
@@ -463,7 +463,7 @@ class Cnn3d(object):
                                 L1_reg_constant,
                                 L2_reg_constant
                                 ) :
-        myLogger.print3("Initializing/Setting the optimization-related attributes of the CNN.")
+        myLogger.print3("...Initializing attributes for the optimization...")
         self.numberOfEpochsTrained = 0
         
         # Layers to train (rest are left untouched, eg for pretrained models.
@@ -495,7 +495,7 @@ class Cnn3d(object):
             self.epsilonForRmsProp = epsilonForRmsProp
             
         # Important point. Initializing the shareds that hold the velocities etc states of the optimizers.
-        self._initializeSharedVariablesOfOptimizer()
+        self._initializeSharedVariablesOfOptimizer(myLogger)
         
         self._trainingStateAttributesInitialized = True
         

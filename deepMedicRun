@@ -44,7 +44,7 @@ def setupArgParser() :
     parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\n"+\
                                                                     "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\n"+\
                                                                     "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
-    parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument. \n"+\
+    parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument. Usage: ./deepMedicRun -train TRAINING_CONF -resetOptimizer ...etc...\n"+\
                                                                     "Resets the model\'s optimization state before starting the training session (eg number of epochs already trained, current learning rate etc).\n"+\
                                                                     "IMPORTANT: Trainable parameters are NOT reinitialized! \n"+\
                                                                     "Useful to begin a secondary training session with new learning-rate schedule, in order to refine weights of a pre-trained model on new data.")
