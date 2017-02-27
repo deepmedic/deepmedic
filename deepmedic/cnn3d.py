@@ -55,8 +55,6 @@ class Cnn3d(object):
         
         self.cnnModelName = None
         
-        self.CNN_PATHWAY_NORMAL = 0; self.CNN_PATHWAY_SUBSAMPLED = 1; self.CNN_PATHWAY_FC = 2
-        
         self.pathways = [] # There should be only 1 normal and only one FC pathway. Eg, see self.getFcPathway()
         self.numSubsPaths = 0
         
@@ -118,7 +116,7 @@ class Cnn3d(object):
         
         self._trainingStateAttributesInitialized = False
         
-        self.layersOfLayerTypesToTrain = None
+        self.indicesOfLayersPerPathwayTypeToFreeze = None
         self.costFunctionLetter = ""  # "L", "D" or "J"
         #====== Learning rate and momentum ==========
         self.initialLearningRate = ""  # used by exponential schedule
@@ -425,7 +423,7 @@ class Cnn3d(object):
         paramsToOptDuringTraining = []  # Ws and Bs
         for pathway in self.pathways :
             for layer_i in xrange(0, len(pathway.getLayers())) :
-                if self.layersOfLayerTypesToTrain == "all" or (layer_i in self.layersOfLayerTypesToTrain[ pathway.pType() ]) :
+                if layer_i not in self.indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
                     paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).getTrainableParams()
         return paramsToOptDuringTraining
     
@@ -448,7 +446,7 @@ class Cnn3d(object):
     # However, if I need to use a pretrained model, and train it in a second stage, I should recall this, with the new stage's parameters, and then recompile trainFunction.
     def initializeTrainingState(self,
                                 myLogger,
-                                layersOfLayerTypesToTrain,
+                                indicesOfLayersPerPathwayTypeToFreeze,
                                 costFunctionLetter,
                                 learning_rate,
                                 sgd0orAdam1orRmsProp2,
@@ -467,7 +465,7 @@ class Cnn3d(object):
         self.numberOfEpochsTrained = 0
         
         # Layers to train (rest are left untouched, eg for pretrained models.
-        self.layersOfLayerTypesToTrain = layersOfLayerTypesToTrain
+        self.indicesOfLayersPerPathwayTypeToFreeze = indicesOfLayersPerPathwayTypeToFreeze
         
         # Cost function
         if costFunctionLetter <> "previous" :

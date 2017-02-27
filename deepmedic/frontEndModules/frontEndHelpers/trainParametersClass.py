@@ -200,6 +200,9 @@ class TrainSessionParameters(object) :
                 l1Reg,
                 l2Reg,
                 
+                #~~~~ Freeze Layers ~~~~
+                layersToFreezePerPathwayType,
+                
                 #==============Generic and Preprocessing===============
                 padInputImagesBool
                 ):
@@ -404,14 +407,18 @@ class TrainSessionParameters(object) :
         self.l2Reg = l2Reg if l2Reg <> None else 0.0001
         
         #============= HIDDENS ==============
-        # passing "all" to layersOfLayerTypesToTrain trains them all. Else I need to have full entries for all layer-types, with the indices of the layers I want to get trained.
-        self.layersOfLayerTypesToTrain = "all" #[[],[],....,[0,1,2]
+        # Indices of layers that should not be trained (kept fixed).
+        indicesOfLayersToFreezeNorm = [ l-1 for l in layersToFreezePerPathwayType[0] ] if layersToFreezePerPathwayType[0] <> None else []
+        indicesOfLayersToFreezeSubs = [ l-1 for l in layersToFreezePerPathwayType[1] ] if layersToFreezePerPathwayType[1] <> None else indicesOfLayersToFreezeNorm
+        indicesOfLayersToFreezeFc = [ l-1 for l in layersToFreezePerPathwayType[2] ] if layersToFreezePerPathwayType[2] <> None else []
+        # Three sublists, one per pathway type: Normal, Subsampled, FC. eg: [[0,1,2],[0,1,2],[]
+        self.indicesOfLayersPerPathwayTypeToFreeze = [ indicesOfLayersToFreezeNorm, indicesOfLayersToFreezeSubs, indicesOfLayersToFreezeFc ]
         
         self.costFunctionLetter = "L"
         
         """
         #NOTES: variables that have to do with number of pathways: 
-                self.layersOfLayerTypesToTrain (="all" always currently. Hardcoded)
+                self.indicesOfLayersPerPathwayTypeToFreeze (="all" always currently. Hardcoded)
                 self.useSameSubChannelsAsSingleScale, (always True currently)
                 self.subsampledChannelsFilepathsTrain,
                 self.subsampledChannelsFilepathsVal, (Deprecated. But I should support it in future, cause it works well for non-scale pathways)
@@ -529,6 +536,12 @@ class TrainSessionParameters(object) :
         logPrint("L1 Regularization term = " + str(self.l1Reg))
         logPrint("L2 Regularization term = " + str(self.l2Reg))
         
+        logPrint("~~Freeze Weights of Certain Layers~~")
+        logPrint("Indices of layers from each type of pathway that will be kept fixed (first layer is 0):")
+        logPrint("[Normal] = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[0]))
+        logPrint("[Subsampled] = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[1]))
+        logPrint("[FC] = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
+        
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
         logPrint("~~Pre Processing~~")
         logPrint("Pad Input Images = " + str(self.padInputImagesBool))
@@ -615,7 +628,7 @@ class TrainSessionParameters(object) :
         initializingTrainingStateTuple = (
                         self.sessionLogger,
                         
-                        self.layersOfLayerTypesToTrain,
+                        self.indicesOfLayersPerPathwayTypeToFreeze,
                         #=====COST FUNCTION=====
                         self.costFunctionLetter,
                         

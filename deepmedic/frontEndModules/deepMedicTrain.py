@@ -113,6 +113,11 @@ class TrainConfig(object):
     L1_REG = "L1_reg"
     L2_REG = "L2_reg"
     
+    #~~~  Freeze Layers ~~~
+    LAYERS_TO_FREEZE_NORM = "layersToFreezeNormal"
+    LAYERS_TO_FREEZE_SUBS = "layersToFreezeSubsampled"
+    LAYERS_TO_FREEZE_FC = "layersToFreezeFC"
+    
     #========= GENERICS =========
     PAD_INPUT = "padInputImagesBool"
     
@@ -408,7 +413,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     performIntAugm = configGet(trainConfig.PERF_INT_AUGM_BOOL),
                     sampleIntAugmShiftWithMuAndStd = configGet(trainConfig.INT_AUGM_SHIF_MUSTD),
                     sampleIntAugmMultiWithMuAndStd = configGet(trainConfig.INT_AUGM_MULT_MUSTD),
-                    
+                                                    
                     #==================VALIDATION=====================
                     performValidationOnSamplesThroughoutTraining = configGet(trainConfig.PERFORM_VAL_SAMPLES),
                     performFullInferenceOnValidationImagesEveryFewEpochs = configGet(trainConfig.PERFORM_VAL_INFERENCE),
@@ -434,8 +439,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     saveMultidimensionalImageWithAllFmsVal = configGet(trainConfig.SAVE_4DIM_FMS_VAL),
                     indicesOfFmsToVisualisePerPathwayAndLayerVal = [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL)] +\
                                                                     [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL)] +\
-                                                                    [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_FC_VAL)
-                                                                    ],
+                                                                    [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_FC_VAL)],
                     folderForFeaturesVal = folderForFeatures,
                     
                     #~~~~~~~~ Advanced Validation Sampling ~~~~~~~~~~
@@ -461,6 +465,11 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     l1Reg=configGet(trainConfig.L1_REG),
                     l2Reg=configGet(trainConfig.L2_REG),
                     
+                    #~~~~~~~ Freeze Layers ~~~~~~~
+                    layersToFreezePerPathwayType = [configGet(trainConfig.LAYERS_TO_FREEZE_NORM),
+                                                    configGet(trainConfig.LAYERS_TO_FREEZE_SUBS),
+                                                    configGet(trainConfig.LAYERS_TO_FREEZE_FC) ],
+                                                    
                     #==============Generic and Preprocessing===============
                     padInputImagesBool = configGet(trainConfig.PAD_INPUT)
                     )
