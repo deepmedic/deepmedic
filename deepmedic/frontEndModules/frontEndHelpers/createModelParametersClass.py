@@ -85,6 +85,13 @@ class CreateModelSessionParameters(object) :
         print "ERROR: Parameter \"relu0orPrelu1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"; exit(1)
         
     @staticmethod
+    def errReqSameNumOfLayersPerSubPathway():
+        print "ERROR: Parameter \"numberFMsPerLayerSubsampled\" has been given as a list of sublists of integers. This triggers the construction of multiple low-scale pathways."
+        print "\tHowever currently this functionality requires that the same number of layers are used in both pathways (limitation in the code)."
+        print "\tUser specified in \"numberFMsPerLayerSubsampled\" sublists of different length. Each list should have the same lenght, as many as the wanted number of layers. Please adress this."        
+        print "Exiting!"; exit(1)
+    
+    @staticmethod
     def errorSubFactor3d() :
         print "ERROR: The parameter \"subsampleFactor\" must have 3 entries, one for each of the 3 dimensions. Please provide it in the format: subsampleFactor = [subFactor-dim1, subFactor-dim2, subFactor-dim3]. Each of the entries should be an integer, eg [3,3,3]."
         CreateModelSessionParameters.warnSubFactorOdd()
@@ -114,24 +121,33 @@ class CreateModelSessionParameters(object) :
         
     # OTHERS
     @staticmethod
-    def changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(subsampleFactorFromConfig) :
+    def changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(listFromConfig) :
         # subsampleFactorFromConfig: whatever given in the config by the user (except None). 
-        if not isinstance(subsampleFactorFromConfig, list) :
-            print "ERROR: variable \"subsampleFactor\" given in modelConfig.cfg should be either a list of 3 integers, eg [3,3,3], or a list of lists of 3 integers, in case multiple multi-scale pathways are wanted. Please correct it. Exiting."; exit(1)
+        if not isinstance(listFromConfig, list) :
+            print "ERROR: variable \"", listFromConfig, "\" given in modelConfig.cfg should be either a list of integers, or a list of lists of integers, in case multiple lower-scale pathways are wanted. Please correct it. Exiting."; exit(1)
         allElementsAreLists = True
         noElementIsList = True
-        for element in subsampleFactorFromConfig :
+        for element in listFromConfig :
             if isinstance(element, list) :
                 noElementIsList = False
             else :
                 allElementsAreLists = False
         if not (allElementsAreLists or noElementIsList) : #some are lists and some are not
-            print "ERROR: variable \"subsampleFactor\" given in modelConfig.cfg should be either a list of 3 integers, eg [3,3,3], or a list of lists of 3 integers, in case multiple multi-scale pathways are wanted. Please correct it. Exiting."; exit(1)
+            print "ERROR: variable \"", listFromConfig, "\" given in modelConfig.cfg should be either a list of integers, or a list of lists of integers, in case multiple lower-scale pathways are wanted. Please correct it. Exiting."; exit(1)
         elif noElementIsList :
             #Seems ok, but the structure is not a list of lists. It's probably the old type, eg [3,3,3]. Lets change to list of lists.
-            return [ subsampleFactorFromConfig ]
+            return [ listFromConfig ]
         else :
-            return subsampleFactorFromConfig
+            return listFromConfig
+           
+    def checkThatSublistsHaveSameLength(self, listWithSublists):
+        if len(listWithSublists) == 0 :
+            return True
+        lengthOfFirst = len(listWithSublists[0])
+        for subList_i in xrange( len(listWithSublists) ) :
+            if lengthOfFirst <> len(listWithSublists[subList_i]) :
+                return False
+        return True
            
            
     def __init__(   self,
@@ -214,15 +230,19 @@ class CreateModelSessionParameters(object) :
             
         else :
             self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled <> None else self.numFMsPerLayerNormal
-            if kernDimSubsampled == None and\
-                                        len(self.numFMsPerLayerSubsampled) == len(self.numFMsPerLayerNormal) :
+            self.numFMsPerLayerSubsampled = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.numFMsPerLayerSubsampled)
+            # check that all subsampled pathways have the same number of layers. Limitation in the code currently, because I use kernDimSubsampled for all of them.
+            if not self.checkThatSublistsHaveSameLength(self.numFMsPerLayerSubsampled):
+                self.errReqSameNumOfLayersPerSubPathway()
+
+            numOfLayersInEachSubPath = len(self.numFMsPerLayerSubsampled[0])
+            if kernDimSubsampled == None and numOfLayersInEachSubPath == len(self.numFMsPerLayerNormal) :
                 self.kernDimPerLayerSubsampled = self.kernDimPerLayerNormal
                 self.receptiveFieldSubsampled = self.receptiveFieldNormal
-            elif kernDimSubsampled == None and\
-                                        len(self.numFMsPerLayerSubsampled) <> len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
+            elif kernDimSubsampled == None and numOfLayersInEachSubPath <> len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
                 self.errorRequireKernelDimensionsSubsampled(self.kernDimPerLayerNormal, numFMsSubsampled)
             # kernDimSubsampled was specified. Now it's going to be tricky to make sure everything alright.
-            elif not checkKernDimPerLayerCorrect3dAndNumLayers(kernDimSubsampled, len(self.numFMsPerLayerSubsampled)) :
+            elif not checkKernDimPerLayerCorrect3dAndNumLayers(kernDimSubsampled, numOfLayersInEachSubPath) :
                 self.errReqKernDimNormalCorr()
             else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
                 self.kernDimPerLayerSubsampled = kernDimSubsampled
@@ -231,13 +251,24 @@ class CreateModelSessionParameters(object) :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...
             self.subsampleFactor = subsampleFactor if subsampleFactor <> None else [3,3,3]
-            #For multiple secondary pathways, via the subsampling factor config:
             self.subsampleFactor = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.subsampleFactor)
             for secondaryPathway_i in xrange(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
                 if len(self.subsampleFactor[secondaryPathway_i]) <> 3 :
                     self.errorSubFactor3d()
                 if not checkSubsampleFactorEven(self.subsampleFactor[secondaryPathway_i]) :
                     self.warnSubFactorOdd()
+            #---For multiple lower-scale pathways, via the numFMsPerLayerSubsampled and subsampleFactor config ----
+            numOfSubsPaths = max(len(self.numFMsPerLayerSubsampled), len(self.subsampleFactor))
+            # Default behaviour:
+            # If less sublists in numFMsPerLayerSubsampled were given than numOfSubsPaths, add more sublists of subsampleFactors, for the extra subpaths.
+            for _ in range( numOfSubsPaths - len(self.numFMsPerLayerSubsampled) ) :
+                numFmsForLayersOfLastSubPath = self.numFMsPerLayerSubsampled[-1]
+                self.numFMsPerLayerSubsampled.append( [ max(1, int(numFmsInLayer_i/2)) for numFmsInLayer_i in numFmsForLayersOfLastSubPath ] ) # half of how many previous subPath had.
+            # If less sublists in subsampleFactor were given than numOfSubsPaths, add more sublists of subsampleFactors, for the extra subpaths.
+            for _ in range( numOfSubsPaths - len(self.subsampleFactor) ) :
+                self.subsampleFactor.append( [ subFactorInDim_i + 2 for subFactorInDim_i in self.subsampleFactor[-1] ] ) # Adds one more sublist, eg [5,5,5], which is the last subFactor, increased by +2 in all rcz dimensions.
+            
+            # Residuals and lower ranks.
             residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled <> None else residConnAtLayersNormal
             lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled <> None else lowerRankLayersNormal
             
@@ -310,11 +341,11 @@ class CreateModelSessionParameters(object) :
         #One entry per pathway-type. leave [] if the pathway does not exist or there is no mp there AT ALL.
         #Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
         #MP is applied >>AT THE INPUT of the layer<<. To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each dimension for padding (give 0 for none), the mode (usually 'max' pool). Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
-        self.maxPoolingParamsStructure = [ #If a pathway is not used, put an empty list in the first dimension entry. 
-                                        [ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ], #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
-                                        [ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled)) ], #second pathway
-                                        [ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
-                                        ]
+        #If a pathway is not used (eg subsampled), put an empty list in the first dimension entry. 
+        mpParamsNorm = [ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ] #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
+        mpParamsSubs = [ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled[0])) ] if self.useSubsampledBool else [] # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
+        mpParamsFc = [ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
+        self.maxPoolingParamsStructure = [ mpParamsNorm, mpParamsSubs, mpParamsFc]
         
         self.softmaxTemperature = 1.0 #Higher temperatures make the probabilities LESS distinctable. Actions have more similar probabilities. 
         
@@ -346,11 +377,12 @@ class CreateModelSessionParameters(object) :
         
         logPrint("~~Subsampled Pathway~~")
         logPrint("Use subsampled Pathway = " + str(self.useSubsampledBool))
-        logPrint("Number of Layers = " + str(len(self.numFMsPerLayerSubsampled)))
-        logPrint("Number of Feature Maps per layer = " + str(self.numFMsPerLayerSubsampled))
+        logPrint("Number of subsampled pathways that will be built = " + str(len(self.subsampleFactor)) )
+        logPrint("Number of Layers (per sub-pathway) = " + str([ len(numFmsPerLayerForSubPath) for numFmsPerLayerForSubPath in self.numFMsPerLayerSubsampled ]) )
+        logPrint("Number of Feature Maps per layer (per sub-pathway) = " + str(self.numFMsPerLayerSubsampled))
         logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerSubsampled))
         logPrint("Receptive Field = " + str(self.receptiveFieldSubsampled))
-        logPrint("Subsampling Factor = " + str(self.subsampleFactor))
+        logPrint("Subsampling Factor per dimension (per sub-pathway) = " + str(self.subsampleFactor))
         logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
         logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[1]))
         logPrint("Lower Rank layers will be made of rank = " + str(self.ranksOfLowerRankLayersForEachPathway[1]))

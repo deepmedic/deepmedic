@@ -814,7 +814,7 @@ class Cnn3d(object):
             inputToPathwayVal = listInputTensorPerSubsVal[subPath_i]
             inputToPathwayTest = listInputTensorPerSubsTest[subPath_i]
             
-            thisPathWayNKerns = nkernsSubsampled
+            thisPathWayNKerns = nkernsSubsampled[subPath_i]
             thisPathWayKernelDimensions = kernelDimensionsSubsampled
             
             thisPathwayNumOfLayers = len(thisPathWayNKerns)
