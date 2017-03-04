@@ -1221,6 +1221,17 @@ def do_training(myLogger,
             else :
                 vectorWithWeightsOfTheClassesForCostFunctionOfTraining = np.ones(cnn3dInstance.numberOfOutputClasses, dtype='float32')
                 
+            #------------------- Learning Rate Schedule ------------------------
+            # I must make a learning-rate-manager to encapsulate all these... Very ugly currently... All othere LR schedules are at the outer loop, per epoch.
+            if (lowerLrByStable0orAuto1orPredefined2orExponential3Schedule == 4) :
+                myLogger.print3("DEBUG: Going to change Learning Rate according to POLY schedule:")
+                #newLearningRate = initLr * ( 1 - iter/max_iter) ^ power. Power = 0.9 in parsenet, which we validated to behave ok.
+                currentIteration = cnn3dInstance.numberOfEpochsTrained * number_of_subepochs + subepoch
+                max_iterations = n_epochs * number_of_subepochs
+                newLearningRate = cnn3dInstance.initialLearningRate * pow( 1.0 - 1.0*currentIteration/max_iterations , 0.9)
+                myLogger.print3("DEBUG: new learning rate was calculated: " +str(newLearningRate))
+                cnn3dInstance.change_learning_rate_of_a_cnn(newLearningRate, myLogger)
+                
             #----------------------------------LOAD TRAINING DATA ON GPU-------------------------------
             myLogger.print3("Loading Training data for subepoch #"+str(subepoch)+" on shared variable...")
             start_loadingToGpu_time = time.clock()
