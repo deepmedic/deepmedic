@@ -113,6 +113,11 @@ class TrainConfig(object):
     L1_REG = "L1_reg"
     L2_REG = "L2_reg"
     
+    #~~~  Freeze Layers ~~~
+    LAYERS_TO_FREEZE_NORM = "layersToFreezeNormal"
+    LAYERS_TO_FREEZE_SUBS = "layersToFreezeSubsampled"
+    LAYERS_TO_FREEZE_FC = "layersToFreezeFC"
+    
     #========= GENERICS =========
     PAD_INPUT = "padInputImagesBool"
     
@@ -271,7 +276,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     print "Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded..."
     
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be <> None.
-def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas) :
+def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas, resetOptimizer) :
     print "Given Training-Configuration File: ", trainConfigFilepath
     #Parse the config file in this naive fashion...
     trainConfig = TrainConfig()
@@ -408,7 +413,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     performIntAugm = configGet(trainConfig.PERF_INT_AUGM_BOOL),
                     sampleIntAugmShiftWithMuAndStd = configGet(trainConfig.INT_AUGM_SHIF_MUSTD),
                     sampleIntAugmMultiWithMuAndStd = configGet(trainConfig.INT_AUGM_MULT_MUSTD),
-                    
+                                                    
                     #==================VALIDATION=====================
                     performValidationOnSamplesThroughoutTraining = configGet(trainConfig.PERFORM_VAL_SAMPLES),
                     performFullInferenceOnValidationImagesEveryFewEpochs = configGet(trainConfig.PERFORM_VAL_INFERENCE),
@@ -434,8 +439,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     saveMultidimensionalImageWithAllFmsVal = configGet(trainConfig.SAVE_4DIM_FMS_VAL),
                     indicesOfFmsToVisualisePerPathwayAndLayerVal = [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL)] +\
                                                                     [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL)] +\
-                                                                    [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_FC_VAL)
-                                                                    ],
+                                                                    [configGet(trainConfig.INDICES_OF_FMS_TO_SAVE_FC_VAL)],
                     folderForFeaturesVal = folderForFeatures,
                     
                     #~~~~~~~~ Advanced Validation Sampling ~~~~~~~~~~
@@ -461,6 +465,11 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     l1Reg=configGet(trainConfig.L1_REG),
                     l2Reg=configGet(trainConfig.L2_REG),
                     
+                    #~~~~~~~ Freeze Layers ~~~~~~~
+                    layersToFreezePerPathwayType = [configGet(trainConfig.LAYERS_TO_FREEZE_NORM),
+                                                    configGet(trainConfig.LAYERS_TO_FREEZE_SUBS),
+                                                    configGet(trainConfig.LAYERS_TO_FREEZE_FC) ],
+                                                    
                     #==============Generic and Preprocessing===============
                     padInputImagesBool = configGet(trainConfig.PAD_INPUT)
                     )
@@ -471,7 +480,9 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
     trainSessionParameters.sessionLogger.print3("=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Training Function ===========")
     trainSessionParameters.sessionLogger.print3("=======================================================")
-    if not cnn3dInstance.checkTrainingStateAttributesInitialized() :
+    if not cnn3dInstance.checkTrainingStateAttributesInitialized() or resetOptimizer :
+        trainSessionParameters.sessionLogger.print3("(Re)Initializing parameters for the optimization. " \
+                        "Reason: Uninitialized: ["+str(not cnn3dInstance.checkTrainingStateAttributesInitialized())+"], Reset requested: ["+str(resetOptimizer)+"]" )
         cnn3dInstance.initializeTrainingState(*trainSessionParameters.getTupleForInitializingTrainingState())
     cnn3dInstance.compileTrainFunction(*trainSessionParameters.getTupleForCompilationOfTrainFunc())
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Validation Function =========")

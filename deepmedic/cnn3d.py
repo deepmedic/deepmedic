@@ -55,8 +55,6 @@ class Cnn3d(object):
         
         self.cnnModelName = None
         
-        self.CNN_PATHWAY_NORMAL = 0; self.CNN_PATHWAY_SUBSAMPLED = 1; self.CNN_PATHWAY_FC = 2
-        
         self.pathways = [] # There should be only 1 normal and only one FC pathway. Eg, see self.getFcPathway()
         self.numSubsPaths = 0
         
@@ -118,7 +116,7 @@ class Cnn3d(object):
         
         self._trainingStateAttributesInitialized = False
         
-        self.layersOfLayerTypesToTrain = None
+        self.indicesOfLayersPerPathwayTypeToFreeze = None
         self.costFunctionLetter = ""  # "L", "D" or "J"
         #====== Learning rate and momentum ==========
         self.initialLearningRate = ""  # used by exponential schedule
@@ -298,9 +296,9 @@ class Cnn3d(object):
     Can also find help for optimizers in Lasagne: https://github.com/Lasagne/Lasagne/blob/master/lasagne/updates.py
     """
     
-    def _initializeSharedVariablesOfOptimizer(self) :
+    def _initializeSharedVariablesOfOptimizer(self, myLogger) :
         # ======= Get List Of Trained Parameters to be fit by gradient descent=======
-        paramsToOptDuringTraining = self._getTrainableParameters()
+        paramsToOptDuringTraining = self._getTrainableParameters(myLogger)
         if self.sgd0orAdam1orRmsProp2 == 0 :
             self._initializeSharedVariablesOfSgd(paramsToOptDuringTraining)
         elif self.sgd0orAdam1orRmsProp2 == 1 :
@@ -408,7 +406,7 @@ class Cnn3d(object):
     
     def _getUpdatesOfTrainableParameters(self, myLogger, cost) :
         # ======= Get List Of Trained Parameters to be fit by gradient descent=======
-        paramsToOptDuringTraining = self._getTrainableParameters()
+        paramsToOptDuringTraining = self._getTrainableParameters(myLogger)
         if self.sgd0orAdam1orRmsProp2 == 0 :
             myLogger.print3("Optimizer used: [SGD]. Momentum used: Classic0 or Nesterov1 : " + str(self.classicMomentum0OrNesterov1))
             updates = self.getUpdatesAccordingToSgd(cost, paramsToOptDuringTraining)
@@ -420,13 +418,15 @@ class Cnn3d(object):
             updates = self.getUpdatesAccordingToRmsProp(cost, paramsToOptDuringTraining)
         return updates
     
-    def _getTrainableParameters(self):
+    def _getTrainableParameters(self, myLogger):
         # A getter. Don't alter anything here!
         paramsToOptDuringTraining = []  # Ws and Bs
         for pathway in self.pathways :
             for layer_i in xrange(0, len(pathway.getLayers())) :
-                if self.layersOfLayerTypesToTrain == "all" or (layer_i in self.layersOfLayerTypesToTrain[ pathway.pType() ]) :
+                if layer_i not in self.indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
                     paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).getTrainableParams()
+                else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
+                    myLogger.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(layer_i)+"] will NOT be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
     
     def _getL1RegCost(self) :
@@ -448,7 +448,7 @@ class Cnn3d(object):
     # However, if I need to use a pretrained model, and train it in a second stage, I should recall this, with the new stage's parameters, and then recompile trainFunction.
     def initializeTrainingState(self,
                                 myLogger,
-                                layersOfLayerTypesToTrain,
+                                indicesOfLayersPerPathwayTypeToFreeze,
                                 costFunctionLetter,
                                 learning_rate,
                                 sgd0orAdam1orRmsProp2,
@@ -463,11 +463,11 @@ class Cnn3d(object):
                                 L1_reg_constant,
                                 L2_reg_constant
                                 ) :
-        myLogger.print3("Setting the training-related attributes of the CNN.")
+        myLogger.print3("...Initializing attributes for the optimization...")
         self.numberOfEpochsTrained = 0
         
         # Layers to train (rest are left untouched, eg for pretrained models.
-        self.layersOfLayerTypesToTrain = layersOfLayerTypesToTrain
+        self.indicesOfLayersPerPathwayTypeToFreeze = indicesOfLayersPerPathwayTypeToFreeze
         
         # Cost function
         if costFunctionLetter <> "previous" :
@@ -495,7 +495,7 @@ class Cnn3d(object):
             self.epsilonForRmsProp = epsilonForRmsProp
             
         # Important point. Initializing the shareds that hold the velocities etc states of the optimizers.
-        self._initializeSharedVariablesOfOptimizer()
+        self._initializeSharedVariablesOfOptimizer(myLogger)
         
         self._trainingStateAttributesInitialized = True
         
