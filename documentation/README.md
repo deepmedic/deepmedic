@@ -134,7 +134,7 @@ The source code of the DeepMedic is provided in the folder [deepmedic](deepmedic
 ```
 brings up the available actions for the creation, training and testing of CNN models. All actions require a large number of configuration parameters, which are read from configuration files. 
 
-In the [examples/configFiles](examples/configFiles/) folder we provide two sets of configuration files. Firstly, the configuration of a very small network is given in [examples/configFiles/tinyCnn/](examples/configFiles/tinyCnn/). This network can be trained within minutes on a CPU. It's a simple example [to make sure everything works](#21-training-a-tiny-cnn---making-sure-it-works). We also provide the full configuration of the DeepMedic model, as employed in [[1](#citations)], in the folder [examples/configFiles/deepMedicBrats/](examples/configFiles/deepMedicBrats/).
+In the [examples/configFiles](examples/configFiles/) folder we provide two sets of configuration files. Firstly, the configuration of a very small network is given in [examples/configFiles/tinyCnn/](examples/configFiles/tinyCnn/). This network can be trained within minutes on a CPU. It's a simple example [to make sure everything works](#21-training-a-tiny-cnn---making-sure-it-works). We also provide the full configuration of the DeepMedic model, as employed in [[1](#citations)], in the folder [examples/configFiles/deepMedic/](examples/configFiles/deepMedic/).
 
 The above configuration files are pre-set to point to accompanying .nii files, provided in [examples/dataForExamples/](examples/dataForExamples/). Those NIFTIs serve as input to the networks in our examples. This data are modified versions of images from the Brain Tumor Segmentation challenge ([BRATS 2015](http://braintumorsegmentation.org/)).
 
@@ -377,13 +377,13 @@ When a training epoch is finished, the model’s state is saved. These pickled m
 
 a) A model is specified straight from the command line.
 ```
-./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedicBratsClean/ test/testConfig.cfg \
+./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedic/test/testConfig.cfg \
                        		-model ./path-to-saved-model
 ```
 
 b) The path to a saved model can be instead specified in the testing config file, and then the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
 ```
-./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedicBratsClean/test/testConfig.cfg
+./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedic/test/testConfig.cfg
 ```
 
 After the model is loaded, inference will be performed on the testing subjects. Predicted segmentation masks, posterior probability maps for each class,  as well as the feature maps of any layer can be saved. If ground-truth is provided, DeepMedic will also report DSC metrics for its predictions.
