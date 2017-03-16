@@ -44,13 +44,16 @@ def setupArgParser() :
     parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\n"+\
                                                                     "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\n"+\
                                                                     "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
-    parser.add_argument("-pretrained", dest='pretrained_model', type=str, help="The path to a saved trained cnn model, to pretrain the new model with by transfering the weights.\n"+\
-                                                                    "This option can follow a [-newModel] option.")
-    parser.add_argument("-layers", dest='layers_to_transfer', nargs='+', type=int, help="Use only with [-pretrained] option.\n"+\
-                                                                    "Specify which layers to transfer parameters.\n"+\
+    parser.add_argument("-pretrained", dest='pretrained_model', type=str, help="Use to transfer the weights from a previously trained model to a new model.\n"+\
+                                                                    "This option must follow a [-newModel] option.\n"+\
+                                                                    "Usage: ./deepMedicRun -newModel /path/to/model/config -pretrained /path/to/pretrained/model \n"+\
+                                                                    "NOTE: By default, parameters are transfered to all layers except the classification layer. Use option [-layers] to manually specify layers to pretrain.")
+    parser.add_argument("-layers", dest='layers_to_transfer', nargs='+', type=int, help="Use only after a [-pretrained] option.\n"+\
+                                                                    "Specify to which layers of the new model parameters should be transferred to.\n"+\
                                                                     "First layer is 1. Classification layer of original DeepMedic is 11. Same layers from each parallel-pathway will be transfered.\n"+\
-                                                                    "Format: -pretrained 1 2 3 ... (Default: all layers except classification layer transfered.)")
-    parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument. Usage: ./deepMedicRun -train TRAINING_CONF -resetOptimizer ...etc...\n"+\
+                                                                    "Usage: ./deepMedicRun -newModel /path/to/model/config -pretrained /path/to/pretrained/model -layers 1 2 3 ...")
+    parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument.\n"+\
+                                                                    "Usage: ./deepMedicRun -train /path/to/train/config -resetOptimizer ...etc...\n"+\
                                                                     "Resets the model\'s optimization state before starting the training session (eg number of epochs already trained, current learning rate etc).\n"+\
                                                                     "IMPORTANT: Trainable parameters are NOT reinitialized! \n"+\
                                                                     "Useful to begin a secondary training session with new learning-rate schedule, in order to fine-tune a pre-trained model (Documentation, Sec. 3.2)")

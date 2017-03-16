@@ -147,20 +147,22 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
                     )
     
     
-    createModelSessionParameters.sessionLogger.print3("===========    NEW CREATE-MODEL SESSION    ============")
+    createModelSessionParameters.sessionLogger.print3("\n===========    NEW CREATE-MODEL SESSION    ============")
     createModelSessionParameters.printParametersOfThisSession()
     
-    createModelSessionParameters.sessionLogger.print3("=========== Creating the CNN model ===============")
+    createModelSessionParameters.sessionLogger.print3("\n=========== Creating the CNN model ===============")
     cnn3dInstance = Cnn3d()
     cnn3dInstance.make_cnn_model(*createModelSessionParameters.getTupleForCnnCreation())
     
     if absPathToPreTrainedModelGivenInCmdLine <> None: # Transfer parameters from a previously trained model to the new one.
-        createModelSessionParameters.sessionLogger.print3("=========== Pre-training the new model ===============")
+        createModelSessionParameters.sessionLogger.print3("\n=========== Pre-training the new model ===============")
+        sessionLogger.print3("...Loading the pre-trained network. This can take a few minutes if the model is big...")
         cnnPretrainedInstance = load_object_from_gzip_file(absPathToPreTrainedModelGivenInCmdLine)
+        sessionLogger.print3("The pre-trained model was loaded successfully from: " + str(absPathToPreTrainedModelGivenInCmdLine))
         from deepmedic import cnnTransferParameters
         cnn3dInstance = cnnTransferParameters.transferParametersBetweenModels(sessionLogger, cnn3dInstance, cnnPretrainedInstance, listOfLayersToTransfer)
     
-    createModelSessionParameters.sessionLogger.print3("=========== Saving the model ===============")
+    createModelSessionParameters.sessionLogger.print3("\n=========== Saving the model ===============")
     if absPathToPreTrainedModelGivenInCmdLine <> None:
         filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial.pretrained." + datetimeNowAsStr()
     else:

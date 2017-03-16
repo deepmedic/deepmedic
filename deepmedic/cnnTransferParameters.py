@@ -30,8 +30,6 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
     depthDeepestLayerTarget = len(cnnTarget.pathways[0].getLayers()) + len(cnnTarget.getFcPathway().getLayers()) # Classif layer. NOT Softmax layer, which is not registered in the FC path.
     # NOTE: Softmax layer HAS learnt BIASES and I must transfer them separately if deepest pathway is asked to be transfered.
     
-    #############
-    
     for pathTarget_i in xrange( len(cnnTarget.pathways) ):
         pathTarget = cnnTarget.pathways[pathTarget_i]
         typePathTarget = pathTarget.pType()
@@ -49,7 +47,7 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
                 boolTransferLayer = True
                 
             if boolTransferLayer:
-                myLogger.print3("[Pathway_" + str(pathTarget.getStringType()) + "][Conv.Layer_" + str(layerTarget_i) + " (index)] at depth [" + str(depthLayerTarget) + "]: Receiving parameters...")
+                myLogger.print3("[Pathway_" + str(pathTarget.getStringType()) + "][Conv.Layer_" + str(layerTarget_i) + " (index)], depth [" + str(depthLayerTarget) + "] (Target): Receiving parameters...")
                 # transfer stuff.
                 # Get the correct Source path.
                 if typePathTarget <> pt.FC:
@@ -58,15 +56,24 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
                     else:
                         pathSource = cnnSource.pathways[-2] # -1 is the FC pathway. -2 is the last parallel.
                         myLogger.print3("\t Source model has less parallel paths than Target. "+\
-                                        "Parameters of Target [Pathway_" + str(pathTarget.getStringType()) + "] are received from last parallel path of Source [Pathway_" + str(pathSource.getStringType()) + "]")
+                                        "Parameters of Target are received from last parallel path of Source [Pathway_" + str(pathSource.getStringType()) + "]")
                 else:
                     pathSource = cnnSource.getFcPathway()
                 
                 # Get the correct Source layer.
                 if len(pathSource.getLayers()) < layerTarget_i + 1:
-                    myLogger.print3("ERROR: Target pathway found with less layers than needed to transfer parameters to the Source layer (index [" + str(layerTarget_i) + "], depth [" + str(depthLayerTarget) + "]). Exiting!"); exit(1)
+                    myLogger.print3("ERROR: This [Pathway_" + str(pathTarget.getStringType()) + "] of the [Source] model was found to have less layers than required!\n"+\
+                                    "\t Number of layers in [Source] pathway: [" + str(len(pathSource.getLayers())) + "].\n"+\
+                                    "\t Number of layers in [Target] pathway: [" + str(len(pathTarget.getLayers())) + "].\n"+\
+                                    "\t Tried to transfer parameters to [Target] layer with *index* in this pathway: [" + str(layerTarget_i) + "]. (specified depth [" + str(depthLayerTarget) + "]).\n"+\
+                                    "\t Note: First layer of pathway has *index* [0].\n"+\
+                                    "\t Note#2: To transfer parameters from a Source model with less layers than the Target, specify the depth of layers to transfer using the command line option [-layers].\n"+\
+                                    "\t Try [-h] for help or see documentation.\n"+\
+                                    "Exiting!"); exit(1)
                 
-                layerSource = pathSource.getLayers()[layerTarget_i]
+                layerSource_i = layerTarget_i
+                layerSource = pathSource.getLayers()[layerSource_i]
+                myLogger.print3("\t ...receiving parameters from [Pathway_" + str(pathSource.getStringType()) + "][Conv.Layer_" + str(layerSource_i) + " (index)] (Source).")
                 
                 # Found Source layer. Excellent. Now just transfer the parameters from Source to Target
                 transferParametersBetweenLayers(myLogger=myLogger, layerTarget = layerTarget, layerSource = layerSource )
@@ -83,32 +90,32 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
 
 def transferParametersBetweenLayers(myLogger, layerTarget, layerSource ):
     # VIOLATES _HIDDEN ENCAPSULATION! TEMPORARY TILL I FIX THE API (TILL AFTER DA).
-    numFmsToTransfer = min( layerTarget.getNumberOfFeatureMaps(), layerSource.getNumberOfFeatureMaps() )
+    minNumFmsInLayers = min( layerTarget.getNumberOfFeatureMaps(), layerSource.getNumberOfFeatureMaps() )
     minNumOfChansInInput = min( layerTarget.inputShapeTrain[1], layerSource.inputShapeTrain[1] )
     
     if layerTarget._W is not None and layerSource._W is not None:
         myLogger.print3("\t Transferring weights [W].")
         targetValue = layerTarget._W.get_value()
         sourceValue = layerSource._W.get_value()
-        targetValue[:numFmsToTransfer, :minNumOfChansInInput, :,:,:] = sourceValue[:numFmsToTransfer, :minNumOfChansInInput, :,:,:]
+        targetValue[:minNumFmsInLayers, :minNumOfChansInInput, :,:,:] = sourceValue[:minNumFmsInLayers, :minNumOfChansInInput, :,:,:]
         layerTarget._W.set_value( targetValue )
     if layerTarget._b is not None and layerSource._b is not None:
         myLogger.print3("\t Transferring biases [b].")
         targetValue = layerTarget._b.get_value()
         sourceValue = layerSource._b.get_value()
-        targetValue[:numFmsToTransfer] = sourceValue[:numFmsToTransfer]
+        targetValue[:minNumOfChansInInput] = sourceValue[:minNumOfChansInInput]
         layerTarget._b.set_value( targetValue )
     if layerTarget._gBn is not None and layerSource._gBn is not None:
         myLogger.print3("\t Transferring g of Batch Norm [gBn].")
         targetValue = layerTarget._gBn.get_value()
         sourceValue = layerSource._gBn.get_value()
-        targetValue[:numFmsToTransfer] = sourceValue[:numFmsToTransfer]
+        targetValue[:minNumOfChansInInput] = sourceValue[:minNumOfChansInInput]
         layerTarget._gBn.set_value( targetValue )
     if layerTarget._aPrelu is not None and layerSource._aPrelu is not None:
         myLogger.print3("\t Transferring a of PReLu [aPrelu].")
         targetValue = layerTarget._aPrelu.get_value()
         sourceValue = layerSource._aPrelu.get_value()
-        targetValue[:numFmsToTransfer] = sourceValue[:numFmsToTransfer]
+        targetValue[:minNumOfChansInInput] = sourceValue[:minNumOfChansInInput]
         layerTarget._aPrelu.set_value( targetValue )
         
     # For the rolling average used in inference by Batch-Norm.
@@ -117,13 +124,13 @@ def transferParametersBetweenLayers(myLogger, layerTarget, layerSource ):
         myLogger.print3("\t Transferring rolling average of MU of Batch Norm [muBnsArrayForRollingAverage].")
         targetValue = layerTarget._muBnsArrayForRollingAverage.get_value()
         sourceValue = layerSource._muBnsArrayForRollingAverage.get_value()
-        targetValue[:minLengthRollAvForBn, :numFmsToTransfer] = sourceValue[:minLengthRollAvForBn, :numFmsToTransfer]
+        targetValue[:minLengthRollAvForBn, :minNumOfChansInInput] = sourceValue[:minLengthRollAvForBn, :minNumOfChansInInput]
         layerTarget._muBnsArrayForRollingAverage.set_value( targetValue )
     if layerTarget._varBnsArrayForRollingAverage is not None and layerSource._varBnsArrayForRollingAverage is not None:
         myLogger.print3("\t Transferring rolling average of Variance of Batch Norm [varBnsArrayForRollingAverage].")
         targetValue = layerTarget._varBnsArrayForRollingAverage.get_value()
         sourceValue = layerSource._varBnsArrayForRollingAverage.get_value()
-        targetValue[:minLengthRollAvForBn, :numFmsToTransfer] = sourceValue[:minLengthRollAvForBn, :numFmsToTransfer]
+        targetValue[:minLengthRollAvForBn, :minNumOfChansInInput] = sourceValue[:minLengthRollAvForBn, :minNumOfChansInInput]
         layerTarget._varBnsArrayForRollingAverage.set_value( targetValue )
 
 

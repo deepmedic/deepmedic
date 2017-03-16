@@ -474,10 +474,10 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     padInputImagesBool = configGet(trainConfig.PAD_INPUT)
                     )
     
-    trainSessionParameters.sessionLogger.print3("===========       NEW TRAINING SESSION         ===============")
+    trainSessionParameters.sessionLogger.print3("\n===========       NEW TRAINING SESSION         ===============")
     trainSessionParameters.printParametersOfThisSession()
     
-    trainSessionParameters.sessionLogger.print3("=======================================================")
+    trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Training Function ===========")
     trainSessionParameters.sessionLogger.print3("=======================================================")
     if not cnn3dInstance.checkTrainingStateAttributesInitialized() or resetOptimizer :
@@ -485,16 +485,16 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                         "Reason: Uninitialized: ["+str(not cnn3dInstance.checkTrainingStateAttributesInitialized())+"], Reset requested: ["+str(resetOptimizer)+"]" )
         cnn3dInstance.initializeTrainingState(*trainSessionParameters.getTupleForInitializingTrainingState())
     cnn3dInstance.compileTrainFunction(*trainSessionParameters.getTupleForCompilationOfTrainFunc())
-    trainSessionParameters.sessionLogger.print3("=========== Compiling the Validation Function =========")
+    trainSessionParameters.sessionLogger.print3("\n=========== Compiling the Validation Function =========")
     cnn3dInstance.compileValidationFunction(*trainSessionParameters.getTupleForCompilationOfValFunc())
-    trainSessionParameters.sessionLogger.print3("=========== Compiling the Testing Function ============")
+    trainSessionParameters.sessionLogger.print3("\n=========== Compiling the Testing Function ============")
     cnn3dInstance.compileTestAndVisualisationFunction(*trainSessionParameters.getTupleForCompilationOfTestFunc()) # For validation with full segmentation
     
-    trainSessionParameters.sessionLogger.print3("=======================================================")
+    trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("============== Training the CNN model =================")
     trainSessionParameters.sessionLogger.print3("=======================================================")
     do_training(*trainSessionParameters.getTupleForCnnTraining())
-    trainSessionParameters.sessionLogger.print3("=======================================================")
+    trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Training session finished =================")
     trainSessionParameters.sessionLogger.print3("=======================================================")
     

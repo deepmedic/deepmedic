@@ -293,19 +293,19 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
                     padInputImagesBool = configGet(testConfig.PAD_INPUT),
                     )
     
-    testSessionParameters.sessionLogger.print3("===========       NEW TESTING SESSION         ===============")
+    testSessionParameters.sessionLogger.print3("\n===========       NEW TESTING SESSION         ===============")
     testSessionParameters.printParametersOfThisSession()
     
-    testSessionParameters.sessionLogger.print3("=======================================================")
+    testSessionParameters.sessionLogger.print3("\n=======================================================")
     testSessionParameters.sessionLogger.print3("=========== Compiling the Testing Function ============")
     testSessionParameters.sessionLogger.print3("=======================================================")
     cnn3dInstance.compileTestAndVisualisationFunction(*testSessionParameters.getTupleForCompilationOfTestFunc())
     
-    testSessionParameters.sessionLogger.print3("======================================================")
+    testSessionParameters.sessionLogger.print3("\n======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing with the CNN model ===============")
     testSessionParameters.sessionLogger.print3("======================================================")
     performInferenceForTestingOnWholeVolumes(*testSessionParameters.getTupleForCnnTesting())
-    testSessionParameters.sessionLogger.print3("======================================================")
+    testSessionParameters.sessionLogger.print3("\n======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing session finished =================")
     testSessionParameters.sessionLogger.print3("======================================================")
     
