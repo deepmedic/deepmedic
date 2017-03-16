@@ -44,6 +44,12 @@ def setupArgParser() :
     parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\n"+\
                                                                     "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\n"+\
                                                                     "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
+    parser.add_argument("-pretrained", dest='pretrained_model', type=str, help="The path to a saved trained cnn model, to pretrain the new model with by transfering the weights.\n"+\
+                                                                    "This option can follow a [-newModel] option.")
+    parser.add_argument("-layers", dest='layers_to_transfer', nargs='+', type=int, help="Use only with [-pretrained] option.\n"+\
+                                                                    "Specify which layers to transfer parameters.\n"+\
+                                                                    "First layer is 1. Classification layer of original DeepMedic is 11. Same layers from each parallel-pathway will be transfered.\n"+\
+                                                                    "Format: -pretrained 1 2 3 ... (Default: all layers except classification layer transfered.)")
     parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument. Usage: ./deepMedicRun -train TRAINING_CONF -resetOptimizer ...etc...\n"+\
                                                                     "Resets the model\'s optimization state before starting the training session (eg number of epochs already trained, current learning rate etc).\n"+\
                                                                     "IMPORTANT: Trainable parameters are NOT reinitialized! \n"+\
@@ -93,8 +99,12 @@ if __name__ == '__main__':
         print("ERROR:\t[-newModel] and [-model] options cannot be used together.\n\tUse [-newModel] to create a new cnn model.\n\t[-model] can follow a [-train] or [-test] option, to specify which saved model to use.\n\tPlease try -h for more information. Exiting."); exit(1)
     if args.testing_conf and (args.model_conf or args.training_conf) :
         print("ERROR: [-test] cannot be used in conjuction with [-newModel] or [-train]. To test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model to use for the inference. Exiting."); exit(1)
+    if args.pretrained_model and not args.model_conf :
+        print("ERROR: The option [-pretrained] can only be used together with the [-newModel] option.\n\tPlease try -h for more information. Exiting."); exit(1)
+    if args.layers_to_transfer and not args.pretrained_model :
+        print("ERROR: The option [-layers] can only be used together with the [-pretrained] option.\n\tPlease try -h for more information. Exiting."); exit(1)
     if args.reset_optimizer and not args.training_conf :
-        print("ERROR: The option [-resetOptimizer] can only be used together with the [-train] option.\n\tPlease try -h for more information. Exiting.")
+        print("ERROR: The option [-resetOptimizer] can only be used together with the [-train] option.\n\tPlease try -h for more information. Exiting."); exit(1)
         
     checkDevicePassedCorrectly(args.device)
     
@@ -109,7 +119,9 @@ if __name__ == '__main__':
         #Just create and save a new CNN model.
         from deepmedic.frontEndModules import deepMedicNewModel
         absPathToModelConf = getAbsPathEvenIfRelativeIsGiven(args.model_conf, cwd)
-        (cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved) = deepMedicNewModel.deepMedicNewModelMain(absPathToModelConf)
+        absPathToPreTrainedModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.pretrained_model, cwd)  if args.pretrained_model else None # pretraining.
+        listOfLayersToTransfer = args.layers_to_transfer if args.layers_to_transfer else None # layers to transfer from pretrained model
+        (cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved) = deepMedicNewModel.deepMedicNewModelMain(absPathToModelConf, absPathToPreTrainedModelGivenInCmdLine, listOfLayersToTransfer)
         
     if args.training_conf : #and not args.model_conf and not args.testing_conf: #Second part was checked already.
         #Run training

@@ -253,10 +253,12 @@ class Block(object):
         self._appliedBnInLayer = None # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
         
         # All trainable parameters
+        # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.cnnTransferParameters.transferParametersBetweenLayers.
+        # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
         self.params = [] # W, (gbn), b, (aPrelu)
         self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
-        self._gBn = None # ONLY WHEN BN is applied
         self._b = None # shape: a vector with one value per FM of the input
+        self._gBn = None # ONLY WHEN BN is applied
         self._aPrelu = None # ONLY WHEN PreLu
         
         # ONLY WHEN BN! All of these are for the rolling average! If I fix this, only 2 will remain!
