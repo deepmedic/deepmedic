@@ -323,7 +323,7 @@ A training session can be interrupted for various reasons. Because of this, the 
 
 **Pre-Trained Models, transferring weights or fine-tuning**
 
-A common practice with neural networks is to transfer the parameters of a pretrained network to another one and/or fine-tune the network for a new task by training on a second database. For details on how to perform this with this software, please see the documentation [here](https://github.com/Kamnitsask/deepmedic/blob/master/documentation/docTransferParamsResetOpt.md)
+A common practice with neural networks is to transfer the parameters of a pretrained network to another one and/or fine-tune the network for a new task by training on a second database. For details on how to perform this with this software, please see the documentation [here](https://github.com/Kamnitsask/deepmedic/blob/master/documentation/docTransferParamsResetOpt.md).
 
 **Training Parameters**
 
