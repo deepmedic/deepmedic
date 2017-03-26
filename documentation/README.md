@@ -2,6 +2,11 @@ The DeepMedic
 =====================================
 
 ### News
+
+26 Mar 2017 (v0.6):
+* Functionality for transfering parameters and finetuning. See Sec 3.2 below.
+* Code refactored to facilitate upcoming extension.
+
 14 Nov 2016 (v0.5.4):
 * Original configuration moved to deepMedicOriginal. Updated config now in deepMedic.
 * More memory efficient testing. CNN code has been refactored. Minor fixes.

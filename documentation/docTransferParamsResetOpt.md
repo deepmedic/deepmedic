@@ -72,7 +72,7 @@ The parameters are transfered according to the following points:
 - Each of the parallel multi-scale pathways of *modelB* receives parameters from the corresponding pathway of *modelA*. If *modelB* has more pathways than *modelA*, then the additional pathways of *B* will get the parameters of the *last* pathway of *A*. Eg, if *modelB* has 2 paths and *modelA* just one, then both paths of B will gets params of the 1st path of *modelA*.
 - The Fully Connected (FC) pathway (implemented as 1x1x1 convs) of *modelB* get parameters from the FC path of *modelA*.
 - If number of kernels in between correpsonding layers of *modelA* and *modelB* differ, the minimum number of kernels is transfered. Eg, if *modelB* is two time wider, half its kernels at each layer will still be randomly initialized.
-- It is **required** that the transfered kernels have the same size (eg 3x3x3) in both models.
+- It is **required** that the transfered kernels have the same shape (eg 3x3x3) in both models.
 - It is **required** that *modelA* has **at least as many layers** as *modelB* in each pathway from which we transfer weights. If not, an error will be returned.
 - If the last requirement does not hold, because *modelA* is not deep enough, we can still transfer its weights, but we'll need to specify the transfered layers manually, with care. See below for option `-layers`.
 
