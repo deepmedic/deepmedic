@@ -6,6 +6,7 @@ The DeepMedic
 26 Mar 2017 (v0.6):
 * Functionality for transfering parameters and finetuning. See Sec 3.2 below.
 * Code refactored to facilitate upcoming extension.
+* **Important**: "Optimization" related configuration parameters moved from modelConfig.cfg to trainConfig.cfg. To reuse old config files, please adjust them to the new format. This should be easy, as all parameters that were moved are under the "Optimization" tagged block of the new trainConfig.cfg.
 
 14 Nov 2016 (v0.5.4):
 * Original configuration moved to deepMedicOriginal. Updated config now in deepMedic.
