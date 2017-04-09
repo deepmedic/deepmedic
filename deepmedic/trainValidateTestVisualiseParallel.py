@@ -632,9 +632,9 @@ def shuffleTheSegmentsForThisSubepoch(  imagePartsChannelsToLoadOnGpuForSubepoch
     inputToZip = [ sublistForPathway for sublistForPathway in imagePartsChannelsToLoadOnGpuForSubepochPerPathway ]
     inputToZip += [ gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch ]
     
-    combined = zip(*inputToZip)
+    combined = list(zip(*inputToZip)) #list() for python3 compatibility, as range cannot get assignment in shuffle()
     random.shuffle(combined)
-    shuffledInputListsToZip = zip(*combined)
+    shuffledInputListsToZip = list(zip(*combined))
     
     shuffledImagePartsChannelsToLoadOnGpuForSubepochPerPathway = [ sublistForPathway for sublistForPathway in shuffledInputListsToZip[:numOfPathwayWithInput] ]
     shuffledGtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch = shuffledInputListsToZip[numOfPathwayWithInput]

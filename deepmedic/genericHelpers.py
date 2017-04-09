@@ -23,7 +23,6 @@ except ImportError:
     import _pickle as cPickle
     
 
-
 def strFlXDec(flNum, numDec) :
     #ala "{0:.2f}".format(13.94999)
     stringThatSaysHowManyDecimals = "{0:." + str(numDec) + "f}"
@@ -145,7 +144,7 @@ def get_random_subject_indices_to_load_on_GPU(total_number_of_subjects,
                                             get_max_subjects_for_gpu_even_if_total_less=False,
                                             myLogger=None):
     
-    subjects_indices = range(total_number_of_subjects)
+    subjects_indices = list(range(total_number_of_subjects)) #list() for python3 compatibility, as range cannot get assignment in shuffle()
     random_order_chosen_subjects=[]
     
     random.shuffle(subjects_indices) #does it in place. Now they are shuffled
