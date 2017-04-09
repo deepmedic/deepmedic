@@ -7,14 +7,12 @@
 
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
-import numpy
 import numpy as np
+import random
+from math import ceil
 
 import theano
 import theano.tensor as T
-
-import random
-from math import ceil
 
 from deepmedic.pathwayTypes import PathwayTypes as pt
 from deepmedic.pathways import NormalPathway, SubsampledPathway, FcPathway
@@ -646,7 +644,7 @@ class Cnn3d(object):
         return (self.inputTensorNormTrain, self.inputTensorNormVal, self.inputTensorNormTest,
                 self.listInputTensorPerSubsTrain, self.listInputTensorPerSubsVal, self.listInputTensorPerSubsTest)
         
-    @staticmethod
+        
     def _getClassificationLayer(self):
         return SoftmaxLayer()
         
@@ -746,7 +744,7 @@ class Cnn3d(object):
         self.recFieldCnn = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(kernelDimensions)
         
         #==============================
-        rng = numpy.random.RandomState(23455)
+        rng = np.random.RandomState(23455)
         
         ######################
         # BUILD ACTUAL MODEL #

@@ -5,10 +5,12 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
+from math import ceil
 import theano.tensor as T
 from theano.tensor.signal import pool
 
-from math import ceil
 
 def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
     image3dBC012WithMirroredFinalElemets = image3dBC012

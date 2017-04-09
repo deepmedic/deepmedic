@@ -5,10 +5,10 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
-import numpy
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 import numpy as np
 import copy
-
 from math import ceil
 
 import theano.tensor as T
@@ -46,9 +46,9 @@ def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
     if upsamplingScheme == "repeat" :
         upsampledOutput = repeatRcz5DimArrayByFactor(array5dimToUpsample, upsamplingFactor)
     else :
-        print "NOT IMPLEMENTED! EXITING!"; exit(1)
+        print("ERROR: in upsampleRcz5DimArrayAndOptionalCrop(...). Not implemented type of upsampling! Exiting!"); exit(1)
         
-    if dimensionsOf5DimArrayToMatchInRcz <> None :
+    if dimensionsOf5DimArrayToMatchInRcz != None :
         # If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
         # I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
         output = cropRczOf5DimArrayToMatchOther(upsampledOutput, dimensionsOf5DimArrayToMatchInRcz)
@@ -61,11 +61,11 @@ def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
     # fms: a 5D tensor, [batch, fms, r, c, z]
     fmsShape = T.shape(fms) #fms.shape works too, but this is clearer theano grammar.
     # if part is of even width, one voxel to the left is the centre.
-    rCentreOfPartIndex = (fmsShape[2] - 1) / 2
-    rIndexToStartGettingCentralVoxels = rCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[0] - 1) / 2
+    rCentreOfPartIndex = (fmsShape[2] - 1) // 2
+    rIndexToStartGettingCentralVoxels = rCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[0] - 1) // 2
     rIndexToStopGettingCentralVoxels = rIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[0]  # Excluding
-    cCentreOfPartIndex = (fmsShape[3] - 1) / 2
-    cIndexToStartGettingCentralVoxels = cCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[1] - 1) / 2
+    cCentreOfPartIndex = (fmsShape[3] - 1) // 2
+    cIndexToStartGettingCentralVoxels = cCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[1] - 1) // 2
     cIndexToStopGettingCentralVoxels = cIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[1]  # Excluding
     
     if len(listOfNumberOfCentralVoxelsToGetPerDimension) == 2:  # the input FMs are of 2 dimensions (for future use)
@@ -73,8 +73,8 @@ def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
                     rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
                     cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels]
     elif len(listOfNumberOfCentralVoxelsToGetPerDimension) == 3 :  # the input FMs are of 3 dimensions
-        zCentreOfPartIndex = (fmsShape[4] - 1) / 2
-        zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2] - 1) / 2
+        zCentreOfPartIndex = (fmsShape[4] - 1) // 2
+        zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2] - 1) // 2
         zIndexToStopGettingCentralVoxels = zIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[2]  # Excluding
         return fms[	:, :,
                     rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
@@ -185,7 +185,7 @@ class Pathway(object):
                                                     
                                                     indicesOfLayersToConnectResidualsInOutputForPathway=[]
                                                     ) :
-        rng = numpy.random.RandomState(55789)
+        rng = np.random.RandomState(55789)
         myLogger.print3("[Pathway_" + str(self.getStringType()) + "] is being built...")
         
         self._recField = self.calcRecFieldOfPathway(kernelDimsPerLayer)

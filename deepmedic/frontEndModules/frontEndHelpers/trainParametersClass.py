@@ -10,6 +10,7 @@ from six.moves import xrange
 
 from deepmedic import samplingType
 
+
 class TrainSessionParameters(object) :
     #THE LOGIC WHETHER I GOT A PARAMETER THAT I NEED SHOULD BE IN HERE!
     

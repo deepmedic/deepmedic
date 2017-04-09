@@ -7,9 +7,10 @@
 
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
-import numpy as np
-from genericHelpers import *
 import os
+import numpy as np
+
+from deepmedic.genericHelpers import *
 
 # The API for these classes should resemble the API of Pathway and Cnn3d classes. But only what is needed by the sampling process of the training procedure.
 class PathwayWrapperForSampling(object):

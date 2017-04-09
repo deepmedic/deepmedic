@@ -7,13 +7,11 @@
 
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
-import numpy
 import numpy as np
 import random
 
 import theano
 import theano.tensor as T
-
 from theano.tensor.nnet import conv
 import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
 
@@ -138,7 +136,7 @@ def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic
         stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
         
     W = theano.shared(
-                      numpy.asarray(rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
+                      np.asarray(rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
                                     dtype='float32'#theano.config.floatX
                                     ),
                       borrow=True

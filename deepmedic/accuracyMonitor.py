@@ -8,6 +8,7 @@
 from __future__ import absolute_import, division
 from six.moves import xrange
 import numpy as np
+
 from deepmedic.genericHelpers import strFl4fNA, strFl5fNA, strListFl4fNA, strListFl5fNA, getMeanOfListExclNA
 
 class AccuracyOfEpochMonitorSegmentation(object) :

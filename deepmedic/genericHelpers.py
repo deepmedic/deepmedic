@@ -8,16 +8,21 @@
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import os
-import cPickle
 import gzip
-
-import random
+import datetime
 import nibabel as nib
 import numpy as np
-
+import random
 from math import ceil
 
-import datetime
+import pickle
+try:
+    import cPickle
+except ImportError:
+    # python3 compatibility
+    import _pickle as cPickle
+    
+
 
 def strFlXDec(flNum, numDec) :
     #ala "{0:.2f}".format(13.94999)
@@ -120,7 +125,7 @@ def dump_object_to_file(my_obj, filenameWithPath) :
     If I need forward compatibility, read this: http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
     """
     f = file(filenameWithPath, 'wb')
-    cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    cPickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
     
 def load_object_from_gzip_file(filenameWithPath) :
@@ -131,7 +136,7 @@ def load_object_from_gzip_file(filenameWithPath) :
 
 def dump_object_to_gzip_file(my_obj, filenameWithPath) :
     f = gzip.open(filenameWithPath, 'wb')
-    cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    cPickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
     
 #This could be renamed to be more generic.

@@ -5,13 +5,15 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
 import datetime
+
 
 class MyLogger :
     loggerFileName = None
     
     def print3(self, string) :
-        print (string)    
+        print(string)    
         f = open(self.loggerFileName,'a')
         f.write(str(datetime.datetime.now())+" >> "+string+"\n")
         f.close()

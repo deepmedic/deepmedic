@@ -9,14 +9,12 @@ from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import sys
 import time
-import numpy as np
 import nibabel as nib
+import pp
+import numpy as np
 import random
 import math
-
 from scipy.ndimage.filters import gaussian_filter
-
-import pp
 
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.cnnHelpers import CnnWrapperForSampling

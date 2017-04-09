@@ -5,24 +5,23 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 import os
-
-from deepmedic import myLoggerModule
-
-from deepmedic.cnn3d import Cnn3d
 
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkIfAllElementsOfAListAreFilesAndExitIfNot
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkListContainsCorrectNumberOfCasesOtherwiseExitWithError
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkThatAllEntriesOfAListFollowNameConventions
-
 from deepmedic.frontEndModules.frontEndHelpers.createModelParametersClass import CreateModelSessionParameters
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForCreateModelSession
 
+from deepmedic import myLoggerModule
+from deepmedic.cnn3d import Cnn3d
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
+from deepmedic.genericHelpers import load_object_from_gzip_file
 from deepmedic.genericHelpers import datetimeNowAsStr
 
-from deepmedic.genericHelpers import load_object_from_gzip_file
 
 class ModelConfig(object):
     configStruct = {} #In here will be placed all read arguments.
@@ -85,7 +84,7 @@ class ModelConfig(object):
 
 #The argument should be absolute path to the config file for the model to create.
 def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCmdLine, listOfLayersToTransfer) :
-    print "Given Model-Configuration File: ", modelConfigFilepath
+    print("Given Model-Configuration File: ", modelConfigFilepath)
     #Parse the config file in this naive fashion...
     modelConfig = ModelConfig()
     exec(open(modelConfigFilepath).read(), modelConfig.configStruct)
@@ -154,7 +153,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
     cnn3dInstance = Cnn3d()
     cnn3dInstance.make_cnn_model(*createModelSessionParameters.getTupleForCnnCreation())
     
-    if absPathToPreTrainedModelGivenInCmdLine <> None: # Transfer parameters from a previously trained model to the new one.
+    if absPathToPreTrainedModelGivenInCmdLine != None: # Transfer parameters from a previously trained model to the new one.
         createModelSessionParameters.sessionLogger.print3("\n=========== Pre-training the new model ===============")
         sessionLogger.print3("...Loading the pre-trained network. This can take a few minutes if the model is big...")
         cnnPretrainedInstance = load_object_from_gzip_file(absPathToPreTrainedModelGivenInCmdLine)
@@ -163,7 +162,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
         cnn3dInstance = cnnTransferParameters.transferParametersBetweenModels(sessionLogger, cnn3dInstance, cnnPretrainedInstance, listOfLayersToTransfer)
     
     createModelSessionParameters.sessionLogger.print3("\n=========== Saving the model ===============")
-    if absPathToPreTrainedModelGivenInCmdLine <> None:
+    if absPathToPreTrainedModelGivenInCmdLine != None:
         filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial.pretrained." + datetimeNowAsStr()
     else:
         filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial." + datetimeNowAsStr()

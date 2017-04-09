@@ -7,12 +7,7 @@
 
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
-
 import os
-
-from deepmedic import myLoggerModule
-
-from deepmedic.trainValidateTestVisualiseParallel import performInferenceForTestingOnWholeVolumes
 
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkIfAllElementsOfAListAreFilesAndExitIfNot
@@ -20,11 +15,13 @@ from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import parseA
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import parseFileLinesInList
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkListContainsCorrectNumberOfCasesOtherwiseExitWithError
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkThatAllEntriesOfAListFollowNameConventions
-
 from deepmedic.frontEndModules.frontEndHelpers.testParametersClass import TestSessionParameters
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForTestingSession
 
+from deepmedic import myLoggerModule
 from deepmedic.genericHelpers import load_object_from_gzip_file
+from deepmedic.trainValidateTestVisualiseParallel import performInferenceForTestingOnWholeVolumes
+
 
 class TestConfig(object):
     configStruct = {} #In here will be placed all read arguments.

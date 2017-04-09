@@ -7,13 +7,13 @@
 
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
-
 import os
 
 from deepmedic.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
 from deepmedic.cnnHelpers import checkReceptiveFieldFineInComparisonToSegmentSize
 from deepmedic.cnnHelpers import checkKernDimPerLayerCorrect3dAndNumLayers
 from deepmedic.cnnHelpers import checkSubsampleFactorEven
+
 
 class CreateModelSessionParameters(object) :
     #THE LOGIC WHETHER I GOT A PARAMETER THAT I NEED SHOULD BE IN HERE!
@@ -214,7 +214,7 @@ class CreateModelSessionParameters(object) :
                                                         numberOfInputChannelsNormal<1 else self.errReqNumChannels()
                                                         
         #===Normal pathway===
-        self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal != None and numFMsNormal > 0 else self.errReqFMsNormal()
+        self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal != None and len(numFMsNormal) > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
         self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
         self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!

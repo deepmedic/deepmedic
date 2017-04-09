@@ -11,6 +11,8 @@
 
 # Also see module deepmedic.pathways.
 
+from __future__ import absolute_import, print_function, division
+
 class PathwayTypes(object):
     NORM = 0; SUBS = 1; FC = 2 # static
     

@@ -11,13 +11,14 @@ This script parses training logs and plots accuracy metrics (mean accuracy, sens
 
 from __future__ import absolute_import, print_function
 from six.moves import xrange
-import numpy as np
-import matplotlib.mlab as mlab
-import matplotlib.pyplot as plt
 import os
 import sys
 import argparse
 import re
+import numpy as np
+import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
+
 
 NA_PATTERN = "N/A"
 SESSION_NAME_PATTERN = "Session\'s name ="
