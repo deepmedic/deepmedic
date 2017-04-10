@@ -1054,8 +1054,9 @@ def do_training(myLogger,
                                                             getImagePartFromSubsampledImageForTraining,
                                                             shuffleTheSegmentsForThisSubepoch
                                                             )
-    tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ("random", "time", "numpy as np", "nibabel as nib", "math", "from scipy.ndimage.filters import gaussian_filter", "from deepmedic.genericHelpers import *",
-                                                        "from deepmedic.pathwayTypes import PathwayTypes as pt", "from deepmedic.cnnHelpers import CnnWrapperForSampling")
+    tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ( "from __future__ import absolute_import, print_function, division", "from six.moves import xrange",
+                "time", "nibabel as nib", "numpy as np", "random", "math", "from scipy.ndimage.filters import gaussian_filter",
+                "from deepmedic.pathwayTypes import PathwayTypes as pt", "from deepmedic.cnnHelpers import CnnWrapperForSampling", "from deepmedic.genericHelpers import *")
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequencially load the data for it.
     #------End for parallel------
     

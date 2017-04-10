@@ -5,7 +5,7 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
-from __future__ import absolute_import, division
+from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import numpy as np
 
