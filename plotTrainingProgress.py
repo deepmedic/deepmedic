@@ -38,6 +38,7 @@ DSC_SAMPLES_SENTENCE = "mean Dice of each subepoch:"
 OVERALLCLASS_PATT = "Overall"
 MEANACC_OVERALL_SENTENCE = "mean accuracy of each subepoch:"
 COST_OVERALL_SENTENCE = "mean cost of each subepoch:"
+COST_OVERALL_SUBEPOCH_SENTENCE = "mean cost:"
 
 def setupArgParser() :
     parser = argparse.ArgumentParser( prog='plotTrainingProgress', formatter_class=argparse.RawTextHelpFormatter,
@@ -46,6 +47,7 @@ def setupArgParser() :
     parser.add_argument("-d", "--detailed", dest='detailed_plot', action='store_true', help="By default, only \"overall\" mean empirical accuracy is plotted. Provide this option for a more detailed and \"class-specific\" plot.\nMetrics plotted: mean accuracy, sensitivity, specificity, DSC on samples and DSC on fully-segmented validation subjects.\n***IMPORTANT***\n\"Class-specific\" metrics of the more detailed plot are computed in a \"One-Class Vs All-Others\" fashion!\nIn *Multi-Class* problems, \"overall\" accuracy of the basic plot and \"class-specific\" accuracy of the detailed plot differ significantly because of this!\nOverall accuracy of basic plot: Number of voxels predicted with correct class / number of all voxels.\nClass-specific accuracy of detailed plot: (True Positives + True Negatives with respect to \"the specified class\") / number of all voxels.\n\t>> i.e. voxels predicted with any other class are all considered similar, eg as background.")
     parser.add_argument("-c", "--classes", dest='classes_to_plot', nargs='+', type=int, help="Use only when --detailed plot is activated.\nSpecify for which class(es) to plot metrics.\nFormat: -c 2 |OR| -c 0 0 2 ... (Default: class-0 will be plotted from each log.) \n*NOTE* Plotted metrics for Class-0 correspond to \"whole\" Foreground, although Label-0 in the NIFTIs is supposed to be Background. We consider it more useful.\nUsage cases:\nA single class specified: All given log files will be parsed to plot corresponding training progress for this class. \nMultiple classes and one log file: Log will be parsed for all given classes in order to plot their progress. \nMultiple classes and multiple logs: They will be matched one-to-one for plotting. For this, same number of classes and logs should be given.")
     parser.add_argument("-m", "--movingAv", dest='moving_average', type=int, default=1, help="Plotted values are smoothed with a moving average. Specify over how many values (subepochs) it should extend. \nFormat: -m 20 (Default: 1)\n*NOTE* DSC from full-segmentation of validation images is not smoothed.")
+    parser.add_argument("-t", "--trainError", dest='train_error', action='store_true', help="Plot train error for every sub-epoch of one log file/experiment . Takes no arguments.")
     parser.add_argument("-s", "--saveFigure", dest='save_figure', action='store_true', help="Use to make the script save the figure at the current folder. Takes no arguments.")
     return parser
 
@@ -170,8 +172,10 @@ def getRegExprForParsingMetric(validation0orTraining1, basic0detailed1, class_i,
         classPrefixString = OVERALLCLASS_PATT
         if intSpecifyingMetric01234 == 0 : #looking for mean accuracy
             sentenceToLookFor = MEANACC_OVERALL_SENTENCE
-        elif intSpecifyingMetric01234 == 1 : #looking for cost
+        elif intSpecifyingMetric01234 == 1 : #looking for mean cost at end of epoch
             sentenceToLookFor = COST_OVERALL_SENTENCE
+        elif intSpecifyingMetric01234 == 2 : #looking for mean cost at end of subepoch (earlier)
+            sentenceToLookFor = COST_OVERALL_SUBEPOCH_SENTENCE            
     else : #detailed plotting
         classPrefixString = CLASS_PREFIX_PATT + str(class_i)
         if intSpecifyingMetric01234 == 0 : #looking for mean accuracy
@@ -255,7 +259,7 @@ def parseBasicMetricsFromThisLog( logFile, movingAverSubeps ) :
     for val0orTrain1 in [0,1] :
         (regExprForMeanAcc, sentenceForMeanAcc) = getRegExprForParsingMetric(val0orTrain1, 0, None, 0)
         regExprForEachClassAndMetric[val0orTrain1][0].append( regExprForMeanAcc )
-        sentencesToLookForEachClassAndMetric[val0orTrain1][0].append( sentenceForMeanAcc )
+        sentencesToLookForEachClassAndMetric[val0orTrain1][0].append( sentenceForMeanAcc )       
         
     ### Form the data structure where we ll put all the measurements from this logfile for each val/train, class and metric. ###
     #[0] val, [1] train. Each has one sublist, because in basic I have only 1 class to be plotted. The class-sublist has 1 sublist, because here I have only 1 plotted metric.
@@ -290,6 +294,43 @@ def parseBasicMetricsFromThisLog( logFile, movingAverSubeps ) :
     
     return ( measurementsForEachClassAndMetric[0], measurementsForEachClassAndMetric[1] )
 
+def parseTrainErrorPerSubEpochFromThisLog( logFile, movingAverSubeps ) :
+    """
+    Parse train error (cost) per sub-epoch from logfile
+    """
+
+    # dummy structures to leverage the existing helper methods
+    regExprForEachClassAndMetric = [ [ [] ], [ [] ] ] #[0] val, [1] train
+    sentencesToLookForEachClassAndMetric = [ [ [] ], [ [] ] ] #[0] val, [1] train
+    for val0orTrain1 in [0,1] :
+        (regExprForMeanAcc, sentenceForMeanAcc) = getRegExprForParsingMetric(val0orTrain1, 0, None, 2)
+        regExprForEachClassAndMetric[val0orTrain1][0].append( regExprForMeanAcc )
+        sentencesToLookForEachClassAndMetric[val0orTrain1][0].append( sentenceForMeanAcc )      
+
+    ### Form the data structure where we ll put all the measurements from this logfile for each val/train, class and metric. ###
+    #[0] val, [1] train. Each has one sublist, because in basic I have only 1 class to be plotted. The class-sublist has 1 sublist, because here I have only 1 plotted metric.
+    measurementsForEachClassAndMetric = [ [ [] ], [ [] ] ]
+    for val0orTrain1 in [0,1] :
+        for metric_i in xrange(1) : 
+            measurementsForEachClassAndMetric[val0orTrain1][0].append([]) # Add a sublist in the class, per metric.
+           
+    ### Read the file and start parsing each line.
+    f = open(logFile, 'r')
+    newLine = f.readline()
+    while newLine :
+        matchObj, matchVal0Train1, matchClass_i, matchMetric_i = checkIfLineMatchesAnyRegExpr(newLine, regExprForEachClassAndMetric)
+        
+        if matchObj : #matched the reg-expression for mean cost
+            sentenceToLookFor = sentencesToLookForEachClassAndMetric[matchVal0Train1][matchClass_i][matchMetric_i]
+            restOfLineAfterPattern = newLine[ newLine.find(sentenceToLookFor)+len(sentenceToLookFor) : ]
+
+            measurementsForEachClassAndMetric[matchVal0Train1][matchClass_i][matchMetric_i] += [float(restOfLineAfterPattern)]
+        
+        newLine = f.readline()
+        
+    f.close()
+    
+    return measurementsForEachClassAndMetric
 
 # THIS IS A VERY UGLY FUNCTION because it has hardcoded 0/4/5 integers for each of the metric. I need to make an enumerated class for this!
 def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSubeps ) :
@@ -366,22 +407,27 @@ def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSube
     return ( measurementsForEachClassAndMetric[0], measurementsForEachClassAndMetric[1] )
 
 
-def optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, classesFromEachLogFile, movingAverSubeps) :
+def optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, trainErrorBool, classesFromEachLogFile, movingAverSubeps) :
     # Two rows, Validation and Accuracy
     # Each of these has as many sublists as the number of experiments (logFiles) X Classes!
     # Each of these sublists has a 5/4-entries sublist. Mean Accuracy/Sens/Spec/DSC-on-samples/DSC-from-full-segm-of-volumes (val only). OR just 1, if basic.
     measuredMetricsFromAllExperiments = [[],[]] #[0] validation, [1] training measurements.
     for logFile_i in xrange(0, len(logFiles)) :
-        if not detailedPlotBool :
+        if (not trainErrorBool) and (not detailedPlotBool):
             ( measuredMetricsFromThisLogValidation,
             measuredMetricsFromThisLogTraining ) = parseBasicMetricsFromThisLog( logFiles[logFile_i], movingAverSubeps )
-        else :
+        elif (not trainErrorBool):
             ( measuredMetricsFromThisLogValidation,
             measuredMetricsFromThisLogTraining ) = parseDetailedMetricsFromThisLog( logFiles[logFile_i], classesFromEachLogFile[logFile_i], movingAverSubeps )
+        else: 
+            ( measuredMetricsFromThisLogValidation, 
+            measuredMetricsFromThisLogTraining ) = parseTrainErrorPerSubEpochFromThisLog( logFiles[logFile_i], movingAverSubeps )
             
         measuredMetricsFromAllExperiments[0] += measuredMetricsFromThisLogValidation
         measuredMetricsFromAllExperiments[1] += measuredMetricsFromThisLogTraining
+
     measuredMetricsFromAllExperiments = applyMovingAverageToAllButDscFullSeg(detailedPlotBool, measuredMetricsFromAllExperiments, movingAverSubeps )
+
     return measuredMetricsFromAllExperiments
 
 ################################# END OF FUNCTIONS FOR THE PARSING OF MEASUREMENTS ########################################################
@@ -411,7 +457,7 @@ def plotProgressBasic(measuredMetricsFromAllExperiments, legendList, movingAverS
     
     fig.subplots_adjust(left=0.05, bottom = 0.1*percForMain + percForLegend, right=0.98, top=0.92*percForMain+percForLegend, wspace=0.25, hspace=0.4*percForMain)
     fig.canvas.set_window_title(os.path.basename(__file__))
-    fig.suptitle(os.path.basename(__file__) + ": Moving Average over ["+ str(movingAverSubeps)+"] value. For each plotted experiment, Subepochs per Epoch: " + str(subepochsPerEpOfExpers), fontsize=8)#, fontweight='bold')
+    fig.suptitle(os.path.basename(__file__) + ": Moving Average over ["+ str(movingAverSubeps)+"] subepochs. For each plotted experiment, Subepochs per Epoch: " + str(subepochsPerEpOfExpers), fontsize=8)#, fontweight='bold')
     
     maxNumOfEpsDurationOfExps = 0 # The number of epochs that the longest experiment lasted.
     
@@ -550,6 +596,78 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
     plt.show()
 
 
+def plotProgressTrainError(measuredMetricsFromAllExperiments, legendList, movingAverSubeps, subepochsPerEpOfExpers, saveFigureBool) :
+    """
+    Plot train error for every sub-epoch (so doesn't wait till end of epoch but picks "mean cost:" value after every sub-epoch)
+    This method doesn't show anything for VAL since there are no val costs calculated/available in the log files.
+    """
+
+    colors = ["r","g","b","c","m","k"]
+    linestyles = ['-', '--', ':', '_', '-.']
+
+    fontSizeSubplotTitles = 14; fontSizeXTickLabel = 12; fontSizeYTickLabel = 12; fontSizeXAxisLabel = 12; fontSizeYAxisLabel = 14; linewidthInPlots = 1.5;
+    legendFontSize = 12; legendNumberOfColumns = 8;
+
+    fig, axes = plt.subplots(1, 1, sharex=False, sharey=False)
+    inchesForMainPlotPart = 7; inchesForLegend = 0.6; percForMain = inchesForMainPlotPart*1.0/(inchesForMainPlotPart+inchesForLegend); percForLegend = 1.-percForMain
+    fig.set_size_inches(15,inchesForMainPlotPart+inchesForLegend); #changes width/height of the figure. VERY IMPORTANT
+    fig.set_dpi(100); #changes width/height of the figure.
+    
+    fig.subplots_adjust(left=0.05, bottom = 0.1*percForMain + percForLegend, right=0.98, top=0.92*percForMain+percForLegend, wspace=0.25, hspace=0.4*percForMain)
+    fig.canvas.set_window_title(os.path.basename(__file__))
+    fig.suptitle(os.path.basename(__file__) + ": Moving Average over ["+ str(movingAverSubeps)+"] subepochs. For each plotted experiment, Subepochs per Epoch: " + str(subepochsPerEpOfExpers), fontsize=8)#, fontweight='bold')
+
+    maxNumOfEpsDurationOfExps = 0 # The number of epochs that the longest experiment lasted.   
+    maxCostOfExps = 0 # max value of cost found in log files, used to set ylim 
+
+    for valOrTrain_i in xrange(0, len(measuredMetricsFromAllExperiments)) :
+        if not (valOrTrain_i == 0):   # ignore val as this doesn't contain any cost data
+            for valOrTrainExperiment_i in xrange(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
+                valOrTrainExperiment = measuredMetricsFromAllExperiments[valOrTrain_i][valOrTrainExperiment_i]
+                for metric_i in xrange(0, len(valOrTrainExperiment)) :
+                    assert valOrTrainExperiment[metric_i] <> [], ("Please make sure the log file contains valid experiment data.")
+                    npMaxOfExp = np.max(valOrTrainExperiment[metric_i])
+                    maxCostOfExps =  npMaxOfExp if npMaxOfExp > maxCostOfExps else maxCostOfExps
+
+                    numberOfSubsPerEpoch = subepochsPerEpOfExpers[valOrTrainExperiment_i]
+                    
+                    numberOfSubepochsRan = len(valOrTrainExperiment[metric_i])
+                    numberOfEpochsRan = numberOfSubepochsRan*1.0/numberOfSubsPerEpoch
+                    maxNumOfEpsDurationOfExps = maxNumOfEpsDurationOfExps if maxNumOfEpsDurationOfExps >= numberOfEpochsRan else numberOfEpochsRan
+                    xIter = np.linspace(0, numberOfEpochsRan, numberOfSubepochsRan, endpoint=True) #endpoint=True includes it as the final point.
+                    
+                    # axis = axes[valOrTrain_i] if numberOfMetricsPlotted == 1 else axes[valOrTrain_i, metric_i] # No 2nd index when subplot(X, 1, ...)
+                    axes.plot(xIter, valOrTrainExperiment[metric_i], color = colors[valOrTrainExperiment_i%len(colors)], linestyle = linestyles[valOrTrainExperiment_i/len(colors)], label=legendList[valOrTrainExperiment_i], linewidth=linewidthInPlots)
+                    axes.set_title("Mean Cost", fontsize=fontSizeSubplotTitles, y=1.022)
+                    axes.yaxis.grid(True, zorder=0)
+                    axes.set_xlim([0,maxNumOfEpsDurationOfExps])
+                    axes.set_xlabel('Epoch', fontsize=fontSizeXAxisLabel)    
+
+    axes.set_ylim(0., maxCostOfExps+.5);
+    axes.set_ylabel('Train Error', fontsize=fontSizeYAxisLabel)
+
+    axes.yaxis.grid(True, linestyle='--', which='major', color='black', alpha=1.0)
+    axes.tick_params(axis='y', labelsize=fontSizeYTickLabel)    
+    
+    """
+    Moving the legend-box:
+    - You grab a subplot. (depending on the axis that you ll use at: axis.legend(...))
+    - Then, you specify with loc=, the anchor of the LEGENDBOX that you will move in relation to the BOTTOM-LEFT corner of the above axis..
+        loc = 'upper right' (1), 'upper left' (2), 'lower left' (3), 'lower right' (4)
+    - bbox_to_anchor=(x-from-left, y-from-bottom, width, height). x and y can be negatives. Specify how much to move legend's loc from the bottom left corner of the axis.
+        x, y, width and height are floats, giving the percentage of the AXIS's size. Eg x=0.5, y=0.5 moves it at the middle of the subplot.
+    # """
+    leg = axes.legend(loc='upper left', bbox_to_anchor=(0., -0.1, 0., 0.),#(0., -1.3, 1., 1.),
+                       ncol=legendNumberOfColumns, borderaxespad=0. , fontsize=legendFontSize, labelspacing = 0., columnspacing=1.0)#mode="expand",
+    #Make the lines in the legend wider.
+    for legobj in leg.legendHandles:
+        legobj.set_linewidth(6.0)
+        
+    if saveFigureBool :
+        plt.savefig('./trainingErrorProgress.pdf', dpi=fig.dpi)#, bbox_inches='tight')
+        
+    plt.show()
+
 
 
 
@@ -563,19 +681,20 @@ if __name__ == '__main__':
     detailedPlotBool = args.detailed_plot
     movingAverSubeps = args.moving_average
     saveFigBool = args.save_figure
+    trainErrorBool = args.train_error
     
     logFiles = args.log_files
     (listOfExperimentsNames, subepochsPerEpFromEachLog, epochsPerFullInferFromEachLog) = parseVariablesOfTrainingSessionsFromListOfLogs(logFiles)
     
-    if not detailedPlotBool: # basic plot
+    if (not trainErrorBool) and (not detailedPlotBool): # basic plot
         if args.classes_to_plot :
             print "ERROR: -c/--classes option should only be provided when -d/--detailed plotting is specified. Default basic plotting parses and shows overall and not class-specific accuracy."
             print "Exiting!"; exit(1)
             
-        measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, None, movingAverSubeps)
+        measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, trainErrorBool, None, movingAverSubeps)
         plotProgressBasic(measuredMetricsFromAllExperiments, listOfExperimentsNames, movingAverSubeps, subepochsPerEpFromEachLog, saveFigBool)
         
-    else : # detailed plot
+    elif not trainErrorBool : # detailed plot
         if not args.classes_to_plot : #Default class when none given as argument
             classesFromEachLogFile = len(logFiles)*[[0]]
         elif len(logFiles) == 1 : # 1 log file only
@@ -597,15 +716,12 @@ if __name__ == '__main__':
         epochsPerFullInferFromEachLog = [5]*len(logFiles)
         listOfExperimentsNames = [ "TrainingSession1", "TrainingSession2" ]
         """
-        measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs( logFiles, detailedPlotBool, classesFromEachLogFile, movingAverSubeps )
+        measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs( logFiles, detailedPlotBool, trainErrorBool, classesFromEachLogFile, movingAverSubeps )
         legendList = makeLegendList(listOfExperimentsNames, classesFromEachLogFile)
         (subepochsPerEpOfExpers, epochsPerFullInferOfExpers) = makeHelperVariablesPerExperiment(logFiles, classesFromEachLogFile, subepochsPerEpFromEachLog, epochsPerFullInferFromEachLog)
         
         plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAverSubeps, subepochsPerEpOfExpers, epochsPerFullInferOfExpers, saveFigBool)
 
-
-
-
-
-
-
+    else: # train error for every sub-epoch
+        measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, trainErrorBool, None, movingAverSubeps)
+        plotProgressTrainError(measuredMetricsFromAllExperiments, listOfExperimentsNames, movingAverSubeps, subepochsPerEpFromEachLog, saveFigBool)
