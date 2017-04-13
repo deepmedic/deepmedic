@@ -677,7 +677,7 @@ def getNumberOfSegmentsToExtractPerCategoryFromEachSubject( numberOfImagePartsTo
 def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
                                                                 training0orValidation1,
                                                                 cnn3d,
-                                                                n_subjects_per_subepoch,
+                                                                maxNumSubjectsLoadedPerSubepoch,
                                                                 numberOfImagePartsToLoadInGpuPerSubepoch,
                                                                 samplingTypeInstance,
                                                                 
@@ -706,16 +706,16 @@ def getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
     
     total_number_of_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
     randomIndicesList_for_gpu = get_random_subject_indices_to_load_on_GPU(total_number_of_subjects = total_number_of_subjects,
-                                                                        max_subjects_on_gpu_for_subepoch = n_subjects_per_subepoch,
+                                                                        max_subjects_on_gpu_for_subepoch = maxNumSubjectsLoadedPerSubepoch,
                                                                         get_max_subjects_for_gpu_even_if_total_less = False,
                                                                         myLogger=myLogger)
-    myLogger.print3("Out of [" + str(total_number_of_subjects) + "] subjects given for [" + trainingOrValidationString + "], it was specified to extract Segments from maximum [" + str(n_subjects_per_subepoch) + "] per subepoch.")
+    myLogger.print3("Out of [" + str(total_number_of_subjects) + "] subjects given for [" + trainingOrValidationString + "], it was specified to extract Segments from maximum [" + str(maxNumSubjectsLoadedPerSubepoch) + "] per subepoch.")
     myLogger.print3("Shuffled indices of subjects that were randomly chosen: "+str(randomIndicesList_for_gpu))
     
     #This is x. Will end up with dimensions: numberOfPathwaysThatTakeInput, partImagesLoadedPerSubepoch, channels, r,c,z, but flattened.
     imagePartsChannelsToLoadOnGpuForSubepochPerPathway = [ [] for i in xrange(cnn3d.getNumPathwaysThatRequireInput()) ]
     gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch = [] # Labels only for the central/predicted part of segments.
-    numOfSubjectsLoadingThisSubepochForSampling = len(randomIndicesList_for_gpu) #Can be different than n_subjects_per_subepoch, cause of available images number.
+    numOfSubjectsLoadingThisSubepochForSampling = len(randomIndicesList_for_gpu) #Can be different than maxNumSubjectsLoadedPerSubepoch, cause of available images number.
     
     dimsOfPrimeSegmentRcz=cnn3d.pathways[0].getShapeOfInput()[training0orValidation1][2:]
     
@@ -910,7 +910,7 @@ def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(myLogger,
 
 
 #---------------------------------------------TRAINING-------------------------------------
-#batch_size should be 1 or even.
+
 def do_training(myLogger,
                 fileToSaveTrainedCnnModelTo,
                 cnn3dInstance,
@@ -938,10 +938,10 @@ def do_training(myLogger,
                 listOfFilepathsToRoiMaskOfEachPatientValidation,
                 
                 borrowFlag,
-                n_epochs, #every epoch I save my cnnModel
-                number_of_subepochs, #per epoch. Every subepoch I get my Accuracy reported
-                n_subjects_per_subepoch,  #the max that can be fit in CPU memory. these are never in GPU. Only ImageParts in GPU
-                imagePartsLoadedInGpuPerSubepoch, #Keep this even for now. So that I have same number of pos-neg PAIRS. If it's odd, still will be int divided by two so the lower even will be used.
+                n_epochs, # Every epoch the CNN model is saved.
+                number_of_subepochs, # per epoch. Every subepoch Accuracy is reported
+                maxNumSubjectsLoadedPerSubepoch,  # Max num of cases loaded every subepoch for segments extraction. The more, the longer loading.
+                imagePartsLoadedInGpuPerSubepoch,
                 imagePartsLoadedInGpuPerSubepochValidation,
                 
                 #-------Sampling Type---------
@@ -994,7 +994,7 @@ def do_training(myLogger,
     tupleWithParametersForTraining = (myLogger,
                                     0,
                                     cnn3dWrapper,
-                                    n_subjects_per_subepoch,
+                                    maxNumSubjectsLoadedPerSubepoch,
                                     
                                     imagePartsLoadedInGpuPerSubepoch,
                                     samplingTypeInstanceTraining,
@@ -1021,7 +1021,7 @@ def do_training(myLogger,
     tupleWithParametersForValidation = (myLogger,
                                     1,
                                     cnn3dWrapper,
-                                    len(listOfFilepathsToEachChannelOfEachPatientValidation),
+                                    maxNumSubjectsLoadedPerSubepoch,
                                     
                                     imagePartsLoadedInGpuPerSubepochValidation,
                                     samplingTypeInstanceValidation,
@@ -1086,7 +1086,7 @@ def do_training(myLogger,
                     labelsForCentralOfSegmentsForSubepVal] = getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
                                                                         1,
                                                                         cnn3dWrapper,
-                                                                        len(listOfFilepathsToEachChannelOfEachPatientValidation),
+                                                                        maxNumSubjectsLoadedPerSubepoch,
                                                                         imagePartsLoadedInGpuPerSubepochValidation,
                                                                         samplingTypeInstanceValidation,
                                                                         
@@ -1173,7 +1173,7 @@ def do_training(myLogger,
                 labelsForCentralOfSegmentsForSubepTrain] = getTheArraysOfImageChannelsAndLesionsToLoadToGpuForSubepoch(myLogger,
                                                                         0,
                                                                         cnn3dWrapper,
-                                                                        n_subjects_per_subepoch,
+                                                                        maxNumSubjectsLoadedPerSubepoch,
                                                                         imagePartsLoadedInGpuPerSubepoch,
                                                                         samplingTypeInstanceTraining,
                                                                         
