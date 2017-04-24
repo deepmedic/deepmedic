@@ -315,7 +315,7 @@ def sampleImageParts(   myLogger,
     #np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), where each of the array in the tuple has the same shape as the listOfIndices. They have the r/c/z coords that correspond to the index of the flattened version.
     #So, coordsOfCentralVoxelsOfPartsSampled will end up being an array with shape: 3(rcz) x numOfSegmentsToExtractForThisSubject.
     coordsOfCentralVoxelsOfPartsSampled = np.asarray(np.unravel_index(indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts,
-                                                                    constrainedWithImageBoundariesMaskToSample.shape #the shape of the brainmask/scan.
+                                                                    constrainedWithImageBoundariesMaskToSample.shape #the shape of the roiMask/scan.
                                                                     )
                                                     )
     #Array with shape: 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
@@ -424,7 +424,7 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
                                     strideOfSegmentsPerDimInVoxels,
                                     batch_size,
                                     channelsOfImageNpArray,#chans,niiDims
-                                    brainMask
+                                    roiMask
                                     ) :
     myLogger.print3("Starting to (tile) extract Segments from the images of the subject for Segmentation...")
     
@@ -453,8 +453,8 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
                 rLowBoundaryNext = rLowBoundaryNext + strideOfSegmentsPerDimInVoxels[0]
                 rAxisCentralPartPredicted = False if rFarBoundary < niiDimensions[0] else True
                 
-                if isinstance(brainMask, (np.ndarray)) : #In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
-                    if not np.any(brainMask[rLowBoundary:rFarBoundary,
+                if isinstance(roiMask, (np.ndarray)) : #In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
+                    if not np.any(roiMask[rLowBoundary:rFarBoundary,
                                             cLowBoundary:cFarBoundary,
                                             zLowBoundary:zFarBoundary
                                             ]) : #all of it is out of the brain so skip it.
@@ -1421,8 +1421,8 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
     #one dice score for whole + for each class)
     # A list of dimensions: total_number_of_images X NUMBER_OF_CLASSES
     diceCoeffs1 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #AllpredictedLes/AllLesions
-    diceCoeffs2 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideBrainmask/AllLesions
-    diceCoeffs3 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideBrainMask/ LesionsInsideBrainMAsk (for comparisons)
+    diceCoeffs2 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideRoiMask/AllLesions
+    diceCoeffs3 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
     
     recFieldCnn = cnn3dInstance.recFieldCnn
     
@@ -1456,7 +1456,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         
         [imageChannels, #a nparray(channels,dim0,dim1,dim2)
         gtLabelsImage, #only for accurate/correct DICE1-2 calculation
-        brainMask, 
+        roiMask,
         arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
@@ -1490,8 +1490,8 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                                     reflectImageWithHalfProb = [0,0,0]
                                                     )
         niiDimensions = list(imageChannels[0].shape)
-        #The probability-map that will be constructed by the predictions.
-        labelImageCreatedByPredictions = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
+        #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
+        predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
         #create the big array that will hold all the fms (for feature extraction, to save as a big multi-dim image).
         if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
             multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
@@ -1502,7 +1502,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                                                         strideOfSegmentsPerDimInVoxels=strideOfImagePartsPerDimensionInVoxels,
                                                                         batch_size = batch_size,
                                                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
-                                                                        brainMask = brainMask
+                                                                        roiMask = roiMask
                                                                         )
         myLogger.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
         
@@ -1568,7 +1568,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                 #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
                 sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedProbMap_i]
                 coordsOfTopLeftVoxelForThisPart = [ sliceCoordsOfThisSegment[0][0], sliceCoordsOfThisSegment[1][0], sliceCoordsOfThisSegment[2][0] ]
-                labelImageCreatedByPredictions[
+                predProbMapsPerClass[
                         :,
                         coordsOfTopLeftVoxelForThisPart[0] + rczHalfRecFieldCnn[0] : coordsOfTopLeftVoxelForThisPart[0] + rczHalfRecFieldCnn[0] + strideOfImagePartsPerDimensionInVoxels[0],
                         coordsOfTopLeftVoxelForThisPart[1] + rczHalfRecFieldCnn[1] : coordsOfTopLeftVoxelForThisPart[1] + rczHalfRecFieldCnn[1] + strideOfImagePartsPerDimensionInVoxels[1],
@@ -1665,16 +1665,21 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                                             " [ForwardPass:] " + str(fwdPassTimePerSubject) +\
                                                             " [Total:] " + str(extractTimePerSubject+loadingTimePerSubject+fwdPassTimePerSubject) + "(s)")
         
-        #=================Save Predicted-Probability-Map and Evaluate Dice====================
-        segmentationImage = np.argmax(labelImageCreatedByPredictions, axis=0) #The SEGMENTATION.
-        
-        #Save Result:
+        # ================ SAVE PREDICTIONS =====================
+        #== saving predicted segmentations ==
+        predSegmentation = np.argmax(predProbMapsPerClass, axis=0) #The segmentation.
+        unpaddedPredSegmentation = predSegmentation if not padInputImagesBool else unpadCnnOutputs(predSegmentation, tupleOfPaddingPerAxesLeftRight)
+        # Multiply with the below to zero-out anything outside the RoiMask if given. Provided that RoiMask is binary [0,1].
+        unpaddedRoiMaskIfGivenElse1 = 1
+        if isinstance(roiMask, (np.ndarray)) : #If roiMask was given:
+            unpaddedRoiMaskIfGivenElse1 = roiMask if not padInputImagesBool else unpadCnnOutputs(roiMask, tupleOfPaddingPerAxesLeftRight)
+            
         if savePredictionImagesSegmentationAndProbMapsList[0] == True : #save predicted segmentation
             npDtypeForPredictedImage = np.dtype(np.int16)
             suffixToAdd = "_Segm"
             #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
-            unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
-            savePredictedImageToANewNiiWithHeaderFromOther( unpaddedSegmentationImage,
+            unpaddedPredSegmentationWithinRoi = unpaddedPredSegmentation * unpaddedRoiMaskIfGivenElse1
+            savePredictedImageToANewNiiWithHeaderFromOther( unpaddedPredSegmentationWithinRoi,
                                                             listOfNamesToGiveToPredictionsIfSavingResults,
                                                             listOfFilepathsToEachChannelOfEachPatient,
                                                             image_i,
@@ -1682,22 +1687,24 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                                             npDtypeForPredictedImage,
                                                             myLogger
                                                             )
+        #== saving probability maps ==
         for class_i in xrange(0, NUMBER_OF_CLASSES) :
             if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
                 npDtypeForPredictedImage = np.dtype(np.float32)
                 suffixToAdd = "_ProbMapClass" + str(class_i)
                 #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
-                predictedLabelImageForSpecificClass = labelImageCreatedByPredictions[class_i,:,:,:]
-                unpaddedPredictedLabelImageForSpecificClass = predictedLabelImageForSpecificClass if not padInputImagesBool else unpadCnnOutputs(predictedLabelImageForSpecificClass, tupleOfPaddingPerAxesLeftRight)
-                savePredictedImageToANewNiiWithHeaderFromOther(unpaddedPredictedLabelImageForSpecificClass,
-                                        listOfNamesToGiveToPredictionsIfSavingResults,
-                                        listOfFilepathsToEachChannelOfEachPatient,
-                                        image_i,
-                                        suffixToAdd,
-                                        npDtypeForPredictedImage,
-                                        myLogger
-                                        )
-        #=================Save FEATURE MAPS ====================
+                predProbMapClassI = predProbMapsPerClass[class_i,:,:,:]
+                unpaddedPredProbMapClassI = predProbMapClassI if not padInputImagesBool else unpadCnnOutputs(predProbMapClassI, tupleOfPaddingPerAxesLeftRight)
+                unpaddedPredProbMapClassIWithinRoi = unpaddedPredProbMapClassI * unpaddedRoiMaskIfGivenElse1
+                savePredictedImageToANewNiiWithHeaderFromOther( unpaddedPredProbMapClassIWithinRoi,
+                                                                listOfNamesToGiveToPredictionsIfSavingResults,
+                                                                listOfFilepathsToEachChannelOfEachPatient,
+                                                                image_i,
+                                                                suffixToAdd,
+                                                                npDtypeForPredictedImage,
+                                                                myLogger
+                                                                )
+        #== saving feature maps ==
         if saveIndividualFmImagesForVisualisation :
             currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
             for pathway_i in xrange( len(cnn3dInstance.pathways) ) :
@@ -1722,55 +1729,42 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                                                                                     ) 
                                 currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
         if saveMultidimensionalImageWithAllFms :
-            """
-            multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.zeros(niiDimensions + [totalNumberOfFMsToProcess], dtype = "float32")
-            for fm_i in xrange(0, totalNumberOfFMsToProcess) :
-                multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms[:,:,:,fm_i] = multidimensionalImageWithAllToBeVisualisedFmsArray[fm_i]
-            """
             multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.transpose(multidimensionalImageWithAllToBeVisualisedFmsArray, (1,2,3, 0) )
-            
             unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms = multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms if not padInputImagesBool else \
                 unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms, tupleOfPaddingPerAxesLeftRight)
-                
             #Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
             saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(  unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
                                                                                         listOfNamesToGiveToFmVisualisationsIfSaving,
                                                                                         listOfFilepathsToEachChannelOfEachPatient,
                                                                                         image_i,
-                                                                                        myLogger)
-        #=================IMAGES SAVED. PROBABILITY MAPS AND FEATURE MAPS TOO (if wanted). ====================
+                                                                                        myLogger )
+        #================= FINISHED SAVING RESULTS ====================
         
-        #=================EVALUATE DSC FROM THE PROBABILITY MAPS FOR EACH IMAGE. ====================
+        #================= EVALUATE DSC FOR EACH SUBJECT ========================
         if providedGtLabelsBool : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
             myLogger.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) + " ++++++++++++++++++++++++++")
-            #Unpad all segmentation map, gt, brainmask
-            unpaddedSegmentationImage = segmentationImage if not padInputImagesBool else unpadCnnOutputs(segmentationImage, tupleOfPaddingPerAxesLeftRight)
+            #Unpad whatever needed.
             unpaddedGtLabelsImage = gtLabelsImage if not padInputImagesBool else unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
-            #Hack, for it to work for the case that I do not use a brainMask.
-            if isinstance(brainMask, (np.ndarray)) : #If brainmask was given:
-                multiplyWithBrainMaskOr1 = brainMask if not padInputImagesBool else unpadCnnOutputs(brainMask, tupleOfPaddingPerAxesLeftRight)
-            else :
-                multiplyWithBrainMaskOr1 = 1
             #calculate DSC per class.
             for class_i in xrange(0, NUMBER_OF_CLASSES) :
-                if class_i == 0 : #in this case, do the evaluation for the WHOLE segmentation (not background)
-                    booleanPredictedLabelImage = unpaddedSegmentationImage>0 #Whatever is not background
-                    booleanGtLesionLabelsForDiceEvaluation_unstripped = unpaddedGtLabelsImage>0
+                if class_i == 0 : #in this case, do the evaluation for the segmentation of the WHOLE FOREGROUND (ie, all classes merged except background)
+                    binaryPredSegmClassI = unpaddedPredSegmentation > 0 # Merge every class except the background (assumed to be label == 0 )
+                    binaryGtLabelClassI = unpaddedGtLabelsImage > 0
                 else :
-                    booleanPredictedLabelImage = unpaddedSegmentationImage==class_i
-                    booleanGtLesionLabelsForDiceEvaluation_unstripped = unpaddedGtLabelsImage==class_i
+                    binaryPredSegmClassI = unpaddedPredSegmentation == class_i
+                    binaryGtLabelClassI = unpaddedGtLabelsImage == class_i
                     
-                predictedLabelImageConvolvedWithBrainMask = booleanPredictedLabelImage*multiplyWithBrainMaskOr1
+                binaryPredSegmClassIWithinRoi = binaryPredSegmClassI * unpaddedRoiMaskIfGivenElse1
                 
-                #Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinBrainMask / AllLesions , Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask.
+                #Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinRoiMask / AllLesions , Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask.
                 #Dice1 = Allpredicted/allLesions
-                diceCoeff1 = calculateDiceCoefficient(booleanPredictedLabelImage, booleanGtLesionLabelsForDiceEvaluation_unstripped)
+                diceCoeff1 = calculateDiceCoefficient(binaryPredSegmClassI, binaryGtLabelClassI)
                 diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 != -1 else NA_PATTERN
-                #Dice2 = PredictedWithinBrainMask / AllLesions
-                diceCoeff2 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped)
+                #Dice2 = PredictedWithinRoiMask / AllLesions
+                diceCoeff2 = calculateDiceCoefficient(binaryPredSegmClassIWithinRoi, binaryGtLabelClassI)
                 diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 != -1 else NA_PATTERN
-                #Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask
-                diceCoeff3 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped * multiplyWithBrainMaskOr1)
+                #Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask
+                diceCoeff3 = calculateDiceCoefficient(binaryPredSegmClassIWithinRoi, binaryGtLabelClassI * unpaddedRoiMaskIfGivenElse1)
                 diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 != -1 else NA_PATTERN
                 
             myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
@@ -1794,6 +1788,7 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
     myLogger.print3("###########################################################################################################")
     
 def printExplanationsAboutDice(myLogger) :
-    myLogger.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0 we calculate DICE for the whole foreground (useful for multi-class problems).")
-    myLogger.print3("EXPLANATION: DICE1 is calculated whole segmentation vs whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
+    myLogger.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground, i.e all labels merged, except the background label=0. Useful for multi-class problems.")
+    myLogger.print3("EXPLANATION: DICE1 is calculated as segmentation over whole volume VS whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
+    myLogger.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
     
