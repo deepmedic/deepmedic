@@ -1237,7 +1237,8 @@ def do_training(myLogger,
             start_loadingToGpu_time = time.clock()
             
             numberOfBatchesTraining = len(channsOfSegmentsForSubepPerPathwayTrain[0]) / cnn3dInstance.batchSize #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
-            
+            myLogger.print3("DEBUG: For Training, loading to shared variable that many Segments: " + str(len(channsOfSegmentsForSubepPerPathwayTrain[0]))) #change JNI
+
             cnn3dInstance.sharedInpXTrain.set_value(channsOfSegmentsForSubepPerPathwayTrain[0], borrow=borrowFlag) # Primary pathway
             for index in xrange(len(channsOfSegmentsForSubepPerPathwayTrain[1:])) :
                 cnn3dInstance.sharedInpXPerSubsListTrain[index].set_value(channsOfSegmentsForSubepPerPathwayTrain[1+index], borrow=borrowFlag)
