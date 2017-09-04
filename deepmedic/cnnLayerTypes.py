@@ -131,7 +131,7 @@ def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
 def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic0orDelvingInto1, rng) :
     # filterShape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]
     if initializationTechniqueClassic0orDelvingInto1 == 0 :
-        stdForInitialization = 0.01 #this is what I was using for my whole first year.
+        stdForInitialization = 0.01
     elif initializationTechniqueClassic0orDelvingInto1 == 1 :
         stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
         
