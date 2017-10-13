@@ -12,8 +12,6 @@ import random
 
 import theano
 import theano.tensor as T
-from theano.tensor.nnet import conv
-import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
 
 try:
     from sys import maxint as MAX_INT
@@ -21,7 +19,7 @@ except ImportError:
     # python3 compatibility
     from sys import maxsize as MAX_INT
 
-from deepmedic.maxPoolingModule import myMaxPooling3d
+from deepmedic.pooling import pooling3d as dmPooling3d
 
 ###############################################################
 # Functions used by layers but do not change Layer Attributes #
@@ -145,43 +143,53 @@ def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic
     return W
 
 def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
-    # input weight matrix W has shape: [ Number of filters (outputFMs), number of input channels, rKernelDim, cKernelDim, zKernelDim ] == filterShape
+    # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ] == filterShape
     # filterShape is the shape of W.
+    # Input signal given in shape [BatchSize, Channels, R, C, Z]
     
-    # Conv3d2d requires in in shape: [Number_of_output_filters, zKernelDim, Numb_of_input_Channels, rKernelDim, cKernelDim]
-    wReshapedForConv = W.dimshuffle(0,4,1,2,3)
-    wReshapedForConvShape = (filterShape[0], filterShape[4], filterShape[1], filterShape[2], filterShape[3])
+    # Conv3d requires filter shape: [ #ChannelsOut, #ChannelsIn, Z, R, C ]
+    wReshapedForConv = W.dimshuffle(0,1,4,2,3)
+    wReshapedForConvShape = (filterShape[0], filterShape[1], filterShape[4], filterShape[2], filterShape[3])
     
-    #Reshape image for what conv3d2d needs:
-    inputToConvReshapedTrain = inputToConvTrain.dimshuffle(0, 4, 1, 2, 3)
-    inputToConvReshapedShapeTrain = (inputToConvShapeTrain[0], inputToConvShapeTrain[4], inputToConvShapeTrain[1], inputToConvShapeTrain[2], inputToConvShapeTrain[3]) # batch_size, time, num_of_input_channels, rows, columns
-    outputOfConvTrain = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
+    # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
+    inputToConvReshapedTrain = inputToConvTrain.dimshuffle(0, 1, 4, 2, 3)
+    inputToConvReshapedShapeTrain = (inputToConvShapeTrain[0], inputToConvShapeTrain[1], inputToConvShapeTrain[4], inputToConvShapeTrain[2], inputToConvShapeTrain[3]) # batch_size, time, num_of_input_channels, rows, columns
+    outputOfConvTrain = T.nnet.conv3d(input = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
                                   filters = wReshapedForConv, # Number_of_output_filters, Z, Numb_of_input_Channels, r, c
-                                  signals_shape = inputToConvReshapedShapeTrain,
-                                  filters_shape = wReshapedForConvShape,
-                                  border_mode = 'valid')
+                                  input_shape = inputToConvReshapedShapeTrain, # Can be None. Used for optimization.
+                                  filter_shape = wReshapedForConvShape, # Can be None. Used for optimization.
+                                  border_mode = 'valid',
+                                  subsample = (1,1,1), # strides
+                                  filter_dilation=(1,1,1) # dilation rate
+                                  )
     #Output is in the shape of the input image (signals_shape).
     
     #Validation
-    inputToConvReshapedVal = inputToConvVal.dimshuffle(0, 4, 1, 2, 3)
-    inputToConvReshapedShapeVal = (inputToConvShapeVal[0], inputToConvShapeVal[4], inputToConvShapeVal[1], inputToConvShapeVal[2], inputToConvShapeVal[3])
-    outputOfConvVal = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedVal, # batch_size, time, num_of_input_channels, rows, columns
-                                  filters = wReshapedForConv, # Number_of_output_filters, Time, Numb_of_input_Channels, Height/rows, Width/columns
-                                  signals_shape = inputToConvReshapedShapeVal,
-                                  filters_shape = wReshapedForConvShape,
-                                  border_mode = 'valid')
+    inputToConvReshapedVal = inputToConvVal.dimshuffle(0, 1, 4, 2, 3)
+    inputToConvReshapedShapeVal = (inputToConvShapeVal[0], inputToConvShapeVal[1], inputToConvShapeVal[4], inputToConvShapeVal[2], inputToConvShapeVal[3])
+    outputOfConvVal = T.nnet.conv3d(input = inputToConvReshapedVal,
+                                  filters = wReshapedForConv,
+                                  input_shape = inputToConvReshapedShapeVal,
+                                  filter_shape = wReshapedForConvShape,
+                                  border_mode = 'valid',
+                                  subsample = (1,1,1),
+                                  filter_dilation=(1,1,1)
+                                  )
     #Testing
-    inputToConvReshapedTest = inputToConvTest.dimshuffle(0, 4, 1, 2, 3)
-    inputToConvReshapedShapeTest = (inputToConvShapeTest[0], inputToConvShapeTest[4], inputToConvShapeTest[1], inputToConvShapeTest[2], inputToConvShapeTest[3])
-    outputOfConvTest = T.nnet.conv3d2d.conv3d(signals = inputToConvReshapedTest, # batch_size, time, num_of_input_channels, rows, columns
-                                  filters = wReshapedForConv, # Number_of_output_filters, Time, Numb_of_input_Channels, Height/rows, Width/columns
-                                  signals_shape = inputToConvReshapedShapeTest,
-                                  filters_shape = wReshapedForConvShape,
-                                  border_mode = 'valid')
+    inputToConvReshapedTest = inputToConvTest.dimshuffle(0, 1, 4, 2, 3)
+    inputToConvReshapedShapeTest = (inputToConvShapeTest[0], inputToConvShapeTest[1], inputToConvShapeTest[4], inputToConvShapeTest[2], inputToConvShapeTest[3])
+    outputOfConvTest = T.nnet.conv3d(input = inputToConvReshapedTest,
+                                  filters = wReshapedForConv,
+                                  input_shape = inputToConvReshapedShapeTest,
+                                  filter_shape = wReshapedForConvShape,
+                                  border_mode = 'valid',
+                                  subsample = (1,1,1),
+                                  filter_dilation=(1,1,1)
+                                  )
     
-    outputTrain = outputOfConvTrain.dimshuffle(0, 2, 3, 4, 1) #reshape the result, to have the dimensions as the input image: [BatchSize, #FMsInThisLayer, r, c, z]
-    outputVal = outputOfConvVal.dimshuffle(0, 2, 3, 4, 1)
-    outputTest = outputOfConvTest.dimshuffle(0, 2, 3, 4, 1)
+    outputTrain = outputOfConvTrain.dimshuffle(0, 1, 3, 4, 2) #reshape the result, back to the shape of the input image.
+    outputVal = outputOfConvVal.dimshuffle(0, 1, 3, 4, 2)
+    outputTest = outputOfConvTest.dimshuffle(0, 1, 3, 4, 2)
     
     outputShapeTrain = [inputToConvShapeTrain[0],
                         filterShape[0],
@@ -442,9 +450,9 @@ class ConvLayer(Block):
             inputToConvShapeVal = inputToLayerShapeVal
             inputToConvShapeTest = inputToLayerShapeTest
         else : #Max pooling is actually happening here...
-            (inputToConvTrain, inputToConvShapeTrain) = myMaxPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self._poolingParameters)
-            (inputToConvVal, inputToConvShapeVal) = myMaxPooling3d(inputToPoolVal, inputToLayerShapeVal, self._poolingParameters)
-            (inputToConvTest, inputToConvShapeTest) = myMaxPooling3d(inputToPoolTest, inputToLayerShapeTest, self._poolingParameters)
+            (inputToConvTrain, inputToConvShapeTrain) = dmPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self._poolingParameters)
+            (inputToConvVal, inputToConvShapeVal) = dmPooling3d(inputToPoolVal, inputToLayerShapeVal, self._poolingParameters)
+            (inputToConvTest, inputToConvShapeTest) = dmPooling3d(inputToPoolTest, inputToLayerShapeTest, self._poolingParameters)
             
         return (inputToConvTrain, inputToConvVal, inputToConvTest,
                 inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest )

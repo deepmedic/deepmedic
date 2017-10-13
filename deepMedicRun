@@ -15,6 +15,21 @@ sys.setrecursionlimit(20000)
 
 from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
 
+OPTION_NEW = "-newModel"
+OPT_TRAIN = "-train"
+OPT_TEST = "-test"
+OPT_MODEL = "-model"
+
+OPT_DEVICE = "-dev"
+ARG_CPU_PROC = "cpu"
+ARG_GPU_PROC = "cuda"
+ARG_GPU_PROC_OLD = "gpu"
+DEF_DEV_PROC = ARG_CPU_PROC
+
+OPT_PRETR = "-pretrained"
+OPT_PRETR_LAYERS = "-layers"
+OPT_PRETR_RESET = "-resetOptimizer"
+
 def strIsInt(s):
     try: 
         int(s)
@@ -32,38 +47,49 @@ def setupArgParser() :
                 "We hope our work aids you in your endeavours.\n"+\
                 "For questions and feedback contact: konstantinos.kamnitsas12@ic.ac.uk")
     
-    parser.add_argument("-newModel", dest='model_conf', type=str, help="Create a new CNN model with model parameters at given config file [MODEL_CONF].")
-    parser.add_argument("-train", dest='training_conf', type=str, help="Train a CNN model with training parameters at given config file [TRAINING_CONF].\n"+\
-                                                                    "This option can follow a [-newModel MODEL_CONF] option, to create a new model and start training it immediately.\n"+\
-                                                                    "Otherwise, existing model can be specified in the training-config file or by the additional option [-model].")
-    parser.add_argument("-test", dest='testing_conf', type=str, help="Test with an existing CNN model. The testing session's parameters should be given in config file [TESTING_CONF].\n"+\
-                                                                    "Existing model can be specified in the given training-config file or by the additional option [-model].\n"+\
-                                                                    "This option cannot be used in combination with [-newModel] or [-train].")
-    parser.add_argument("-model", dest='saved_model', type=str, help="The path to a saved existing cnn model, to train or test with.\n"+\
-                                                                    "This option can follow a [-train] or [-test] option. Not in combination with a [-newModel].\n"+\
-                                                                    "If given, this option will overide any \"model\" parameters given in the train or testing configuration file.")
-    parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\n"+\
-                                                                    "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\n"+\
+    parser.add_argument(OPTION_NEW, dest='model_conf', type=str, help="Create a new CNN model with model parameters at given config file [MODEL_CONF].")
+    parser.add_argument(OPT_TRAIN, dest='training_conf', type=str, help="Train a CNN model with training parameters at given config file [TRAINING_CONF].\n"+\
+                                                                    "This option can follow a ["+OPTION_NEW+" MODEL_CONF] option, to create a new model and start training it immediately.\n"+\
+                                                                    "Otherwise, existing model can be specified in the training-config file or by the additional option ["+OPT_MODEL+"].")
+    parser.add_argument(OPT_TEST, dest='testing_conf', type=str, help="Test with an existing CNN model. The testing session's parameters should be given in config file [TESTING_CONF].\n"+\
+                                                                    "Existing model can be specified in the given training-config file or by the additional option ["+OPT_MODEL+"].\n"+\
+                                                                    "This option cannot be used in combination with ["+OPTION_NEW+"] or ["+OPT_TRAIN+"].")
+    parser.add_argument(OPT_MODEL, dest='saved_model', type=str, help="The path to a saved existing cnn model, to train or test with.\n"+\
+                                                                    "This option can follow a ["+OPT_TRAIN+"] or ["+OPT_TEST+"] option. Not in combination with a ["+OPTION_NEW+"].\n"+\
+                                                                    "If given, this option will override any \"model\" parameters given in the train or testing configuration file.")
+    parser.add_argument(OPT_DEVICE, default = DEF_DEV_PROC, dest='device', type=str,  help="Specify the device to run the process on. Values: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (default = " + DEF_DEV_PROC + ").\n"+\
+                                                                    "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + ARG_GPU_PROC + "2.\n"+\
                                                                     "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
-    parser.add_argument("-pretrained", dest='pretrained_model', type=str, help="Use to transfer the weights from a previously trained model to a new model.\n"+\
-                                                                    "This option must follow a [-newModel] option.\n"+\
-                                                                    "Usage: ./deepMedicRun -newModel /path/to/model/config -pretrained /path/to/pretrained/model \n"+\
-                                                                    "NOTE: By default, parameters are transfered to all layers except the classification layer. Use option [-layers] to manually specify layers to pretrain.")
-    parser.add_argument("-layers", dest='layers_to_transfer', nargs='+', type=int, help="Use only after a [-pretrained] option.\n"+\
+    parser.add_argument(OPT_PRETR, dest='pretrained_model', type=str, help="Use to transfer the weights from a previously trained model to a new model.\n"+\
+                                                                    "This option must follow a ["+OPTION_NEW+"] option.\n"+\
+                                                                    "Usage: ./deepMedicRun "+OPTION_NEW+" /path/to/model/config "+OPT_PRETR+" /path/to/pretrained/model \n"+\
+                                                                    "NOTE: By default, parameters are transfered to all layers except the classification layer. Use option ["+OPT_PRETR_LAYERS+"] to manually specify layers to pretrain.")
+    parser.add_argument(OPT_PRETR_LAYERS, dest='layers_to_transfer', nargs='+', type=int, help="Use only after a ["+OPT_PRETR+"] option.\n"+\
                                                                     "Specify to which layers of the new model parameters should be transferred to.\n"+\
                                                                     "First layer is 1. Classification layer of original DeepMedic is 11. Same layers from each parallel-pathway will be transfered.\n"+\
-                                                                    "Usage: ./deepMedicRun -newModel /path/to/model/config -pretrained /path/to/pretrained/model -layers 1 2 3 ...")
-    parser.add_argument("-resetOptimizer", dest='reset_optimizer', action='store_true', help="Use optionally with a [-train] command. Does not take an argument.\n"+\
-                                                                    "Usage: ./deepMedicRun -train /path/to/train/config -resetOptimizer ...etc...\n"+\
+                                                                    "Usage: ./deepMedicRun "+OPTION_NEW+" /path/to/model/config "+OPT_PRETR+" /path/to/pretrained/model "+OPT_PRETR_LAYERS+" 1 2 3 ...")
+    parser.add_argument(OPT_PRETR_RESET, dest='reset_optimizer', action='store_true', help="Use optionally with a ["+OPT_TRAIN+"] command. Does not take an argument.\n"+\
+                                                                    "Usage: ./deepMedicRun "+OPT_TRAIN+" /path/to/train/config "+OPT_PRETR_RESET+" ...etc...\n"+\
                                                                     "Resets the model\'s optimization state before starting the training session (eg number of epochs already trained, current learning rate etc).\n"+\
                                                                     "IMPORTANT: Trainable parameters are NOT reinitialized! \n"+\
                                                                     "Useful to begin a secondary training session with new learning-rate schedule, in order to fine-tune a previously trained model (Doc., Sec. 3.2)")
     
     return parser
 
+
+    
 def checkDevicePassedCorrectly(devArg) :
-    if devArg != "cpu" and devArg != "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) ) :
-        print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu] or [gpu] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
+    if devArg == ARG_CPU_PROC: return
+    if devArg == ARG_GPU_PROC: return
+    if devArg.startswith(ARG_GPU_PROC) and strIsInt(devArg[ len(ARG_GPU_PROC) : ]) : return
+    if devArg.startswith(ARG_GPU_PROC_OLD) and strIsInt(devArg[ len(ARG_GPU_PROC_OLD) : ]) :
+        print( "WARN: You specified using the old gpu-backend with the option [" + OPT_DEVICE + " " + ARG_GPU_PROC_OLD + "]. For the new gpu-backend, use [" + OPT_DEVICE + " " + ARG_GPU_PROC + "].")
+        return
+    
+    print(  "ERROR: Value for the [" + OPT_DEVICE + "] option was not specified correctly. Specify the device to run the process on. \n"+\
+            "\tValues: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (Default = " + DEF_DEV_PROC + ").\n"+\
+            "\tIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + ARG_GPU_PROC + "2. Exiting.")
+    exit(1)
         
 def setEnvironment(deviceString) :
     #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt
@@ -81,8 +107,21 @@ def setEnvironment(deviceString) :
             sys.path.insert(1, envGivenInFile["path_to_nibabel"])
         if "path_to_parallelPython" in envGivenInFile :
             sys.path.insert(1, envGivenInFile["path_to_parallelPython"])
-            
-    os.environ['THEANO_FLAGS']='on_unused_input=warn, mode=FAST_RUN,device=' + deviceString + ',floatX=float32,force_device=True'
+       
+    THEANO_FLAGS = "THEANO_FLAGS"     
+    if not THEANO_FLAGS in os.environ.keys():
+        os.environ[THEANO_FLAGS]=""
+    if not os.environ[THEANO_FLAGS].find("on_unused_input=") >= 0: os.environ[THEANO_FLAGS] += "on_unused_input=warn,"
+    if not os.environ[THEANO_FLAGS].find("mode=") >= 0: os.environ[THEANO_FLAGS] += "mode=FAST_RUN,"
+    if not os.environ[THEANO_FLAGS].find("device=") >= 0: os.environ[THEANO_FLAGS] += "device=" + deviceString + ","
+    if not os.environ[THEANO_FLAGS].find("floatX=") >= 0: os.environ[THEANO_FLAGS] += "floatX=float32,"
+    if not os.environ[THEANO_FLAGS].find("force_device=") >= 0: os.environ[THEANO_FLAGS] += "force_device=True,"
+    if not os.environ[THEANO_FLAGS].find("dnn.enabled=") >= 0: os.environ[THEANO_FLAGS] += "dnn.enabled=True,"
+    if not os.environ[THEANO_FLAGS].find("gpuarray.preallocate=") >= 0: os.environ[THEANO_FLAGS] += "gpuarray.preallocate=1,"
+    # can also add to theano_flags: cuda.root=/path/to/cuda/root
+    
+    print("Running with THEANO_FLAGS = " + os.environ[THEANO_FLAGS])
+
 
 #################################################
 #                        MAIN                   #
