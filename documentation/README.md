@@ -44,8 +44,8 @@ The system was initially developed for the segmentation of brain lesions in MRI 
 * [1. Installation and Requirements](#1-installation-and-requirements)
   * [1.1. Required Libraries](#11-required-libraries)
   * [1.2. Installation](#12-installation)
-  * [1.3. Required Data Pre-Processing](#13-required-data-pre-processing)
-  * [1.4. GPU Processing](#14-gpu-processing)
+  * [1.3. GPU Processing](#14-gpu-processing)
+  * [1.4. Required Data Pre-Processing](#13-required-data-pre-processing)
 * [2. Running the Software](#2-running-the-software)
   * [2.1 Training a tiny CNN - Making sure it works](#21-training-a-tiny-cnn---making-sure-it-works)
   * [2.2 Common errors when utilizing a GPU](#22-common-errors-when-utilizing-a-gpu)
@@ -101,7 +101,21 @@ path_to_parallelPython = '/path/to/pp/on/the/filesystem/ppBuild'
 
  The latter file is parsed by the main software. If the lines with the corresponding lines are **not** commented out, the given path will be internally pre-pended in the PATH.
 
-#### 1.3. Required Data Pre-Processing
+#### 1.3. GPU Processing
+
+Small networks can be run on the cpu. But 3D CNNs of considerable size require processing on the GPU. For this, an installation of [Nvidia’s CUDA](https://developer.nvidia.com/cuda-toolkit) is n
+eeded. Make sure to acquire a version compatible with your GPU drivers. Theano needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **c
+ublas.so** libraries, which need to be visible in the environment’s.
+
+Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example, in a *cshell* this can be done with *
+setenv*:
+
+```cshell
+setenv PATH '/path-to/cuda/7.0.28/bin':$PATH
+setenv LD_LIBRARY_PATH '/path-to/cuda/7.0.28/lib64'
+```
+
+#### 1.4. Required Data Pre-Processing
 
 * DeepMedic processes **NIFTI files** only. All data should be in the *.nii* format.
 
@@ -116,20 +130,6 @@ path_to_parallelPython = '/path/to/pp/on/the/filesystem/ppBuild'
 * **You are strongly advised to normalize the intensity of the data within the ROI to a zero-mean, unary-variance space**. Our default configuration significantly underperforms if intensities are in another range of values.
 
 **Note for large images**: Large 3D CNNs are computationally expensive. Consider downsampling the images or reducing the size of the network if you encounter computational difficulties. The default configuration of DeepMedic was applied on scans of size around 200x200x200. 
-
-#### 1.4. GPU Processing
-
-Small networks can be run on the cpu. But 3D CNNs of considerable size require processing on the GPU. For this, an installation of [Nvidia’s CUDA](https://developer.nvidia.com/cuda-toolkit) is needed. Make sure to acquire a version compatible with your GPU drivers. Theano needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **cublas.so** libraries, which need to be visible in the environment’s.
-
-Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example, in a *cshell* this can be done with *setenv*:
-
-```cshell
-setenv PATH '/path-to/cuda/7.0.28/bin':$PATH
-setenv LD_LIBRARY_PATH '/path-to/cuda/7.0.28/lib64'
-```
-
-
-
 
 
 ### 2. Running the Software
@@ -179,7 +179,7 @@ Now lets **test** with the trained model (replace *DATE+TIME*):
 
 This should perform segmentation of the testing images and the results should appear in `examples/output/predictions/testSessionTinyCnn/` in the `output` folder. In the `features` folder you should also find some files, which are feature maps from the second layer. DeepMedic gives you this functionality (see testConfig.cfg). If the testing process finishes normally and all output files seem to be there, **everything seems to be working!** *On the CPU*... 
 
-Now lets check the important part... If using the **DeepMedic on the GPU** is alright on your system. First, delete the `examples/output/` folder for a clean start. Now, most importantly, place the path to **CUDA**'s *nvcc* into your *PATH* and to the *cublas.so* in your *LD_LIBRARY_PATH* (see [section 1.4](#14-gpu-processing))
+Now lets check the important part... If using the **DeepMedic on the GPU** is alright on your system. First, delete the `examples/output/` folder for a clean start. Now, most importantly, place the path to **CUDA**'s *nvcc* into your *PATH* and to the *cublas.so* in your *LD_LIBRARY_PATH* (see [section 1.3](#13-gpu-processing))
 
 You need to perform the steps we did before for creating a model, training it and testing with it, but on the GPU. To do this, repeat the previous commands and pass the additional option `-dev gpu`. For example: 
 
@@ -412,7 +412,7 @@ In `examples/configFiles/deepMedicOriginal/` we provide the configuration of the
 
 To run the DeepMedic on your data, the following are the minimum steps you need to follow:
 
-**a)** **Pre-process your data** as described in Sec. [1.3](#13-required-data-pre-processing). Do not forget to normalise them to a zero-mean, unary-variance space. Produce ROI masks (for instance brain masks) if possible for the task.
+**a)** **Pre-process your data** as described in Sec. [1.4](#14-required-data-pre-processing). Do not forget to normalise them to a zero-mean, unary-variance space. Produce ROI masks (for instance brain masks) if possible for the task.
 
 **b)** In the **modelConfig.cfg** file, change the variable `numberOfOutputClasses = 5` to the number of classes in your task (eg 2 if binary), and `numberOfInputChannels = 2` to the number of input modalities. Now you are ready to create the model via the `-newModel` option.
 
