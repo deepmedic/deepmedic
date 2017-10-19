@@ -119,12 +119,12 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             [meanAccClassOfSubep,
             meanAccOnPosOfSubep,
             meanAccOnNegOfSubep,
-            meanDiceOfSubep ] = self.listPerSubepPerClassMeanAccSensSpecDsc[currSubep][class_i] if class_i <> 0 else \
+            meanDiceOfSubep ] = self.listPerSubepPerClassMeanAccSensSpecDsc[currSubep][class_i] if class_i != 0 else \
                                     self.listPerSubepForegrMeanAccSensSpecDsc[currSubep] # If class-0, report foreground.
             [numOfRpInSubep,
             numOfRnInSubep,
             numOfTpInSubep,
-            numOfTnInSubep] = self.listPerSubepPerClassRpRnTpTn[currSubep][class_i] if class_i <> 0 else \
+            numOfTnInSubep] = self.listPerSubepPerClassRpRnTpTn[currSubep][class_i] if class_i != 0 else \
                                     self.listPerSubepForegrRpRnTpTn[currSubep] # If class-0, report foreground.
                                     
             logStrClass = logStr + ", " + classString + ":"
@@ -157,7 +157,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             
             self.logger.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + classString + " >>>>>>>>> " + extraDescription + " <<<<<<<<<<<<<" )
             
-            if class_i <> 0 :
+            if class_i != 0 :
                 meanAccPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][0] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
                 meanSensPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][1] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
                 meanSpecPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][2] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
