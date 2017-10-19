@@ -107,11 +107,11 @@ def checkReceptiveFieldFineInComparisonToSegmentSize(receptiveFieldDim, segmentD
     numberOfRFDim = len(receptiveFieldDim)
     numberOfSegmDim = len(segmentDim)
     if numberOfRFDim != numberOfSegmDim :
-        print "ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : Receptive field and image segment have different number of dimensions! (should be 3 for both! Exiting!)"
+        print("ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : Receptive field and image segment have different number of dimensions! (should be 3 for both! Exiting!)")
         exit(1)
     for dim_i in xrange(numberOfRFDim) :
         if receptiveFieldDim[dim_i] > segmentDim[dim_i] :
-            print "ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : The segment-size (input) should be at least as big as the receptive field of the model! This was not found to hold! Dimensions of Receptive Field:", receptiveFieldDim, ". Dimensions of Segment: ", segmentDim
+            print("ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : The segment-size (input) should be at least as big as the receptive field of the model! This was not found to hold! Dimensions of Receptive Field:", receptiveFieldDim, ". Dimensions of Segment: ", segmentDim)
             return False
     return True
 
