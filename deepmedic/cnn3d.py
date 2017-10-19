@@ -179,7 +179,7 @@ class Cnn3d(object):
         if myLogger != None :
             myLogger.print3(stringToPrint)
         else :
-            print stringToPrint
+            print(stringToPrint)
         self.learning_rate.set_value(newValueForLearningRate)
         self.lastEpochAtTheEndOfWhichLrWasLowered = self.numberOfEpochsTrained
         
@@ -193,7 +193,7 @@ class Cnn3d(object):
         if myLogger != None :
             myLogger.print3(stringToPrint)
         else :
-            print stringToPrint
+            print(stringToPrint)
         self.momentum.set_value(newValueForMomentum)
         
     def multiply_momentum_of_a_cnn_by(self, multiplyMomentumBy, myLogger=None) :
