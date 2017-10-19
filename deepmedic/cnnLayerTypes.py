@@ -613,7 +613,7 @@ class LowRankConvLayer(ConvLayer):
         for wOfSubconv in self._WperSubconv : l2Cost += (wOfSubconv ** 2).sum()
         return l2Cost
     def getW(self):
-        print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"; exit(1))
+        print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
         
         
 class SoftmaxLayer(Block):
