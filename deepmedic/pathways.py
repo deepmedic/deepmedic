@@ -46,9 +46,9 @@ def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
     if upsamplingScheme == "repeat" :
         upsampledOutput = repeatRcz5DimArrayByFactor(array5dimToUpsample, upsamplingFactor)
     else :
-        print "NOT IMPLEMENTED! EXITING!"; exit(1)
+        print("NOT IMPLEMENTED! EXITING!"); exit(1)
         
-    if dimensionsOf5DimArrayToMatchInRcz <> None :
+    if dimensionsOf5DimArrayToMatchInRcz != None :
         # If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
         # I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
         output = cropRczOf5DimArrayToMatchOther(upsampledOutput, dimensionsOf5DimArrayToMatchInRcz)
