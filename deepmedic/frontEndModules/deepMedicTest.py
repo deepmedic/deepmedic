@@ -78,7 +78,7 @@ class TestConfig(object):
         numLayerEntriesGivenSubs =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED])
         numLayerEntriesGivenFc =  None if not self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC] else len(self.configStruct[self.INDICES_OF_FMS_TO_SAVE_FC])
         
-        wrongFmsEntryForNormal = True if (savingFms and numLayerEntriesGivenNorm != None and numLayerEntriesGivenNorm 1= numNormLayers) else False
+        wrongFmsEntryForNormal = True if (savingFms and numLayerEntriesGivenNorm != None and numLayerEntriesGivenNorm != numNormLayers) else False
         wrongFmsEntryForSubsampled = True if (savingFms and numLayerEntriesGivenSubs != None and numLayerEntriesGivenSubs != numSubsLayers) else False
         wrongFmsEntryForFc = True if (savingFms and numLayerEntriesGivenFc != None and numLayerEntriesGivenFc != numFcLayers) else False
         wrongEntryGiven = wrongFmsEntryForNormal or wrongFmsEntryForSubsampled or wrongFmsEntryForFc
