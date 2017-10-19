@@ -37,11 +37,11 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
         
         for layerTarget_i in xrange( len(layersPathTarget) ):
             layerTarget = layersPathTarget[layerTarget_i]
-            depthLayerTarget = layerTarget_i + 1 if typePathTarget <> pt.FC else layerTarget_i + 1 + len( cnnTarget.pathways[0].getLayers() ) # +1 cause indexes. index 0 is depth 1.
+            depthLayerTarget = layerTarget_i + 1 if typePathTarget != pt.FC else layerTarget_i + 1 + len( cnnTarget.pathways[0].getLayers() ) # +1 cause indexes. index 0 is depth 1.
             
             # Check if this layer of Target should receive parameters from Source.
             boolTransferLayer = False
-            if listOfLayersToTransfer is None and depthLayerTarget <> depthDeepestLayerTarget: # For list == None, we do the default transfer. Transfer all except the deepest classif Layer.
+            if listOfLayersToTransfer is None and depthLayerTarget != depthDeepestLayerTarget: # For list == None, we do the default transfer. Transfer all except the deepest classif Layer.
                 boolTransferLayer = True
             if listOfLayersToTransfer is not None and depthLayerTarget in listOfLayersToTransfer: 
                 boolTransferLayer = True
@@ -50,7 +50,7 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
                 myLogger.print3("[Pathway_" + str(pathTarget.getStringType()) + "][Conv.Layer_" + str(layerTarget_i) + " (index)], depth [" + str(depthLayerTarget) + "] (Target): Receiving parameters...")
                 # transfer stuff.
                 # Get the correct Source path.
-                if typePathTarget <> pt.FC:
+                if typePathTarget != pt.FC:
                     if (len(cnnSource.pathways) - 1) >= (pathTarget_i + 1) : # if cnnSource has at least as many parallel pathways (-1 to exclude FC) as the number of the current pathwayTarget (+1 because it's index).
                         pathSource = cnnSource.pathways[pathTarget_i]
                     else:
