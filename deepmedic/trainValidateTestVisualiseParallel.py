@@ -28,7 +28,7 @@ TINY_FLOAT = np.finfo(np.float32).tiny
 def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions) : #Works for 2D as well I think.
     cnnReceptiveFieldArray = np.asarray(cnnReceptiveField, dtype="int16")
     array1Dimensions = np.asarray(array1.shape,dtype="int16")
-    if len(array1.shape) <> 3 :
+    if len(array1.shape) != 3 :
         print("ERROR! Given array in padCnnInputs() was expected of 3-dimensions, but was passed an array of dimensions: ", array1.shape,", Exiting!")
         exit(1)
     #paddingValue = (array1[0,0,0] + array1[-1,0,0] + array1[0,-1,0] + array1[-1,-1,0] + array1[0,0,-1] + array1[-1,0,-1] + array1[0,-1,-1] + array1[-1,-1,-1]) / 8.0
@@ -134,7 +134,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel = np.ones( (numberOfNormalScaleChannels, 2), dtype="float32")
     for channel_i in xrange(numberOfNormalScaleChannels):
         fullFilenamePathOfChannel = listOfFilepathsToEachChannelOfEachPatient[index_of_wanted_image][channel_i]
-        if fullFilenamePathOfChannel <> "-" : #normal case, filepath was given.
+        if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
             img_proxy = nib.load(fullFilenamePathOfChannel)
             channelData = img_proxy.get_data()
             if len(channelData.shape) > 3 :
@@ -193,7 +193,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
         
-    if training0orValidation1orTest2 <> 2 and providedWeightMapsToSampleForEachCategory==True : # in testing these weightedMaps are never provided, they are for training/validation only.
+    if training0orValidation1orTest2 != 2 and providedWeightMapsToSampleForEachCategory==True : # in testing these weightedMaps are never provided, they are for training/validation only.
         numberOfSamplingCategories = len(forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient)
         arrayWithWeightMapsWhereToSampleForEachCategory = np.zeros( [numberOfSamplingCategories] + list(allChannelsOfPatientInNpArray[0].shape), dtype="float32" ) 
         for cat_i in xrange( numberOfSamplingCategories ) :
@@ -466,7 +466,7 @@ def getCoordsOfAllSegmentsOfAnImage(myLogger,
                 
     #I need to have a total number of image-parts that can be exactly-divided by the 'batch_size'. For this reason, I add in the far end of the list multiple copies of the last element. I NEED THIS IN THEANO. I TRIED WITHOUT. NO.
     total_number_of_image_parts = len(sliceCoordsOfSegmentsToReturn)
-    number_of_imageParts_missing_for_exact_division =  batch_size - total_number_of_image_parts%batch_size if total_number_of_image_parts%batch_size <> 0 else 0
+    number_of_imageParts_missing_for_exact_division =  batch_size - total_number_of_image_parts%batch_size if total_number_of_image_parts%batch_size != 0 else 0
     for extra_useless_image_part_i in xrange(number_of_imageParts_missing_for_exact_division) :
         sliceCoordsOfSegmentsToReturn.append(sliceCoordsOfSegmentsToReturn[-1])
         
@@ -569,7 +569,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
             if howMuchToAddForEachChannel == None or howMuchToMultiplyForEachChannel == None :
                 muOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][0]
                 stdOfGaussToAdd = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[2][1]
-                if stdOfGaussToAdd <> 0 : #np.random.normal does not work for an std==0.
+                if stdOfGaussToAdd != 0 : #np.random.normal does not work for an std==0.
                     howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd, [numOfInpChannelsForPrimaryPath, 1,1,1])
                 else :
                     howMuchToAddForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32")*muOfGaussToAdd
@@ -577,7 +577,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                 
                 muOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][0]
                 stdOfGaussToMultiply = normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[3][1]
-                if stdOfGaussToMultiply <> 0 :
+                if stdOfGaussToMultiply != 0 :
                     howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply, [numOfInpChannelsForPrimaryPath, 1,1,1])
                 else :
                     howMuchToMultiplyForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32")*muOfGaussToMultiply
@@ -1318,7 +1318,7 @@ def do_training(myLogger,
             newLearningRate = cnn3dInstance.initialLearningRate * pow(gammaForExpSchedule, cnn3dInstance.numberOfEpochsTrained-minEpochToLowerLr + 1.0)
             #Momentum increased linearly.
             newMomentum = ((cnn3dInstance.numberOfEpochsTrained - minEpochToLowerLr + 1) - (n_epochs-minEpochToLowerLr))*1.0 / (n_epochs - minEpochToLowerLr) * (exponentialScheduleForLrAndMom[2] - cnn3dInstance.initialMomentum) + exponentialScheduleForLrAndMom[2]
-            print "DEBUG: new learning rate was calculated: ", newLearningRate, " and new Momentum :", newMomentum
+            print("DEBUG: new learning rate was calculated: ", newLearningRate, " and new Momentum :", newMomentum)
             cnn3dInstance.change_learning_rate_of_a_cnn(newLearningRate, myLogger)
             cnn3dInstance.change_momentum_of_a_cnn(newMomentum, myLogger)
             
@@ -1332,7 +1332,7 @@ def do_training(myLogger,
         myLogger.print3("TIMING: The whole Epoch #"+str(epoch)+" took time: "+str(end_epoch_time-start_epoch_time)+"(s)")
         myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         
-        if performFullInferenceOnValidationImagesEveryFewEpochsBool and (cnn3dInstance.numberOfEpochsTrained <> 0) and (cnn3dInstance.numberOfEpochsTrained % everyThatManyEpochsComputeDiceOnTheFullValidationImages == 0) :
+        if performFullInferenceOnValidationImagesEveryFewEpochsBool and (cnn3dInstance.numberOfEpochsTrained != 0) and (cnn3dInstance.numberOfEpochsTrained % everyThatManyEpochsComputeDiceOnTheFullValidationImages == 0) :
             myLogger.print3("***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #"+str(epoch)+"...***")
             validation0orTesting1 = 0
             #do_validation_or_testing(myLogger,
@@ -1441,10 +1441,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
         totalNumberOfFMsToProcess = 0
         for pathway in cnn3dInstance.pathways :
             indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]
-            if indicesOfFmsToVisualisePerLayerOfCertainPathway<>[] :
+            if indicesOfFmsToVisualisePerLayerOfCertainPathway!=[] :
                 for layer_i in xrange(len(pathway.getLayers())) :
                     indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-                    if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
+                    if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway!=[] :
                         #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
                         numberOfFeatureMapsInThisLayer = pathway.getLayer(layer_i).getNumberOfFeatureMaps()
                         indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] = min(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1], numberOfFeatureMapsInThisLayer)
@@ -1603,9 +1603,9 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                         #====the following calculations could be move OUTSIDE THE FOR LOOPS, by using the kernel-size parameter (from the cnn instance) instead of the shape of the returned value.
                         #====fmsReturnedForATestBatchForCertainLayer.shape[2] - (numberOfCentralVoxelsClassified[0]-1) is essentially the width of the patch left after the convolutions.
                         #====These calculations are pathway and layer-specific. So they could be done once, prior to image processing, and results cached in a list to be accessed during the loop.
-                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_R =  numberOfCentralVoxelsClassified[0]-1 if pathway.pType() <> pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/pathway.subsFactor()[0]) -1)
-                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_C =  numberOfCentralVoxelsClassified[1]-1 if pathway.pType() <> pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/pathway.subsFactor()[1]) -1)
-                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z =  numberOfCentralVoxelsClassified[2]-1 if pathway.pType() <> pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/pathway.subsFactor()[2]) -1)
+                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_R =  numberOfCentralVoxelsClassified[0]-1 if pathway.pType() != pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[0]*1.0)/pathway.subsFactor()[0]) -1)
+                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_C =  numberOfCentralVoxelsClassified[1]-1 if pathway.pType() != pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[1]*1.0)/pathway.subsFactor()[1]) -1)
+                        numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z =  numberOfCentralVoxelsClassified[2]-1 if pathway.pType() != pt.SUBS else int(math.ceil((numberOfCentralVoxelsClassified[2]*1.0)/pathway.subsFactor()[2]) -1)
                         rPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[2] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_R
                         cPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[3] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_C
                         zPatchDimensionAtTheFmThatWeVisualiseAfterConvolutions = fmsReturnedForATestBatchForCertainLayer.shape[4] - numberOfVoxToSubtrToGetPatchWidthAtThisFm_Z
@@ -1704,10 +1704,10 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
             for pathway_i in xrange( len(cnn3dInstance.pathways) ) :
                 pathway = cnn3dInstance.pathways[pathway_i]
                 indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]
-                if indicesOfFmsToVisualisePerLayerOfCertainPathway<>[] :
+                if indicesOfFmsToVisualisePerLayerOfCertainPathway!=[] :
                     for layer_i in xrange( len(pathway.getLayers()) ) :
                         indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-                        if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway<>[] :
+                        if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway!=[] :
                             #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
                             for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
                                 fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
@@ -1766,13 +1766,13 @@ def performInferenceForTestingOnWholeVolumes(myLogger,
                 #Calculate the 3 Dices. Dice1 = Allpredicted/allLesions, Dice2 = PredictedWithinBrainMask / AllLesions , Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask.
                 #Dice1 = Allpredicted/allLesions
                 diceCoeff1 = calculateDiceCoefficient(booleanPredictedLabelImage, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-                diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 <> -1 else NA_PATTERN
+                diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 != -1 else NA_PATTERN
                 #Dice2 = PredictedWithinBrainMask / AllLesions
                 diceCoeff2 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped)
-                diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 <> -1 else NA_PATTERN
+                diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 != -1 else NA_PATTERN
                 #Dice3 = PredictedWithinBrainMask / LesionsInsideBrainMask
                 diceCoeff3 = calculateDiceCoefficient(predictedLabelImageConvolvedWithBrainMask, booleanGtLesionLabelsForDiceEvaluation_unstripped * multiplyWithBrainMaskOr1)
-                diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 <> -1 else NA_PATTERN
+                diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 != -1 else NA_PATTERN
                 
             myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
             printExplanationsAboutDice(myLogger)
