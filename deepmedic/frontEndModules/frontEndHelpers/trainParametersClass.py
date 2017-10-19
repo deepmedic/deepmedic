@@ -356,7 +356,7 @@ class TrainSessionParameters(object) :
             
         #===================== OTHERS======================
         #Preprocessing
-        self.padInputImagesBool = padInputImagesBool if padInputImagesBool 1= None else True
+        self.padInputImagesBool = padInputImagesBool if padInputImagesBool != None else True
         
         #Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
