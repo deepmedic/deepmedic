@@ -85,7 +85,7 @@ class ModelConfig(object):
 
 #The argument should be absolute path to the config file for the model to create.
 def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCmdLine, listOfLayersToTransfer) :
-    print "Given Model-Configuration File: ", modelConfigFilepath
+    print("Given Model-Configuration File: ", modelConfigFilepath)
     #Parse the config file in this naive fashion...
     modelConfig = ModelConfig()
     execfile(modelConfigFilepath, modelConfig.configStruct)
@@ -154,7 +154,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
     cnn3dInstance = Cnn3d()
     cnn3dInstance.make_cnn_model(*createModelSessionParameters.getTupleForCnnCreation())
     
-    if absPathToPreTrainedModelGivenInCmdLine <> None: # Transfer parameters from a previously trained model to the new one.
+    if absPathToPreTrainedModelGivenInCmdLine != None: # Transfer parameters from a previously trained model to the new one.
         createModelSessionParameters.sessionLogger.print3("\n=========== Pre-training the new model ===============")
         sessionLogger.print3("...Loading the pre-trained network. This can take a few minutes if the model is big...")
         cnnPretrainedInstance = load_object_from_gzip_file(absPathToPreTrainedModelGivenInCmdLine)
@@ -163,7 +163,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
         cnn3dInstance = cnnTransferParameters.transferParametersBetweenModels(sessionLogger, cnn3dInstance, cnnPretrainedInstance, listOfLayersToTransfer)
     
     createModelSessionParameters.sessionLogger.print3("\n=========== Saving the model ===============")
-    if absPathToPreTrainedModelGivenInCmdLine <> None:
+    if absPathToPreTrainedModelGivenInCmdLine != None:
         filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial.pretrained." + datetimeNowAsStr()
     else:
         filenameAndPathToSaveModel = createModelSessionParameters.getPathAndFilenameToSaveModel() + ".initial." + datetimeNowAsStr()
