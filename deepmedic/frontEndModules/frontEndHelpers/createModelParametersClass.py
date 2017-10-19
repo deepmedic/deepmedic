@@ -44,87 +44,87 @@ class CreateModelSessionParameters(object) :
     @staticmethod
     def errorSegmDimensionsSmallerThanReceptiveF(receptiveFieldNormal, segmentDimensions, tr0_val1_inf2) :
         stringsTrainValInference = ["TRAINING", "VALIDATION", "INFERENCE"]
-        print "ERROR: The segment-size (input) should be at least as big as the receptive field of the model! The network was made with a receptive field of dimensions: ", receptiveFieldNormal, ". But in the case of :", stringsTrainValInference[tr0_val1_inf2], " the dimensions of the input segment were specified smaller: ", segmentDimensions, ". Please fix this by adjusting number of layer and kernel dimensions! Exiting!"; exit(1)
+        print("ERROR: The segment-size (input) should be at least as big as the receptive field of the model! The network was made with a receptive field of dimensions: ", receptiveFieldNormal, ". But in the case of :", stringsTrainValInference[tr0_val1_inf2], " the dimensions of the input segment were specified smaller: ", segmentDimensions, ". Please fix this by adjusting number of layer and kernel dimensions! Exiting!"); exit(1)
     @staticmethod
     def errorRequireNumberOfClasses() :
-        print "ERROR: Number of classses not specified in the config file, which is required. Please specify in the format: numberOfOutputClasses = 3 (any integer). This number should be including the background class! For instance if the class is binary, set this to 2! Exiting!"; exit(1)
+        print("ERROR: Number of classses not specified in the config file, which is required. Please specify in the format: numberOfOutputClasses = 3 (any integer). This number should be including the background class! For instance if the class is binary, set this to 2! Exiting!"); exit(1)
     errReqNumClasses = errorRequireNumberOfClasses
     
     
     @staticmethod
     def errorRequireNumberOfChannels() :
-        print "ERROR: Parameter \"numberOfInputChannels\" not specified or specified smaller than 1. Please specify the number of input channels that will be used as input to the CNN, in the format: numberOfInputChannels = number (an integer > 0). Exiting!"; exit(1)
+        print("ERROR: Parameter \"numberOfInputChannels\" not specified or specified smaller than 1. Please specify the number of input channels that will be used as input to the CNN, in the format: numberOfInputChannels = number (an integer > 0). Exiting!"); exit(1)
     errReqNumChannels = errorRequireNumberOfChannels
     @staticmethod
     def errorRequireFMsNormalPathwayGreaterThanNothing() :
-        print "ERROR: The required parameter \"numberFMsPerLayerNormal\" was either not given, or given an empty list. This parameter should be given in the format: numberFMsPerLayerNormal = [number-of-FMs-layer1, ..., number-of-FMs-layer-N], where each number is an integer greater than zero. It specifies the number of layers (specified by the number of entries in the list) and the number of Feature Maps at each layer of the normal-scale pathway. Please provide and retry. Exiting!"; exit(1)                
+        print("ERROR: The required parameter \"numberFMsPerLayerNormal\" was either not given, or given an empty list. This parameter should be given in the format: numberFMsPerLayerNormal = [number-of-FMs-layer1, ..., number-of-FMs-layer-N], where each number is an integer greater than zero. It specifies the number of layers (specified by the number of entries in the list) and the number of Feature Maps at each layer of the normal-scale pathway. Please provide and retry. Exiting!"); exit(1)                
     errReqFMsNormal = errorRequireFMsNormalPathwayGreaterThanNothing
     @staticmethod
     def errorRequireKernelDimensionsPerLayerNormal() :
-        print "ERROR: The required parameter \"kernelDimPerLayerNormal\" was not provided, or provided incorrectly. It should be provided in the format: kernelDimPerLayerNormal = [ [dim1-of-kernels-in-layer-1, dim2-of-kernels-in-layer-1, dim3-of-kernels-in-layer-1], ..., [dim1-of-kernels-in-layer-N, dim2-of-kernels-in-layer-N, dim3-of-kernels-in-layer-N] ]. It is a list of sublists. One sublist should be provided per layer of the Normal pathway. Thus it should have as many entries as the entries in parameter \"numberFMsPerLayerNormal\". Each sublist should contain 3 integer ODD numbers greater than zero, which should specify the dimensions of the 3-dimensional kernels. For instace: kernelDimPerLayerNormal = [[5,5,5],[3,3,3]] for a pathway with 2 layers, the first of which has 5x5x5 kernels and the second 3x3x3 kernels. Please fix and retry \n WARN: The kernel dimensions should be ODD-NUMBERS. System was not thoroughly tested for kernels of even dimensions! Exiting!"; exit(1)
+        print("ERROR: The required parameter \"kernelDimPerLayerNormal\" was not provided, or provided incorrectly. It should be provided in the format: kernelDimPerLayerNormal = [ [dim1-of-kernels-in-layer-1, dim2-of-kernels-in-layer-1, dim3-of-kernels-in-layer-1], ..., [dim1-of-kernels-in-layer-N, dim2-of-kernels-in-layer-N, dim3-of-kernels-in-layer-N] ]. It is a list of sublists. One sublist should be provided per layer of the Normal pathway. Thus it should have as many entries as the entries in parameter \"numberFMsPerLayerNormal\". Each sublist should contain 3 integer ODD numbers greater than zero, which should specify the dimensions of the 3-dimensional kernels. For instace: kernelDimPerLayerNormal = [[5,5,5],[3,3,3]] for a pathway with 2 layers, the first of which has 5x5x5 kernels and the second 3x3x3 kernels. Please fix and retry \n WARN: The kernel dimensions should be ODD-NUMBERS. System was not thoroughly tested for kernels of even dimensions! Exiting!"); exit(1)
     errReqKernDimNormal = errorRequireKernelDimensionsPerLayerNormal
     @staticmethod
     def errorRequireKernelDimensionsSubsampled(numFMsPerLayerNormal, numFMsPerLayerSubsampled) :
-        print "ERROR: It was requested to use the 2-scale architecture, with a subsampled pathway. Because of limitations to the developed system, the two pathways must have the save size of receptive field. By default, if \"useSubsampledPathway\" = True, and the parameters \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" are not specified, the second pathway will be constructed symmetrical to the first. However, in this case, \"numberFMsPerLayerSubsampled\" was specified. It was found to have ", len(numFMsPerLayerSubsampled)," entries, which specified this amount of layers in the subsampled pathway. This is different than the number of layers in the Normal pathway, specified to be: ", len(numFMsPerLayerNormal),". In this case, we require you to also provide the parameter \"numberFMsPerLayerSubsampled\", specifying kernel dimensions in the subsampled pathway, in a fashion that results in same size of receptive field as the normal pathway."
+        print("ERROR: It was requested to use the 2-scale architecture, with a subsampled pathway. Because of limitations to the developed system, the two pathways must have the save size of receptive field. By default, if \"useSubsampledPathway\" = True, and the parameters \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" are not specified, the second pathway will be constructed symmetrical to the first. However, in this case, \"numberFMsPerLayerSubsampled\" was specified. It was found to have ", len(numFMsPerLayerSubsampled)," entries, which specified this amount of layers in the subsampled pathway. This is different than the number of layers in the Normal pathway, specified to be: ", len(numFMsPerLayerNormal),". In this case, we require you to also provide the parameter \"numberFMsPerLayerSubsampled\", specifying kernel dimensions in the subsampled pathway, in a fashion that results in same size of receptive field as the normal pathway.")
         CreateModelSessionParameters.warnForSameReceptiveField()
-        print "Exiting!"; exit(1)
+        print("Exiting!"); exit(1)
     @staticmethod
     def errorRequireKernelDimensionsPerLayerSubsampledCorrect() :
-        print "ERROR: The parameter \"kernelDimPerLayerSubsampled\" was not provided, or provided incorrectly. It should be provided in the format: kernelDimPerLayerSubsampled = [ [dim1-of-kernels-in-layer-1, dim2-of-kernels-in-layer-1, dim3-of-kernels-in-layer-1], ..., [dim1-of-kernels-in-layer-N, dim2-of-kernels-in-layer-N, dim3-of-kernels-in-layer-N] ]. It is a list of sublists. One sublist should be provided per layer of the SUBSAMPLED pathway. Thus it should have as many entries as the entries in parameter \"numberFMsPerLayerSubsampled\". (WARN: if the latter is not provided, it is by default taken equal to what specified for \"numberFMsPerLayerNormal\", in order to make the pathways symmetrical). Each sublist should contain 3 integer ODD numbers greater than zero, which should specify the dimensions of the 3-dimensional kernels. For instace: kernelDimPerLayerNormal = [[5,5,5],[3,3,3]] for a pathway with 2 layers, the first of which has 5x5x5 kernels and the second 3x3x3 kernels. Please fix and retry. (WARN: The kernel dimensions should be ODD-NUMBERS. System was not thoroughly tested for kernels of even dimensions!)"
+        print("ERROR: The parameter \"kernelDimPerLayerSubsampled\" was not provided, or provided incorrectly. It should be provided in the format: kernelDimPerLayerSubsampled = [ [dim1-of-kernels-in-layer-1, dim2-of-kernels-in-layer-1, dim3-of-kernels-in-layer-1], ..., [dim1-of-kernels-in-layer-N, dim2-of-kernels-in-layer-N, dim3-of-kernels-in-layer-N] ]. It is a list of sublists. One sublist should be provided per layer of the SUBSAMPLED pathway. Thus it should have as many entries as the entries in parameter \"numberFMsPerLayerSubsampled\". (WARN: if the latter is not provided, it is by default taken equal to what specified for \"numberFMsPerLayerNormal\", in order to make the pathways symmetrical). Each sublist should contain 3 integer ODD numbers greater than zero, which should specify the dimensions of the 3-dimensional kernels. For instace: kernelDimPerLayerNormal = [[5,5,5],[3,3,3]] for a pathway with 2 layers, the first of which has 5x5x5 kernels and the second 3x3x3 kernels. Please fix and retry. (WARN: The kernel dimensions should be ODD-NUMBERS. System was not thoroughly tested for kernels of even dimensions!)")
         CreateModelSessionParameters.warnForSameReceptiveField()
-        print "Exiting!"; exit(1)
+        print("Exiting!"); exit(1)
     errReqKernDimNormalCorr = errorRequireKernelDimensionsPerLayerSubsampledCorrect
     @staticmethod
     def errorReceptiveFieldsOfNormalAndSubsampledDifferent(kernDimPerLayerNormal, receptiveFieldSubsampled) :
-        print "ERROR: The receptive field of the normal pathway was calculated = ", len(kernDimPerLayerNormal), " while the receptive field of the subsampled pathway was calculated=", len(receptiveFieldSubsampled), ". Because of limitations to the developed system, the two pathways must have the save size of receptive field. Please provide a combination of \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" that gives the same size of field as the normal pathway. If unsure of how to proceed, please ommit specifying \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" in the config file, and the second subsampled pathway will be automatically created to mirror the normal. Else, if you want to just specify the number of Feature Maps in the subsampled, provide \"numberFMsPerLayerSubsampled\" = [num-FMs-layer1, ..., num-FMs-layerN], with N the same number as the normal pathway, and we will then use the same kernel-sizes as the normal pathway. Exiting!"; exit(1)
+        print("ERROR: The receptive field of the normal pathway was calculated = ", len(kernDimPerLayerNormal), " while the receptive field of the subsampled pathway was calculated=", len(receptiveFieldSubsampled), ". Because of limitations to the developed system, the two pathways must have the save size of receptive field. Please provide a combination of \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" that gives the same size of field as the normal pathway. If unsure of how to proceed, please ommit specifying \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" in the config file, and the second subsampled pathway will be automatically created to mirror the normal. Else, if you want to just specify the number of Feature Maps in the subsampled, provide \"numberFMsPerLayerSubsampled\" = [num-FMs-layer1, ..., num-FMs-layerN], with N the same number as the normal pathway, and we will then use the same kernel-sizes as the normal pathway. Exiting!"); exit(1)
     @staticmethod
     def errorReqInitializationMethod01() :
-        print "ERROR: Parameter \"initializeClassic0orDelving1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"; exit(1)
+        print("ERROR: Parameter \"initializeClassic0orDelving1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"); exit(1)
     @staticmethod
     def errorReqActivFunction01() :
-        print "ERROR: Parameter \"relu0orPrelu1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"; exit(1)
+        print("ERROR: Parameter \"relu0orPrelu1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"); exit(1)
         
     @staticmethod
     def errReqSameNumOfLayersPerSubPathway():
-        print "ERROR: Parameter \"numberFMsPerLayerSubsampled\" has been given as a list of sublists of integers. This triggers the construction of multiple low-scale pathways."
-        print "\tHowever currently this functionality requires that the same number of layers are used in both pathways (limitation in the code)."
-        print "\tUser specified in \"numberFMsPerLayerSubsampled\" sublists of different length. Each list should have the same lenght, as many as the wanted number of layers. Please adress this."        
-        print "Exiting!"; exit(1)
+        print("ERROR: Parameter \"numberFMsPerLayerSubsampled\" has been given as a list of sublists of integers. This triggers the construction of multiple low-scale pathways.")
+        print("\tHowever currently this functionality requires that the same number of layers are used in both pathways (limitation in the code).")
+        print("\tUser specified in \"numberFMsPerLayerSubsampled\" sublists of different length. Each list should have the same lenght, as many as the wanted number of layers. Please adress this.")        
+        print("Exiting!"); exit(1)
     
     @staticmethod
     def errorSubFactor3d() :
-        print "ERROR: The parameter \"subsampleFactor\" must have 3 entries, one for each of the 3 dimensions. Please provide it in the format: subsampleFactor = [subFactor-dim1, subFactor-dim2, subFactor-dim3]. Each of the entries should be an integer, eg [3,3,3]."
+        print("ERROR: The parameter \"subsampleFactor\" must have 3 entries, one for each of the 3 dimensions. Please provide it in the format: subsampleFactor = [subFactor-dim1, subFactor-dim2, subFactor-dim3]. Each of the entries should be an integer, eg [3,3,3].")
         CreateModelSessionParameters.warnSubFactorOdd()
-        print "Exiting!"; exit(1)
+        print("Exiting!"); exit(1)
 
     @staticmethod
     def errorRequireSegmentDimensionsTrain() :
-        print "ERROR: The parameter \"segmentsDimTrain\" was is required but not given. It specifies the size of the 3D segment that is given as input to the network. It should be at least as large as the receptive field of the network in each dimension. Please specify it in the format: segmentsDimTrain = [dim-1, dim-2, dim-3]. Exiting!"; exit(1)
+        print("ERROR: The parameter \"segmentsDimTrain\" was is required but not given. It specifies the size of the 3D segment that is given as input to the network. It should be at least as large as the receptive field of the network in each dimension. Please specify it in the format: segmentsDimTrain = [dim-1, dim-2, dim-3]. Exiting!"); exit(1)
     errReqSegmDimTrain = errorRequireSegmentDimensionsTrain
     
     @staticmethod
     def errorRequireBatchSizeTrain() :
-        print "ERROR: The parameter \"batchSizeTrain\" was not specified, although required. This parameter specifies how many training-samples (segments) to use to form a batch, on which a single training iteration is performed. The bigger the better, but larger batches add to the memory and computational burden. Depending on the segment-size, the batch size should be smaller (if big segment sizes are used) or larger (if small segment sizes are used). A number between 10 to 100 is suggested. Please specify in the format: batchSizeTrain = 10 (a number). Exiting!"; exit(1)
+        print("ERROR: The parameter \"batchSizeTrain\" was not specified, although required. This parameter specifies how many training-samples (segments) to use to form a batch, on which a single training iteration is performed. The bigger the better, but larger batches add to the memory and computational burden. Depending on the segment-size, the batch size should be smaller (if big segment sizes are used) or larger (if small segment sizes are used). A number between 10 to 100 is suggested. Please specify in the format: batchSizeTrain = 10 (a number). Exiting!"); exit(1)
     errReqBatchSizeTr = errorRequireBatchSizeTrain
     @staticmethod
     def errorResLayer1(strPathwayType) :
-        print "ERROR: The parameter \"layersWithResidualConn\" for the [", strPathwayType, "] pathway was specified to include the number 1, ie the 1st layer."
-        print "\t This is not an acceptable value, as a residual connection is made between the output of the specified layer and the input of the previous layer. There is no layer before the 1st!"
-        print "\t Provide a list that does not iinclude the first layer, eg layersWithResidualConnNormal = [4,6,8], or an empty list [] for no such connections. Exiting!"; exit(1)
+        print("ERROR: The parameter \"layersWithResidualConn\" for the [", strPathwayType, "] pathway was specified to include the number 1, ie the 1st layer.")
+        print("\t This is not an acceptable value, as a residual connection is made between the output of the specified layer and the input of the previous layer. There is no layer before the 1st!")
+        print("\t Provide a list that does not iinclude the first layer, eg layersWithResidualConnNormal = [4,6,8], or an empty list [] for no such connections. Exiting!"); exit(1)
         
     @staticmethod
     def warnForSameReceptiveField() :
-        print "WARN: Because of limitations to the developed system, the two pathways must have the save size of receptive field. If unsure of how to proceed, please ommit specifying \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" in the config file, and the second subsampled pathway will be automatically created to mirror the normal. Else, if you want to just specify the number of Feature Maps in the subsampled, provide \"numberFMsPerLayerSubsampled\" = [num-FMs-layer1, ..., num-FMs-layerN], with N the same number as the normal pathway, and we will then use the same kernel-sizes as the normal pathway."
+        print("WARN: Because of limitations to the developed system, the two pathways must have the save size of receptive field. If unsure of how to proceed, please ommit specifying \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" in the config file, and the second subsampled pathway will be automatically created to mirror the normal. Else, if you want to just specify the number of Feature Maps in the subsampled, provide \"numberFMsPerLayerSubsampled\" = [num-FMs-layer1, ..., num-FMs-layerN], with N the same number as the normal pathway, and we will then use the same kernel-sizes as the normal pathway.")
     @staticmethod
     def warnSubFactorOdd() :
-        print "WARN: The system was only thoroughly tested for ODD subsampling factor! (Eg subsampleFactor = [3,3,3])."
+        print("WARN: The system was only thoroughly tested for ODD subsampling factor! (Eg subsampleFactor = [3,3,3]).")
         
     # OTHERS
     @staticmethod
     def changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(listFromConfig) :
         # subsampleFactorFromConfig: whatever given in the config by the user (except None). 
         if not isinstance(listFromConfig, list) :
-            print "ERROR: variable \"", listFromConfig, "\" given in modelConfig.cfg should be either a list of integers, or a list of lists of integers, in case multiple lower-scale pathways are wanted. Please correct it. Exiting."; exit(1)
+            print("ERROR: variable \"", listFromConfig, "\" given in modelConfig.cfg should be either a list of integers, or a list of lists of integers, in case multiple lower-scale pathways are wanted. Please correct it. Exiting."); exit(1)
         allElementsAreLists = True
         noElementIsList = True
         for element in listFromConfig :
@@ -133,7 +133,7 @@ class CreateModelSessionParameters(object) :
             else :
                 allElementsAreLists = False
         if not (allElementsAreLists or noElementIsList) : #some are lists and some are not
-            print "ERROR: variable \"", listFromConfig, "\" given in modelConfig.cfg should be either a list of integers, or a list of lists of integers, in case multiple lower-scale pathways are wanted. Please correct it. Exiting."; exit(1)
+            print("ERROR: variable \"", listFromConfig, "\" given in modelConfig.cfg should be either a list of integers, or a list of lists of integers, in case multiple lower-scale pathways are wanted. Please correct it. Exiting."); exit(1)
         elif noElementIsList :
             #Seems ok, but the structure is not a list of lists. It's probably the old type, eg [3,3,3]. Lets change to list of lists.
             return [ listFromConfig ]
@@ -145,7 +145,7 @@ class CreateModelSessionParameters(object) :
             return True
         lengthOfFirst = len(listWithSublists[0])
         for subList_i in xrange( len(listWithSublists) ) :
-            if lengthOfFirst <> len(listWithSublists[subList_i]) :
+            if lengthOfFirst != len(listWithSublists[subList_i]) :
                 return False
         return True
            
@@ -206,20 +206,20 @@ class CreateModelSessionParameters(object) :
         self.pathAndFilenameToSaveModel = os.path.abspath(folderForSessionCnnModels + "/" + self.cnnModelName)
         
         #===========MODEL PARAMETERS==========
-        self.numberClasses = numberClasses if numberClasses <> None else self.errReqNumClasses()
-        self.numberOfInputChannelsNormal = numberOfInputChannelsNormal if numberOfInputChannelsNormal <> None or\
+        self.numberClasses = numberClasses if numberClasses != None else self.errReqNumClasses()
+        self.numberOfInputChannelsNormal = numberOfInputChannelsNormal if numberOfInputChannelsNormal != None or\
                                                         numberOfInputChannelsNormal<1 else self.errReqNumChannels()
                                                         
         #===Normal pathway===
-        self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal <> None and numFMsNormal > 0 else self.errReqFMsNormal()
+        self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal != None and numFMsNormal > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
         self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
         self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
-        residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
-        lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal <> None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+        residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+        lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         
         #==Subsampled pathway==
-        self.useSubsampledBool = useSubsampledBool if useSubsampledBool <> None else False
+        self.useSubsampledBool = useSubsampledBool if useSubsampledBool != None else False
         if not self.useSubsampledBool :
             self.numFMsPerLayerSubsampled = []
             self.kernDimPerLayerSubsampled = []
@@ -229,7 +229,7 @@ class CreateModelSessionParameters(object) :
             lowerRankLayersSubsampled = []
             
         else :
-            self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled <> None else self.numFMsPerLayerNormal
+            self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled != None else self.numFMsPerLayerNormal
             self.numFMsPerLayerSubsampled = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.numFMsPerLayerSubsampled)
             # check that all subsampled pathways have the same number of layers. Limitation in the code currently, because I use kernDimSubsampled for all of them.
             if not self.checkThatSublistsHaveSameLength(self.numFMsPerLayerSubsampled):
@@ -239,7 +239,7 @@ class CreateModelSessionParameters(object) :
             if kernDimSubsampled == None and numOfLayersInEachSubPath == len(self.numFMsPerLayerNormal) :
                 self.kernDimPerLayerSubsampled = self.kernDimPerLayerNormal
                 self.receptiveFieldSubsampled = self.receptiveFieldNormal
-            elif kernDimSubsampled == None and numOfLayersInEachSubPath <> len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
+            elif kernDimSubsampled == None and numOfLayersInEachSubPath != len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
                 self.errorRequireKernelDimensionsSubsampled(self.kernDimPerLayerNormal, numFMsSubsampled)
             # kernDimSubsampled was specified. Now it's going to be tricky to make sure everything alright.
             elif not checkKernDimPerLayerCorrect3dAndNumLayers(kernDimSubsampled, numOfLayersInEachSubPath) :
@@ -247,13 +247,13 @@ class CreateModelSessionParameters(object) :
             else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
                 self.kernDimPerLayerSubsampled = kernDimSubsampled
                 self.receptiveFieldSubsampled = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerSubsampled)
-                if self.receptiveFieldNormal <> self.receptiveFieldSubsampled :
+                if self.receptiveFieldNormal != self.receptiveFieldSubsampled :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...
-            self.subsampleFactor = subsampleFactor if subsampleFactor <> None else [3,3,3]
+            self.subsampleFactor = subsampleFactor if subsampleFactor != None else [3,3,3]
             self.subsampleFactor = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.subsampleFactor)
             for secondaryPathway_i in xrange(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
-                if len(self.subsampleFactor[secondaryPathway_i]) <> 3 :
+                if len(self.subsampleFactor[secondaryPathway_i]) != 3 :
                     self.errorSubFactor3d()
                 if not checkSubsampleFactorEven(self.subsampleFactor[secondaryPathway_i]) :
                     self.warnSubFactorOdd()
@@ -269,46 +269,46 @@ class CreateModelSessionParameters(object) :
                 self.subsampleFactor.append( [ subFactorInDim_i + 2 for subFactorInDim_i in self.subsampleFactor[-1] ] ) # Adds one more sublist, eg [5,5,5], which is the last subFactor, increased by +2 in all rcz dimensions.
             
             # Residuals and lower ranks.
-            residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled <> None else residConnAtLayersNormal
-            lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled <> None else lowerRankLayersNormal
+            residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled != None else residConnAtLayersNormal
+            lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled != None else lowerRankLayersNormal
             
         #==FC Layers==
-        self.numFMsInExtraFcs = numFMsFc if numFMsFc <> None else []
-        self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer <> None else [1,1,1]
+        self.numFMsInExtraFcs = numFMsFc if numFMsFc != None else []
+        self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer != None else [1,1,1]
         assert len(self.kernelDimensionsFirstFcLayer) == 3 and (False not in [ dim > 0 for dim in self.kernelDimensionsFirstFcLayer] )
-        residConnAtLayersFc = residConnAtLayersFc if residConnAtLayersFc <> None else []
+        residConnAtLayersFc = residConnAtLayersFc if residConnAtLayersFc != None else []
                                         
         #==Size of Image Segments ==
-        self.segmDimNormalTrain = segmDimTrain if segmDimTrain <> None else self.errReqSegmDimTrain()
-        self.segmDimNormalVal = segmDimVal if segmDimVal <> None else self.receptiveFieldNormal
-        self.segmDimNormalInfer = segmDimInfer if segmDimInfer <> None else self.segmDimNormalTrain
+        self.segmDimNormalTrain = segmDimTrain if segmDimTrain != None else self.errReqSegmDimTrain()
+        self.segmDimNormalVal = segmDimVal if segmDimVal != None else self.receptiveFieldNormal
+        self.segmDimNormalInfer = segmDimInfer if segmDimInfer != None else self.segmDimNormalTrain
         for (tr0_val1_inf2, segmentDimensions) in [ (0,self.segmDimNormalTrain), (1,self.segmDimNormalVal), (2,self.segmDimNormalInfer) ] :
             if not checkReceptiveFieldFineInComparisonToSegmentSize(self.receptiveFieldNormal, segmentDimensions) :
                 self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, tr0_val1_inf2)
                 
         #=== Batch Sizes ===
-        self.batchSizeTrain = batchSizeTrain if batchSizeTrain <> None else self.errReqBatchSizeTr()
-        self.batchSizeVal = batchSizeVal if batchSizeVal <> None else self.batchSizeTrain
-        self.batchSizeInfer = batchSizeInfer if batchSizeInfer <> None else self.batchSizeTrain
+        self.batchSizeTrain = batchSizeTrain if batchSizeTrain != None else self.errReqBatchSizeTr()
+        self.batchSizeVal = batchSizeVal if batchSizeVal != None else self.batchSizeTrain
+        self.batchSizeInfer = batchSizeInfer if batchSizeInfer != None else self.batchSizeTrain
         
         #=== Dropout rates ===
-        self.dropNormal = dropNormal if dropNormal <> None else []
-        self.dropSubsampled = dropSubsampled if dropSubsampled <> None else []
-        self.dropFc = dropFc if dropFc <> None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
+        self.dropNormal = dropNormal if dropNormal != None else []
+        self.dropSubsampled = dropSubsampled if dropSubsampled != None else []
+        self.dropFc = dropFc if dropFc != None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
         self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc, []]
         
         #== Weight Initialization==
-        self.initialMethodClassic0Delving1 = initialMethod if initialMethod <> None else 1
+        self.initialMethodClassic0Delving1 = initialMethod if initialMethod != None else 1
         if not self.initialMethodClassic0Delving1 in [0,1]:
             self.errorReqInitializationMethod01()
         #== Activation Function ==
-        self.activationFunctionRelu0Prelu1 = activationFunction if activationFunction <> None else 1
+        self.activationFunctionRelu0Prelu1 = activationFunction if activationFunction != None else 1
         if not self.activationFunctionRelu0Prelu1 in [0,1]:
             self.errorReqActivFunction01()
             
         #==BATCH NORMALIZATION==
         self.applyBnToInputOfPathways = [False, False, True, False] # the 3 entry, for FC, should always be True.
-        self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches <> None else 60
+        self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches != None else 60
         
         #==============CALCULATED=====================
         # Residual Connections backwards, per pathway type :
