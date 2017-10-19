@@ -50,25 +50,25 @@ class TestSessionParameters(object) :
         
         #Input:
         self.channelsFilepaths = listWithAListPerCaseWithFilepathPerChannel #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-        self.providedGt = True if gtLabelsFilepaths <> None else False
-        self.gtLabelsFilepaths = gtLabelsFilepaths if gtLabelsFilepaths <> None else []
-        self.providedRoiMasks = True if roiMasksFilepaths <> None else False
-        self.roiMasksFilepaths = roiMasksFilepaths if roiMasksFilepaths <> None else []
+        self.providedGt = True if gtLabelsFilepaths != None else False
+        self.gtLabelsFilepaths = gtLabelsFilepaths if gtLabelsFilepaths != None else []
+        self.providedRoiMasks = True if roiMasksFilepaths != None else False
+        self.roiMasksFilepaths = roiMasksFilepaths if roiMasksFilepaths != None else []
         
         #Output:
         self.namesToSavePredictionsAndFeatures = namesToSavePredictionsAndFeatures #Required. Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
         #predictions
-        self.saveSegmentation = saveSegmentation if saveSegmentation <> None else True
-        self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if (saveProbMapsBoolPerClass <> None and saveProbMapsBoolPerClass <> []) else [True]*cnn3dInstance.numberOfOutputClasses
+        self.saveSegmentation = saveSegmentation if saveSegmentation != None else True
+        self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if (saveProbMapsBoolPerClass != None and saveProbMapsBoolPerClass != []) else [True]*cnn3dInstance.numberOfOutputClasses
         self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         #features:
-        self.saveIndividualFmImages = saveIndividualFmImages if saveIndividualFmImages <> None else False
-        self.saveMultidimensionalImageWithAllFms = saveMultidimensionalImageWithAllFms if saveMultidimensionalImageWithAllFms <> None else False
-        self.indicesOfFmsToVisualisePerPathwayAndLayer = [item if item <> None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayer]
+        self.saveIndividualFmImages = saveIndividualFmImages if saveIndividualFmImages != None else False
+        self.saveMultidimensionalImageWithAllFms = saveMultidimensionalImageWithAllFms if saveMultidimensionalImageWithAllFms != None else False
+        self.indicesOfFmsToVisualisePerPathwayAndLayer = [item if item != None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayer]
         self.filepathsToSaveFeaturesForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Preprocessing
-        self.padInputImagesBool = padInputImagesBool if padInputImagesBool <> None else True
+        self.padInputImagesBool = padInputImagesBool if padInputImagesBool != None else True
         
         #Others useful internally or for reporting:
         self.numberOfCases = len(self.channelsFilepaths)
@@ -89,7 +89,7 @@ class TestSessionParameters(object) :
         self.filepathsToSavePredictionsForEachPatient = []
         self.filepathsToSaveFeaturesForEachPatient = []
         
-        if self.namesToSavePredictionsAndFeatures <> None :
+        if self.namesToSavePredictionsAndFeatures != None :
             for case_i in xrange(self.numberOfCases) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
