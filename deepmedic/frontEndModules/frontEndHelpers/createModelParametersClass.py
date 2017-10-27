@@ -144,7 +144,7 @@ class CreateModelSessionParameters(object) :
         if len(listWithSublists) == 0 :
             return True
         lengthOfFirst = len(listWithSublists[0])
-        for subList_i in xrange( len(listWithSublists) ) :
+        for subList_i in range( len(listWithSublists) ) :
             if lengthOfFirst != len(listWithSublists[subList_i]) :
                 return False
         return True
@@ -252,7 +252,7 @@ class CreateModelSessionParameters(object) :
                 #Everything alright, finally. Proceed safely...
             self.subsampleFactor = subsampleFactor if subsampleFactor != None else [3,3,3]
             self.subsampleFactor = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.subsampleFactor)
-            for secondaryPathway_i in xrange(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
+            for secondaryPathway_i in range(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
                 if len(self.subsampleFactor[secondaryPathway_i]) != 3 :
                     self.errorSubFactor3d()
                 if not checkSubsampleFactorEven(self.subsampleFactor[secondaryPathway_i]) :
@@ -342,9 +342,9 @@ class CreateModelSessionParameters(object) :
         #Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
         #MP is applied >>AT THE INPUT of the layer<<. To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each dimension for padding (give 0 for none), the mode (usually 'max' pool). Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
         #If a pathway is not used (eg subsampled), put an empty list in the first dimension entry. 
-        mpParamsNorm = [ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ] #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
-        mpParamsSubs = [ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled[0])) ] if self.useSubsampledBool else [] # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
-        mpParamsFc = [ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
+        mpParamsNorm = [ [] for layeri in range(len(self.numFMsPerLayerNormal)) ] #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
+        mpParamsSubs = [ [] for layeri in range(len(self.numFMsPerLayerSubsampled[0])) ] if self.useSubsampledBool else [] # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
+        mpParamsFc = [ [] for layeri in range(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
         self.maxPoolingParamsStructure = [ mpParamsNorm, mpParamsSubs, mpParamsFc]
         
         self.softmaxTemperature = 1.0 #Higher temperatures make the probabilities LESS distinctable. Actions have more similar probabilities. 

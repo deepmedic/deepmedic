@@ -24,7 +24,7 @@ class SamplingType(object) :
             self.arrayWithStringPerCategoryToSample = ["WholeImage"]
         elif self.samplingType == 3 :
             self.stringOfSamplingType = "Per-Class"
-            self.arrayWithStringPerCategoryToSample = ["Class-" + str(i) for i in xrange(numberOfClassesInclBackgr) ]
+            self.arrayWithStringPerCategoryToSample = ["Class-" + str(i) for i in range(numberOfClassesInclBackgr) ]
         else :
             self.logger.print3("ERROR: Tried to create a SamplingType instance, but the samplingType passed was invalid. Should be [0,1,2,3]. Exiting!"); exit(1)
             
@@ -122,7 +122,7 @@ class SamplingType(object) :
                 finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should have as many entries as classes (incl backgr).
             elif providedGtLabelsBool :
                 finalWeightMapsToSampleFromPerCategoryForSubject = []
-                for cat_i in xrange( self.getNumberOfCategoriesToSample() ) : # Should be the same number as the number of actual classes, including background.
+                for cat_i in range( self.getNumberOfCategoriesToSample() ) : # Should be the same number as the number of actual classes, including background.
                     finalWeightMapsToSampleFromPerCategoryForSubject.append( (gtLabelsImage == cat_i).astype(int) )
             else :
                 self.logger.print3("ERROR: For SamplingType=TargettedPerClass(3), either weightMaps for each class or GT labels should be given! Exiting!"); exit(1)

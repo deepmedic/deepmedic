@@ -12,11 +12,11 @@ from math import ceil
 
 def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
     image3dBC012WithMirroredFinalElemets = image3dBC012
-    for time_i in xrange(0, mirrorFinalBordersForThatMuch[0]) :
+    for time_i in range(0, mirrorFinalBordersForThatMuch[0]) :
         image3dBC012WithMirroredFinalElemets = T.concatenate([ image3dBC012WithMirroredFinalElemets, image3dBC012WithMirroredFinalElemets[:,:,-1:,:,:] ], axis=2)
-    for time_i in xrange(0, mirrorFinalBordersForThatMuch[1]) :
+    for time_i in range(0, mirrorFinalBordersForThatMuch[1]) :
         image3dBC012WithMirroredFinalElemets = T.concatenate([ image3dBC012WithMirroredFinalElemets, image3dBC012WithMirroredFinalElemets[:,:,:,-1:,:] ], axis=3)
-    for time_i in xrange(0, mirrorFinalBordersForThatMuch[2]) :
+    for time_i in range(0, mirrorFinalBordersForThatMuch[2]) :
         image3dBC012WithMirroredFinalElemets = T.concatenate([ image3dBC012WithMirroredFinalElemets, image3dBC012WithMirroredFinalElemets[:,:,:,:,-1:] ], axis=4)
     return image3dBC012WithMirroredFinalElemets
 

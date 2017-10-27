@@ -90,7 +90,7 @@ class TestSessionParameters(object) :
         self.filepathsToSaveFeaturesForEachPatient = []
         
         if self.namesToSavePredictionsAndFeatures != None :
-            for case_i in xrange(self.numberOfCases) :
+            for case_i in range(self.numberOfCases) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]

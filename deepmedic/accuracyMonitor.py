@@ -53,7 +53,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             self.meanCostOfEachSubep.append(meanCostOfSubepoch)
             
         correctlyPredVoxelsInSubep = 0; # Predicted with the correct class.
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             correctlyPredVoxelsInSubep += perClassRpRnTpTnInSubep[class_i][2] # Add up the true positives per class (which are one vs all).
         self.correctlyPredVoxelsInEachSubep.append(correctlyPredVoxelsInSubep)
         numberOfAllSamples = perClassRpRnTpTnInSubep[0,0] + perClassRpRnTpTnInSubep[0,1] #RealPos + RealNeg wrt any class (eg backgr)
@@ -65,7 +65,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         self.listPerSubepPerClassRpRnTpTn.append(perClassRpRnTpTnInSubep)
         
         listWithPerClassMeanAccSensSpecDscInSubep = [] # Classes x 4 . 4=Mean Acc, sens, spec, dsc.
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             numOfRealPosInSubep = perClassRpRnTpTnInSubep[class_i,0]
             numOfRealNegInSubep = perClassRpRnTpTnInSubep[class_i,1]
             numOfTruePosInSubep = perClassRpRnTpTnInSubep[class_i,2]
@@ -110,7 +110,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             self.logger.print3( logStr + ", Overall:\t mean cost:      \t" + strFl5fNA(self.meanCostOfEachSubep[currSubep], self.NA_PATTERN) ) 
             
         # Report accuracy over subepoch for each class_i:
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             classString = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
             
@@ -151,22 +151,22 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             self.logger.print3( logStr + ", Overall:\t mean cost of each subepoch:    \t" + strListFl5fNA(self.meanCostOfEachSubep, self.NA_PATTERN) )
             
         # Report for each class.
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             classString = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
             
             self.logger.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + classString + " >>>>>>>>> " + extraDescription + " <<<<<<<<<<<<<" )
             
             if class_i != 0 :
-                meanAccPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][0] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
-                meanSensPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][1] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
-                meanSpecPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][2] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
-                meanDscPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][3] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanAccPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][0] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanSensPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][1] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanSpecPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][2] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanDscPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][3] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
             else : # Foreground Vs Background
-                meanAccPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][0] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
-                meanSensPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][1] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
-                meanSpecPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][2] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
-                meanDscPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][3] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanAccPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][0] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanSensPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][1] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanSpecPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][2] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanDscPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][3] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
                 
             meanAccOfEp = getMeanOfListExclNA(meanAccPerSubep, self.NA_PATTERN)
             meanSensOfEp = getMeanOfListExclNA(meanSensPerSubep, self.NA_PATTERN)

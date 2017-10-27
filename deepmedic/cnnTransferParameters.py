@@ -30,12 +30,12 @@ def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayers
     depthDeepestLayerTarget = len(cnnTarget.pathways[0].getLayers()) + len(cnnTarget.getFcPathway().getLayers()) # Classif layer. NOT Softmax layer, which is not registered in the FC path.
     # NOTE: Softmax layer HAS learnt BIASES and I must transfer them separately if deepest pathway is asked to be transfered.
     
-    for pathTarget_i in xrange( len(cnnTarget.pathways) ):
+    for pathTarget_i in range( len(cnnTarget.pathways) ):
         pathTarget = cnnTarget.pathways[pathTarget_i]
         typePathTarget = pathTarget.pType()
         layersPathTarget = pathTarget.getLayers()
         
-        for layerTarget_i in xrange( len(layersPathTarget) ):
+        for layerTarget_i in range( len(layersPathTarget) ):
             layerTarget = layersPathTarget[layerTarget_i]
             depthLayerTarget = layerTarget_i + 1 if typePathTarget != pt.FC else layerTarget_i + 1 + len( cnnTarget.pathways[0].getLayers() ) # +1 cause indexes. index 0 is depth 1.
             

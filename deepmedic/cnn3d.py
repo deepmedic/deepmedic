@@ -226,7 +226,7 @@ class Cnn3d(object):
         self._initializedSharedVarsTrain = True
         # Create the needed shared variables. Number of dimensions should be correct (5 for x, 4 for y). But size is placeholder. Changes when shared.set_value during training.
         self.sharedInpXTrain = theano.shared(np.zeros([1, 1, 1, 1, 1], dtype="float32"), borrow=self.borrowFlag)
-        for subsPath_i in xrange(self.numSubsPaths) :
+        for subsPath_i in range(self.numSubsPaths) :
             self.sharedInpXPerSubsListTrain.append(theano.shared(np.zeros([1, 1, 1, 1, 1], dtype="float32"), borrow=self.borrowFlag))
         # When storing data on the GPU it has to be stored as floats (floatX). Later this variable is cast as "int", to be used correctly in computations.
         self.sharedLabelsYTrain = theano.shared(np.zeros([1, 1, 1, 1], dtype="float32") , borrow=self.borrowFlag)
@@ -234,34 +234,34 @@ class Cnn3d(object):
     def _initializeSharedVarsForInputsVal(self) :
         self._initializedSharedVarsVal = True
         self.sharedInpXVal = theano.shared(np.zeros([1, 1, 1, 1, 1], dtype="float32"), borrow=self.borrowFlag)
-        for subsPath_i in xrange(self.numSubsPaths) :
+        for subsPath_i in range(self.numSubsPaths) :
             self.sharedInpXPerSubsListVal.append(theano.shared(np.zeros([1, 1, 1, 1, 1], dtype="float32"), borrow=self.borrowFlag))
         self.sharedLabelsYVal = theano.shared(np.zeros([1, 1, 1, 1], dtype="float32") , borrow=self.borrowFlag)
         
     def _initializeSharedVarsForInputsTest(self) :
         self._initializedSharedVarsTest = True
         self.sharedInpXTest = theano.shared(np.zeros([1, 1, 1, 1, 1], dtype="float32"), borrow=self.borrowFlag)
-        for subsPath_i in xrange(self.numSubsPaths) :
+        for subsPath_i in range(self.numSubsPaths) :
             self.sharedInpXPerSubsListTest.append(theano.shared(np.zeros([1, 1, 1, 1, 1], dtype="float32"), borrow=self.borrowFlag))
             
     def freeGpuTrainingData(self) :
         if self._initializedSharedVarsTrain :  # False if this is called (eg save model) before train/val/test function is compiled.
             self.sharedInpXTrain.set_value(np.zeros([1, 1, 1, 1, 1], dtype="float32"))  # = []
-            for subsPath_i in xrange(self.numSubsPaths) :
+            for subsPath_i in range(self.numSubsPaths) :
                 self.sharedInpXPerSubsListTrain[subsPath_i].set_value(np.zeros([1, 1, 1, 1, 1], dtype="float32"))
             self.sharedLabelsYTrain.set_value(np.zeros([1, 1, 1, 1], dtype="float32"))  # = []
             
     def freeGpuValidationData(self) :
         if self._initializedSharedVarsVal :
             self.sharedInpXVal.set_value(np.zeros([1, 1, 1, 1, 1], dtype="float32"))  # = []
-            for subsPath_i in xrange(self.numSubsPaths) :
+            for subsPath_i in range(self.numSubsPaths) :
                 self.sharedInpXPerSubsListVal[subsPath_i].set_value(np.zeros([1, 1, 1, 1, 1], dtype="float32"))
             self.sharedLabelsYVal.set_value(np.zeros([1, 1, 1, 1], dtype="float32"))  # = []
             
     def freeGpuTestingData(self) :
         if self._initializedSharedVarsTest :
             self.sharedInpXTest.set_value(np.zeros([1, 1, 1, 1, 1], dtype="float32"))  # = []
-            for subsPath_i in xrange(self.numSubsPaths) :
+            for subsPath_i in range(self.numSubsPaths) :
                 self.sharedInpXPerSubsListTest[subsPath_i].set_value(np.zeros([1, 1, 1, 1, 1], dtype="float32"))
                 
     def checkTrainingStateAttributesInitialized(self):
@@ -422,7 +422,7 @@ class Cnn3d(object):
         # A getter. Don't alter anything here!
         paramsToOptDuringTraining = []  # Ws and Bs
         for pathway in self.pathways :
-            for layer_i in xrange(0, len(pathway.getLayers())) :
+            for layer_i in range(0, len(pathway.getLayers())) :
                 if layer_i not in self.indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
                     paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).getTrainableParams()
                 else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
@@ -551,7 +551,7 @@ class Cnn3d(object):
         
         #========================COMPILATION OF FUNCTIONS =================
         givensSet = { x: self.sharedInpXTrain[index * self.batchSize: (index + 1) * self.batchSize] }
-        for subPath_i in xrange(self.numSubsPaths) : # if there are subsampled paths...
+        for subPath_i in range(self.numSubsPaths) : # if there are subsampled paths...
             xSub = listXPerSubs[subPath_i]
             sharedInpXSubTrain = self.sharedInpXPerSubsListTrain[subPath_i]
             givensSet.update({ xSub: sharedInpXSubTrain[index * self.batchSize: (index + 1) * self.batchSize] })
@@ -581,7 +581,7 @@ class Cnn3d(object):
         intCastSharedLabelsYVal = T.cast(self.sharedLabelsYVal, 'int32')
         
         givensSet = { x: self.sharedInpXVal[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation] }
-        for subPath_i in xrange(self.numSubsPaths) : # if there are subsampled paths...
+        for subPath_i in range(self.numSubsPaths) : # if there are subsampled paths...
             xSub = listXPerSubs[subPath_i]
             sharedInpXSubVal = self.sharedInpXPerSubsListVal[subPath_i]
             givensSet.update({ xSub: sharedInpXSubVal[index * self.batchSizeValidation: (index + 1) * self.batchSizeValidation] })
@@ -614,7 +614,7 @@ class Cnn3d(object):
         listToReturnWithAllTheFmActivationsAndPredictionsAppended.append(self.finalTargetLayer.predictionProbabilities())
         
         givensSet = { x: self.sharedInpXTest[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] }
-        for subPath_i in xrange(self.numSubsPaths) : # if there are subsampled paths...
+        for subPath_i in range(self.numSubsPaths) : # if there are subsampled paths...
             xSub = listXPerSubs[subPath_i]
             sharedInpXSubTest = self.sharedInpXPerSubsListTest[subPath_i]
             givensSet.update({ xSub: sharedInpXSubTest[index * self.batchSizeTesting: (index + 1) * self.batchSizeTesting] })
@@ -635,7 +635,7 @@ class Cnn3d(object):
             self.inputTensorNormVal = tensor5()  # myTensor.reshape(inputImageShapeValidation)
             self.inputTensorNormTest = tensor5()
             # For the multiple subsampled pathways.
-            for subsPath_i in xrange(self.numSubsPaths) :
+            for subsPath_i in range(self.numSubsPaths) :
                 self.listInputTensorPerSubsTrain.append(tensor5())  # Actually, for these 3, a single tensor5() could be used.
                 self.listInputTensorPerSubsVal.append(tensor5())  # myTensor.reshape(inputImageSubsampledShapeValidation)
                 self.listInputTensorPerSubsTest.append(tensor5())
@@ -805,7 +805,7 @@ class Cnn3d(object):
         [dimsOfOutputFrom1stPathwayTrain, dimsOfOutputFrom1stPathwayVal, dimsOfOutputFrom1stPathwayTest] = thisPathway.getShapeOfOutput()
         
         #=======================Make the SUBSAMPLED PATHWAYs of the CNN=============================
-        for subPath_i in xrange(self.numSubsPaths) :
+        for subPath_i in range(self.numSubsPaths) :
             thisPathway = SubsampledPathway(subsampleFactorsPerSubPath[subPath_i])
             self.pathways.append(thisPathway) # There will be at least an entry as a secondary pathway. But it won't have any layers if it was not actually used.
             thisPathwayType = thisPathway.pType()
@@ -862,7 +862,7 @@ class Cnn3d(object):
             
         #====================================CONCATENATE the output of the 2 cnn-pathways=============================
         inputToFirstFcLayerTrain = None; inputToFirstFcLayerVal = None; inputToFirstFcLayerTest = None; numberOfFmsOfInputToFirstFcLayer = 0
-        for path_i in xrange(len(self.pathways)) :
+        for path_i in range(len(self.pathways)) :
             [outputNormResOfPathTrain, outputNormResOfPathVal, outputNormResOfPathTest] = self.pathways[path_i].getOutputAtNormalRes()
             [dimsOfOutputNormResOfPathTrain, dimsOfOutputNormResOfPathVal, dimsOfOutputNormResOfPathTest] = self.pathways[path_i].getShapeOfOutputAtNormalRes()
             
@@ -891,7 +891,7 @@ class Cnn3d(object):
         inputToPathwayShapeTrain = [self.batchSize, numberOfFmsOfInputToFirstFcLayer] + dimsOfOutputFrom1stPathwayTrain[2:5]
         inputToPathwayShapeVal = [self.batchSizeValidation, numberOfFmsOfInputToFirstFcLayer] + dimsOfOutputFrom1stPathwayVal[2:5]
         inputToPathwayShapeTest = [self.batchSizeTesting, numberOfFmsOfInputToFirstFcLayer] + dimsOfOutputFrom1stPathwayTest[2:5]
-        for rcz_i in xrange(3) : 
+        for rcz_i in range(3) : 
             inputToPathwayShapeTrain[2+rcz_i] += voxelsToPadPerDim[rcz_i]
             inputToPathwayShapeVal[2+rcz_i] += voxelsToPadPerDim[rcz_i]
             inputToPathwayShapeTest[2+rcz_i] += voxelsToPadPerDim[rcz_i]

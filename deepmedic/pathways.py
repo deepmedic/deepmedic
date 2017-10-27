@@ -197,7 +197,7 @@ class Pathway(object):
         inputToNextLayerTrain = self._inputTrain; inputToNextLayerVal = self._inputVal; inputToNextLayerTest = self._inputTest
         inputToNextLayerShapeTrain = self._inputShapeTrain; inputToNextLayerShapeVal = self._inputShapeVal; inputToNextLayerShapeTest = self._inputShapeTest
         numOfLayers = len(numKernsPerLayer)
-        for layer_i in xrange(0, numOfLayers) :
+        for layer_i in range(0, numOfLayers) :
             thisLayerFilterShape = [numKernsPerLayer[layer_i],inputToNextLayerShapeTrain[1]] + kernelDimsPerLayer[layer_i]
             
             thisLayerUseBn = useBnPerLayer[layer_i]
@@ -302,7 +302,7 @@ class Pathway(object):
         rczDimsOfOutputOfPathwayShouldBe = [-1,-1,-1]
         
         rczDimsOfOutputFromPrimaryPathway = dimsOfOutputFromPrimaryPathway[2:]
-        for rcz_i in xrange(3) :
+        for rcz_i in range(3) :
             rczDimsOfOutputOfPathwayShouldBe[rcz_i] = int(ceil(rczDimsOfOutputFromPrimaryPathway[rcz_i]/(1.0*self.subsFactor()[rcz_i])))
             rczDimsOfInputToPathwayShouldBe[rcz_i] = recFieldAtEndOfPathway[rcz_i] + rczDimsOfOutputOfPathwayShouldBe[rcz_i] - 1
         return rczDimsOfInputToPathwayShouldBe

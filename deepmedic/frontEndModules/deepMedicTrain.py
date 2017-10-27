@@ -198,7 +198,7 @@ def checkIfFilesThatListFilesPerCaseAreCorrect(testConfig, testConfigFilepath) :
     listOfListingFilesProvided = configStruct[testConfig.CHANNELS]
     listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.ROI_MASKS] else listOfListingFilesProvided + [configStruct[testConfig.ROI_MASKS]]
     listOfListingFilesProvided = listOfListingFilesProvided if not configStruct[testConfig.GT_LABELS] else listOfListingFilesProvided + [configStruct[testConfig.GT_LABELS]]
-    for pathToListingFile_i in xrange(len(listOfListingFilesProvided)) :
+    for pathToListingFile_i in range(len(listOfListingFilesProvided)) :
         pathToCurrentFileListingPaths = listOfListingFilesProvided[pathToListingFile_i]
         absolutePathToCurrentFileListingPaths = getAbsPathEvenIfRelativeIsGiven(pathToCurrentFileListingPaths, testConfigFilepath)
         if not os.path.isfile(absolutePathToCurrentFileListingPaths) :

@@ -64,7 +64,7 @@ def getMeanOfListExclNA(list1, notApplicPattern) :
     # Returns NotApplicablePattern if all entries are not-applicable.
     addedValuesForMeanCalc = 0
     numberOfApplicableEntries = 0
-    for subep_i in xrange(len(list1)) :
+    for subep_i in range(len(list1)) :
         if list1[subep_i] != notApplicPattern :
             addedValuesForMeanCalc += list1[subep_i]
             numberOfApplicableEntries += 1
@@ -74,8 +74,8 @@ def getMeanPerColOf2dListExclNA(list2d, notApplicPattern) :
     # list has dimensions: rows X col.
     # Return a list, which has 1 element per column, which is the average of the column, excluding any "NotApplicable" elements.
     listWithMeanPerColumn = []
-    for col_i in xrange(len(list2d[0])) :
-        listColumn = [list2d[i][col_i] for i in xrange(len(list2d))] # make a list of a column's elements.
+    for col_i in range(len(list2d[0])) :
+        listColumn = [list2d[i][col_i] for i in range(len(list2d))] # make a list of a column's elements.
         meanOfColumn = getMeanOfListExclNA(listColumn, notApplicPattern) #will return NA-pattern if all elements are NA.
         listWithMeanPerColumn.append(meanOfColumn)
     return listWithMeanPerColumn

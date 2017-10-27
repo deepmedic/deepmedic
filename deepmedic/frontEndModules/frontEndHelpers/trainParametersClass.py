@@ -431,7 +431,7 @@ class TrainSessionParameters(object) :
         self.filepathsToSavePredictionsForEachPatientVal = []
         self.filepathsToSaveFeaturesForEachPatientVal = []
         if self.namesToSavePredictionsAndFeaturesVal != None :
-            for case_i in xrange(self.numberOfCasesVal) :
+            for case_i in range(self.numberOfCasesVal) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]

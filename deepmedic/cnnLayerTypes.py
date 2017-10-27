@@ -719,7 +719,7 @@ class SoftmaxLayer(Block):
         
         returnedListWithNumberOfRpRnTpTnForEachClass = []
         
-        for class_i in xrange(0, self._numberOfOutputClasses) :
+        for class_i in range(0, self._numberOfOutputClasses) :
             #Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
             tensorOneAtRealPos = T.eq(y, class_i)
             tensorOneAtRealNeg = T.neq(y, class_i)

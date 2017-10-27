@@ -6,7 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 import numpy as np
-from genericHelpers import *
+from deepmedic.genericHelpers import *
 import os
 
 # The API for these classes should resemble the API of Pathway and Cnn3d classes. But only what is needed by the sampling process of the training procedure.
@@ -40,7 +40,7 @@ class CnnWrapperForSampling(object):
         self.numSubsPaths = cnn3dInstance.numSubsPaths
         
         self.pathways = []
-        for pathway_i in xrange(len(cnn3dInstance.pathways)) :
+        for pathway_i in range(len(cnn3dInstance.pathways)) :
             self.pathways.append( PathwayWrapperForSampling(cnn3dInstance.pathways[pathway_i]) )
         
     def getNumPathwaysThatRequireInput(self) :
@@ -85,7 +85,7 @@ def calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsample
     """
     #if patch is 17x17, a 17x17 subPart is cool for 3 voxels with a subsampleFactor. +2 to be ok for the 9x9 centrally classified voxels, so 19x19 sub-part.
     subsampledImagePartDimensions = []
-    for rcz_i in xrange(len(imagePartDimensions)) :
+    for rcz_i in range(len(imagePartDimensions)) :
         centralVoxelsInThisDimension = imagePartDimensions[rcz_i] - patchDimensions[rcz_i] + 1
         centralVoxelsInThisDimensionForSubsampledPart = int(ceil(centralVoxelsInThisDimension*1.0/subsampleFactor[rcz_i]))
         sizeOfSubsampledImagePartInThisDimension = patchDimensions[rcz_i] + centralVoxelsInThisDimensionForSubsampledPart - 1
@@ -98,8 +98,8 @@ def calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWi
     
     numberOfDimensions = len(kernDimPerLayerList[0])
     receptiveField = [1]*numberOfDimensions
-    for dimension_i in xrange(numberOfDimensions) :
-        for layer_i in xrange(len(kernDimPerLayerList)) :
+    for dimension_i in range(numberOfDimensions) :
+        for layer_i in range(len(kernDimPerLayerList)) :
             receptiveField[dimension_i] += kernDimPerLayerList[layer_i][dimension_i] - 1
     return receptiveField
 
@@ -109,7 +109,7 @@ def checkReceptiveFieldFineInComparisonToSegmentSize(receptiveFieldDim, segmentD
     if numberOfRFDim != numberOfSegmDim :
         print("ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : Receptive field and image segment have different number of dimensions! (should be 3 for both! Exiting!)")
         exit(1)
-    for dim_i in xrange(numberOfRFDim) :
+    for dim_i in range(numberOfRFDim) :
         if receptiveFieldDim[dim_i] > segmentDim[dim_i] :
             print("ERROR: [in function checkReceptiveFieldFineInComparisonToSegmentSize()] : The segment-size (input) should be at least as big as the receptive field of the model! This was not found to hold! Dimensions of Receptive Field:", receptiveFieldDim, ". Dimensions of Segment: ", segmentDim)
             return False
@@ -125,7 +125,7 @@ def checkKernDimPerLayerCorrect3dAndNumLayers(kernDimensionsPerLayer, numOfLayer
     return True
 
 def checkSubsampleFactorEven(subFactor) :
-    for dim_i in xrange(len(subFactor)) :
+    for dim_i in range(len(subFactor)) :
         if subFactor[dim_i]%2 != 1 :
             return False
     return True
