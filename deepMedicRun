@@ -70,7 +70,8 @@ def setEnvironment(deviceString) :
     pathToEnvironmentFile = os.getcwd() + "/environment.txt"
     if os.path.isfile(pathToEnvironmentFile) :
         envGivenInFile = {}
-        execfile(pathToEnvironmentFile, envGivenInFile)
+        #execfile(pathToEnvironmentFile, envGivenInFile)
+        exec(open(pathToEnvironmentFile).read(), envGivenInFile)
         
         if "path_to_theano" in envGivenInFile :
             sys.path.insert(1, envGivenInFile["path_to_theano"])
