@@ -9,64 +9,22 @@ from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import sys
 import time
-import nibabel as nib
 import pp
 import numpy as np
 import random
 import math
-from scipy.ndimage.filters import gaussian_filter
 
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.cnnHelpers import CnnWrapperForSampling
 from deepmedic.pathwayTypes import PathwayTypes as pt
 from deepmedic.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.genericHelpers import *
+from deepmedic.image.io import *
+from deepmedic.image.processing import *
 
 TINY_FLOAT = np.finfo(np.float32).tiny 
 
-#These two pad/unpad should have their own class, and an instance should be created per subject. So that unpad gets how much to unpad from the pad.
-def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions) : #Works for 2D as well I think.
-    cnnReceptiveFieldArray = np.asarray(cnnReceptiveField, dtype="int16")
-    array1Dimensions = np.asarray(array1.shape,dtype="int16")
-    if len(array1.shape) != 3 :
-        print("ERROR! Given array in padCnnInputs() was expected of 3-dimensions, but was passed an array of dimensions: ", array1.shape,", Exiting!")
-        exit(1)
-    #paddingValue = (array1[0,0,0] + array1[-1,0,0] + array1[0,-1,0] + array1[-1,-1,0] + array1[0,0,-1] + array1[-1,0,-1] + array1[0,-1,-1] + array1[-1,-1,-1]) / 8.0
-    #Calculate how much padding needed to fully infer the original array1, taking only the receptive field in account.
-    paddingAtLeftPerAxis = (cnnReceptiveFieldArray - 1) // 2
-    paddingAtRightPerAxis = cnnReceptiveFieldArray - 1 - paddingAtLeftPerAxis
-    #Now, to cover the case that the specified image-segment of the CNN is larger than the image (eg full-image inference and current image is smaller), pad further to right.
-    paddingFurtherToTheRightNeededForSegment = np.maximum(0, np.asarray(imagePartDimensions,dtype="int16")-(array1Dimensions+paddingAtLeftPerAxis+paddingAtRightPerAxis))
-    paddingAtRightPerAxis += paddingFurtherToTheRightNeededForSegment
-    
-    tupleOfPaddingPerAxes = ( (paddingAtLeftPerAxis[0],paddingAtRightPerAxis[0]), (paddingAtLeftPerAxis[1],paddingAtRightPerAxis[1]), (paddingAtLeftPerAxis[2],paddingAtRightPerAxis[2]))
-    #Very poor design because channels/gt/bmask etc are all getting back a different padding? tupleOfPaddingPerAxes is returned in order for unpad to know.
-    return [np.lib.pad(array1, tupleOfPaddingPerAxes, 'reflect' ), tupleOfPaddingPerAxes]
 
-#In the 3 first axes. Which means it can take a 4-dim image.
-def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight) :
-    #tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
-    unpaddedArray1 = array1[tupleOfPaddingPerAxesLeftRight[0][0]:, tupleOfPaddingPerAxesLeftRight[1][0]:, tupleOfPaddingPerAxesLeftRight[2][0]:]
-    #The checks below are to make it work if padding == 0, which may happen for 2D on the 3rd axis.
-    unpaddedArray1 = unpaddedArray1[:-tupleOfPaddingPerAxesLeftRight[0][1],:,:] if tupleOfPaddingPerAxesLeftRight[0][1] > 0 else unpaddedArray1 
-    unpaddedArray1 = unpaddedArray1[:,:-tupleOfPaddingPerAxesLeftRight[1][1],:] if tupleOfPaddingPerAxesLeftRight[1][1] > 0 else unpaddedArray1
-    unpaddedArray1 = unpaddedArray1[:,:,:-tupleOfPaddingPerAxesLeftRight[2][1]] if tupleOfPaddingPerAxesLeftRight[2][1] > 0 else unpaddedArray1
-    return unpaddedArray1
-
-def reflectImageArrayIfNeeded(reflectFlags, imageArray) :
-    stepsForReflectionPerDimension = [-1 if reflectFlags[0] else 1, -1 if reflectFlags[1] else 1, -1 if reflectFlags[2] else 1]
-    
-    reflImageArray = imageArray[::stepsForReflectionPerDimension[0], ::stepsForReflectionPerDimension[1], ::stepsForReflectionPerDimension[2]]
-    return reflImageArray
-
-def smoothImageWithGaussianFilterIfNeeded(smoothImageWithGaussianFilterStds, imageArray) :
-    # Either None for no smoothing, or a List with 3 elements, [std-r, std-c, std-z] of the gaussian kernel to smooth with.
-    #If I do not want to smooth at all a certain axis, pass std=0 for it. Works, I tried. Returns the actual voxel value.
-    if smoothImageWithGaussianFilterStds == None :
-        return imageArray
-    else :
-        return gaussian_filter(imageArray, smoothImageWithGaussianFilterStds)
-    
 # roi_mask_filename and roiMinusLesion_mask_filename can be passed "no". In this case, the corresponding return result is nothing.
 # This is so because: the do_training() function only needs the roiMinusLesion_mask, whereas the do_testing() only needs the roi_mask.        
 def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
@@ -118,11 +76,9 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     
     if providedRoiMaskBool :
         fullFilenamePathOfRoiMask = listOfFilepathsToRoiMaskOfEachPatient[index_of_wanted_image]
-        img_proxy = nib.load(fullFilenamePathOfRoiMask)
-        roiMaskData = img_proxy.get_data()
-        roiMaskData = reflectImageArrayIfNeeded(reflectFlags, roiMaskData)
-        roiMask = roiMaskData #np.asarray(roiMaskData, dtype="float32") #the .get_data returns a nparray but it is not a float64
-        img_proxy.uncache()
+        roiMask = loadVolume(fullFilenamePathOfRoiMask)
+        
+        roiMask = reflectImageArrayIfNeeded(reflectFlags, roiMask)
         [roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [roiMask, tupleOfPaddingPerAxesLeftRight]
     else :
         roiMask = "placeholderNothing"
@@ -135,10 +91,7 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
     for channel_i in xrange(numberOfNormalScaleChannels):
         fullFilenamePathOfChannel = listOfFilepathsToEachChannelOfEachPatient[index_of_wanted_image][channel_i]
         if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
-            img_proxy = nib.load(fullFilenamePathOfChannel)
-            channelData = img_proxy.get_data()
-            if len(channelData.shape) > 3 :
-                channelData = channelData[:,:,:,0]
+            channelData = loadVolume(fullFilenamePathOfChannel)
                 
             channelData = smoothImageWithGaussianFilterIfNeeded(smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage[0], channelData)
             channelData = reflectImageArrayIfNeeded(reflectFlags, channelData) #reflect if flag ==1 .
@@ -153,13 +106,8 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         else : # "-" was given in the config-listing file. Do Min-fill!
             myLogger.print3("DEBUG: Zero-filling modality with index [" + str(channel_i) +"].")
             allChannelsOfPatientInNpArray[channel_i] = -4.0
-        """
-        if len(channelData.shape) <= 3 :
-            allChannelsOfPatientInNpArray[channel_i] = channelData #np.asarray(channelData, dtype="float32")
-        else : #In many cases the image is of 4 dimensions, with last being 'time'
-            allChannelsOfPatientInNpArray[channel_i] = channelData[:,:,:,0] #np.asarray(channelData[:,:,:,0], dtype="float32") #[:,:,:,0] because the nii image actually is of 4 dims, with 4th being time.
-        """
-        img_proxy.uncache()
+            
+        
         
         #-------For Data Augmentation when it comes to normalisation values--------------
         #The normalization-augmentation variable should be [0]==0 for no normAug, eg in the case of validation. [0] == 1 if I want it to be applied on per-image basis.
@@ -179,16 +127,14 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
             valueToMultiplyEachVoxel = howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel[channel_i][1]
             allChannelsOfPatientInNpArray[channel_i] = (allChannelsOfPatientInNpArray[channel_i] + valueToAddToEachVoxel)*valueToMultiplyEachVoxel
             
-    #LOAD the class-labels.
+    #Load the class labels.
     if providedGtLabelsBool : #For training (exact target labels) or validation on samples labels.
         fullFilenamePathOfGtLabels = listOfFilepathsToGtLabelsOfEachPatient[index_of_wanted_image]
-        imgGtLabels_proxy = nib.load(fullFilenamePathOfGtLabels)
-        #If the gt file was not type "int" (eg it was float), convert it to int. Because later I m doing some == int comparisons.
-        gtLabelsData = imgGtLabels_proxy.get_data()
-        gtLabelsData = gtLabelsData if np.issubdtype( gtLabelsData.dtype, np.int ) else np.rint(gtLabelsData).astype("int32")
-        gtLabelsData = reflectImageArrayIfNeeded(reflectFlags, gtLabelsData) #reflect if flag ==1 .
-        imageGtLabels = gtLabelsData
-        imgGtLabels_proxy.uncache()
+        imageGtLabels = loadVolume(fullFilenamePathOfGtLabels)
+        
+        imageGtLabels = imageGtLabels if np.issubdtype( imageGtLabels.dtype, np.int ) else np.rint(imageGtLabels).astype("int32")
+        imageGtLabels = reflectImageArrayIfNeeded(reflectFlags, imageGtLabels) #reflect if flag ==1 .
+        
         [imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
@@ -199,11 +145,9 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         for cat_i in xrange( numberOfSamplingCategories ) :
             filepathsToTheWeightMapsOfAllPatientsForThisCategory = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient[cat_i]
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[index_of_wanted_image]
+            weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
             
-            img_proxy = nib.load(filepathToTheWeightMapOfThisPatientForThisCategory)
-            weightedMapForThisCatData = img_proxy.get_data()
             weightedMapForThisCatData = reflectImageArrayIfNeeded(reflectFlags, weightedMapForThisCatData)
-            img_proxy.uncache()
             [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight]
             
             arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
@@ -220,22 +164,13 @@ def actual_load_patient_images_from_filepath_and_return_nparrays(myLogger,
         allSubsampledChannelsOfPatientInNpArray = np.zeros( (numberOfSubsampledScaleChannels, niiDimensions[0], niiDimensions[1], niiDimensions[2]))
         for channel_i in xrange(numberOfSubsampledScaleChannels):
             fullFilenamePathOfChannel = listOfFilepathsToEachSubsampledChannelOfEachPatient[index_of_wanted_image][channel_i]
-            img_proxy = nib.load(fullFilenamePathOfChannel)
-            channelData = img_proxy.get_data()
-            if len(channelData.shape) > 3 :
-                channelData = channelData[:,:,:,0]
+            channelData = loadVolume(fullFilenamePathOfChannel)
+            
             channelData = smoothImageWithGaussianFilterIfNeeded(smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage[1], channelData)
             channelData = reflectImageArrayIfNeeded(reflectFlags, channelData)
             [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData
-            """
-            if len(channelData.shape) <= 3 :
-                allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData #np.asarray(channelData, dtype="float32")
-            else : #In many cases the image is of 4 dimensions, with last being 'time'
-                allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData[:,:,:,0] #np.asarray(channelData[:,:,:,0], dtype="float32") #[:,:,:,0] because the nii image actually is of 4 dims, with 4th being time.
-            """
-            img_proxy.uncache()
             
             #-------For Data Augmentation when it comes to normalisation values--------------
             if training0orValidation1orTest2 == 0 and normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc[0] == 1 :
@@ -382,7 +317,7 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
     chighNonIncl = int(clow + subSamplingFactor[1]*recFieldCnn[1] + (math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_cDim*1.0)/subSamplingFactor[1]) - 1) * subSamplingFactor[1])
     zlow = image_part_slices_coords[2][0] + zToCentralVoxelOfAnAveragedArea - zSlotsPreviously
     zhighNonIncl = int(zlow + subSamplingFactor[2]*recFieldCnn[2] + (math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_zDim*1.0)/subSamplingFactor[2]) - 1) * subSamplingFactor[2])
-    
+        
     rlowCorrected = max(rlow, 0)
     clowCorrected = max(clow, 0)
     zlowCorrected = max(zlow, 0)
@@ -1045,9 +980,6 @@ def do_training(myLogger,
                                     )
     tupleWithLocalFunctionsThatWillBeCalledByTheMainJob = ( get_random_subject_indices_to_load_on_GPU,
                                                             actual_load_patient_images_from_filepath_and_return_nparrays,
-                                                            smoothImageWithGaussianFilterIfNeeded,
-                                                            reflectImageArrayIfNeeded,
-                                                            padCnnInputs,
                                                             getNumberOfSegmentsToExtractPerCategoryFromEachSubject,
                                                             sampleImageParts,
                                                             extractDataOfASegmentFromImagesUsingSampledSliceCoords,
@@ -1055,8 +987,9 @@ def do_training(myLogger,
                                                             shuffleTheSegmentsForThisSubepoch
                                                             )
     tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ( "from __future__ import absolute_import, print_function, division", "from six.moves import xrange",
-                "time", "nibabel as nib", "numpy as np", "random", "math", "from scipy.ndimage.filters import gaussian_filter",
-                "from deepmedic.pathwayTypes import PathwayTypes as pt", "from deepmedic.cnnHelpers import CnnWrapperForSampling", "from deepmedic.genericHelpers import *")
+                "time", "numpy as np", "random", "math",
+                "from deepmedic.pathwayTypes import PathwayTypes as pt", "from deepmedic.cnnHelpers import CnnWrapperForSampling",
+                "from deepmedic.genericHelpers import *, from deepmedic.image.io import *, from deepmedic.image.processing import *")
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequencially load the data for it.
     #------End for parallel------
     
