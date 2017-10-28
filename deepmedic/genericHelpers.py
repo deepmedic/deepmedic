@@ -10,10 +10,6 @@ from six.moves import xrange
 import os
 import gzip
 import datetime
-import nibabel as nib
-import numpy as np
-import random
-from math import ceil
 
 import pickle
 try:
@@ -88,13 +84,6 @@ def getMeanPerColOf2dListExclNA(list2d, notApplicPattern) :
     return listWithMeanPerColumn
 
 
-def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
-    unionCorrectlyPredicted = predictedBinaryLabels * groundTruthBinaryLabels
-    numberOfTruePositives = np.sum(unionCorrectlyPredicted)
-    numberOfGtPositives = np.sum(groundTruthBinaryLabels)
-    diceCoeff = (2.0 * numberOfTruePositives) / (np.sum(predictedBinaryLabels) + numberOfGtPositives) if numberOfGtPositives!=0 else -1
-    return diceCoeff
-
 def load_object_from_file(filenameWithPath) :
     f = file(filenameWithPath, 'rb')
     loaded_obj = cPickle.load(f)
@@ -126,36 +115,6 @@ def dump_object_to_gzip_file(my_obj, filenameWithPath) :
     f = gzip.open(filenameWithPath, 'wb')
     cPickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
-    
-#This could be renamed to be more generic.
-def get_random_subject_indices_to_load_on_GPU(total_number_of_subjects, 
-                                            max_subjects_on_gpu_for_subepoch, 
-                                            get_max_subjects_for_gpu_even_if_total_less=False,
-                                            myLogger=None):
-    
-    subjects_indices = list(range(total_number_of_subjects)) #list() for python3 compatibility, as range cannot get assignment in shuffle()
-    random_order_chosen_subjects=[]
-    
-    random.shuffle(subjects_indices) #does it in place. Now they are shuffled
-    
-    if max_subjects_on_gpu_for_subepoch>=total_number_of_subjects:
-        random_order_chosen_subjects += subjects_indices
-        
-        if get_max_subjects_for_gpu_even_if_total_less : #This is if I want to have a certain amount on GPU, even if total subjects are less.
-            while (len(random_order_chosen_subjects)<max_subjects_on_gpu_for_subepoch):
-                random.shuffle(subjects_indices)
-                number_of_extra_subjects_to_get_to_fill_gpu = min(max_subjects_on_gpu_for_subepoch - len(random_order_chosen_subjects), total_number_of_subjects)
-                random_order_chosen_subjects += (subjects_indices[:number_of_extra_subjects_to_get_to_fill_gpu])
-            if len(random_order_chosen_subjects)!=max_subjects_on_gpu_for_subepoch :
-                if myLogger!=None :
-                    myLogger.print3("ERROR: in get_random_subjects_indices_to_load_on_GPU(), something is wrong!")
-                else :
-                    print("ERROR: in get_random_subjects_indices_to_load_on_GPU(), something is wrong!")
-                exit(1)
-    else:
-        random_order_chosen_subjects += subjects_indices[:max_subjects_on_gpu_for_subepoch]
-        
-    return random_order_chosen_subjects
 
     
 def datetimeNowAsStr() :
