@@ -194,7 +194,7 @@ def getListOfAccNumbersFromListOfStrNumbersAvoidingNotAppl(listOfstringNumbers, 
     listOfAccNumbers = []
     for stringNumber in listOfstringNumbers :
         stringNumberStrippedOfWhiteSpace = stringNumber.strip()
-        parseFloatNumber = float(stringNumberStrippedOfWhiteSpace) if stringNumberStrippedOfWhiteSpace <> NA_PATTERN else previousValueOfTheVariableInTheTimeSerie
+        parseFloatNumber = float(stringNumberStrippedOfWhiteSpace) if stringNumberStrippedOfWhiteSpace != NA_PATTERN else previousValueOfTheVariableInTheTimeSerie
         previousValueOfTheVariableInTheTimeSerie = parseFloatNumber
         listOfAccNumbers.append(parseFloatNumber)
     return listOfAccNumbers
@@ -539,7 +539,7 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
                 numberOfSubsPerEpoch = subepochsPerEpOfExpers[valOrTrainExperiment_i]
                 numberOfEpsBetweenFullInf = epochsPerFullInferOfExpers[valOrTrainExperiment_i]
 
-                if meanPosNegDice1_i <> 4 : #Not for DSC full inference.
+                if meanPosNegDice1_i != 4 : #Not for DSC full inference.
                     numberOfSubepochsRan = len(valOrTrainExperiment[meanPosNegDice1_i])
                     numberOfEpochsRan = numberOfSubepochsRan*1.0/numberOfSubsPerEpoch
                     maxNumOfEpsDurationOfExps = maxNumOfEpsDurationOfExps if maxNumOfEpsDurationOfExps >= numberOfEpochsRan else numberOfEpochsRan
@@ -625,7 +625,7 @@ def plotProgressTrainError(measuredMetricsFromAllExperiments, legendList, moving
             for valOrTrainExperiment_i in range(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
                 valOrTrainExperiment = measuredMetricsFromAllExperiments[valOrTrain_i][valOrTrainExperiment_i]
                 for metric_i in range(0, len(valOrTrainExperiment)) :
-                    assert valOrTrainExperiment[metric_i] <> [], ("Please make sure the log file contains valid experiment data.")
+                    assert valOrTrainExperiment[metric_i] != [], ("Please make sure the log file contains valid experiment data.")
                     npMaxOfExp = np.max(valOrTrainExperiment[metric_i])
                     maxCostOfExps =  npMaxOfExp if npMaxOfExp > maxCostOfExps else maxCostOfExps
 
@@ -688,8 +688,8 @@ if __name__ == '__main__':
     
     if (not trainErrorBool) and (not detailedPlotBool): # basic plot
         if args.classes_to_plot :
-            print "ERROR: -c/--classes option should only be provided when -d/--detailed plotting is specified. Default basic plotting parses and shows overall and not class-specific accuracy."
-            print "Exiting!"; exit(1)
+            print("ERROR: -c/--classes option should only be provided when -d/--detailed plotting is specified. Default basic plotting parses and shows overall and not class-specific accuracy.")
+            print("Exiting!"); exit(1)
             
         measuredMetricsFromAllExperiments = optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, trainErrorBool, None, movingAverSubeps)
         plotProgressBasic(measuredMetricsFromAllExperiments, listOfExperimentsNames, movingAverSubeps, subepochsPerEpFromEachLog, saveFigBool)
