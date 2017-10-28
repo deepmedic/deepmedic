@@ -62,7 +62,7 @@ class TestConfig(object):
         #Check whether the given channels are as many as the channels when the model was built.
         if len(self.configStruct[self.CHANNELS]) != cnnInstance.numberOfImageChannelsPath1 :
             print("ERROR:\tConfiguration parameter \"", self.configStruct[self.CHANNELS], "\" should have the same number of elements as the number of channels specified when constructing the cnnModel!\n\tCnnModel was constructed to take as input #", cnnInstance.numberOfImageChannelsPath1, " while the list given in the config-file contained #", len(self.configStruct[self.CHANNELS]), " elements.")
-            print("ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", testConst.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"); exit(1)
+            print("ERROR:\tPlease provide a list of files that contain the paths to each case's image-channels.\n\tThis parameter should be given in the format : ", self.CHANNELS, " = [\"path-to-file-with-paths-for-channel1-of-each-case\", ... , \"path-to-file-with-paths-for-channelN-of-each-case\"] in the configuration file.\n\tExiting!"); exit(1)
         #NOTE: Currently not checking the subsampled path, cause user is only allowed to use the same channels as the normal pathway. But should be possible in the future.
         
         #Check whether the boolean list that saves whether to save the prob-maps has same number of elements as the classes the model has.
@@ -215,7 +215,7 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     #Parse the config file in this naive fashion...
     testConfig = TestConfig()
     #configStruct = testConfig.configStruct
-    execfile(testConfigFilepath, testConfig.configStruct)
+    exec(open(testConfigFilepath), testConfig.configStruct)
     configGet = testConfig.get #Main interface
     
     #Do checks.
