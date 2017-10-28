@@ -989,7 +989,7 @@ def do_training(myLogger,
     tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ( "from __future__ import absolute_import, print_function, division", "from six.moves import xrange",
                 "time", "numpy as np", "random", "math",
                 "from deepmedic.pathwayTypes import PathwayTypes as pt", "from deepmedic.cnnHelpers import CnnWrapperForSampling",
-                "from deepmedic.genericHelpers import *, from deepmedic.image.io import *, from deepmedic.image.processing import *")
+                "from deepmedic.genericHelpers import *", "from deepmedic.image.io import *", "from deepmedic.image.processing import *")
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequencially load the data for it.
     #------End for parallel------
     
