@@ -116,7 +116,7 @@ def dump_object_to_file(my_obj, filenameWithPath) :
     ...with the code this was saved from, i.e. same classes define.
     If I need forward compatibility, read this: http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
     """
-    f = file(filenameWithPath, 'wb')
+    f = open(filenameWithPath, 'wb')
     pickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
     
