@@ -84,7 +84,7 @@ class ModelConfig(object):
 
 #The argument should be absolute path to the config file for the model to create.
 def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCmdLine, listOfLayersToTransfer) :
-    print("Given Model-Configuration File: ", modelConfigFilepath)
+    print("Given configuration file: ", modelConfigFilepath)
     #Parse the config file in this naive fashion...
     modelConfig = ModelConfig()
     exec(open(modelConfigFilepath).read(), modelConfig.configStruct)
@@ -98,7 +98,8 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
     loggerFileName = folderForLogs + "/" + modelName + ".txt"
     sessionLogger = myLoggerModule.MyLogger(loggerFileName)
     
-    sessionLogger.print3("CONFIG: The configuration file for the model-creation session was loaded from: " + str(modelConfigFilepath))
+    sessionLogger.print3("CONFIG: Given THEANO_FLAGS: " + str(os.environ['THEANO_FLAGS']))
+    sessionLogger.print3("CONFIG: The configuration file for the session was loaded from: " + str(modelConfigFilepath))
     
     #Fill in the session's parameters.
     createModelSessionParameters = CreateModelSessionParameters(

@@ -2,7 +2,7 @@ The DeepMedic
 =====================================
 
 ### News
-16 Sept 2017 (v0.6.1):
+28 Oct 2017 (v0.6.1):
 * Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
 * Updated installation process in README.
 

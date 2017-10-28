@@ -60,9 +60,10 @@ def createFolderForFeatures(folderForFeatures) :
     if not os.path.exists(folderForFeatures) :
         os.mkdir(folderForFeatures)
         print("\t>>Created folder for features: ", folderForFeatures)
+
 def makeFoldersNeededForTestingSession(absMainOutputFolder, sessionName):
     #Create folders for saving the prediction images:
-    print(">>Creating necessary folders for testing-session...")
+    print("Creating necessary folders for testing session...")
     createMainOutputFolder(absMainOutputFolder)
     
     folderForLogs = absMainOutputFolder + "/logs/"
@@ -96,7 +97,7 @@ def createFolderForSessionCnnModels(folderForSessionCnnModels) :
 
 def makeFoldersNeededForTrainingSession(absMainOutputFolder, sessionName):
     #Create folders for saving the prediction images:
-    print(">>Creating necessary folders for testing-session...")
+    print("Creating necessary folders for training session...")
     createMainOutputFolder(absMainOutputFolder)
     
     folderForCnnModels = absMainOutputFolder + "/cnnModels/"
@@ -128,7 +129,7 @@ def makeFoldersNeededForTrainingSession(absMainOutputFolder, sessionName):
 
 def makeFoldersNeededForCreateModelSession(absMainOutputFolder, modelName):
     #Create folders for saving the prediction images:
-    print(">>Creating necessary folders for create-model-session...")
+    print("Creating necessary folders for create-new-model session...")
     createMainOutputFolder(absMainOutputFolder)
     
     folderForCnnModels = absMainOutputFolder + "/cnnModels/"

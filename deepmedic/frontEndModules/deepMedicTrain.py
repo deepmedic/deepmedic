@@ -278,7 +278,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line. Similarly, cnnInstanceLoaded will be None, except if passed from createModel session. Only one of cnnInstancePreLoaded or absPathToSavedModelFromCmdLine will be != None.
 def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnInstancePreLoaded, filenameAndPathWherePreLoadedModelWas, resetOptimizer) :
-    print("Given Training-Configuration File: ", trainConfigFilepath)
+    print("Given configuration file: ", trainConfigFilepath)
     #Parse the config file in this naive fashion...
     trainConfig = TrainConfig()
     exec(open(trainConfigFilepath).read(), trainConfig.configStruct)
@@ -303,7 +303,8 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
     loggerFileName = folderForLogs + "/" + sessionName + ".txt"
     sessionLogger = myLoggerModule.MyLogger(loggerFileName)
     
-    sessionLogger.print3("CONFIG: The configuration file for the training session was loaded from: " + str(trainConfigFilepath))
+    sessionLogger.print3("CONFIG: Given THEANO_FLAGS: " + str(os.environ['THEANO_FLAGS']))
+    sessionLogger.print3("CONFIG: The configuration file for the session was loaded from: " + str(trainConfigFilepath))
     
     #Load the cnn Model if not given straight from a createCnnModel-session...
     cnn3dInstance = None

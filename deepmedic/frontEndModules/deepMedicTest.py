@@ -211,7 +211,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
     
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line.
 def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
-    print("Given Test-Configuration File: ", testConfigFilepath)
+    print("Given configuration file: ", testConfigFilepath)
     #Parse the config file in this naive fashion...
     testConfig = TestConfig()
     #configStruct = testConfig.configStruct
@@ -234,7 +234,8 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     loggerFileName = folderForLogs + "/" + sessionName + ".txt"
     sessionLogger = myLoggerModule.MyLogger(loggerFileName)
     
-    sessionLogger.print3("CONFIG: The configuration file for the testing session was loaded from: " + str(testConfigFilepath))
+    sessionLogger.print3("CONFIG: Given THEANO_FLAGS: " + str(os.environ['THEANO_FLAGS']))
+    sessionLogger.print3("CONFIG: The configuration file for the session was loaded from: " + str(testConfigFilepath))
     
     #Load the CNN Model!
     sessionLogger.print3("=========== Loading the CNN model for testing... ===============")

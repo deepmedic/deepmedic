@@ -20,5 +20,5 @@ class MyLogger :
         
     def __init__(self, filenameAndPathOfLoggerTxt="logs/defaultLogFile.txt") :
         self.loggerFileName = filenameAndPathOfLoggerTxt
-        
+        self.print3("=============================== logger created =======================================")
         
