@@ -9,14 +9,11 @@ from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import os
 
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkIfAllElementsOfAListAreFilesAndExitIfNot
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import parseAbsFileLinesInList
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import parseFileLinesInList
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkListContainsCorrectNumberOfCasesOtherwiseExitWithError
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkThatAllEntriesOfAListFollowNameConventions
+from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import *
 from deepmedic.frontEndModules.frontEndHelpers.testParametersClass import TestSessionParameters
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForTestingSession
+from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import checkCpuOrGpu
+
 
 from deepmedic import myLoggerModule
 from deepmedic.genericHelpers import load_object_from_gzip_file
@@ -209,6 +206,7 @@ def checkIfOptionalParametersAreGivenCorrectly(testConfig, testConfigFilepath) :
                 
     print("Optional parameters seem alright at first check, although we ll need to double-check, after the cnn-model is loaded...")
     
+    
 #Both the arguments are absolute paths. The "absPathToSavedModelFromCmdLine" can be None if it was not provided in cmd line.
 def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     print("Given configuration file: ", testConfigFilepath)
@@ -295,17 +293,22 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
                     )
     
     testSessionParameters.sessionLogger.print3("\n===========       NEW TESTING SESSION         ===============")
+    
     testSessionParameters.printParametersOfThisSession()
     
     testSessionParameters.sessionLogger.print3("\n=======================================================")
     testSessionParameters.sessionLogger.print3("=========== Compiling the Testing Function ============")
     testSessionParameters.sessionLogger.print3("=======================================================")
+    
     cnn3dInstance.compileTestAndVisualisationFunction(*testSessionParameters.getTupleForCompilationOfTestFunc())
     
     testSessionParameters.sessionLogger.print3("\n======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing with the CNN model ===============")
     testSessionParameters.sessionLogger.print3("======================================================")
+    
+    checkCpuOrGpu(sessionLogger, cnn3dInstance.cnnTestAndVisualiseAllFmsFunction)
     performInferenceForTestingOnWholeVolumes(*testSessionParameters.getTupleForCnnTesting())
+    
     testSessionParameters.sessionLogger.print3("\n======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing session finished =================")
     testSessionParameters.sessionLogger.print3("======================================================")

@@ -4,7 +4,7 @@ The DeepMedic
 ### News
 28 Oct 2017 (v0.6.1):
 * Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
-* Updated installation process in README.
+* Various: Updated installation process in README. Logging device used after compilation.
 
 26 Mar 2017 (v0.6):
 * Functionality for transfering parameters and finetuning. See Sec 3.2 below.
@@ -109,7 +109,7 @@ conda install mkl-service                            # Theano v0.9+ requirement.
 conda install -c conda-forge pygpu=0.7.4             # Also installs libgpuarray, the new backend of Theano. Theano requires pygpu 0.7<version<0.8 currently.
 
 pip install git+https://github.com/Theano/Theano     # Installs latest developer version of theano (to get v0.10, cause v0.9 was found unstable with cuDnn).
-pip install scipy pycuda                             # Theano requirement for gpu processing.
+pip install pycuda                                   # Theano requirement for gpu processing.
 pip install .                                        # Installs rest of deepmedic's dependencies.
 ```
 

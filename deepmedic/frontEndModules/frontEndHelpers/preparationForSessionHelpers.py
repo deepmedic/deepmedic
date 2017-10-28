@@ -141,3 +141,20 @@ def makeFoldersNeededForCreateModelSession(absMainOutputFolder, modelName):
     return [folderForCnnModels,
             folderForLogs]
 
+
+def checkCpuOrGpu(logger, compiledTheanoFunc):
+    # compiledTheanoFunc: the return of theano.function( ), eg when compiling training or test functions.
+    # Returns 1 if gpu, 0 if cpu.
+    # From: http://www.deeplearning.net/software/theano_versions/dev/tutorial/using_gpu.html
+    
+    if any([x.op.__class__.__name__.startswith("Gpu") for x in compiledTheanoFunc.maker.fgraph.toposort()]):
+        logger.print3('CONFIG: Theano is using the [GPU].')
+        
+        from theano.gpuarray.dnn import dnn_present
+        cudnn_found = dnn_present()
+        logger.print3("CONFIG: Theano found and will use cuDNN ["+ str(cudnn_found) +"]")
+        return 1
+    else:
+        logger.print3('CONFIG: Theano is using the [CPU].')
+        return 0
+    

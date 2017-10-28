@@ -9,14 +9,10 @@ from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import os
 
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkIfAllElementsOfAListAreFilesAndExitIfNot
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import parseAbsFileLinesInList
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import parseFileLinesInList
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkListContainsCorrectNumberOfCasesOtherwiseExitWithError
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import checkThatAllEntriesOfAListFollowNameConventions
+from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import *
 from deepmedic.frontEndModules.frontEndHelpers.trainParametersClass import TrainSessionParameters
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForTrainingSession
+from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import checkCpuOrGpu
 
 from deepmedic import myLoggerModule
 from deepmedic.genericHelpers import load_object_from_gzip_file
@@ -477,25 +473,34 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
                     )
     
     trainSessionParameters.sessionLogger.print3("\n===========       NEW TRAINING SESSION         ===============")
+    
     trainSessionParameters.printParametersOfThisSession()
     
     trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Compiling the Training Function ===========")
     trainSessionParameters.sessionLogger.print3("=======================================================")
+    
     if not cnn3dInstance.checkTrainingStateAttributesInitialized() or resetOptimizer :
         trainSessionParameters.sessionLogger.print3("(Re)Initializing parameters for the optimization. " \
                         "Reason: Uninitialized: ["+str(not cnn3dInstance.checkTrainingStateAttributesInitialized())+"], Reset requested: ["+str(resetOptimizer)+"]" )
         cnn3dInstance.initializeTrainingState(*trainSessionParameters.getTupleForInitializingTrainingState())
     cnn3dInstance.compileTrainFunction(*trainSessionParameters.getTupleForCompilationOfTrainFunc())
+    
     trainSessionParameters.sessionLogger.print3("\n=========== Compiling the Validation Function =========")
+    
     cnn3dInstance.compileValidationFunction(*trainSessionParameters.getTupleForCompilationOfValFunc())
+    
     trainSessionParameters.sessionLogger.print3("\n=========== Compiling the Testing Function ============")
+    
     cnn3dInstance.compileTestAndVisualisationFunction(*trainSessionParameters.getTupleForCompilationOfTestFunc()) # For validation with full segmentation
     
     trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("============== Training the CNN model =================")
     trainSessionParameters.sessionLogger.print3("=======================================================")
+    
+    checkCpuOrGpu(sessionLogger, cnn3dInstance.cnnTrainModel)
     do_training(*trainSessionParameters.getTupleForCnnTraining())
+    
     trainSessionParameters.sessionLogger.print3("\n=======================================================")
     trainSessionParameters.sessionLogger.print3("=========== Training session finished =================")
     trainSessionParameters.sessionLogger.print3("=======================================================")
