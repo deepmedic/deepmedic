@@ -15,7 +15,7 @@ from deepmedic.loggingAndMonitoring.accuracyMonitor import AccuracyOfEpochMonito
 from deepmedic.dataManagement.sampling import load_imgs_of_single_case
 from deepmedic.dataManagement.sampling import getCoordsOfAllSegmentsOfAnImage
 from deepmedic.dataManagement.sampling import extractDataOfSegmentsUsingSampledSliceCoords
-from deepmedic.image.io import savePredictedImageToANewNiiWithHeaderFromOther, saveFmActivationImageToANewNiiWithHeaderFromOther, saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther
+from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, save4DImgWithAllFmsToNiiWithOriginalHdr
 from deepmedic.image.processing import unpadCnnOutputs
 
 from deepmedic.pathwayTypes import PathwayTypes as pt
@@ -327,14 +327,14 @@ def performInferenceOnWholeVolumes(myLogger,
             suffixToAdd = "_Segm"
             #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
             unpaddedPredSegmentationWithinRoi = unpaddedPredSegmentation * unpaddedRoiMaskIfGivenElse1
-            savePredictedImageToANewNiiWithHeaderFromOther( unpaddedPredSegmentationWithinRoi,
-                                                            listOfNamesToGiveToPredictionsIfSavingResults,
-                                                            listOfFilepathsToEachChannelOfEachPatient,
-                                                            image_i,
-                                                            suffixToAdd,
-                                                            npDtypeForPredictedImage,
-                                                            myLogger
-                                                            )
+            savePredImgToNiiWithOriginalHdr( unpaddedPredSegmentationWithinRoi,
+                                            listOfNamesToGiveToPredictionsIfSavingResults,
+                                            listOfFilepathsToEachChannelOfEachPatient,
+                                            image_i,
+                                            suffixToAdd,
+                                            npDtypeForPredictedImage,
+                                            myLogger
+                                            )
         #== saving probability maps ==
         for class_i in xrange(0, NUMBER_OF_CLASSES) :
             if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
@@ -344,14 +344,14 @@ def performInferenceOnWholeVolumes(myLogger,
                 predProbMapClassI = predProbMapsPerClass[class_i,:,:,:]
                 unpaddedPredProbMapClassI = predProbMapClassI if not padInputImagesBool else unpadCnnOutputs(predProbMapClassI, tupleOfPaddingPerAxesLeftRight)
                 unpaddedPredProbMapClassIWithinRoi = unpaddedPredProbMapClassI * unpaddedRoiMaskIfGivenElse1
-                savePredictedImageToANewNiiWithHeaderFromOther( unpaddedPredProbMapClassIWithinRoi,
-                                                                listOfNamesToGiveToPredictionsIfSavingResults,
-                                                                listOfFilepathsToEachChannelOfEachPatient,
-                                                                image_i,
-                                                                suffixToAdd,
-                                                                npDtypeForPredictedImage,
-                                                                myLogger
-                                                                )
+                savePredImgToNiiWithOriginalHdr( unpaddedPredProbMapClassIWithinRoi,
+                                                listOfNamesToGiveToPredictionsIfSavingResults,
+                                                listOfFilepathsToEachChannelOfEachPatient,
+                                                image_i,
+                                                suffixToAdd,
+                                                npDtypeForPredictedImage,
+                                                myLogger
+                                                )
         #== saving feature maps ==
         if saveIndividualFmImagesForVisualisation :
             currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
@@ -366,26 +366,26 @@ def performInferenceOnWholeVolumes(myLogger,
                             for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
                                 fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
                                 unpaddedFmToSave = fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
-                                saveFmActivationImageToANewNiiWithHeaderFromOther(  unpaddedFmToSave,
-                                                                                    listOfNamesToGiveToFmVisualisationsIfSaving,
-                                                                                    listOfFilepathsToEachChannelOfEachPatient,
-                                                                                    image_i,
-                                                                                    pathway_i,
-                                                                                    layer_i,
-                                                                                    fmActualNumber,
-                                                                                    myLogger
-                                                                                    ) 
+                                saveFmImgToNiiWithOriginalHdr(  unpaddedFmToSave,
+                                                                listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                                listOfFilepathsToEachChannelOfEachPatient,
+                                                                image_i,
+                                                                pathway_i,
+                                                                layer_i,
+                                                                fmActualNumber,
+                                                                myLogger
+                                                                )
                                 currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
         if saveMultidimensionalImageWithAllFms :
             multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.transpose(multidimensionalImageWithAllToBeVisualisedFmsArray, (1,2,3, 0) )
             unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms = multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms if not padInputImagesBool else \
                 unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms, tupleOfPaddingPerAxesLeftRight)
             #Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
-            saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(  unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
-                                                                                        listOfNamesToGiveToFmVisualisationsIfSaving,
-                                                                                        listOfFilepathsToEachChannelOfEachPatient,
-                                                                                        image_i,
-                                                                                        myLogger )
+            save4DImgWithAllFmsToNiiWithOriginalHdr( unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
+                                                    listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                    listOfFilepathsToEachChannelOfEachPatient,
+                                                    image_i,
+                                                    myLogger )
         #================= FINISHED SAVING RESULTS ====================
         
         #================= EVALUATE DSC FOR EACH SUBJECT ========================

@@ -34,11 +34,11 @@ def loadVolume(filepath):
 
 
 #This is the generic function.
-def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(imgToSave,
-                                          filepathTarget,
-                                          filepathOriginToCopyHeader,
-                                          npDtype = np.dtype(np.float32),
-                                          myLogger=None) :
+def saveImgToNiiWithOriginalHdr(imgToSave,
+                                    filepathTarget,
+                                    filepathOriginToCopyHeader,
+                                    npDtype = np.dtype(np.float32),
+                                    myLogger=None) :
     # imgToSave: 3d np array.
     # filepathTarget: filepath where to save.
     # filepathOriginToCopyHeader: original image, where to copy the header over to the target image.
@@ -69,8 +69,8 @@ def saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(imgToSave,
         print("Image saved at: " + str(filepathTarget)) 
         
         
-
-def savePredictedImageToANewNiiWithHeaderFromOther(labelImageCreatedByPredictions,
+        
+def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
                                                    listOfNamesToGiveToPredictions,
                                                    listOfFilepathsToEachChannelOfEachPatient,
                                                    case_i, #the index (in the list of filepathnames) of the current image segmented.
@@ -95,17 +95,15 @@ def savePredictedImageToANewNiiWithHeaderFromOther(labelImageCreatedByPrediction
     else :
         filepathTarget = listOfNamesToGiveToPredictions[case_i] + suffixToAdd + ".nii.gz"
         
-    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(   labelImageCreatedByPredictions,
-                                                                filepathTarget,
-                                                                filepathOriginToCopyHeader,
-                                                                npDtype,
-                                                                myLogger)
-    
+    saveImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
+                                filepathTarget,
+                                filepathOriginToCopyHeader,
+                                npDtype,
+                                myLogger)
 
 
 
-
-def saveFmActivationImageToANewNiiWithHeaderFromOther(  fmImageCreatedByVisualisation,
+def saveFmImgToNiiWithOriginalHdr(  fmImageCreatedByVisualisation,
                                                         listOfNamesToGiveToPredictions,
                                                         
                                                         listOfFilepathsToEachChannelOfEachPatient,
@@ -137,19 +135,19 @@ def saveFmActivationImageToANewNiiWithHeaderFromOther(  fmImageCreatedByVisualis
         filepathTarget = listOfNamesToGiveToPredictions[image_i] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
         + "_layer" + str(index_of_layer_in_pathway_to_visualize) + "_fm" + str(index_of_FM_in_pathway_to_visualize) + ".nii.gz"
         
-    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(   fmImageCreatedByVisualisation,
-                                                                filepathTarget,
-                                                                filepathOriginToCopyHeader,
-                                                                np.dtype(np.float32),
-                                                                myLogger)
+    saveImgToNiiWithOriginalHdr(fmImageCreatedByVisualisation,
+                                filepathTarget,
+                                filepathOriginToCopyHeader,
+                                np.dtype(np.float32),
+                                myLogger)
 
 
 
-def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(  multidimImageWithAllVisualisedFms,
-                                                                                listOfNamesToGiveToFmVisualisationsIfSaving,
-                                                                                listOfFilepathsToEachChannelOfEachPatient,
-                                                                                image_i,
-                                                                                myLogger=None) : #the index (in the list of filepathnames) of the current image segmented :
+def save4DImgWithAllFmsToNiiWithOriginalHdr(multidimImageWithAllVisualisedFms,
+                                            listOfNamesToGiveToFmVisualisationsIfSaving,
+                                            listOfFilepathsToEachChannelOfEachPatient,
+                                            image_i,
+                                            myLogger=None) : #the index (in the list of filepathnames) of the current image segmented :
     #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
     
@@ -168,8 +166,10 @@ def saveMultidimensionalImageWithAllVisualisedFmsToANewNiiWithHeaderFromOther(  
     else :
         filepathTarget = listOfNamesToGiveToFmVisualisationsIfSaving[image_i] + "_allFmsMultiDim.nii.gz"
         
-    saveImageToANewNiiWithHeaderFromOtherGivenExactFilePaths(   multidimImageWithAllVisualisedFms,
-                                                                filepathTarget,
-                                                                filepathOriginToCopyHeader,
-                                                                np.dtype(np.float32),
-                                                                myLogger)
+    saveImgToNiiWithOriginalHdr(multidimImageWithAllVisualisedFms,
+                                filepathTarget,
+                                filepathOriginToCopyHeader,
+                                np.dtype(np.float32),
+                                myLogger)
+    
+    
