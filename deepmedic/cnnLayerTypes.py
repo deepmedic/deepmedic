@@ -16,7 +16,7 @@ from theano.tensor.nnet import conv
 import theano.tensor.nnet.conv3d2d #conv3d2d fixed in bleeding edge version of theano.
 
 
-from sys import maxint as MAX_INT
+from sys import maxsize as MAX_INT
 
 from deepmedic.maxPoolingModule import myMaxPooling3d
 
@@ -324,9 +324,9 @@ class Block(object):
     
     # Other API
     def getL1RegCost(self) : #Called for L1 weigths regularisation
-        raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
+        raise NotImplementedError('Method GetL1RegCost in \'{}\''.format(type(self).__name__)) # Abstract implementation. Children classes should implement this.
     def getL2RegCost(self) : #Called for L2 weigths regularisation
-        raise NotImplementedMethod()
+        raise NotImplementedError('Method GetL2RegCost in \'{}\''.format(type(self).__name__))
     def getTrainableParams(self):
         if self.targetBlock == None :
             return self.params
