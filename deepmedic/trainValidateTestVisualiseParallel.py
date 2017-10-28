@@ -5,6 +5,8 @@
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
+#TODO: fix bug in function extractDataOfASegmentFromImagesUsingSampledSliceCoords (myLogger not supplied as argument)
+
 import sys
 import time
 import numpy as np
