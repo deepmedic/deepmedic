@@ -25,11 +25,11 @@ class CreateModelSessionParameters(object) :
         
     #To be called from outside too.
     @staticmethod
-    def getDefaultSessionName() :
-        return getDefaultModelName()
-    @staticmethod
     def getDefaultModelName() :
         return "cnnModel"
+    @staticmethod
+    def getDefaultSessionName() :
+        return CreateModelSessionParameters.getDefaultModelName()
     @staticmethod
     def defaultDropFcList(numFMsInExtraFcs) :
         numberOfExtraFcs = len(numFMsInExtraFcs)
@@ -200,7 +200,7 @@ class CreateModelSessionParameters(object) :
         
         #Importants for running session.
         
-        self.cnnModelName = cnnModelName if cnnModelName else getDefaultModelName()
+        self.cnnModelName = cnnModelName if cnnModelName else CreateModelSessionParameters.getDefaultModelName()
         self.sessionLogger = sessionLogger
         self.mainOutputAbsFolder = mainOutputAbsFolder
         self.pathAndFilenameToSaveModel = os.path.abspath(folderForSessionCnnModels + "/" + self.cnnModelName)
