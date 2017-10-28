@@ -281,7 +281,7 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
     #Parse the config file in this naive fashion...
     trainConfig = TrainConfig()
     # execfile(trainConfigFilepath, trainConfig.configStruct)
-    exec(open(trainConfigFilepath), trainConfig.configStruct)
+    exec(open(trainConfigFilepath).read(), trainConfig.configStruct)
     configGet = trainConfig.get #Main interface
     
     """

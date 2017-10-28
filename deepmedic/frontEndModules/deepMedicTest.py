@@ -215,7 +215,7 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     #Parse the config file in this naive fashion...
     testConfig = TestConfig()
     #configStruct = testConfig.configStruct
-    exec(open(testConfigFilepath), testConfig.configStruct)
+    exec(open(testConfigFilepath).read(), testConfig.configStruct)
     configGet = testConfig.get #Main interface
     
     #Do checks.
