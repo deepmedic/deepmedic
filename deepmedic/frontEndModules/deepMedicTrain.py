@@ -16,7 +16,7 @@ from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers impo
 
 from deepmedic.loggingAndMonitoring import logger
 from deepmedic.genericHelpers import load_object_from_gzip_file
-from deepmedic.trainValidateTestVisualiseParallel import do_training
+from deepmedic.routines.training import do_training
 
 
 class TrainConfig(object):

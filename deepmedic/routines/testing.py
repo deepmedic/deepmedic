@@ -23,7 +23,7 @@ from deepmedic.genericHelpers import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
 # Main routine for testing.
-def performInferenceForTestingOnWholeVolumes(myLogger,
+def performInferenceOnWholeVolumes(myLogger,
                             validation0orTesting1,
                             savePredictionImagesSegmentationAndProbMapsList,
                             cnn3dInstance,

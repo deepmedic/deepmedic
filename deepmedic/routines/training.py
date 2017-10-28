@@ -16,7 +16,7 @@ import numpy as np
 from deepmedic.loggingAndMonitoring.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.cnnHelpers import CnnWrapperForSampling
 from deepmedic.dataManagement.sampling import getSampledDataAndLabelsForSubepoch
-from deepmedic.routines.testing import performInferenceForTestingOnWholeVolumes
+from deepmedic.routines.testing import performInferenceOnWholeVolumes
 
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.genericHelpers import datetimeNowAsStr
@@ -490,7 +490,7 @@ def do_training(myLogger,
             myLogger.print3("***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #"+str(epoch)+"...***")
             validation0orTesting1 = 0
             #do_validation_or_testing(myLogger,
-            performInferenceForTestingOnWholeVolumes(myLogger,
+            performInferenceOnWholeVolumes(myLogger,
                                     validation0orTesting1,
                                     savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
                                     cnn3dInstance,

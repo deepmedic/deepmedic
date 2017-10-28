@@ -17,7 +17,7 @@ from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers impo
 
 from deepmedic.loggingAndMonitoring import logger
 from deepmedic.genericHelpers import load_object_from_gzip_file
-from deepmedic.trainValidateTestVisualiseParallel import performInferenceForTestingOnWholeVolumes
+from deepmedic.routines.testing import performInferenceOnWholeVolumes
 
 
 class TestConfig(object):
@@ -307,7 +307,7 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     testSessionParameters.sessionLogger.print3("======================================================")
     
     checkCpuOrGpu(sessionLogger, cnn3dInstance.cnnTestAndVisualiseAllFmsFunction)
-    performInferenceForTestingOnWholeVolumes(*testSessionParameters.getTupleForCnnTesting())
+    performInferenceOnWholeVolumes(*testSessionParameters.getTupleForCnnTesting())
     
     testSessionParameters.sessionLogger.print3("\n======================================================")
     testSessionParameters.sessionLogger.print3("=========== Testing session finished =================")
