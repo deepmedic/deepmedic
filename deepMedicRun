@@ -23,7 +23,6 @@ OPT_MODEL = "-model"
 OPT_DEVICE = "-dev"
 ARG_CPU_PROC = "cpu"
 ARG_GPU_PROC = "cuda"
-ARG_GPU_PROC_OLD = "gpu"
 DEF_DEV_PROC = ARG_CPU_PROC
 
 OPT_PRETR = "-pretrained"
@@ -58,8 +57,9 @@ def setupArgParser() :
                                                                     "This option can follow a ["+OPT_TRAIN+"] or ["+OPT_TEST+"] option. Not in combination with a ["+OPTION_NEW+"].\n"+\
                                                                     "If given, this option will override any \"model\" parameters given in the train or testing configuration file.")
     parser.add_argument(OPT_DEVICE, default = DEF_DEV_PROC, dest='device', type=str,  help="Specify the device to run the process on. Values: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (default = " + DEF_DEV_PROC + ").\n"+\
-                                                                    "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + ARG_GPU_PROC + "2.\n"+\
-                                                                    "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
+                                                                    "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + DEF_DEV_PROC + " " + ARG_GPU_PROC + "2.\n"+\
+                                                                    "NOTE#1: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation."+\
+                                                                    "NOTE#2: If you get problems using the GPU with ["+DEF_DEV_PROC+" "+ARG_GPU_PROC+"], try using the old Theano backend with ["+DEF_DEV_PROC+" "+ARG_GPU_PROC+"] or disaable cuDNN. See docs Sec 1.3 and 2.2.")
     parser.add_argument(OPT_PRETR, dest='pretrained_model', type=str, help="Use to transfer the weights from a previously trained model to a new model.\n"+\
                                                                     "This option must follow a ["+OPTION_NEW+"] option.\n"+\
                                                                     "Usage: ./deepMedicRun "+OPTION_NEW+" /path/to/model/config "+OPT_PRETR+" /path/to/pretrained/model \n"+\
@@ -82,23 +82,19 @@ def checkDevicePassedCorrectly(devArg) :
     if devArg == ARG_CPU_PROC: return
     if devArg == ARG_GPU_PROC: return
     if devArg.startswith(ARG_GPU_PROC) and strIsInt(devArg[ len(ARG_GPU_PROC) : ]) : return
-    if devArg.startswith(ARG_GPU_PROC_OLD) and strIsInt(devArg[ len(ARG_GPU_PROC_OLD) : ]) :
-        print( "WARN: You specified using the old gpu-backend with the option [" + OPT_DEVICE + " " + ARG_GPU_PROC_OLD + "]. For the new gpu-backend, use [" + OPT_DEVICE + " " + ARG_GPU_PROC + "].")
-        return
     
     print(  "ERROR: Value for the [" + OPT_DEVICE + "] option was not specified correctly. Specify the device to run the process on. \n"+\
             "\tValues: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (Default = " + DEF_DEV_PROC + ").\n"+\
             "\tIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + ARG_GPU_PROC + "2. Exiting.")
     exit(1)
         
-def setEnvironment(deviceString) :
-    #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt
-    #Finally, sets the necessary theano flags.
+# Deprecated
+def readEnvFileAndSetEnv():
+    #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt (deprecated)
     pathToEnvironmentFile = os.getcwd() + "/environment.txt"
     if os.path.isfile(pathToEnvironmentFile) :
         envGivenInFile = {}
         exec(open(pathToEnvironmentFile).read(), envGivenInFile)
-        
         if "path_to_theano" in envGivenInFile :
             sys.path.insert(1, envGivenInFile["path_to_theano"])
         if "path_to_nose" in envGivenInFile :
@@ -107,20 +103,28 @@ def setEnvironment(deviceString) :
             sys.path.insert(1, envGivenInFile["path_to_nibabel"])
         if "path_to_parallelPython" in envGivenInFile :
             sys.path.insert(1, envGivenInFile["path_to_parallelPython"])
+            
+def setEnvironment(deviceString) :
+    # Deprecated, will be removed.
+    readEnvFileAndSetEnv()
        
+    MKL_THREADING_LAYER = "MKL_THREADING_LAYER"
+    if not MKL_THREADING_LAYER in os.environ.keys():
+        os.environ[MKL_THREADING_LAYER]="GNU" # Seems theano 0.10beta requires it. See commit: https://github.com/Theano/Theano/commit/1901d9806037054f929f8c3df7d3fcd74c229c08
+    
+    # Set the necessary theano flags.
     THEANO_FLAGS = "THEANO_FLAGS"     
     if not THEANO_FLAGS in os.environ.keys():
         os.environ[THEANO_FLAGS]=""
-    if not os.environ[THEANO_FLAGS].find("on_unused_input=") >= 0: os.environ[THEANO_FLAGS] += "on_unused_input=warn,"
-    if not os.environ[THEANO_FLAGS].find("mode=") >= 0: os.environ[THEANO_FLAGS] += "mode=FAST_RUN,"
-    if not os.environ[THEANO_FLAGS].find("device=") >= 0: os.environ[THEANO_FLAGS] += "device=" + deviceString + ","
-    if not os.environ[THEANO_FLAGS].find("floatX=") >= 0: os.environ[THEANO_FLAGS] += "floatX=float32,"
-    if not os.environ[THEANO_FLAGS].find("force_device=") >= 0: os.environ[THEANO_FLAGS] += "force_device=True,"
-    if not os.environ[THEANO_FLAGS].find("dnn.enabled=") >= 0: os.environ[THEANO_FLAGS] += "dnn.enabled=True,"
-    if not os.environ[THEANO_FLAGS].find("gpuarray.preallocate=") >= 0: os.environ[THEANO_FLAGS] += "gpuarray.preallocate=1,"
+    if not os.environ[THEANO_FLAGS].find("on_unused_input=") >= 0: os.environ[THEANO_FLAGS] += ",on_unused_input=warn"
+    if not os.environ[THEANO_FLAGS].find("mode=") >= 0: os.environ[THEANO_FLAGS] += ",mode=FAST_RUN"
+    if not os.environ[THEANO_FLAGS].find("device=") >= 0: os.environ[THEANO_FLAGS] += ",device=" + deviceString
+    if not os.environ[THEANO_FLAGS].find("floatX=") >= 0: os.environ[THEANO_FLAGS] += ",floatX=float32"
+    if not os.environ[THEANO_FLAGS].find("force_device=") >= 0: os.environ[THEANO_FLAGS] += ",force_device=True"
+    if not os.environ[THEANO_FLAGS].find("dnn.enabled=") >= 0: os.environ[THEANO_FLAGS] += ",dnn.enabled=auto"
+    if not os.environ[THEANO_FLAGS].find("gpuarray.preallocate=") >= 0: os.environ[THEANO_FLAGS] += ",gpuarray.preallocate=1"
+    if not os.environ[THEANO_FLAGS].find("openmp=") >= 0: os.environ[THEANO_FLAGS] += ",openmp=False" #  Parallelism with OpenMP: http://deeplearning.net/software/theano//tutorial/multi_cores.html
     # can also add to theano_flags: cuda.root=/path/to/cuda/root
-    
-    print("Running with THEANO_FLAGS = " + os.environ[THEANO_FLAGS])
 
 
 #################################################
@@ -135,19 +139,27 @@ if __name__ == '__main__':
         print("For help on the usage of this program, please use the option -h."); exit(1)
         
     if not (args.model_conf or args.training_conf or args.testing_conf) :
-        print("ERROR: One of the options must be specified:\n\t[-newModel] to create a new model.\n\t[-train] to start a training session on a model.\n\t[-test] to test with an existing model.\nPlease try [-h] for more information. Exiting."); exit(1)
+        print("ERROR: One of the options must be specified:\n"+\
+              "\t["+OPTION_NEW+"] to create a new model.\n"+\
+              "\t["+OPT_TRAIN+"] to start a training session on a model.\n"+\
+              "\t["+OPT_TEST+"] to test with an existing model.\n"+\
+              "Please try [-h] for more information. Exiting."); exit(1)
         
     #Preliminary checks:
     if args.model_conf and args.saved_model :
-        print("ERROR:\t[-newModel] and [-model] options cannot be used together.\n\tUse [-newModel] to create a new cnn model.\n\t[-model] can follow a [-train] or [-test] option, to specify which saved model to use.\n\tPlease try -h for more information. Exiting."); exit(1)
+        print("ERROR:\t["+OPTION_NEW+"] and ["+OPT_MODEL+"] options cannot be used together.\n"+\
+              "\tUse ["+OPT_MODEL+"] to create a new cnn model.\n"+\
+              "\t["+OPT_MODEL+"] can follow a ["+OPT_MODEL+"] or ["+OPT_TEST+"] option, to specify which saved model to use.\n"+\
+              "\tPlease try -h for more information. Exiting."); exit(1)
     if args.testing_conf and (args.model_conf or args.training_conf) :
-        print("ERROR: [-test] cannot be used in conjuction with [-newModel] or [-train]. To test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model to use for the inference. Exiting."); exit(1)
+        print("ERROR:\t["+OPT_TEST+"] cannot be used in conjuction with ["+OPTION_NEW+"] or ["+OPT_TRAIN+"].\n"+\
+              "\tTo test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model, or specify a model with ["+OPT_MODEL+"].. Exiting."); exit(1)
     if args.pretrained_model and not args.model_conf :
-        print("ERROR: The option [-pretrained] can only be used together with the [-newModel] option.\n\tPlease try -h for more information. Exiting."); exit(1)
+        print("ERROR:\tThe option ["+OPT_PRETR+"] can only be used together with the ["+OPTION_NEW+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
     if args.layers_to_transfer and not args.pretrained_model :
-        print("ERROR: The option [-layers] can only be used together with the [-pretrained] option.\n\tPlease try -h for more information. Exiting."); exit(1)
+        print("ERROR:\tThe option ["+OPT_PRETR_LAYERS+"] can only be used together with the ["+OPT_PRETR+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
     if args.reset_optimizer and not args.training_conf :
-        print("ERROR: The option [-resetOptimizer] can only be used together with the [-train] option.\n\tPlease try -h for more information. Exiting."); exit(1)
+        print("ERROR:\tThe option ["+OPT_PRETR_RESET+"] can only be used together with the ["+OPT_TRAIN+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
         
     checkDevicePassedCorrectly(args.device)
     

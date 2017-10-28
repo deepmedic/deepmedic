@@ -2,6 +2,9 @@ The DeepMedic
 =====================================
 
 ### News
+16 Sept 2017 (v0.6.1):
+* Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
+* Updated installation process in README.
 
 26 Mar 2017 (v0.6):
 * Functionality for transfering parameters and finetuning. See Sec 3.2 below.
@@ -64,56 +67,72 @@ The system was initially developed for the segmentation of brain lesions in MRI 
 The system is written in python. The following libraries are required:
 
 - [Theano](http://deeplearning.net/software/theano/): This is the Deep Learning library that the back end is implemented with.
-- [Nose](https://pypi.python.org/pypi/nose/): Required for Theano’s unit tests.
+- See [list of Theano dependencies](http://deeplearning.net/software/theano/install_ubuntu.html), such as libgpuarray, BLAS, pycuda, skcuda etc.
 - [NiBabel](http://nipy.org/nibabel/): The library used for loading NIFTI files.
 - [Parallel Python](http://www.parallelpython.com/): Library used to parallelize parts of the training process.
-- [six](https://pypi.python.org/pypi/six) : Python compatibility library.
 - [scipy](https://www.scipy.org/) : Package of tools for statistics, optimization, integration, algebra, machine learning.
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
- 
+- [six](https://pypi.python.org/pypi/six) : Python compatibility library.
+
 
 #### 1.2. Installation
+(The below are for unix systems, but similar steps should be sufficient for Windows.)
 
-The software can be found at `https://github.com/Kamnitsask/deepmedic/`. After cloning the project, all the dependencies can be installed by running the following command in the root directory:
+The software cloned with:
+```
+git clone https://github.com/Kamnitsask/deepmedic/`
+```
+After cloning it, all dependencies can be installed as described below.
 
-```python
-python setup.py install
+
+#### Install using conda (preferred)
+
+Since Theano-v0.9, a new GPU backend based on libgpuarray has been introduced. Its dependencies are much easier to install via *conda*, as they include C libraries that pip can't install.
+Theano-v0.9 was found a bit unstable with certain versions of cuDNN. So we suggest you upgrade straight to Theano-v0.10 (beta, from github currently).
+The below steps should guide you for installing conda, installing theano-v0.10 and dependencies, and installing deepmedic.
+
+**Install conda**:
+Download an installer for your OS from [link](https://conda.io/miniconda.html) and run it.
+Ensure that the path to miniconda's bin folder (by default ~/miniconda2(or 3)/bin) is in your $PATH (unix). Do this with the following command in a *bash* shell, which you can also add to your ~/.profile:
+```cshell
+$ export PATH=$PATH:/path/to/miniconda/bin
 ```
 
-This will download all required libraries, install and add them to the environment's PATH. This should be enough to use the DeepMedic.
-
-*Alternatively*, the user can manually add them to the PATH, or use the provided **environment.txt** file:
-
-```python
-#=============== LIBRARIES ====================
-#Theano is the main deep-learning library used. Version >= 0.8 required. Link: http://deeplearning.net/software/theano/
-path_to_theano = '/path/to/theano/on/the/filesystem/Theano/'
-
-#Nose is needed by Theano for its unit tests. Link: https://pypi.python.org/pypi/nose/
-path_to_nose = '/path/to/nose/on/the/filesystem/nose_installation'
-
-#NiBabel is used for loading/saving NIFTIs. Link: http://nipy.org/nibabel/
-path_to_nibabel = '/path/to/nibabel/on/the/filesystem/nibabel'
-
-#Parallel-Python is required, as we extract training samples in parallel with gpu training. Link: http://www.parallelpython.com/
-path_to_parallelPython = '/path/to/pp/on/the/filesystem/ppBuild'
+**Install Theano and DeepMedic's dependencies**:
 ```
+cd /path/to/deepmedic/root/folder
+conda create -n condaEnv_dm
+source activate condaEnv_dm
+conda install pip
+conda install numpy                                  # Also installs openmp and mkl that Theano v0.9+ uses
+conda install mkl-service                            # Theano v0.9+ requirement.
+conda install -c conda-forge pygpu=0.7.4             # Also installs libgpuarray, the new backend of Theano. Theano requires pygpu 0.7<version<0.8 currently.
 
- The latter file is parsed by the main software. If the lines with the corresponding lines are **not** commented out, the given path will be internally pre-pended in the PATH.
+pip install git+https://github.com/Theano/Theano     # Installs latest developer version of theano (to get v0.10, cause v0.9 was found unstable with cuDnn).
+pip install scipy pycuda                             # Theano requirement for gpu processing.
+pip install .                                        # Installs rest of deepmedic's dependencies.
+```
 
 #### 1.3. GPU Processing
 
+#### Install CUDA:
 Small networks can be run on the cpu. But 3D CNNs of considerable size require processing on the GPU. For this, an installation of [Nvidia’s CUDA](https://developer.nvidia.com/cuda-toolkit) is n
 eeded. Make sure to acquire a version compatible with your GPU drivers. Theano needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **c
 ublas.so** libraries, which need to be visible in the environment’s.
 
-Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example, in a *cshell* this can be done with *
-setenv*:
+Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example in a *bash* shell:
 
 ```cshell
-setenv PATH '/path-to/cuda/7.0.28/bin':$PATH
-setenv LD_LIBRARY_PATH '/path-to/cuda/7.0.28/lib64'
+$ export PATH=/path/to/cuda/bin:$PATH
+$ export LD_LIBRARY_PATH=/path/to/cuda/lib64
 ```
+
+#### Install cuDNN:
+We highly suggest you also install cuDNN ([link to instructions](http://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#download)).
+It is easy (simply copy cuDNN files in your Cuda folders in unix) and really offers high acceleration (eg a full MR brain volume segmentation in under 20 secs, in comparison to 1.40 mins without).
+
+
+
 
 #### 1.4. Required Data Pre-Processing
 
@@ -171,6 +190,14 @@ You can **plot the training progress** using an accompanying script, which parse
 python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTinyCnn.txt -d
 '''
 
+---
+*NOTE:* Since Theano-v0.9, the convolutions will be parallelized on multiple threads if BLAS and OpenMP libraries are detected. By default, they will use all available threads.
+You can limit the threads to use via the OMP_NUM_THREADS environment variable, for example:
+`$ OMP_NUM_THREADS=5 python ./deepMedicRun -train ...rest of arguments...`
+You can also disable OpenMp (it was found to hang on some machine setups) via the THEANO_FLAGS:
+`$ THEANO_FLAGS='openmp=False' python ./deepMedicRun -train ...rest of arguments...`
+--- 
+
 Now lets **test** with the trained model (replace *DATE+TIME*):
 ```cshell
 ./deepMedicRun -test examples/configFiles/tinyCnn/test/testConfig.cfg \
@@ -181,10 +208,10 @@ This should perform segmentation of the testing images and the results should ap
 
 Now lets check the important part... If using the **DeepMedic on the GPU** is alright on your system. First, delete the `examples/output/` folder for a clean start. Now, most importantly, place the path to **CUDA**'s *nvcc* into your *PATH* and to the *cublas.so* in your *LD_LIBRARY_PATH* (see [section 1.3](#13-gpu-processing))
 
-You need to perform the steps we did before for creating a model, training it and testing with it, but on the GPU. To do this, repeat the previous commands and pass the additional option `-dev gpu`. For example: 
+You need to perform the steps we did before for creating a model, training it and testing with it, but on the GPU. To do this, repeat the previous commands and pass the additional option `-dev cuda`. For example: 
 
 ```cshell
-./deepMedicRun -dev gpu -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
+./deepMedicRun -dev cuda -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
 ```
 The processes should result in similar outputs as before. If all processes finish as normal and you get no errors, amazing. **Now it seems that really everything works :)** Continue to the next section and find more details about the DeepMedic and how to use the large version of our network!
 
@@ -217,6 +244,17 @@ Exception: ('The following error happened while compiling the node', GpuCAReduce
 ```
 may be thrown because you are using a version of CUDA that is not compatible with your GPU's drivers. *Note: On March 2016, I ve been using v7.0 for NVIDIA Titans, K40s, GTX 980s, and v6.5 for anything older.*
 
+Also, there seems to be [an issue]((https://github.com/Theano/Theano/issues/5463)) where in some setups, libgpuarray (the new GPU backend) and cuDNN don't go well together. Near the beginning of the process, you may see a warning such as:
+```
+ERROR (theano.gpuarray): Could not initialize pygpu, support disabled
+...
+RuntimeError: Could not find cudnn library (looked for v5[.1])
+```
+They process may even continue, but run on the CPU. In such cases, first make sure that you have added the paths to the cuDnn files in cuda/lib64 and cuda/include folders, as described in [section 1.3](#13-gpu-processing). If you continue having problems, try disabling cuDNN by passing the following theano-flag before any command line call of deepMedicRun:
+```cshell
+$ THEANO_FLAGS='dnn.enabled=False' python ./deepMedicRun ...rest of options...
+```
+
 
 ### 3. How it works
 
@@ -230,7 +268,7 @@ The **.cfg configuration files** in `examples/configFiles/deepMedicOriginal/` di
 
 To create a new CNN model, you need to point to a config file with the parameters of a model:
 ```
-./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg
+./deepMedicRun -dev cuda -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg
 ```
 
 After reading the parameters given in modelConfig.cfg, a CNN-model will be created and saved with cPickle in the output folder. The session prints all the parameters that are used for the model-creation on the screen and to a log.txt file. 
@@ -272,18 +310,18 @@ After a model is created, it is pickled and saved. You can then train it using y
 
 a) By adding the `-model` option and specifying the file with a saved/pickled model (created by a -newModel process or half trained from a previous training-session).
 ```
-./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedic/train/trainConfig.cfg \
+./deepMedicRun -dev cuda -train ./examples/configFiles/deepMedic/train/trainConfig.cfg \
                                 -model ./path-to-saved-model
 ```
 
 b) The path to the saved model to train can be specified in the config file. In this case, the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
 ```
-./deepMedicRun -dev gpu -train ./examples/configFiles/deepMedic/train/trainConfig.cfg
+./deepMedicRun -dev cuda -train ./examples/configFiles/deepMedic/train/trainConfig.cfg
 ```
 
 c) The model created from a model-creation session can be passed straight to a training session, after it is saved. **Note:** If a path to another model is specified in the config-file, it is disregarded.
 ```
-./deepMedicRun -dev gpu -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg \
+./deepMedicRun -dev cuda -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg \
                        		-train ./examples/configFiles/deepMedic/train/trainConfig.cfg
 ```
 
@@ -371,13 +409,13 @@ When a training epoch is finished, the model’s state is saved. These pickled m
 
 a) A model is specified straight from the command line.
 ```
-./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedic/test/testConfig.cfg \
+./deepMedicRun -dev cuda -test ./examples/configFiles/deepMedic/test/testConfig.cfg \
                        		-model ./path-to-saved-model
 ```
 
 b) The path to a saved model can be instead specified in the testing config file, and then the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
 ```
-./deepMedicRun -dev gpu -test ./examples/configFiles/deepMedic/test/testConfig.cfg
+./deepMedicRun -dev cuda -test ./examples/configFiles/deepMedic/test/testConfig.cfg
 ```
 
 After the model is loaded, inference will be performed on the testing subjects. Predicted segmentation masks, posterior probability maps for each class,  as well as the feature maps of any layer can be saved. If ground-truth is provided, DeepMedic will also report DSC metrics for its predictions.
