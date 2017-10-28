@@ -6,7 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 import os
-import cPickle
+import pickle
 import gzip
 
 import random
@@ -101,7 +101,7 @@ def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
 
 def load_object_from_file(filenameWithPath) :
     f = file(filenameWithPath, 'rb')
-    loaded_obj = cPickle.load(f)
+    loaded_obj = pickle.load(f)
     f.close()
     return loaded_obj
 
@@ -111,24 +111,24 @@ def dump_object_to_file(my_obj, filenameWithPath) :
     filenameWithPath = a string with the full path+name
     
     The function uses the 'highest_protocol' which is supposed to be more storage efficient.
-    It uses cPickle, which is coded in c and is supposed to be faster than pickle.
+    It uses pickle, which is coded in c and is supposed to be faster than pickle.
     Remember, this instance is safe to load only from a code which is fully-compatible (same version)
     ...with the code this was saved from, i.e. same classes define.
     If I need forward compatibility, read this: http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
     """
     f = file(filenameWithPath, 'wb')
-    cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    pickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
     
 def load_object_from_gzip_file(filenameWithPath) :
     f = gzip.open(filenameWithPath, 'rb')
-    loaded_obj = cPickle.load(f)
+    loaded_obj = pickle.load(f)
     f.close()
     return loaded_obj
 
 def dump_object_to_gzip_file(my_obj, filenameWithPath) :
     f = gzip.open(filenameWithPath, 'wb')
-    cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    pickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
     f.close()
     
 #This could be renamed to be more generic.
