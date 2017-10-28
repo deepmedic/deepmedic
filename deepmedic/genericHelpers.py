@@ -100,7 +100,7 @@ def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
     return diceCoeff
 
 def load_object_from_file(filenameWithPath) :
-    f = file(filenameWithPath, 'rb')
+    f = open(filenameWithPath, 'rb')
     loaded_obj = pickle.load(f)
     f.close()
     return loaded_obj
