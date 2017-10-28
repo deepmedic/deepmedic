@@ -82,7 +82,7 @@ def parseLogFileAndGetVariablesOfInterest(pathToLog) :
 
 def parseVariablesOfTrainingSessionsFromListOfLogs(inLogsList) :
     listOfExperimentsNames = []; listOfSubepochsPerEpFromEachLog = []; listOfEpochsPerFullInferFromEachLog = []
-    for log_i in xrange(len(inLogsList)) :
+    for log_i in range(len(inLogsList)) :
         #Get variables from the logfile.
         (experimentName, subepochsPerEpoch, epochsBetweenEachFullInfer) = parseLogFileAndGetVariablesOfInterest(inLogsList[log_i])
         #In case the name was not found:
@@ -96,7 +96,7 @@ def parseVariablesOfTrainingSessionsFromListOfLogs(inLogsList) :
 
 def makeLegendList(listOfExperimentsNames, classesFromEachLogFile) :
     legendList = []
-    for exper_i in xrange(len(listOfExperimentsNames)) :
+    for exper_i in range(len(listOfExperimentsNames)) :
         for classFromExper in classesFromEachLogFile[exper_i] :
             legendList.append( listOfExperimentsNames[exper_i] + "-Class" + str(classFromExper) )
     return legendList
@@ -104,8 +104,8 @@ def makeLegendList(listOfExperimentsNames, classesFromEachLogFile) :
 def makeHelperVariablesPerExperiment(logFiles, classesFromEachLogFile, subepochsPerEpFromEachLog, epochsPerFullInferFromEachLog) :
     subepochsPerEpOfExpers = []
     epochsPerFullInferOfExpers = []
-    for logFile_i in xrange(len(logFiles)) :
-        for classForLogFile_i in xrange(len(classesFromEachLogFile[logFile_i])) :
+    for logFile_i in range(len(logFiles)) :
+        for classForLogFile_i in range(len(classesFromEachLogFile[logFile_i])) :
             subepochsPerEpOfExpers.append(subepochsPerEpFromEachLog[logFile_i]) # Essentially just doublicating the same entry again and again for all classes of same logfile/experiment.
             epochsPerFullInferOfExpers.append(epochsPerFullInferFromEachLog[logFile_i])
     return (subepochsPerEpOfExpers, epochsPerFullInferOfExpers)
@@ -229,7 +229,7 @@ def movingAverageConv(a, window_size=1) :
 def applyMovingAverageToAllButDscFullSeg(detailedPlotBool, measuredMetricsFromAllExperiments, movingAverSubeps ) :
     for valOrTrainExperiments in measuredMetricsFromAllExperiments :
         for experimentToPlot in valOrTrainExperiments : # Number of logs X Classes
-            for metric_i in xrange(len(experimentToPlot)) :
+            for metric_i in range(len(experimentToPlot)) :
                 if detailedPlotBool and metric_i == 4 : # We are plotting detailed metrics and this is the DSC-Full-Seg, which we do not smooth with movingAverage
                     continue
                 experimentToPlot[metric_i] = movingAverageConv(experimentToPlot[metric_i], movingAverSubeps)
@@ -237,9 +237,9 @@ def applyMovingAverageToAllButDscFullSeg(detailedPlotBool, measuredMetricsFromAl
 
 
 def checkIfLineMatchesAnyRegExpr(string, regExprForEachClassAndMetric) :
-    for val0orTrain1 in xrange(len(regExprForEachClassAndMetric)) : #[0,1]
-        for class_i in xrange(len(regExprForEachClassAndMetric[val0orTrain1])) :
-            for metric_i in xrange(len(regExprForEachClassAndMetric[val0orTrain1][class_i])) :
+    for val0orTrain1 in range(len(regExprForEachClassAndMetric)) : #[0,1]
+        for class_i in range(len(regExprForEachClassAndMetric[val0orTrain1])) :
+            for metric_i in range(len(regExprForEachClassAndMetric[val0orTrain1][class_i])) :
                 regExp1 = regExprForEachClassAndMetric[val0orTrain1][class_i][metric_i]
                 matchObj = re.match( regExp1, string, re.M|re.I)
                 if matchObj :
@@ -266,7 +266,7 @@ def parseBasicMetricsFromThisLog( logFile, movingAverSubeps ) :
     measurementsForEachClassAndMetric = [ [ [] ], [ [] ] ]
     previousMeasurementForEachClassAndMetric = [ [ [] ], [ [] ] ] #This is useful in the case I get a not-valid number, to just use the previous one.
     for val0orTrain1 in [0,1] :
-        for metric_i in xrange(1) : 
+        for metric_i in range(1) : 
             measurementsForEachClassAndMetric[val0orTrain1][0].append([]) # Add a sublist in the class, per metric.
             previousMeasurementForEachClassAndMetric[val0orTrain1][0].append(0)
             
@@ -311,7 +311,7 @@ def parseTrainErrorPerSubEpochFromThisLog( logFile, movingAverSubeps ) :
     #[0] val, [1] train. Each has one sublist, because in basic I have only 1 class to be plotted. The class-sublist has 1 sublist, because here I have only 1 plotted metric.
     measurementsForEachClassAndMetric = [ [ [] ], [ [] ] ]
     for val0orTrain1 in [0,1] :
-        for metric_i in xrange(1) : 
+        for metric_i in range(1) : 
             measurementsForEachClassAndMetric[val0orTrain1][0].append([]) # Add a sublist in the class, per metric.
            
     ### Read the file and start parsing each line.
@@ -348,7 +348,7 @@ def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSube
             # mean acc, sens, spec, dsc samples, dsc full.
             regExprForClassAllMetrics = [0,0,0,0]
             sentencesForClassAllMetrics = [0,0,0,0]
-            for metric_i in xrange(len(regExprForClassAllMetrics)) :
+            for metric_i in range(len(regExprForClassAllMetrics)) :
                 (regExprForClassAllMetrics[metric_i], sentencesForClassAllMetrics[metric_i]) = getRegExprForParsingMetric(val0orTrain1, 1, classInt, metric_i)
             regExprForEachClassAndMetric[val0orTrain1].append( regExprForClassAllMetrics )
             sentencesToLookForEachClassAndMetric[val0orTrain1].append( sentencesForClassAllMetrics )
@@ -358,10 +358,10 @@ def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSube
     measurementsForEachClassAndMetric = [ [], [] ]
     previousMeasurementForEachClassAndMetric = [ [], [] ] #This is useful in the case I get a not-valid number, to just use the previous one.
     for val0orTrain1 in [0,1] :
-        for class_i in xrange(len(classesFromThisLog)) :
+        for class_i in range(len(classesFromThisLog)) :
             measurementsForEachClassAndMetric[val0orTrain1].append([]) # add a sublist in the val/train for each class
             previousMeasurementForEachClassAndMetric[val0orTrain1].append([])
-            for metric_i in xrange(0,5) : # CAREFUL WITH THIS >> 5 <<
+            for metric_i in range(0,5) : # CAREFUL WITH THIS >> 5 <<
                 measurementsForEachClassAndMetric[val0orTrain1][class_i].append([]) # Add a sublist in the class, per metric.
                 if metric_i == 4 : # If it's the DSC-full-segm, add an initial 0 measurement!
                     measurementsForEachClassAndMetric[val0orTrain1][class_i][-1].append(0)
@@ -391,7 +391,7 @@ def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSube
             theListInString = getStringOfTheListThatForSureStartsInThisLineButMayEndInAnother(restOfLineAfterPattern, f)
             listOfstringNumbersSplitted = getAListOfStringNumbersAfterSplittingThemFromAStringListWithStringNumbers(theListInString, "")
             
-            for class_i in xrange(len(classesFromThisLog)) :
+            for class_i in range(len(classesFromThisLog)) :
                 previousMeasurement = previousMeasurementForEachClassAndMetric[0][class_i][4] # get last value found for DSC of this class.
                 dscForTheWantedClassInString = listOfstringNumbersSplitted[ classesFromThisLog[class_i] ] # Reported list with DICE is different than others and has a float per class.
                 # listOfMeasurements = [float], just a list with one float in this case of DSC-full-seg.
@@ -412,7 +412,7 @@ def optimizedParseMetricsFromLogs(logFiles, detailedPlotBool, trainErrorBool, cl
     # Each of these has as many sublists as the number of experiments (logFiles) X Classes!
     # Each of these sublists has a 5/4-entries sublist. Mean Accuracy/Sens/Spec/DSC-on-samples/DSC-from-full-segm-of-volumes (val only). OR just 1, if basic.
     measuredMetricsFromAllExperiments = [[],[]] #[0] validation, [1] training measurements.
-    for logFile_i in xrange(0, len(logFiles)) :
+    for logFile_i in range(0, len(logFiles)) :
         if (not trainErrorBool) and (not detailedPlotBool):
             ( measuredMetricsFromThisLogValidation,
             measuredMetricsFromThisLogTraining ) = parseBasicMetricsFromThisLog( logFiles[logFile_i], movingAverSubeps )
@@ -461,10 +461,10 @@ def plotProgressBasic(measuredMetricsFromAllExperiments, legendList, movingAverS
     
     maxNumOfEpsDurationOfExps = 0 # The number of epochs that the longest experiment lasted.
     
-    for valOrTrain_i in xrange(0, len(measuredMetricsFromAllExperiments)) :
-        for valOrTrainExperiment_i in xrange(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
+    for valOrTrain_i in range(0, len(measuredMetricsFromAllExperiments)) :
+        for valOrTrainExperiment_i in range(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
             valOrTrainExperiment = measuredMetricsFromAllExperiments[valOrTrain_i][valOrTrainExperiment_i]
-            for metric_i in xrange(0, len(valOrTrainExperiment)) :
+            for metric_i in range(0, len(valOrTrainExperiment)) :
                 numberOfSubsPerEpoch = subepochsPerEpOfExpers[valOrTrainExperiment_i]
                 
                 numberOfSubepochsRan = len(valOrTrainExperiment[metric_i])
@@ -532,10 +532,10 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
     
     maxNumOfEpsDurationOfExps = 0 # The number of epochs that the longest experiment lasted.
     
-    for valOrTrain_i in xrange(0, len(measuredMetricsFromAllExperiments)) :
-        for valOrTrainExperiment_i in xrange(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
+    for valOrTrain_i in range(0, len(measuredMetricsFromAllExperiments)) :
+        for valOrTrainExperiment_i in range(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
             valOrTrainExperiment = measuredMetricsFromAllExperiments[valOrTrain_i][valOrTrainExperiment_i]
-            for meanPosNegDice1_i in xrange(0, len(valOrTrainExperiment)) :
+            for meanPosNegDice1_i in range(0, len(valOrTrainExperiment)) :
                 numberOfSubsPerEpoch = subepochsPerEpOfExpers[valOrTrainExperiment_i]
                 numberOfEpsBetweenFullInf = epochsPerFullInferOfExpers[valOrTrainExperiment_i]
 
@@ -620,11 +620,11 @@ def plotProgressTrainError(measuredMetricsFromAllExperiments, legendList, moving
     maxNumOfEpsDurationOfExps = 0 # The number of epochs that the longest experiment lasted.   
     maxCostOfExps = 0 # max value of cost found in log files, used to set ylim 
 
-    for valOrTrain_i in xrange(0, len(measuredMetricsFromAllExperiments)) :
+    for valOrTrain_i in range(0, len(measuredMetricsFromAllExperiments)) :
         if not (valOrTrain_i == 0):   # ignore val as this doesn't contain any cost data
-            for valOrTrainExperiment_i in xrange(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
+            for valOrTrainExperiment_i in range(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
                 valOrTrainExperiment = measuredMetricsFromAllExperiments[valOrTrain_i][valOrTrainExperiment_i]
-                for metric_i in xrange(0, len(valOrTrainExperiment)) :
+                for metric_i in range(0, len(valOrTrainExperiment)) :
                     assert valOrTrainExperiment[metric_i] <> [], ("Please make sure the log file contains valid experiment data.")
                     npMaxOfExp = np.max(valOrTrainExperiment[metric_i])
                     maxCostOfExps =  npMaxOfExp if npMaxOfExp > maxCostOfExps else maxCostOfExps
@@ -700,9 +700,9 @@ if __name__ == '__main__':
         elif len(logFiles) == 1 : # 1 log file only
             classesFromEachLogFile = [ args.classes_to_plot ] # [ [class0, class1, ...] ]
         elif len(args.classes_to_plot) == 1 : # multiple logs provided, and 1 class argument
-            classesFromEachLogFile = [ [ args.classes_to_plot[0] ] for i in xrange(len(logFiles)) ] # [ [class0], [class0], ... ]
+            classesFromEachLogFile = [ [ args.classes_to_plot[0] ] for i in range(len(logFiles)) ] # [ [class0], [class0], ... ]
         elif len(args.classes_to_plot) == len(logFiles) :
-            classesFromEachLogFile = [ [ args.classes_to_plot[i] ] for i in xrange(len(logFiles)) ] # [ [class0], [class1], [class2], ...] 
+            classesFromEachLogFile = [ [ args.classes_to_plot[i] ] for i in range(len(logFiles)) ] # [ [class0], [class1], [class2], ...] 
         else : # logFiles provided, multiple classes provided, but not the same number as the log files.
             print("ERROR:\tThe number of log files given is not the same with the number of arguments that specify which class's accuracy to plot from each log file.")
             print("\tPlease provide the same number of Class arguments, or just 1, if the same class is to be plotted from all log files. Exiting."); exit(1)
