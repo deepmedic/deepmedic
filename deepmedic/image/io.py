@@ -21,12 +21,11 @@ def loadVolume(filepath):
     img = proxy.get_data()
     proxy.uncache()
     
-    # 2D image could have been given.
     if len(img.shape) == 2:
+        # 2D image could have been given.
         img = np.expand_dims(img, axis=2)
-    
-    # 4D volumes could have been given. Often 3Ds are stored as 4Ds with 4th dim == 1.
     elif len(img.shape) > 3 :
+        # 4D volumes could have been given. Often 3Ds are stored as 4Ds with 4th dim == 1.
         assert img.shape[3] > 1
         img = img[:,:,:,0]
 
