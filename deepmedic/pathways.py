@@ -335,7 +335,7 @@ class Pathway(object):
         return [ self._inputShapeTrain, self._inputShapeVal, self._inputShapeTest ]
         
     # Other API :
-    def getStringType(self) : raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
+    def getStringType(self) : raise NotImplementedError('method getStringType in \'{}\''.format(type(self).__name__)) # Abstract implementation. Children classes should implement this.
     # Will be overriden for lower-resolution pathways.
     def getOutputAtNormalRes(self): return self.getOutput()
     def getShapeOfOutputAtNormalRes(self): return self.getShapeOfOutput()
