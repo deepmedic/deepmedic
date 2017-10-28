@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 import datetime
 
 
-class MyLogger :
+class Logger :
     loggerFileName = None
     
     def print3(self, string) :

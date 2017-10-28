@@ -13,7 +13,7 @@ from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import *
 from deepmedic.frontEndModules.frontEndHelpers.createModelParametersClass import CreateModelSessionParameters
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForCreateModelSession
 
-from deepmedic import myLoggerModule
+from deepmedic.loggingAndMonitoring import logger
 from deepmedic.cnn3d import Cnn3d
 from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.genericHelpers import load_object_from_gzip_file
@@ -93,7 +93,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
     [folderForCnnModels,
     folderForLogs] = makeFoldersNeededForCreateModelSession(mainOutputAbsFolder, modelName)
     loggerFileName = folderForLogs + "/" + modelName + ".txt"
-    sessionLogger = myLoggerModule.MyLogger(loggerFileName)
+    sessionLogger = logger.Logger(loggerFileName)
     
     sessionLogger.print3("CONFIG: Given THEANO_FLAGS: " + str(os.environ['THEANO_FLAGS']))
     sessionLogger.print3("CONFIG: The configuration file for the session was loaded from: " + str(modelConfigFilepath))

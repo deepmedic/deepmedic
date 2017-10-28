@@ -15,7 +15,7 @@ from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers impo
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import checkCpuOrGpu
 
 
-from deepmedic import myLoggerModule
+from deepmedic.loggingAndMonitoring import logger
 from deepmedic.genericHelpers import load_object_from_gzip_file
 from deepmedic.trainValidateTestVisualiseParallel import performInferenceForTestingOnWholeVolumes
 
@@ -230,7 +230,7 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
     folderForPredictions,
     folderForFeatures] = makeFoldersNeededForTestingSession(mainOutputAbsFolder, sessionName)
     loggerFileName = folderForLogs + "/" + sessionName + ".txt"
-    sessionLogger = myLoggerModule.MyLogger(loggerFileName)
+    sessionLogger = logger.Logger(loggerFileName)
     
     sessionLogger.print3("CONFIG: Given THEANO_FLAGS: " + str(os.environ['THEANO_FLAGS']))
     sessionLogger.print3("CONFIG: The configuration file for the session was loaded from: " + str(testConfigFilepath))
