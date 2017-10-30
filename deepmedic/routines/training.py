@@ -19,7 +19,7 @@ from deepmedic.neuralnet.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.dataManagement.sampling import getSampledDataAndLabelsForSubepoch
 from deepmedic.routines.testing import performInferenceOnWholeVolumes
 
-from deepmedic.genericHelpers import datetimeNowAsStr
+from deepmedic.loggingAndMonitoring.utils import datetimeNowAsStr
 
 TINY_FLOAT = np.finfo(np.float32).tiny
 

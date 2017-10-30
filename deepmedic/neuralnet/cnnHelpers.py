@@ -8,9 +8,16 @@
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import os
+import gzip
 import numpy as np
 
-from deepmedic.genericHelpers import *
+import pickle
+try:
+    import cPickle
+except ImportError:
+    # python3 compatibility
+    import _pickle as cPickle
+
 
 # The API for these classes should resemble the API of Pathway and Cnn3d classes. But only what is needed by the sampling process of the training procedure.
 class PathwayWrapperForSampling(object):
@@ -49,6 +56,38 @@ class CnnWrapperForSampling(object):
     def getNumPathwaysThatRequireInput(self) :
         return self._numPathwaysThatRequireInput
     
+    
+def load_object_from_file(filenameWithPath) :
+    f = file(filenameWithPath, 'rb')
+    loaded_obj = cPickle.load(f)
+    f.close()
+    return loaded_obj
+
+def dump_object_to_file(my_obj, filenameWithPath) :
+    """
+    my_obj = object to pickle
+    filenameWithPath = a string with the full path+name
+    
+    The function uses the 'highest_protocol' which is supposed to be more storage efficient.
+    It uses cPickle, which is coded in c and is supposed to be faster than pickle.
+    Remember, this instance is safe to load only from a code which is fully-compatible (same version)
+    ...with the code this was saved from, i.e. same classes define.
+    If I need forward compatibility, read this: http://deeplearning.net/software/theano/tutorial/loading_and_saving.html
+    """
+    f = file(filenameWithPath, 'wb')
+    cPickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+    f.close()
+    
+def load_object_from_gzip_file(filenameWithPath) :
+    f = gzip.open(filenameWithPath, 'rb')
+    loaded_obj = cPickle.load(f)
+    f.close()
+    return loaded_obj
+
+def dump_object_to_gzip_file(my_obj, filenameWithPath) :
+    f = gzip.open(filenameWithPath, 'wb')
+    cPickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+    f.close()
     
 def dump_cnn_to_gzip_file_dotSave(cnnInstance, filenameWithPathToSaveTo, logger=None) :
     filenameWithPathToSaveToDotSave = os.path.abspath(filenameWithPathToSaveTo + ".save")

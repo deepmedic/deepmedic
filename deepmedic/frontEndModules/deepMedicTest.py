@@ -14,9 +14,8 @@ from deepmedic.frontEndModules.frontEndHelpers.testParametersClass import TestSe
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForTestingSession
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import checkCpuOrGpu
 
-
 from deepmedic.loggingAndMonitoring import logger
-from deepmedic.genericHelpers import load_object_from_gzip_file
+from deepmedic.neuralnet.cnnHelpers import load_object_from_gzip_file
 from deepmedic.routines.testing import performInferenceOnWholeVolumes
 
 

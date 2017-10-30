@@ -19,7 +19,7 @@ from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWi
 from deepmedic.image.processing import unpadCnnOutputs
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
-from deepmedic.genericHelpers import strListFl4fNA, getMeanPerColOf2dListExclNA
+from deepmedic.loggingAndMonitoring.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
 # Main routine for testing.

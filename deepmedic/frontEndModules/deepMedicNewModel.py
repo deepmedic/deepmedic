@@ -15,9 +15,8 @@ from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers impo
 
 from deepmedic.loggingAndMonitoring import logger
 from deepmedic.neuralnet.cnn3d import Cnn3d
-from deepmedic.neuralnet.cnnHelpers import dump_cnn_to_gzip_file_dotSave
-from deepmedic.genericHelpers import load_object_from_gzip_file
-from deepmedic.genericHelpers import datetimeNowAsStr
+from deepmedic.neuralnet.cnnHelpers import load_object_from_gzip_file, dump_cnn_to_gzip_file_dotSave
+from deepmedic.loggingAndMonitoring.utils import datetimeNowAsStr
 
 
 class ModelConfig(object):
