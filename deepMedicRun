@@ -41,7 +41,7 @@ def setupArgParser() :
     parser.add_argument("-model", dest='saved_model', type=str, help="The path to a saved existing cnn model, to train or test with.\n"+\
                                                                     "This option can follow a [-train] or [-test] option. Not in combination with a [-newModel].\n"+\
                                                                     "If given, this option will overide any \"model\" parameters given in the train or testing configuration file.")
-    parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu] or [gpu] (default = cpu).\n"+\
+    parser.add_argument("-dev", default = "cpu", dest='device', type=str,  help="Specify the device to run the process on. Values: [cpu], [gpu] or [cuda] (default = cpu).\n"+\
                                                                     "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2.\n"+\
                                                                     "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
     parser.add_argument("-pretrained", dest='pretrained_model', type=str, help="Use to transfer the weights from a previously trained model to a new model.\n"+\
@@ -62,7 +62,9 @@ def setupArgParser() :
 
 def checkDevicePassedCorrectly(devArg) :
     if devArg != "cpu" and devArg != "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) ) :
-        print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu] or [gpu] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
+        print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu], [gpu] or [cuda] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
+    if devArg != "cpu" and devArg != "cuda" and not (devArg.startswith("cuda") and strIsInt(devArg[4:]) ) :
+        print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu], [gpu] or [cuda] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
         
 def setEnvironment(deviceString) :
     #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt
