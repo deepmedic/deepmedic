@@ -302,7 +302,7 @@ class CreateModelSessionParameters(object) :
         if not self.convWInitMethod[0] in ["normal", "fanIn"]:
             self.errorReqInitializationMethod()
         #== Activation Function ==
-        self.activationFunc = activationFunction if activationFunction != None else "prelu"
+        self.activationFunc = activationFunc if activationFunc != None else "prelu"
         if not self.activationFunc in ["linear", "relu", "prelu", "elu", "selu"]:
             self.errorReqActivFunction()
             

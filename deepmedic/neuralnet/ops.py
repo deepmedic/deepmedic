@@ -264,7 +264,7 @@ def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
     return image3dBC012WithMirrorPad
 
 
-def pooling3d(image3dBC012, image3dBC012Shape, poolParams) :
+def pool3dMirrorPad(image3dBC012, image3dBC012Shape, poolParams) :
     # image3dBC012 dimensions: (batch, fms, r, c, z)
     # poolParams: [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode]
     ws = poolParams[0] # window size
@@ -273,7 +273,7 @@ def pooling3d(image3dBC012, image3dBC012Shape, poolParams) :
     
     image3dBC012WithMirrorPad = mirrorFinalBordersOfImage(image3dBC012, poolParams[2])
     
-    T.signal.pool.pool_3dd( input=image3dBC012WithMirrorPad,
+    T.signal.pool.pool_3d( input=image3dBC012WithMirrorPad,
                             ws=ws,
                             ignore_border=True,
                             st=stride,

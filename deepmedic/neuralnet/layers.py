@@ -19,7 +19,7 @@ except ImportError:
     # python3 compatibility
     from sys import maxsize as MAX_INT
 
-from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, dmPooling3d
+from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
 from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, applySoftmaxToFmAndReturnProbYandPredY
 
 
@@ -247,9 +247,9 @@ class ConvLayer(Block):
             inputToConvShapeVal = inputToLayerShapeVal
             inputToConvShapeTest = inputToLayerShapeTest
         else : #Max pooling is actually happening here...
-            (inputToConvTrain, inputToConvShapeTrain) = dmPooling3d(inputToPoolTrain, inputToLayerShapeTrain, self._poolingParameters)
-            (inputToConvVal, inputToConvShapeVal) = dmPooling3d(inputToPoolVal, inputToLayerShapeVal, self._poolingParameters)
-            (inputToConvTest, inputToConvShapeTest) = dmPooling3d(inputToPoolTest, inputToLayerShapeTest, self._poolingParameters)
+            (inputToConvTrain, inputToConvShapeTrain) = pool3dMirrorPad(inputToPoolTrain, inputToLayerShapeTrain, self._poolingParameters)
+            (inputToConvVal, inputToConvShapeVal) = pool3dMirrorPad(inputToPoolVal, inputToLayerShapeVal, self._poolingParameters)
+            (inputToConvTest, inputToConvShapeTest) = pool3dMirrorPad(inputToPoolTest, inputToLayerShapeTest, self._poolingParameters)
             
         return (inputToConvTrain, inputToConvVal, inputToConvTest,
                 inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest )
