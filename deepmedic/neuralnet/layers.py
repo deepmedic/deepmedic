@@ -19,7 +19,7 @@ except ImportError:
     # python3 compatibility
     from sys import maxsize as MAX_INT
 
-from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, dmPooling3d
+from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, dmPooling3d
 from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, applySoftmaxToFmAndReturnProbYandPredY
 
 
@@ -176,7 +176,7 @@ class ConvLayer(Block):
                 inputToLayerShapeTest,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-                activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
+                activationFunc,
                 dropoutRate) :
         # ---------------- Order of what is applied -----------------
         #  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ] # ala He et al "Identity Mappings in Deep Residual Networks" 2016
@@ -216,19 +216,18 @@ class ConvLayer(Block):
         #--------------------------------------------------------
         #------------ Apply Activation/ non-linearity -----------
         #--------------------------------------------------------
-        if activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == -1 : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
-            self._activationFunctionType = "linear"
+        self._activationFunctionType = activationFunc
+        if self._activationFunctionType == "linear" : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = (inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
-        elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 0 :
-            self._activationFunctionType = "relu"
+        elif self._activationFunctionType == "relu" :
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyRelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
-        elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 1 :
-            self._activationFunctionType = "prelu"
+        elif self._activationFunctionType == "prelu" :
             numberOfInputChannels = inputToLayerShapeTrain[1]
             ( self._aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest, numberOfInputChannels)
             self.params = self.params + [self._aPrelu]
-        elif activationFunctionToUseRelu0orPrelu1orMinus1ForLinear == 2 :
-            self._activationFunctionType = "selu"
+        elif self._activationFunctionType == "elu" :
+            ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyElu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
+        elif self._activationFunctionType == "selu" :
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applySelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
             
         #------------------------------------
@@ -285,7 +284,7 @@ class ConvLayer(Block):
                 initializationTechniqueClassic0orDelvingInto1,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-                activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=0,
+                activationFunc="relu",
                 dropoutRate=0.0):
         """
         type rng: numpy.random.RandomState
@@ -316,7 +315,7 @@ class ConvLayer(Block):
                                                                                         inputToLayerShapeTest,
                                                                                         useBnFlag,
                                                                                         rollingAverageForBatchNormalizationOverThatManyBatches,
-                                                                                        activationFunctionToUseRelu0orPrelu1orMinus1ForLinear,
+                                                                                        activationFunc,
                                                                                         dropoutRate)
         
         tupleWithOuputAndShapeTrValTest = self._createWeightsTensorAndConvolve( rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 

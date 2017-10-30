@@ -72,12 +72,17 @@ class ModelConfig(object):
     #Initialization method of the kernel weights. Classic is what I was using for my first year. "Delving Deep" for journal.
     INITIAL_METHOD = "initializeClassic0orDelving1"
     #Activation Function for all convolutional layers:
-    ACTIV_FUNCTION = "relu0orPrelu1"
-    
+    ACTIV_FUNCTION = "activationFunction"
+
     #Batch Normalization
     BN_ROLL_AV_BATCHES = "rollAverageForBNOverThatManyBatches"
 
 
+def checkForDeprecatedConfig(configGet):
+    if configGet("relu0orPrelu1") is not None:
+        logger.print3("ERROR: Deprecated input to the config: [relu0orPrelu1]. Please update config to use the new [activationFunction] variable accordingly. Exiting."); exit(1)
+    
+    
 #The argument should be absolute path to the config file for the model to create.
 def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCmdLine, listOfLayersToTransfer) :
     print("Given configuration file: ", modelConfigFilepath)
@@ -85,6 +90,9 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
     modelConfig = ModelConfig()
     exec(open(modelConfigFilepath).read(), modelConfig.configStruct)
     configGet = modelConfig.get #Main interface
+    
+    # Check for deprecated input
+    checkForDeprecatedConfig(configGet)
     
     #Create Folders and Logger
     mainOutputAbsFolder = getAbsPathEvenIfRelativeIsGiven(configGet(modelConfig.FOLDER_FOR_OUTPUT), modelConfigFilepath)
@@ -131,7 +139,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
                     batchSizeVal=configGet(modelConfig.BATCH_SIZE_VAL),
                     batchSizeInfer=configGet(modelConfig.BATCH_SIZE_INFER),
                     #===Other Architectural Parameters ===
-                    activationFunction=configGet(modelConfig.ACTIV_FUNCTION),
+                    activationFunc=configGet(modelConfig.ACTIV_FUNCTION),
                     #==Dropout Rates==
                     dropNormal=configGet(modelConfig.DROP_R_NORM),
                     dropSubsampled=configGet(modelConfig.DROP_R_SUBS),

@@ -670,7 +670,7 @@ class Cnn3d(object):
                         softmaxTemperature,
                         
                         #=== Other Architectural params ===
-                        activationFunctionToUseRelu0orPrelu1,
+                        activationFunc,
                         #---Residual Connections----
                         indicesOfLayersToConnectResidualsInOutput,
                         #--Lower Rank Layer Per Pathway---
@@ -774,8 +774,8 @@ class Cnn3d(object):
         thisPathwayUseBnPerLayer = [rollingAverageForBatchNormalizationOverThatManyBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
         
-        thisPathwayActivFuncPerLayer = [activationFunctionToUseRelu0orPrelu1] * thisPathwayNumOfLayers
-        thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType != pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
+        thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
+        thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
         thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                          inputToPathwayTrain,
@@ -822,8 +822,8 @@ class Cnn3d(object):
             thisPathwayUseBnPerLayer = [rollingAverageForBatchNormalizationOverThatManyBatches > 0] * thisPathwayNumOfLayers
             thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
             
-            thisPathwayActivFuncPerLayer = [activationFunctionToUseRelu0orPrelu1] * thisPathwayNumOfLayers
-            thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType != pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
+            thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
+            thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
             
             inputToPathwayShapeTrain = [self.batchSize, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayTrain);
             inputToPathwayShapeVal = [self.batchSizeValidation, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayVal)
@@ -904,8 +904,8 @@ class Cnn3d(object):
         thisPathwayUseBnPerLayer = [rollingAverageForBatchNormalizationOverThatManyBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
         
-        thisPathwayActivFuncPerLayer = [activationFunctionToUseRelu0orPrelu1] * thisPathwayNumOfLayers
-        thisPathwayActivFuncPerLayer[0] = -1 if thisPathwayType != pt.FC else activationFunctionToUseRelu0orPrelu1  # To not apply activation on raw input. -1 is linear activation.
+        thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
+        thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
         thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(myLogger,
                                                                          inputToPathwayTrain,

@@ -201,7 +201,7 @@ class Pathway(object):
             thisLayerFilterShape = [numKernsPerLayer[layer_i],inputToNextLayerShapeTrain[1]] + kernelDimsPerLayer[layer_i]
             
             thisLayerUseBn = useBnPerLayer[layer_i]
-            thisLayerActivFunc = activFuncPerLayer[layer_i] # 0 relu, 1 prelu, -1 linear (no activ, for 1st layer over raw input).
+            thisLayerActivFunc = activFuncPerLayer[layer_i]
             thisLayerDropoutRate = dropoutRatesPerLayer[layer_i] if dropoutRatesPerLayer else 0
             
             thisLayerPoolingParameters = poolingParamsStructureForThisPathwayType[layer_i]
@@ -227,7 +227,7 @@ class Pathway(object):
                             initializationTechniqueClassic0orDelvingInto1=initializationTechniqueClassic0orDelvingInto1,
                             useBnFlag = thisLayerUseBn,
                             rollingAverageForBatchNormalizationOverThatManyBatches=rollingAverageForBatchNormalizationOverThatManyBatches,
-                            activationFunctionToUseRelu0orPrelu1orMinus1ForLinear=thisLayerActivFunc,
+                            activationFunc=thisLayerActivFunc,
                             dropoutRate=thisLayerDropoutRate
                             ) 
             self._layersInPathway.append(layer)

@@ -81,8 +81,8 @@ class CreateModelSessionParameters(object) :
     def errorReqInitializationMethod01() :
         print("ERROR: Parameter \"initializeClassic0orDelving1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"); exit(1)
     @staticmethod
-    def errorReqActivFunction01() :
-        print("ERROR: Parameter \"relu0orPrelu1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"); exit(1)
+    def errorReqActivFunction() :
+        print("ERROR: Parameter \"activationFunction\" has been given invalid input. Exiting!"); exit(1)
         
     @staticmethod
     def errReqSameNumOfLayersPerSubPathway():
@@ -185,7 +185,7 @@ class CreateModelSessionParameters(object) :
                     batchSizeInfer,
                     
                     #===Other Architectural Parameters ===
-                    activationFunction,
+                    activationFunc,
                     #==Dropout Rates==
                     dropNormal,
                     dropSubsampled,
@@ -302,9 +302,9 @@ class CreateModelSessionParameters(object) :
         if not self.initialMethodClassic0Delving1 in [0,1,2]:
             self.errorReqInitializationMethod01()
         #== Activation Function ==
-        self.activationFunctionRelu0Prelu1 = activationFunction if activationFunction != None else 1
-        if not self.activationFunctionRelu0Prelu1 in [0,1,2]:
-            self.errorReqActivFunction01()
+        self.activationFunc = activationFunction if activationFunction != None else 1
+        if not self.activationFunc in ["linear", "relu", "prelu", "elu", "selu"]:
+            self.errorReqActivFunction()
             
         #==BATCH NORMALIZATION==
         self.applyBnToInputOfPathways = [False, False, True, False] # the 3 entry, for FC, should always be True.
@@ -415,7 +415,7 @@ class CreateModelSessionParameters(object) :
         logPrint("Classic random N(0,0.01) initialization (0), or ala \"Delving Into Rectifier\" (1) = " + str(self.initialMethodClassic0Delving1))
         
         logPrint("~~Activation Function~~")
-        logPrint("ReLU (0), or PReLU (1) = " + str(self.activationFunctionRelu0Prelu1))
+        logPrint("Activation function to use = " + str(self.activationFunc))
         
         logPrint("~~Batch Normalization~~")
         logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.applyBnToInputOfPathways))
@@ -449,7 +449,7 @@ class CreateModelSessionParameters(object) :
                         self.softmaxTemperature,
                         
                         #=== Other Architectural params ===
-                        self.activationFunctionRelu0Prelu1,
+                        self.activationFunc,
                         #---Residual Connections----
                         self.indicesOfLayersToConnectResidualsInOutput,
                         #--Lower Rank Layer Per Pathway---
