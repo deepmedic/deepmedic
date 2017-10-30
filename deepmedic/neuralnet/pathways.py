@@ -14,7 +14,7 @@ from math import ceil
 import theano.tensor as T
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes
-from deepmedic.neuralnet.cnnLayerTypes import ConvLayer, LowRankConvLayer
+from deepmedic.neuralnet.layers import ConvLayer, LowRankConvLayer
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
 #################################################################

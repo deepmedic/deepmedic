@@ -155,7 +155,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
         sessionLogger.print3("...Loading the pre-trained network. This can take a few minutes if the model is big...")
         cnnPretrainedInstance = load_object_from_gzip_file(absPathToPreTrainedModelGivenInCmdLine)
         sessionLogger.print3("The pre-trained model was loaded successfully from: " + str(absPathToPreTrainedModelGivenInCmdLine))
-        from deepmedic.neuralnet.cnnTransferParameters import transferParametersBetweenModels
+        from deepmedic.neuralnet.transferParameters import transferParametersBetweenModels
         cnn3dInstance = transferParametersBetweenModels(sessionLogger, cnn3dInstance, cnnPretrainedInstance, listOfLayersToTransfer)
     
     createModelSessionParameters.sessionLogger.print3("\n=========== Saving the model ===============")

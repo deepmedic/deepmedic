@@ -16,7 +16,7 @@ import theano.tensor as T
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
-from deepmedic.neuralnet.cnnLayerTypes import SoftmaxLayer
+from deepmedic.neuralnet.layers import SoftmaxLayer
 
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
