@@ -18,7 +18,7 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.cnnLayerTypes import SoftmaxLayer
 
-from deepmedic.neuralnet.utils import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
+from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
 #-----helper functions that I use in here---
 
@@ -741,7 +741,7 @@ class Cnn3d(object):
         
         # ======== Calculated Attributes =========
         #This recField CNN should in future be calculated with all non-secondary pathways, ie normal+fc. Use another variable for pathway.recField.
-        self.recFieldCnn = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(kernelDimensions)
+        self.recFieldCnn = calcRecFieldFromKernDimListPerLayerWhenStrides1(kernelDimensions)
         
         #==============================
         rng = np.random.RandomState(23455)

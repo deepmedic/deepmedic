@@ -15,7 +15,7 @@ import theano.tensor as T
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes
 from deepmedic.neuralnet.cnnLayerTypes import ConvLayer, LowRankConvLayer
-from deepmedic.neuralnet.utils import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
+from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
 #################################################################
 #                         Pathway Types                         #
@@ -294,7 +294,7 @@ class Pathway(object):
         
     # The below should be updated, and calculated in here properly with private function and per layer.
     def calcRecFieldOfPathway(self, kernelDimsPerLayer) :
-        return calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(kernelDimsPerLayer)
+        return calcRecFieldFromKernDimListPerLayerWhenStrides1(kernelDimsPerLayer)
         
     def calcInputRczDimsToProduceOutputFmsOfCompatibleDims(self, thisPathWayKernelDims, dimsOfOutputFromPrimaryPathway):
         recFieldAtEndOfPathway = self.calcRecFieldOfPathway(thisPathWayKernelDims)

@@ -9,10 +9,7 @@ from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import os
 
-from deepmedic.neuralnet.utils import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
-from deepmedic.neuralnet.utils import checkReceptiveFieldFineInComparisonToSegmentSize
-from deepmedic.neuralnet.utils import checkKernDimPerLayerCorrect3dAndNumLayers
-from deepmedic.neuralnet.utils import checkSubsampleFactorEven
+from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1, checkRecFieldVsSegmSize, checkKernDimPerLayerCorrect3dAndNumLayers, checkSubsampleFactorEven
 
 
 class CreateModelSessionParameters(object) :
@@ -217,7 +214,7 @@ class CreateModelSessionParameters(object) :
         self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal != None and len(numFMsNormal) > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
         self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
-        self.receptiveFieldNormal = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
+        self.receptiveFieldNormal = calcRecFieldFromKernDimListPerLayerWhenStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
         residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         
@@ -249,7 +246,7 @@ class CreateModelSessionParameters(object) :
                 self.errReqKernDimNormalCorr()
             else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
                 self.kernDimPerLayerSubsampled = kernDimSubsampled
-                self.receptiveFieldSubsampled = calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1(self.kernDimPerLayerSubsampled)
+                self.receptiveFieldSubsampled = calcRecFieldFromKernDimListPerLayerWhenStrides1(self.kernDimPerLayerSubsampled)
                 if self.receptiveFieldNormal != self.receptiveFieldSubsampled :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...
@@ -286,7 +283,7 @@ class CreateModelSessionParameters(object) :
         self.segmDimNormalVal = segmDimVal if segmDimVal != None else self.receptiveFieldNormal
         self.segmDimNormalInfer = segmDimInfer if segmDimInfer != None else self.segmDimNormalTrain
         for (tr0_val1_inf2, segmentDimensions) in [ (0,self.segmDimNormalTrain), (1,self.segmDimNormalVal), (2,self.segmDimNormalInfer) ] :
-            if not checkReceptiveFieldFineInComparisonToSegmentSize(self.receptiveFieldNormal, segmentDimensions) :
+            if not checkRecFieldVsSegmSize(self.receptiveFieldNormal, segmentDimensions) :
                 self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, tr0_val1_inf2)
                 
         #=== Batch Sizes ===
