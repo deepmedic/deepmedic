@@ -61,9 +61,9 @@ def setupArgParser() :
     return parser
 
 def checkDevicePassedCorrectly(devArg):
-    correct_gpu_dev = devArg != "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) )
-    correct_cuda_dev = devArg != "cuda" and not (devArg.startswith("cuda") and strIsInt(devArg[4:]) )
-    if devArg != "cpu" and (correct_cuda_dev or correct_gpu_dev):
+    incorrect_gpu_dev = devArg != "gpu" and not (devArg.startswith("gpu") and strIsInt(devArg[3:]) )
+    incorrect_cuda_dev = devArg != "cuda" and not (devArg.startswith("cuda") and strIsInt(devArg[4:]) )
+    if devArg != "cpu" and incorrect_cuda_dev and incorrect_gpu_dev:
         print("ERROR: Value for the [-dev] option was not specified correctly. Specify the device to run the process on. Values: [cpu], [gpu] or [cuda] (Default = cpu).\nIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: gpu2. Exiting."); exit(1)
 
 def setEnvironment(deviceString) :
