@@ -4,6 +4,7 @@ The DeepMedic
 ### News
 28 Oct 2017 (v0.6.1):
 * Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
+* Refactored/reorganized the modules.
 * Various: Updated installation process in README. Logging device used after compilation.
 
 26 Mar 2017 (v0.6):
