@@ -15,7 +15,7 @@ from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers impo
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import checkCpuOrGpu
 
 from deepmedic.loggingAndMonitoring import logger
-from deepmedic.neuralnet.cnnHelpers import load_object_from_gzip_file
+from deepmedic.neuralnet.utils import load_object_from_gzip_file
 from deepmedic.routines.training import do_training
 
 

@@ -15,7 +15,7 @@ import numpy as np
 
 from deepmedic.loggingAndMonitoring.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.neuralnet.wrappers import CnnWrapperForSampling
-from deepmedic.neuralnet.cnnHelpers import dump_cnn_to_gzip_file_dotSave
+from deepmedic.neuralnet.utils import dump_cnn_to_gzip_file_dotSave
 from deepmedic.dataManagement.sampling import getSampledDataAndLabelsForSubepoch
 from deepmedic.routines.testing import performInferenceOnWholeVolumes
 

@@ -9,10 +9,10 @@ from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 import os
 
-from deepmedic.neuralnet.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
-from deepmedic.neuralnet.cnnHelpers import checkReceptiveFieldFineInComparisonToSegmentSize
-from deepmedic.neuralnet.cnnHelpers import checkKernDimPerLayerCorrect3dAndNumLayers
-from deepmedic.neuralnet.cnnHelpers import checkSubsampleFactorEven
+from deepmedic.neuralnet.utils import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
+from deepmedic.neuralnet.utils import checkReceptiveFieldFineInComparisonToSegmentSize
+from deepmedic.neuralnet.utils import checkKernDimPerLayerCorrect3dAndNumLayers
+from deepmedic.neuralnet.utils import checkSubsampleFactorEven
 
 
 class CreateModelSessionParameters(object) :
