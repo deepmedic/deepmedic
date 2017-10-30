@@ -299,11 +299,11 @@ class CreateModelSessionParameters(object) :
         
         #== Weight Initialization==
         self.initialMethodClassic0Delving1 = initialMethod if initialMethod != None else 1
-        if not self.initialMethodClassic0Delving1 in [0,1]:
+        if not self.initialMethodClassic0Delving1 in [0,1,2]:
             self.errorReqInitializationMethod01()
         #== Activation Function ==
         self.activationFunctionRelu0Prelu1 = activationFunction if activationFunction != None else 1
-        if not self.activationFunctionRelu0Prelu1 in [0,1]:
+        if not self.activationFunctionRelu0Prelu1 in [0,1,2]:
             self.errorReqActivFunction01()
             
         #==BATCH NORMALIZATION==
