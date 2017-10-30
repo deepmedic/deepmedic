@@ -399,7 +399,7 @@ def plotProgressBasic(measuredMetricsFromAllExperiments, legendList, movingAverS
                     ]
     
     fontSizeSubplotTitles = 14; fontSizeXTickLabel = 12; fontSizeYTickLabel = 12; fontSizeXAxisLabel = 12; fontSizeYAxisLabel = 14; linewidthInPlots = 1.5;
-    legendFontSize = 12; legendNumberOfColumns = 8;
+    legendFontSize = 12; legendNumberOfColumns = 4;
     #plt.close('all')
     #plt.subplots(rows,columns): returns: (figure, axes), where axes is an array, one element for each subplot, of rows and columns as I specify!
     numberOfMetricsPlotted = len(measuredMetricsFromAllExperiments[0][0])
@@ -471,7 +471,7 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
                     ]
     
     fontSizeSubplotTitles = 14; fontSizeXTickLabel = 12; fontSizeYTickLabel = 12; fontSizeXAxisLabel = 12; fontSizeYAxisLabel = 14; linewidthInPlots = 1.5;
-    legendFontSize = 12; legendNumberOfColumns = 8;
+    legendFontSize = 12; legendNumberOfColumns = 4;
     #plt.close('all')
     #plt.subplots(rows,columns): returns: (figure, axes), where axes is an array, one element for each subplot, of rows and columns as I specify!
     fig, axes = plt.subplots(2, 5, sharex=False, sharey=False)

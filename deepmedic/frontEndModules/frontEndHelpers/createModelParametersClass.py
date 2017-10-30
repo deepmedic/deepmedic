@@ -263,7 +263,7 @@ class CreateModelSessionParameters(object) :
             #---For multiple lower-scale pathways, via the numFMsPerLayerSubsampled and subsampleFactor config ----
             numOfSubsPaths = max(len(self.numFMsPerLayerSubsampled), len(self.subsampleFactor))
             # Default behaviour:
-            # If less sublists in numFMsPerLayerSubsampled were given than numOfSubsPaths, add more sublists of subsampleFactors, for the extra subpaths.
+            # If less sublists in numFMsPerLayerSubsampled were given than numOfSubsPaths, add more sublists of numFMsPerLayerSubsampled, for the extra subpaths.
             for _ in range( numOfSubsPaths - len(self.numFMsPerLayerSubsampled) ) :
                 numFmsForLayersOfLastSubPath = self.numFMsPerLayerSubsampled[-1]
                 self.numFMsPerLayerSubsampled.append( [ max(1, int(numFmsInLayer_i//2)) for numFmsInLayer_i in numFmsForLayersOfLastSubPath ] ) # half of how many previous subPath had.
