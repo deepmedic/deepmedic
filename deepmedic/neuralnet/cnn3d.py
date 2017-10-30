@@ -695,7 +695,7 @@ class Cnn3d(object):
                         # Dropout
                         dropoutRatesForAllPathways,  # list of sublists, one for each pathway. Each either empty or full with the dropout rates of all the layers in the path.
                         # Initialization
-                        initializationTechniqueClassic0orDelvingInto1,
+                        convWInitMethod,
                         # Batch Normalization
                         applyBnToInputOfPathways,  # one Boolean flag per pathway type. Placeholder for the FC pathway.
                         rollingAverageForBatchNormalizationOverThatManyBatches,
@@ -734,7 +734,6 @@ class Cnn3d(object):
         self.batchSizeTesting = batch_size_testing
         # == Others ==
         self.dropoutRatesForAllPathways = dropoutRatesForAllPathways
-        self.initializationTechniqueClassic0orDelvingInto1 = initializationTechniqueClassic0orDelvingInto1
         # == various ==
         self.borrowFlag = borrowFlag
         self.dataTypeX = dataTypeX
@@ -788,7 +787,7 @@ class Cnn3d(object):
                                                                          thisPathWayNKerns,
                                                                          thisPathWayKernelDimensions,
                                                                          
-                                                                         initializationTechniqueClassic0orDelvingInto1,
+                                                                         convWInitMethod,
                                                                          thisPathwayUseBnPerLayer,
                                                                          rollingAverageForBatchNormalizationOverThatManyBatches,
                                                                          thisPathwayActivFuncPerLayer,
@@ -839,7 +838,7 @@ class Cnn3d(object):
                                                                      thisPathWayNKerns,
                                                                      thisPathWayKernelDimensions,
                                                                      
-                                                                     initializationTechniqueClassic0orDelvingInto1,
+                                                                     convWInitMethod,
                                                                      thisPathwayUseBnPerLayer,
                                                                      rollingAverageForBatchNormalizationOverThatManyBatches,
                                                                      thisPathwayActivFuncPerLayer,
@@ -918,7 +917,7 @@ class Cnn3d(object):
                                                                          thisPathWayNKerns,
                                                                          thisPathWayKernelDimensions,
                                                                          
-                                                                         initializationTechniqueClassic0orDelvingInto1,
+                                                                         convWInitMethod,
                                                                          thisPathwayUseBnPerLayer,
                                                                          rollingAverageForBatchNormalizationOverThatManyBatches,
                                                                          thisPathwayActivFuncPerLayer,

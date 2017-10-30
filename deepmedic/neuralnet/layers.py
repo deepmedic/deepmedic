@@ -254,7 +254,7 @@ class ConvLayer(Block):
         return (inputToConvTrain, inputToConvVal, inputToConvTest,
                 inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest )
         
-    def _createWeightsTensorAndConvolve(self, rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 
+    def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
                                         inputToConvTrain, inputToConvVal, inputToConvTest,
                                         inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
         #-----------------------------------------------
@@ -262,7 +262,7 @@ class ConvLayer(Block):
         #-----------------------------------------------
         #----- Initialise the weights -----
         # W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
-        self._W = createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+        self._W = createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng)
         self.params = [self._W] + self.params
         
         #---------- Convolve --------------
@@ -281,7 +281,7 @@ class ConvLayer(Block):
                 inputToLayerShapeTest,
                 filterShape,
                 poolingParameters, # Can be []
-                initializationTechniqueClassic0orDelvingInto1,
+                convWInitMethod,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc="relu",
@@ -318,7 +318,7 @@ class ConvLayer(Block):
                                                                                         activationFunc,
                                                                                         dropoutRate)
         
-        tupleWithOuputAndShapeTrValTest = self._createWeightsTensorAndConvolve( rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 
+        tupleWithOuputAndShapeTrValTest = self._createWeightsTensorAndConvolve( rng, filterShape, convWInitMethod, 
                                                                                 inputToConvTrain, inputToConvVal, inputToConvTest,
                                                                                 inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
         
@@ -364,7 +364,7 @@ class LowRankConvLayer(ConvLayer):
         return (concatSubconvOutputs, concatOutputShape)
     
     # Overload the ConvLayer's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.        
-    def _createWeightsTensorAndConvolve(self, rng, filterShape, initializationTechniqueClassic0orDelvingInto1, 
+    def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
                                         inputToConvTrain, inputToConvVal, inputToConvTest,
                                         inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
         # Behaviour: Create W, set self._W, set self.params, convolve, return ouput and outputShape.
@@ -376,16 +376,16 @@ class LowRankConvLayer(ConvLayer):
         # W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
         
         rSubconvFilterShape = [ filterShape[0]//3, filterShape[1], filterShape[2], 1 if self._rank == 1 else filterShape[3], 1 ]
-        rSubconvW = createAndInitializeWeightsTensor(rSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+        rSubconvW = createAndInitializeWeightsTensor(rSubconvFilterShape, convWInitMethod, rng)
         rSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(rSubconvW, rSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
         
         cSubconvFilterShape = [ filterShape[0]//3, filterShape[1], 1, filterShape[3], 1 if self._rank == 1 else filterShape[4] ]
-        cSubconvW = createAndInitializeWeightsTensor(cSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+        cSubconvW = createAndInitializeWeightsTensor(cSubconvFilterShape, convWInitMethod, rng)
         cSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(cSubconvW, cSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
         
         numberOfFmsForTotalToBeExact = filterShape[0] - 2*(filterShape[0]//3) # Cause of possibly inexact integer division.
         zSubconvFilterShape = [ numberOfFmsForTotalToBeExact, filterShape[1], 1 if self._rank == 1 else filterShape[2], 1, filterShape[4] ]
-        zSubconvW = createAndInitializeWeightsTensor(zSubconvFilterShape, initializationTechniqueClassic0orDelvingInto1, rng)
+        zSubconvW = createAndInitializeWeightsTensor(zSubconvFilterShape, convWInitMethod, rng)
         zSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(zSubconvW, zSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
         
         # Set the W attribute and trainable parameters.

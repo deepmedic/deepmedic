@@ -145,21 +145,17 @@ def applySelu(inputTrain, inputVal, inputTest):
     
     return ( outputTrain, outputVal, outputTest )
 
-def createAndInitializeWeightsTensor(filterShape, initializationTechniqueClassic0orDelvingInto1, rng) :
+def createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng) :
     # filterShape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]
-    if initializationTechniqueClassic0orDelvingInto1 == 0 :
-        stdForInitialization = 0.01
-    elif initializationTechniqueClassic0orDelvingInto1 == 1 :
-        stdForInitialization = np.sqrt( 2.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) #Delving Into rectifiers suggestion.
-    elif initializationTechniqueClassic0orDelvingInto1 == 2 : # For SNN
-        stdForInitialization = np.sqrt( 1.0 / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) ) # Half of He et al, cause 2 counters ReLU effect.
+    if convWInitMethod[0] == "normal" :
+        stdForInit = convWInitMethod[1] # commonly 0.01 from Krizhevski
+    elif convWInitMethod[0] == "fanIn" :
+        varianceScale = convWInitMethod[1] # 2 for init ala Delving into Rectifier, 1 for SNN.
+        stdForInit = np.sqrt( varianceScale / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) )
         
-    W = theano.shared(
-                      np.asarray(rng.normal(loc=0.0, scale=stdForInitialization, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])),
-                                    dtype='float32'#theano.config.floatX
-                                    ),
-                      borrow=True
-                      )
+    # Perhaps I want to use: theano.config.floatX in the below
+    wInitNpArray = np.asarray( rng.normal(loc=0.0, scale=stdForInit, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])), dtype='float32' )
+    W = theano.shared( wInitNpArray, borrow=True )
     # W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
     return W
 

@@ -69,18 +69,23 @@ class ModelConfig(object):
     DROP_R_SUBS = "dropoutRatesSubsampled"
     DROP_R_FC = "dropoutRatesFc"
     
-    #Initialization method of the kernel weights. Classic is what I was using for my first year. "Delving Deep" for journal.
-    INITIAL_METHOD = "initializeClassic0orDelving1"
+    #Initialization method of the kernel weights.
+    CONV_W_INIT = "convWeightsInit"
     #Activation Function for all convolutional layers:
     ACTIV_FUNCTION = "activationFunction"
-
+    
     #Batch Normalization
     BN_ROLL_AV_BATCHES = "rollAverageForBNOverThatManyBatches"
 
 
 def checkForDeprecatedConfig(configGet):
+    msg_part1 = "ERROR: Deprecated input to the config: ["
+    msg_part2 = "]. Please update config and use the new corresponding variable "
+    msg_part3 = "]. Exiting."
+    if configGet("initializeClassic0orDelving1") is not None:
+        logger.print3(msg_part1 + "initializeClassic0orDelving1" + msg_part2 + "convWeightsInit" + msg_part3); exit(1)
     if configGet("relu0orPrelu1") is not None:
-        logger.print3("ERROR: Deprecated input to the config: [relu0orPrelu1]. Please update config to use the new [activationFunction] variable accordingly. Exiting."); exit(1)
+        logger.print3(msg_part1 + "relu0orPrelu1" + msg_part2 + "activationFunction" + msg_part3); exit(1)
     
     
 #The argument should be absolute path to the config file for the model to create.
@@ -145,7 +150,7 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
                     dropSubsampled=configGet(modelConfig.DROP_R_SUBS),
                     dropFc=configGet(modelConfig.DROP_R_FC),
                     #== Weight Initialization==
-                    initialMethod=configGet(modelConfig.INITIAL_METHOD),
+                    convWInitMethod=configGet(modelConfig.CONV_W_INIT),
                     #== Batch Normalization ==
                     bnRollingAverOverThatManyBatches=configGet(modelConfig.BN_ROLL_AV_BATCHES),
                     )

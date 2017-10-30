@@ -172,7 +172,7 @@ class Pathway(object):
                                                     numKernsPerLayer,
                                                     kernelDimsPerLayer,
                                                     
-                                                    initializationTechniqueClassic0orDelvingInto1,
+                                                    convWInitMethod,
                                                     useBnPerLayer, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
                                                     rollingAverageForBatchNormalizationOverThatManyBatches,
                                                     activFuncPerLayer,
@@ -224,7 +224,7 @@ class Pathway(object):
                             
                             filterShape=thisLayerFilterShape,
                             poolingParameters=thisLayerPoolingParameters,
-                            initializationTechniqueClassic0orDelvingInto1=initializationTechniqueClassic0orDelvingInto1,
+                            convWInitMethod=convWInitMethod,
                             useBnFlag = thisLayerUseBn,
                             rollingAverageForBatchNormalizationOverThatManyBatches=rollingAverageForBatchNormalizationOverThatManyBatches,
                             activationFunc=thisLayerActivFunc,

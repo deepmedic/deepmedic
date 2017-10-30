@@ -78,11 +78,11 @@ class CreateModelSessionParameters(object) :
     def errorReceptiveFieldsOfNormalAndSubsampledDifferent(kernDimPerLayerNormal, receptiveFieldSubsampled) :
         print("ERROR: The receptive field of the normal pathway was calculated = ", len(kernDimPerLayerNormal), " while the receptive field of the subsampled pathway was calculated=", len(receptiveFieldSubsampled), ". Because of limitations to the developed system, the two pathways must have the save size of receptive field. Please provide a combination of \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" that gives the same size of field as the normal pathway. If unsure of how to proceed, please ommit specifying \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" in the config file, and the second subsampled pathway will be automatically created to mirror the normal. Else, if you want to just specify the number of Feature Maps in the subsampled, provide \"numberFMsPerLayerSubsampled\" = [num-FMs-layer1, ..., num-FMs-layerN], with N the same number as the normal pathway, and we will then use the same kernel-sizes as the normal pathway. Exiting!"); exit(1)
     @staticmethod
-    def errorReqInitializationMethod01() :
-        print("ERROR: Parameter \"initializeClassic0orDelving1\" must be given equal to 0 or 1. Omit for default (=1). Exiting!"); exit(1)
+    def errorReqInitializationMethod() :
+        print("ERROR: Parameter \"convWeightsInit\" has been given invalid value. Exiting!"); exit(1)
     @staticmethod
     def errorReqActivFunction() :
-        print("ERROR: Parameter \"activationFunction\" has been given invalid input. Exiting!"); exit(1)
+        print("ERROR: Parameter \"activationFunction\" has been given invalid value. Exiting!"); exit(1)
         
     @staticmethod
     def errReqSameNumOfLayersPerSubPathway():
@@ -192,7 +192,7 @@ class CreateModelSessionParameters(object) :
                     dropFc,
                     
                     #== Weight Initialization==
-                    initialMethod,
+                    convWInitMethod,
                     
                     #== Batch Normalization ==
                     bnRollingAverOverThatManyBatches
@@ -298,11 +298,11 @@ class CreateModelSessionParameters(object) :
         self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc, []]
         
         #== Weight Initialization==
-        self.initialMethodClassic0Delving1 = initialMethod if initialMethod != None else 1
-        if not self.initialMethodClassic0Delving1 in [0,1,2]:
-            self.errorReqInitializationMethod01()
+        self.convWInitMethod = convWInitMethod if convWInitMethod != None else ["fanIn", 2]
+        if not self.convWInitMethod[0] in ["normal", "fanIn"]:
+            self.errorReqInitializationMethod()
         #== Activation Function ==
-        self.activationFunc = activationFunction if activationFunction != None else 1
+        self.activationFunc = activationFunction if activationFunction != None else "prelu"
         if not self.activationFunc in ["linear", "relu", "prelu", "elu", "selu"]:
             self.errorReqActivFunction()
             
@@ -412,7 +412,7 @@ class CreateModelSessionParameters(object) :
         logPrint("Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = " + str(self.dropoutRatesForAllPathways[2]))
         
         logPrint("~~Weight Initialization~~")
-        logPrint("Classic random N(0,0.01) initialization (0), or ala \"Delving Into Rectifier\" (1) = " + str(self.initialMethodClassic0Delving1))
+        logPrint("Initialization method and params for the conv kernel weights = " + str(self.convWInitMethod))
         
         logPrint("~~Activation Function~~")
         logPrint("Activation function to use = " + str(self.activationFunc))
@@ -474,7 +474,7 @@ class CreateModelSessionParameters(object) :
                         #Dropout
                         self.dropoutRatesForAllPathways,
                         #Initialization
-                        self.initialMethodClassic0Delving1,
+                        self.convWInitMethod,
                         #Batch Normalization
                         self.applyBnToInputOfPathways,
                         self.bnRollingAverOverThatManyBatches,
