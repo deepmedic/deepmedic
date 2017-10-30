@@ -19,7 +19,7 @@ except ImportError:
     # python3 compatibility
     from sys import maxsize as MAX_INT
 
-from deepmedic.pooling import pooling3d as dmPooling3d
+from deepmedic.neuralnet.pooling import pooling3d as dmPooling3d
 
 ###############################################################
 # Functions used by layers but do not change Layer Attributes #
@@ -264,7 +264,7 @@ class Block(object):
         self._appliedBnInLayer = None # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
         
         # All trainable parameters
-        # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.cnnTransferParameters.transferParametersBetweenLayers.
+        # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.cnnTransferParameters.transferParametersBetweenLayers.
         # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
         self.params = [] # W, (gbn), b, (aPrelu)
         self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv

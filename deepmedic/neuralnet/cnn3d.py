@@ -14,11 +14,11 @@ from math import ceil
 import theano
 import theano.tensor as T
 
-from deepmedic.pathwayTypes import PathwayTypes as pt
-from deepmedic.pathways import NormalPathway, SubsampledPathway, FcPathway
-from deepmedic.cnnLayerTypes import SoftmaxLayer
+from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
+from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
+from deepmedic.neuralnet.cnnLayerTypes import SoftmaxLayer
 
-from deepmedic.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
+from deepmedic.neuralnet.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
 
 #-----helper functions that I use in here---
 

@@ -14,8 +14,8 @@ from deepmedic.frontEndModules.frontEndHelpers.createModelParametersClass import
 from deepmedic.frontEndModules.frontEndHelpers.preparationForSessionHelpers import makeFoldersNeededForCreateModelSession
 
 from deepmedic.loggingAndMonitoring import logger
-from deepmedic.cnn3d import Cnn3d
-from deepmedic.cnnHelpers import dump_cnn_to_gzip_file_dotSave
+from deepmedic.neuralnet.cnn3d import Cnn3d
+from deepmedic.neuralnet.cnnHelpers import dump_cnn_to_gzip_file_dotSave
 from deepmedic.genericHelpers import load_object_from_gzip_file
 from deepmedic.genericHelpers import datetimeNowAsStr
 
@@ -156,8 +156,8 @@ def deepMedicNewModelMain(modelConfigFilepath, absPathToPreTrainedModelGivenInCm
         sessionLogger.print3("...Loading the pre-trained network. This can take a few minutes if the model is big...")
         cnnPretrainedInstance = load_object_from_gzip_file(absPathToPreTrainedModelGivenInCmdLine)
         sessionLogger.print3("The pre-trained model was loaded successfully from: " + str(absPathToPreTrainedModelGivenInCmdLine))
-        from deepmedic import cnnTransferParameters
-        cnn3dInstance = cnnTransferParameters.transferParametersBetweenModels(sessionLogger, cnn3dInstance, cnnPretrainedInstance, listOfLayersToTransfer)
+        from deepmedic.neuralnet.cnnTransferParameters import transferParametersBetweenModels
+        cnn3dInstance = transferParametersBetweenModels(sessionLogger, cnn3dInstance, cnnPretrainedInstance, listOfLayersToTransfer)
     
     createModelSessionParameters.sessionLogger.print3("\n=========== Saving the model ===============")
     if absPathToPreTrainedModelGivenInCmdLine != None:

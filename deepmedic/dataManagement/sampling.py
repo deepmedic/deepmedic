@@ -15,7 +15,7 @@ import random
 
 from deepmedic.image.io import loadVolume
 from deepmedic.image.processing import reflectImageArrayIfNeeded, smoothImageWithGaussianFilterIfNeeded, calculateTheZeroIntensityOf3dImage, padCnnInputs
-from deepmedic.pathwayTypes import PathwayTypes as pt
+from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 
 
 # Order of calls:

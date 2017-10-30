@@ -9,7 +9,7 @@
 #                        Types of Pathways                      #
 #################################################################
 
-# Also see module deepmedic.pathways.
+# Also see module deepmedic.neuralnet.pathways.
 
 from __future__ import absolute_import, print_function, division
 

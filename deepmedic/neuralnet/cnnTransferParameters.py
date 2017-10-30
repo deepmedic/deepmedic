@@ -8,13 +8,13 @@
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 
-from deepmedic.pathwayTypes import PathwayTypes as pt
+from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 
 def transferParametersBetweenModels(myLogger, cnnTarget, cnnSource, listOfLayersToTransfer):
     """
     Transfer parameters from a model to another.
     
-    cnnTarget : An instance of deepmedic.cnn3d.Cnn3d. This is the model that will receive the parameters of the pre-trained model.
+    cnnTarget : An instance of deepmedic.neural.net.cnn3d.Cnn3d. This is the model that will receive the parameters of the pre-trained model.
     cnnSource: Similar to the above. The parameters of this model will be transfered to the above.
     listOfLayersToTransfer: A list of integers. The integers are the depth of the layers of cnnTarget that will be adopted from the pre-trained model.
         First layer is 1. Classification layer of the original 11-layers deep deepmedic is 11.

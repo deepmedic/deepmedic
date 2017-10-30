@@ -13,9 +13,9 @@ from math import ceil
 
 import theano.tensor as T
 
-from deepmedic.pathwayTypes import PathwayTypes
-from deepmedic.cnnLayerTypes import ConvLayer, LowRankConvLayer
-from deepmedic.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
+from deepmedic.neuralnet.pathwayTypes import PathwayTypes
+from deepmedic.neuralnet.cnnLayerTypes import ConvLayer, LowRankConvLayer
+from deepmedic.neuralnet.cnnHelpers import calculateReceptiveFieldDimensionsFromKernelsDimListPerLayerForFullyConvCnnWithStrides1
 
 #################################################################
 #                         Pathway Types                         #

@@ -18,7 +18,7 @@ from deepmedic.dataManagement.sampling import extractDataOfSegmentsUsingSampledS
 from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, save4DImgWithAllFmsToNiiWithOriginalHdr
 from deepmedic.image.processing import unpadCnnOutputs
 
-from deepmedic.pathwayTypes import PathwayTypes as pt
+from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.genericHelpers import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
