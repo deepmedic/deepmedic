@@ -165,7 +165,8 @@ def checkCpuOrGpu(logger, compiledTheanoFunc):
     if os.environ[THEANO_FLAGS].find("force_device=True") != -1 and os.environ[THEANO_FLAGS].find("device=cuda") != -1 and not usingGpu :
         logger.print3("ERROR:\t The THEANO_FLAGS, as set either in the environment or via the deepMedicRun script, they enforced the use of GPU.\n" +\
                       "\t However an internal check showed that Theano has not managed to start on the GPU.\n" +\
-                      "\t Please check for any error messages thrown above by Theano (eg when loading or compiling the model) for indications about the problemem.\n" +\
+                      "\t Please check for any error messages thrown above by Theano (eg when loading or compiling the model) for indications about the problem.\n" +\
+                      "\t Given THEANO_FLAGS= "+ str(os.environ[THEANO_FLAGS]) + "\n" +\
                       "\t Exiting!"); exit(1)
         
     
