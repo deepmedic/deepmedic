@@ -147,14 +147,26 @@ def checkCpuOrGpu(logger, compiledTheanoFunc):
     # Returns 1 if gpu, 0 if cpu.
     # From: http://www.deeplearning.net/software/theano_versions/dev/tutorial/using_gpu.html
     
+    usingGpu = False
+    usingCuDnn = False
+    
     if any([x.op.__class__.__name__.startswith("Gpu") for x in compiledTheanoFunc.maker.fgraph.toposort()]):
         logger.print3('CONFIG: Theano is using the [GPU].')
-        
+        usingGpu = True    
         from theano.gpuarray.dnn import dnn_present
-        cudnn_found = dnn_present()
-        logger.print3("CONFIG: Theano found and will use cuDNN ["+ str(cudnn_found) +"]")
-        return 1
+        usingCuDnn = dnn_present()
+        logger.print3("CONFIG: Theano found and will use cuDNN ["+ str(usingCuDnn) +"]")
+        
     else:
         logger.print3('CONFIG: Theano is using the [CPU].')
-        return 0
+        usingGpu=False
+        
+    THEANO_FLAGS = "THEANO_FLAGS"
+    if os.environ[THEANO_FLAGS].find("force_device=True") != -1 and os.environ[THEANO_FLAGS].find("device=cuda") != -1 and not usingGpu :
+        logger.print3("ERROR:\t The THEANO_FLAGS, as set either in the environment or via the deepMedicRun script, they enforced the use of GPU.\n" +\
+                      "\t However an internal check showed that Theano has not managed to start on the GPU.\n" +\
+                      "\t Please check for any error messages thrown above by Theano (eg when loading or compiling the model) for indications about the problemem.\n" +\
+                      "\t Exiting!"); exit(1)
+        
+    
     
