@@ -30,7 +30,7 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python",
     ],
-    install_requires=['nibabel', 'numpy>=1.7.1', 'six>=1.9.0', 'theano>=0.8.0', 'pp'],
+    install_requires=['nibabel', 'numpy>=1.7.1', 'six>=1.9.0', 'theano>=0.10.0', 'pp'],
     dependency_links=[
 	"http://www.parallelpython.com/downloads/pp/pp-1.6.4.tar.gz",
     ]

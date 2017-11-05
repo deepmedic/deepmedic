@@ -81,7 +81,7 @@ The system is written in python. The following libraries are required:
 
 The software cloned with:
 ```
-git clone https://github.com/Kamnitsask/deepmedic/`
+git clone https://github.com/Kamnitsask/deepmedic/
 ```
 After cloning it, all dependencies can be installed as described below.
 
