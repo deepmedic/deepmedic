@@ -6,6 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
+from six.moves import xrange
 
 import time
 import numpy as np
