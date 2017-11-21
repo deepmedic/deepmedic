@@ -7,6 +7,7 @@
 
 from __future__ import absolute_import, print_function, division
 
+from six.moves import xrange
 import time
 import numpy as np
 import math
@@ -447,5 +448,5 @@ def printExplanationsAboutDice(myLogger) :
     myLogger.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground, i.e all labels merged, except the background label=0. Useful for multi-class problems.")
     myLogger.print3("EXPLANATION: DICE1 is calculated as segmentation over whole volume VS whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
     myLogger.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
-    
+
     
