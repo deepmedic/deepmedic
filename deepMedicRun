@@ -122,7 +122,7 @@ def setEnvironment(deviceString) :
     if not os.environ[THEANO_FLAGS].find("floatX=") >= 0: os.environ[THEANO_FLAGS] += ",floatX=float32"
     if not os.environ[THEANO_FLAGS].find("force_device=") >= 0: os.environ[THEANO_FLAGS] += ",force_device=True"
     if not os.environ[THEANO_FLAGS].find("dnn.enabled=") >= 0: os.environ[THEANO_FLAGS] += ",dnn.enabled=auto"
-    if not os.environ[THEANO_FLAGS].find("gpuarray.preallocate=") >= 0: os.environ[THEANO_FLAGS] += ",gpuarray.preallocate=1"
+    # if not os.environ[THEANO_FLAGS].find("gpuarray.preallocate=") >= 0: os.environ[THEANO_FLAGS] += ",gpuarray.preallocate=1"
     if not os.environ[THEANO_FLAGS].find("openmp=") >= 0: os.environ[THEANO_FLAGS] += ",openmp=True" #  Parallelism with OpenMP: http://deeplearning.net/software/theano//tutorial/multi_cores.html
     # can also add to theano_flags: cuda.root=/path/to/cuda/root
 
