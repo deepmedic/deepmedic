@@ -147,7 +147,7 @@ It is easy (simply copy cuDNN files in your Cuda folders in unix) and really off
 
 * Make sure that the **ground-truth labels** for training and evaluation represent the background with zero. The system also assumes that the task’s classes are indexed increasing by one (not 0,10,20 but 0,1,2).
 
-* **You are strongly advised to normalize the intensity of the data within the ROI to a zero-mean, unary-variance space**. Our default configuration significantly underperforms if intensities are in another range of values.
+* **You are strongly advised to normalize the intensity of the data within the ROI to a zero-mean, unit-variance space**. Our default configuration significantly underperforms if intensities are in another range of values.
 
 **Note for large images**: Large 3D CNNs are computationally expensive. Consider downsampling the images or reducing the size of the network if you encounter computational difficulties. The default configuration of DeepMedic was applied on scans of size around 200x200x200. 
 
@@ -187,17 +187,10 @@ Lets **train** the model with the command (replace *DATE+TIME*):
 The model should be loaded and training for two epochs should be performed. After each epoch the trained model is saved at `examples/output/cnnModels/trainSessionWithValidTinyCnn`. The logs for the sessions should be found in `examples/output/logs/trainSessionWithValidTinyCnn.txt`. Finally, after each epoch, the model performs segmentation of the validation images and the segmentation results (.nii files) should appear in `examples/output/predictions/trainSessionWithValidTinyCnn/predictions/`. If the training finishes normally (should take 5 mins) and you can see the mentioned files in the corresponding folders, beautiful. 
 
 You can **plot the training progress** using an accompanying script, which parses the training logs:
-'''
+```
 python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTinyCnn.txt -d
-'''
+```
 
----
-*NOTE:* Since Theano-v0.9, the convolutions will be parallelized on multiple threads if BLAS and OpenMP libraries are detected. By default, they will use all available threads.
-You can limit the threads to use via the OMP_NUM_THREADS environment variable, for example:
-`$ OMP_NUM_THREADS=5 python ./deepMedicRun -train ...rest of arguments...`
-You can also disable OpenMp (it was found to hang on some machine setups) via the THEANO_FLAGS:
-`$ THEANO_FLAGS='openmp=False' python ./deepMedicRun -train ...rest of arguments...`
---- 
 
 Now lets **test** with the trained model (replace *DATE+TIME*):
 ```cshell
@@ -451,7 +444,7 @@ In `examples/configFiles/deepMedicOriginal/` we provide the configuration of the
 
 To run the DeepMedic on your data, the following are the minimum steps you need to follow:
 
-**a)** **Pre-process your data** as described in Sec. [1.4](#14-required-data-pre-processing). Do not forget to normalise them to a zero-mean, unary-variance space. Produce ROI masks (for instance brain masks) if possible for the task.
+**a)** **Pre-process your data** as described in Sec. [1.4](#14-required-data-pre-processing). Do not forget to normalise them to a zero-mean, unit-variance space. Produce ROI masks (for instance brain masks) if possible for the task.
 
 **b)** In the **modelConfig.cfg** file, change the variable `numberOfOutputClasses = 5` to the number of classes in your task (eg 2 if binary), and `numberOfInputChannels = 2` to the number of input modalities. Now you are ready to create the model via the `-newModel` option.
 
