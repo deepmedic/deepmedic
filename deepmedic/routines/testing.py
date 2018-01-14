@@ -155,18 +155,6 @@ def performInferenceOnWholeVolumes(myLogger,
                                                                         )
         myLogger.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
         
-        #In the next part, for each imagePart in a batch I get from the cnn a vector with labels for the central voxels of the imagepart (9^3 originally).
-        #I will reshape the 9^3 vector to a cube and "put it" in the new-segmentation-image, where it corresponds.
-        #I have to find exactly to which voxels these labels correspond to. Consider that the image part is bigger than the 9^3 label box...
-        #by half-patch at the top and half-patch at the bottom of each dimension.
-        
-        #Here I calculate how many imageParts can fit in each r-c-z direction/dimension.
-        #It is how many times the stride (originally 9^3) can fit in the niiDimension-1patch (half up, half bottom)
-        imagePartsPerRdirection = (niiDimensions[0]-recFieldCnn[0]+1) // strideOfImagePartsPerDimensionInVoxels[0]
-        imagePartsPerCdirection = (niiDimensions[1]-recFieldCnn[1]+1) // strideOfImagePartsPerDimensionInVoxels[1]
-        imagePartsPerZdirection = (niiDimensions[2]-recFieldCnn[2]+1) // strideOfImagePartsPerDimensionInVoxels[2]
-        imagePartsPerZSlice = imagePartsPerRdirection*imagePartsPerCdirection
-        
         totalNumberOfImagePartsToProcessForThisImage = len(sliceCoordsOfSegmentsInImage)
         myLogger.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
         
