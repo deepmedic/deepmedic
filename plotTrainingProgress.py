@@ -426,7 +426,7 @@ def plotProgressBasic(measuredMetricsFromAllExperiments, legendList, movingAverS
                 xIter = np.linspace(0, numberOfEpochsRan, numberOfSubepochsRan, endpoint=True) #endpoint=True includes it as the final point.
                 
                 axis = axes[valOrTrain_i] if numberOfMetricsPlotted == 1 else axes[valOrTrain_i, metric_i] # No 2nd index when subplot(X, 1, ...)
-                axis.plot(xIter, valOrTrainExperiment[metric_i], color = colors[valOrTrainExperiment_i%len(colors)], linestyle = linestyles[valOrTrainExperiment_i/len(colors)], label=legendList[valOrTrainExperiment_i], linewidth=linewidthInPlots)
+                axis.plot(xIter, valOrTrainExperiment[metric_i], color = colors[valOrTrainExperiment_i%len(colors)], linestyle = linestyles[valOrTrainExperiment_i//len(colors)], label=legendList[valOrTrainExperiment_i], linewidth=linewidthInPlots)
                 axis.set_title(subplotTitles[valOrTrain_i][metric_i], fontsize=fontSizeSubplotTitles, y=1.022)
                 axis.yaxis.grid(True, zorder=0)
                 axis.set_xlim([0,maxNumOfEpsDurationOfExps])
@@ -504,7 +504,7 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
                     maxNumOfEpsDurationOfExps = maxNumOfEpsDurationOfExps if maxNumOfEpsDurationOfExps >= numberOfEpochsRan else numberOfEpochsRan
                     xIter = np.linspace(0, numberOfEpochsRan, numberOfFullInfRanPlusOneAt0, endpoint=True)
 
-                axes[valOrTrain_i, meanPosNegDice1_i].plot(xIter, valOrTrainExperiment[meanPosNegDice1_i], color = colors[valOrTrainExperiment_i%len(colors)], linestyle = linestyles[valOrTrainExperiment_i/len(colors)], label=legendList[valOrTrainExperiment_i], linewidth=linewidthInPlots)
+                axes[valOrTrain_i, meanPosNegDice1_i].plot(xIter, valOrTrainExperiment[meanPosNegDice1_i], color = colors[valOrTrainExperiment_i%len(colors)], linestyle = linestyles[valOrTrainExperiment_i//len(colors)], label=legendList[valOrTrainExperiment_i], linewidth=linewidthInPlots)
                 axes[valOrTrain_i, meanPosNegDice1_i].set_title(subplotTitles[valOrTrain_i][meanPosNegDice1_i], fontsize=fontSizeSubplotTitles, y=1.022)
                 axes[valOrTrain_i, meanPosNegDice1_i].yaxis.grid(True, zorder=0)
                 axes[valOrTrain_i, meanPosNegDice1_i].set_xlim([0,maxNumOfEpsDurationOfExps])
