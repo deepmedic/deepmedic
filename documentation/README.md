@@ -89,8 +89,7 @@ After cloning it, all dependencies can be installed as described below.
 #### Install using conda (preferred)
 
 Since Theano-v0.9, a new GPU backend based on libgpuarray has been introduced. Its dependencies are much easier to install via *conda*, as they include C libraries that pip can't install.
-Theano-v0.9 was found a bit unstable with certain versions of cuDNN. So we suggest you upgrade straight to Theano-v0.10 (beta, from github currently).
-The below steps should guide you for installing conda, installing theano-v0.10 and dependencies, and installing deepmedic.
+The below steps should guide you for installing conda, theano and dependencies, and installing deepmedic.
 
 **Install conda**:
 Download an installer for your OS from [link](https://conda.io/miniconda.html) and run it.
@@ -102,16 +101,11 @@ $ export PATH=$PATH:/path/to/miniconda/bin
 **Install Theano and DeepMedic's dependencies**:
 ```
 cd /path/to/deepmedic/root/folder
-conda create -n condaEnv_dm
+conda create -n condaEnv_dm python=2.7        # deepmedic also works with python 3, but will need specific version of parallel python. See issue 58.
 source activate condaEnv_dm
+conda install theano                          # Should install theano v1.0, along with mkl-service, pygpu, etc.
 conda install pip
-conda install numpy                                  # Also installs openmp and mkl that Theano v0.9+ uses
-conda install mkl-service                            # Theano v0.9+ requirement.
-conda install -c conda-forge pygpu=0.7.4             # Also installs libgpuarray, the new backend of Theano. Theano requires pygpu 0.7<version<0.8 currently.
-
-pip install git+https://github.com/Theano/Theano     # Installs latest developer version of theano (to get v0.10, cause v0.9 was found unstable with cuDnn).
-pip install pycuda                                   # Theano requirement for gpu processing.
-pip install .                                        # Installs rest of deepmedic's dependencies.
+pip install .                                 # Installs rest of deepmedic's dependencies.
 ```
 
 #### 1.3. GPU Processing
@@ -244,7 +238,7 @@ ERROR (theano.gpuarray): Could not initialize pygpu, support disabled
 ...
 RuntimeError: Could not find cudnn library (looked for v5[.1])
 ```
-They process may even continue, but run on the CPU. In such cases, first make sure that you have added the paths to the cuDnn files in cuda/lib64 and cuda/include folders, as described in [section 1.3](#13-gpu-processing). If you continue having problems, try disabling cuDNN by passing the following theano-flag before any command line call of deepMedicRun:
+The process may even continue, but running on the CPU. In such cases, first make sure that you have added the paths to the cuDnn files in cuda/lib64 and cuda/include folders, as described in [section 1.3](#13-gpu-processing). If you continue having problems, try disabling cuDNN by passing the following theano-flag before any command line call of deepMedicRun:
 ```cshell
 $ THEANO_FLAGS='dnn.enabled=False' python ./deepMedicRun ...rest of options...
 ```
