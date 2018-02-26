@@ -2,10 +2,50 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="704e0386-ad38-4f6f-bd67-ddc75f301c43" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" afterPath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" afterPath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" afterPath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" afterPath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/core" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/deepMedic.initial.2018-02-20.11.40.36.772703.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/deepMedic.initial.2018-02-23.12.43.12.637364.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/deepMedic.initial.2018-02-23.12.51.59.359885.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.14.12.34.255200.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.14.28.14.670682.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.14.44.17.722624.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.14.58.59.764503.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.15.14.01.584523.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.15.34.00.691399.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.15.52.37.268644.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.16.09.54.355705.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.16.27.21.807920.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.16.43.50.677423.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.17.02.14.692235.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.17.20.12.868249.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.17.36.50.142099.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.17.56.09.210905.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.18.15.18.046515.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.18.32.06.162623.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.18.49.07.226930.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.19.09.29.284444.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.19.38.23.245161.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.19.59.23.923404.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.20.20.02.462369.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.20.39.56.648408.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.20.57.06.936912.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.21.14.07.008962.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.21.34.11.649438.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.21.54.22.563267.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.22.12.16.513014.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.22.29.51.895258.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.22.49.46.400176.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.23.09.28.474779.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.23.30.04.449427.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-23.23.50.57.123805.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-24.00.12.06.305661.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-24.00.31.42.332320.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.2018-02-24.00.52.42.136123.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/cnnModels/trainSessionDeepMedic/deepMedic.trainSessionDeepMedic.final.2018-02-24.00.52.44.192171.save" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/logs/deepMedic.txt" />
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/examples/output/logs/trainSessionDeepMedic.txt" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/deepmedic/image/io.py" afterPath="$PROJECT_DIR$/deepmedic/image/io.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" afterPath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" afterPath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
     </list>
@@ -21,8 +61,8 @@
       <file leaf-file-name="io.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="357">
-              <caret line="21" column="4" lean-forward="false" selection-start-line="21" selection-start-column="4" selection-end-line="21" selection-end-column="4" />
+            <state relative-caret-position="546">
+              <caret line="30" column="4" lean-forward="false" selection-start-line="30" selection-start-column="4" selection-end-line="30" selection-end-column="4" />
               <folding />
             </state>
           </provider>
@@ -51,14 +91,14 @@
       <file leaf-file-name="trainGtLabels.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="462">
-              <caret line="22" column="54" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="75" />
+            <state relative-caret-position="1575">
+              <caret line="75" column="75" lean-forward="false" selection-start-line="75" selection-start-column="75" selection-end-line="75" selection-end-column="75" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="testConfig.cfg" pinned="false" current-in-tab="true">
+      <file leaf-file-name="testConfig.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="315">
@@ -68,11 +108,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="testNamesOfPredictions.cfg" pinned="false" current-in-tab="false">
+      <file leaf-file-name="testNamesOfPredictions.cfg" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="-13">
-              <caret line="20" column="46" lean-forward="true" selection-start-line="20" selection-start-column="46" selection-end-line="20" selection-end-column="46" />
+              <caret line="20" column="46" lean-forward="false" selection-start-line="20" selection-start-column="46" selection-end-line="20" selection-end-column="46" />
               <folding />
             </state>
           </provider>
@@ -101,8 +141,8 @@
       <file leaf-file-name="trainChannels_t1c.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="21">
-              <caret line="1" column="61" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="61" />
+            <state relative-caret-position="1058">
+              <caret line="71" column="61" lean-forward="true" selection-start-line="71" selection-start-column="61" selection-end-line="71" selection-end-column="61" />
               <folding />
             </state>
           </provider>
@@ -134,12 +174,12 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
-        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
-        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
       </list>
     </option>
   </component>
@@ -323,8 +363,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="357">
-          <caret line="21" column="4" lean-forward="false" selection-start-line="21" selection-start-column="4" selection-end-line="21" selection-end-column="4" />
+        <state relative-caret-position="546">
+          <caret line="30" column="4" lean-forward="false" selection-start-line="30" selection-start-column="4" selection-end-line="30" selection-end-column="4" />
           <folding />
         </state>
       </provider>
@@ -345,22 +385,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="21">
-          <caret line="1" column="61" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="61" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="462">
-          <caret line="22" column="54" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="75" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1575">
@@ -377,10 +401,18 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg">
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-13">
-          <caret line="20" column="46" lean-forward="true" selection-start-line="20" selection-start-column="46" selection-end-line="20" selection-end-column="46" />
+        <state relative-caret-position="1575">
+          <caret line="75" column="75" lean-forward="false" selection-start-line="75" selection-start-column="75" selection-end-line="75" selection-end-column="75" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1058">
+          <caret line="71" column="61" lean-forward="true" selection-start-line="71" selection-start-column="61" selection-end-line="71" selection-end-column="61" />
           <folding />
         </state>
       </provider>
@@ -389,6 +421,14 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="315">
           <caret line="15" column="12" lean-forward="false" selection-start-line="15" selection-start-column="12" selection-end-line="15" selection-end-column="12" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-13">
+          <caret line="20" column="46" lean-forward="false" selection-start-line="20" selection-start-column="46" selection-end-line="20" selection-end-column="46" />
           <folding />
         </state>
       </provider>

@@ -11,6 +11,15 @@ import os
 import nibabel as nib
 import numpy as np
 
+def normalize(img):
+    d2 = np.transpose(img,axes=[3,0,1,2])
+    d2 = np.reshape(d2,(d2.shape[0],-1))
+    std_ = np.std(d2,axis=1)
+    mean_ = np.mean(d2,axis=1)
+
+    d = (img - mean_) / (4. * std_)
+    return d
+
 
 def loadVolume(filepath):
     # Loads the image specified by filepath.
@@ -20,13 +29,14 @@ def loadVolume(filepath):
     proxy = nib.load(filepath)
     img = proxy.get_data()
     proxy.uncache()
-    
+    print(img.shape) 
+    img = normalize(img)
     if len(img.shape) == 2:
         # 2D image could have been given.
         img = np.expand_dims(img, axis=2)
     elif len(img.shape) > 3 :
         # 4D volumes could have been given. Often 3Ds are stored as 4Ds with 4th dim == 1.
-        assert img.shape[3] > 1
+	assert img.shape[3] == 1
         img = img[:,:,:,0]
 
     return img
