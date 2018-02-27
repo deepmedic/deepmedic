@@ -26,7 +26,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="modelConfig.cfg" pinned="false" current-in-tab="true">
+      <file leaf-file-name="modelConfig.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="1638">
@@ -39,7 +39,7 @@
       <file leaf-file-name="trainConfig.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="168">
+            <state relative-caret-position="-2848">
               <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
               <folding />
             </state>
@@ -49,8 +49,8 @@
       <file leaf-file-name="trainGtLabels.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="567">
-              <caret line="27" column="49" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="85" />
+            <state relative-caret-position="1575">
+              <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
               <folding />
             </state>
           </provider>
@@ -59,8 +59,8 @@
       <file leaf-file-name="testChannels_t1c.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1226">
-              <caret line="75" column="71" lean-forward="false" selection-start-line="75" selection-start-column="71" selection-end-line="75" selection-end-column="71" />
+            <state relative-caret-position="1147">
+              <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
               <folding />
             </state>
           </provider>
@@ -69,18 +69,18 @@
       <file leaf-file-name="testGtLabels.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1226">
-              <caret line="75" column="85" lean-forward="false" selection-start-line="75" selection-start-column="85" selection-end-line="75" selection-end-column="85" />
+            <state relative-caret-position="1147">
+              <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="trainChannels_t1c.cfg" pinned="false" current-in-tab="false">
+      <file leaf-file-name="trainChannels_t1c.cfg" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="5" column="71" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="71" />
+            <state relative-caret-position="147">
+              <caret line="7" column="76" lean-forward="true" selection-start-line="7" selection-start-column="76" selection-end-line="7" selection-end-column="76" />
               <folding />
             </state>
           </provider>
@@ -98,6 +98,7 @@
       <find>/data/OASIS/la/labels/</find>
       <find>/data/OASIS/da/data/</find>
       <find>.img</find>
+      <find>/N</find>
     </findStrings>
     <replaceStrings>
       <replace>/da/data</replace>
@@ -107,6 +108,7 @@
       <replace>/Normalized/labels/</replace>
       <replace>/Normalized/data/</replace>
       <replace>_processed.nii.gz</replace>
+      <replace>/data/N</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -118,10 +120,10 @@
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
-        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
-        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
       </list>
     </option>
   </component>
@@ -334,50 +336,50 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="168">
-          <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="5" column="71" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="71" />
+        <state relative-caret-position="1638">
+          <caret line="78" column="11" lean-forward="false" selection-start-line="78" selection-start-column="0" selection-end-line="78" selection-end-column="11" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1226">
-          <caret line="75" column="71" lean-forward="false" selection-start-line="75" selection-start-column="71" selection-end-line="75" selection-end-column="71" />
+        <state relative-caret-position="1147">
+          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="567">
-          <caret line="27" column="49" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="85" />
+        <state relative-caret-position="1575">
+          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-2848">
+          <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1226">
-          <caret line="75" column="85" lean-forward="false" selection-start-line="75" selection-start-column="85" selection-end-line="75" selection-end-column="85" />
+        <state relative-caret-position="1147">
+          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1638">
-          <caret line="78" column="11" lean-forward="false" selection-start-line="78" selection-start-column="0" selection-end-line="78" selection-end-column="11" />
+        <state relative-caret-position="147">
+          <caret line="7" column="76" lean-forward="true" selection-start-line="7" selection-start-column="76" selection-end-line="7" selection-end-column="76" />
           <folding />
         </state>
       </provider>
