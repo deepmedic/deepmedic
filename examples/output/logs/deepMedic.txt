@@ -385,3 +385,390 @@
 2018-02-23 12:51:59.359919 >> Saving network to: /data/deepmedic/examples/output/cnnModels/deepMedic.initial.2018-02-23.12.51.59.359885.save
 2018-02-23 12:51:59.919935 >> Model saved.
 2018-02-23 12:51:59.919994 >> =========== Creation of the model: "deepMedic" finished =================
+2018-03-15 10:58:35.067909 >> =============================== logger created =======================================
+2018-03-15 10:58:35.077273 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-15 10:58:35.077310 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configSkullStripping/model/modelConfig.cfg
+2018-03-15 10:58:35.078964 >> 
+===========    NEW CREATE-MODEL SESSION    ============
+2018-03-15 10:58:35.078999 >> =============================================================
+2018-03-15 10:58:35.079021 >> =============== PARAMETERS FOR MODEL CREATION ===============
+2018-03-15 10:58:35.079042 >> =============================================================
+2018-03-15 10:58:35.079063 >> CNN model's name = deepMedic
+2018-03-15 10:58:35.079084 >> Main output folder = /data/deepmedic/examples/output
+2018-03-15 10:58:35.079104 >> Path and filename to save model = /data/deepmedic/examples/output/cnnModels/deepMedic
+2018-03-15 10:58:35.079125 >> ~~~~~~~~~~~~~~~~~~Model parameters~~~~~~~~~~~~~~~~
+2018-03-15 10:58:35.079145 >> Number of Classes (including background) = 2
+2018-03-15 10:58:35.079165 >> ~~Normal Pathway~~
+2018-03-15 10:58:35.079185 >> Number of Input Channels = 1
+2018-03-15 10:58:35.079205 >> Number of Layers = 8
+2018-03-15 10:58:35.079231 >> Number of Feature Maps per layer = [30, 30, 40, 40, 40, 40, 50, 50]
+2018-03-15 10:58:35.079258 >> Kernel Dimensions per layer = [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+2018-03-15 10:58:35.079280 >> Receptive Field = [17, 17, 17]
+2018-03-15 10:58:35.079301 >> Residual connections added at the output of layers (indices from 0) = [3, 5, 7]
+2018-03-15 10:58:35.079322 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-15 10:58:35.079343 >> Lower Rank layers will be made of rank = []
+2018-03-15 10:58:35.079364 >> ~~Subsampled Pathway~~
+2018-03-15 10:58:35.079392 >> Use subsampled Pathway = True
+2018-03-15 10:58:35.079412 >> Number of subsampled pathways that will be built = 1
+2018-03-15 10:58:35.079434 >> Number of Layers (per sub-pathway) = [8]
+2018-03-15 10:58:35.079456 >> Number of Feature Maps per layer (per sub-pathway) = [[30, 30, 40, 40, 40, 40, 50, 50]]
+2018-03-15 10:58:35.079482 >> Kernel Dimensions per layer = [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+2018-03-15 10:58:35.079504 >> Receptive Field = [17, 17, 17]
+2018-03-15 10:58:35.079525 >> Subsampling Factor per dimension (per sub-pathway) = [[3, 3, 3]]
+2018-03-15 10:58:35.079547 >> Residual connections added at the output of layers (indices from 0) = [3, 5, 7]
+2018-03-15 10:58:35.079567 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-15 10:58:35.079587 >> Lower Rank layers will be made of rank = []
+2018-03-15 10:58:35.079608 >> ~~Fully Connected Pathway~~
+2018-03-15 10:58:35.079628 >> Number of additional FC layers (Excluding the Classif. Layer) = 2
+2018-03-15 10:58:35.079649 >> Number of Feature Maps in the additional FC layers = [150, 150]
+2018-03-15 10:58:35.079670 >> Residual connections added at the output of layers (indices from 0) = [1]
+2018-03-15 10:58:35.079690 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-15 10:58:35.079712 >> Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = [3, 3, 3]
+2018-03-15 10:58:35.079731 >> ~~Size Of Image Segments~~
+2018-03-15 10:58:35.079752 >> Size of Segments for Training = [25, 25, 25]
+2018-03-15 10:58:35.079779 >> Size of Segments for Validation = [17, 17, 17]
+2018-03-15 10:58:35.079802 >> Size of Segments for Testing = [45, 45, 45]
+2018-03-15 10:58:35.079822 >> ~~Batch Sizes~~
+2018-03-15 10:58:35.079841 >> Batch Size for Training = 10
+2018-03-15 10:58:35.079861 >> Batch Size for Validation = 48
+2018-03-15 10:58:35.079880 >> Batch Size for Testing = 10
+2018-03-15 10:58:35.079900 >> ~~Dropout Rates~~
+2018-03-15 10:58:35.079920 >> Drop.R. for each layer in Normal Pathway = []
+2018-03-15 10:58:35.079940 >> Drop.R. for each layer in Subsampled Pathway = []
+2018-03-15 10:58:35.079967 >> Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = [0.0, 0.5, 0.5]
+2018-03-15 10:58:35.079988 >> ~~Weight Initialization~~
+2018-03-15 10:58:35.080009 >> Initialization method and params for the conv kernel weights = ['fanIn', 2]
+2018-03-15 10:58:35.080029 >> ~~Activation Function~~
+2018-03-15 10:58:35.080049 >> Activation function to use = prelu
+2018-03-15 10:58:35.080068 >> ~~Batch Normalization~~
+2018-03-15 10:58:35.080090 >> Apply BN straight on pathways' inputs (eg straight on segments) = [False, False, True, False]
+2018-03-15 10:58:35.080108 >> Batch Normalization uses a rolling average for inference, over this many batches = 60
+2018-03-15 10:58:35.080127 >> ========== Done with printing session's parameters ==========
+2018-03-15 10:58:35.080147 >> =============================================================
+2018-03-15 10:58:35.080170 >> 
+=========== Creating the CNN model ===============
+2018-03-15 10:58:35.100406 >> ...Building the CNN model...
+2018-03-15 10:58:35.100778 >> [Pathway_NORMAL] is being built...
+2018-03-15 10:58:35.100871 >> 	[Pathway_NORMAL]: Input's Shape: (Train) [10, 1, 25, 25, 25], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 45, 45, 45]
+2018-03-15 10:58:35.100941 >> 	[Conv.Layer_0], Filter Shape: [30, 1, 3, 3, 3]
+2018-03-15 10:58:35.100998 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 1, 25, 25, 25], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 45, 45, 45]
+2018-03-15 10:58:35.148312 >> 	[Conv.Layer_1], Filter Shape: [30, 30, 3, 3, 3]
+2018-03-15 10:58:35.148410 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 30, 23, 23, 23], (Val) [48, 30, 15, 15, 15], (Test) [10, 30, 43, 43, 43]
+2018-03-15 10:58:35.213134 >> 	[Conv.Layer_2], Filter Shape: [40, 30, 3, 3, 3]
+2018-03-15 10:58:35.213201 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 30, 21, 21, 21], (Val) [48, 30, 13, 13, 13], (Test) [10, 30, 41, 41, 41]
+2018-03-15 10:58:35.255263 >> 	[Conv.Layer_3], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-15 10:58:35.255318 >> 	[Conv.Layer_3], Input's Shape: (Train) [10, 40, 19, 19, 19], (Val) [48, 40, 11, 11, 11], (Test) [10, 40, 39, 39, 39]
+2018-03-15 10:58:35.291614 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_3] to input of previous layer.
+2018-03-15 10:58:35.308236 >> 	[Conv.Layer_4], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-15 10:58:35.308282 >> 	[Conv.Layer_4], Input's Shape: (Train) [10, 40, 17, 17, 17], (Val) [48, 40, 9, 9, 9], (Test) [10, 40, 37, 37, 37]
+2018-03-15 10:58:35.339503 >> 	[Conv.Layer_5], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-15 10:58:35.339545 >> 	[Conv.Layer_5], Input's Shape: (Train) [10, 40, 15, 15, 15], (Val) [48, 40, 7, 7, 7], (Test) [10, 40, 35, 35, 35]
+2018-03-15 10:58:35.368778 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_5] to input of previous layer.
+2018-03-15 10:58:35.381538 >> 	[Conv.Layer_6], Filter Shape: [50, 40, 3, 3, 3]
+2018-03-15 10:58:35.381577 >> 	[Conv.Layer_6], Input's Shape: (Train) [10, 40, 13, 13, 13], (Val) [48, 40, 5, 5, 5], (Test) [10, 40, 33, 33, 33]
+2018-03-15 10:58:35.437740 >> 	[Conv.Layer_7], Filter Shape: [50, 50, 3, 3, 3]
+2018-03-15 10:58:35.437786 >> 	[Conv.Layer_7], Input's Shape: (Train) [10, 50, 11, 11, 11], (Val) [48, 50, 3, 3, 3], (Test) [10, 50, 31, 31, 31]
+2018-03-15 10:58:35.464287 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_7] to input of previous layer.
+2018-03-15 10:58:35.476623 >> 	[Pathway_NORMAL]: Output's Shape: (Train) [10, 50, 9, 9, 9], (Val) [48, 50, 1, 1, 1], (Test) [10, 50, 29, 29, 29]
+2018-03-15 10:58:35.476662 >> [Pathway_NORMAL] done.
+2018-03-15 10:58:35.476758 >> [Pathway_SUBSAMPLED[3, 3, 3]] is being built...
+2018-03-15 10:58:35.476808 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: Input's Shape: (Train) [10, 1, 19, 19, 19], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 26, 26, 26]
+2018-03-15 10:58:35.476836 >> 	[Conv.Layer_0], Filter Shape: [30, 1, 3, 3, 3]
+2018-03-15 10:58:35.476862 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 1, 19, 19, 19], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 26, 26, 26]
+2018-03-15 10:58:35.480292 >> 	[Conv.Layer_1], Filter Shape: [30, 30, 3, 3, 3]
+2018-03-15 10:58:35.480329 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 30, 17, 17, 17], (Val) [48, 30, 15, 15, 15], (Test) [10, 30, 24, 24, 24]
+2018-03-15 10:58:35.505222 >> 	[Conv.Layer_2], Filter Shape: [40, 30, 3, 3, 3]
+2018-03-15 10:58:35.505258 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 30, 15, 15, 15], (Val) [48, 30, 13, 13, 13], (Test) [10, 30, 22, 22, 22]
+2018-03-15 10:58:35.530936 >> 	[Conv.Layer_3], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-15 10:58:35.530971 >> 	[Conv.Layer_3], Input's Shape: (Train) [10, 40, 13, 13, 13], (Val) [48, 40, 11, 11, 11], (Test) [10, 40, 20, 20, 20]
+2018-03-15 10:58:35.556094 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_3] to input of previous layer.
+2018-03-15 10:58:35.568187 >> 	[Conv.Layer_4], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-15 10:58:35.568224 >> 	[Conv.Layer_4], Input's Shape: (Train) [10, 40, 11, 11, 11], (Val) [48, 40, 9, 9, 9], (Test) [10, 40, 18, 18, 18]
+2018-03-15 10:58:35.593112 >> 	[Conv.Layer_5], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-15 10:58:35.593148 >> 	[Conv.Layer_5], Input's Shape: (Train) [10, 40, 9, 9, 9], (Val) [48, 40, 7, 7, 7], (Test) [10, 40, 16, 16, 16]
+2018-03-15 10:58:35.618540 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_5] to input of previous layer.
+2018-03-15 10:58:35.630236 >> 	[Conv.Layer_6], Filter Shape: [50, 40, 3, 3, 3]
+2018-03-15 10:58:35.630287 >> 	[Conv.Layer_6], Input's Shape: (Train) [10, 40, 7, 7, 7], (Val) [48, 40, 5, 5, 5], (Test) [10, 40, 14, 14, 14]
+2018-03-15 10:58:35.655466 >> 	[Conv.Layer_7], Filter Shape: [50, 50, 3, 3, 3]
+2018-03-15 10:58:35.655515 >> 	[Conv.Layer_7], Input's Shape: (Train) [10, 50, 5, 5, 5], (Val) [48, 50, 3, 3, 3], (Test) [10, 50, 12, 12, 12]
+2018-03-15 10:58:35.682410 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_7] to input of previous layer.
+2018-03-15 10:58:35.694277 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: Output's Shape: (Train) [10, 50, 3, 3, 3], (Val) [48, 50, 1, 1, 1], (Test) [10, 50, 10, 10, 10]
+2018-03-15 10:58:35.694318 >> [Pathway_SUBSAMPLED[3, 3, 3]] done.
+2018-03-15 10:58:35.731346 >> DEBUG: Shape of the kernel of the first FC layer is : [3, 3, 3]
+2018-03-15 10:58:35.731395 >> DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: [2, 2, 2]
+2018-03-15 10:58:35.740046 >> [Pathway_FC] is being built...
+2018-03-15 10:58:35.740105 >> 	[Pathway_FC]: Input's Shape: (Train) [10, 100, 11, 11, 11], (Val) [48, 100, 3, 3, 3], (Test) [10, 100, 31, 31, 31]
+2018-03-15 10:58:35.740132 >> 	[Conv.Layer_0], Filter Shape: [150, 100, 3, 3, 3]
+2018-03-15 10:58:35.740155 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 100, 11, 11, 11], (Val) [48, 100, 3, 3, 3], (Test) [10, 100, 31, 31, 31]
+2018-03-15 10:58:35.778488 >> 	[Conv.Layer_1], Filter Shape: [150, 150, 1, 1, 1]
+2018-03-15 10:58:35.778526 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 150, 9, 9, 9], (Val) [48, 150, 1, 1, 1], (Test) [10, 150, 29, 29, 29]
+2018-03-15 10:58:35.806726 >> 	[Pathway_FC]: making Residual Connection between output of [Layer_1] to input of previous layer.
+2018-03-15 10:58:35.818382 >> 	[Conv.Layer_2], Filter Shape: [2, 150, 1, 1, 1]
+2018-03-15 10:58:35.818417 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 150, 9, 9, 9], (Val) [48, 150, 1, 1, 1], (Test) [10, 150, 29, 29, 29]
+2018-03-15 10:58:35.844405 >> 	[Pathway_FC]: Output's Shape: (Train) [10, 2, 9, 9, 9], (Val) [48, 2, 1, 1, 1], (Test) [10, 2, 29, 29, 29]
+2018-03-15 10:58:35.844436 >> [Pathway_FC] done.
+2018-03-15 10:58:35.844459 >> Adding the final Softmax Target layer...
+2018-03-15 10:58:35.851199 >> Finished building the CNN's model.
+2018-03-15 10:58:35.851247 >> 
+=========== Saving the model ===============
+2018-03-15 10:58:35.851297 >> Saving network to: /data/deepmedic/examples/output/cnnModels/deepMedic.initial.2018-03-15.10.58.35.851263.save
+2018-03-15 10:58:36.435434 >> Model saved.
+2018-03-15 10:58:36.435497 >> =========== Creation of the model: "deepMedic" finished =================
+2018-03-16 15:12:39.745332 >> =============================== logger created =======================================
+2018-03-16 15:12:39.745402 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-16 15:12:39.745442 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configSkullStripping/model/modelConfig.cfg
+2018-03-16 15:12:39.747112 >> 
+===========    NEW CREATE-MODEL SESSION    ============
+2018-03-16 15:12:39.747147 >> =============================================================
+2018-03-16 15:12:39.747176 >> =============== PARAMETERS FOR MODEL CREATION ===============
+2018-03-16 15:12:39.747202 >> =============================================================
+2018-03-16 15:12:39.747221 >> CNN model's name = deepMedic
+2018-03-16 15:12:39.747239 >> Main output folder = /data/deepmedic/examples/output
+2018-03-16 15:12:39.747259 >> Path and filename to save model = /data/deepmedic/examples/output/cnnModels/deepMedic
+2018-03-16 15:12:39.747277 >> ~~~~~~~~~~~~~~~~~~Model parameters~~~~~~~~~~~~~~~~
+2018-03-16 15:12:39.747296 >> Number of Classes (including background) = 2
+2018-03-16 15:12:39.747318 >> ~~Normal Pathway~~
+2018-03-16 15:12:39.747346 >> Number of Input Channels = 1
+2018-03-16 15:12:39.747366 >> Number of Layers = 8
+2018-03-16 15:12:39.747393 >> Number of Feature Maps per layer = [30, 30, 40, 40, 40, 40, 50, 50]
+2018-03-16 15:12:39.747437 >> Kernel Dimensions per layer = [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+2018-03-16 15:12:39.747460 >> Receptive Field = [17, 17, 17]
+2018-03-16 15:12:39.747481 >> Residual connections added at the output of layers (indices from 0) = [3, 5, 7]
+2018-03-16 15:12:39.747500 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-16 15:12:39.747519 >> Lower Rank layers will be made of rank = []
+2018-03-16 15:12:39.747546 >> ~~Subsampled Pathway~~
+2018-03-16 15:12:39.747568 >> Use subsampled Pathway = True
+2018-03-16 15:12:39.747587 >> Number of subsampled pathways that will be built = 1
+2018-03-16 15:12:39.747616 >> Number of Layers (per sub-pathway) = [8]
+2018-03-16 15:12:39.747648 >> Number of Feature Maps per layer (per sub-pathway) = [[30, 30, 40, 40, 40, 40, 50, 50]]
+2018-03-16 15:12:39.747673 >> Kernel Dimensions per layer = [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+2018-03-16 15:12:39.747693 >> Receptive Field = [17, 17, 17]
+2018-03-16 15:12:39.747713 >> Subsampling Factor per dimension (per sub-pathway) = [[3, 3, 3]]
+2018-03-16 15:12:39.747739 >> Residual connections added at the output of layers (indices from 0) = [3, 5, 7]
+2018-03-16 15:12:39.747767 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-16 15:12:39.747786 >> Lower Rank layers will be made of rank = []
+2018-03-16 15:12:39.747809 >> ~~Fully Connected Pathway~~
+2018-03-16 15:12:39.747834 >> Number of additional FC layers (Excluding the Classif. Layer) = 2
+2018-03-16 15:12:39.747854 >> Number of Feature Maps in the additional FC layers = [150, 150]
+2018-03-16 15:12:39.747873 >> Residual connections added at the output of layers (indices from 0) = [1]
+2018-03-16 15:12:39.747892 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-16 15:12:39.747913 >> Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = [3, 3, 3]
+2018-03-16 15:12:39.747938 >> ~~Size Of Image Segments~~
+2018-03-16 15:12:39.747958 >> Size of Segments for Training = [25, 25, 25]
+2018-03-16 15:12:39.747977 >> Size of Segments for Validation = [17, 17, 17]
+2018-03-16 15:12:39.748006 >> Size of Segments for Testing = [45, 45, 45]
+2018-03-16 15:12:39.748032 >> ~~Batch Sizes~~
+2018-03-16 15:12:39.748055 >> Batch Size for Training = 10
+2018-03-16 15:12:39.748078 >> Batch Size for Validation = 48
+2018-03-16 15:12:39.748103 >> Batch Size for Testing = 10
+2018-03-16 15:12:39.748122 >> ~~Dropout Rates~~
+2018-03-16 15:12:39.748140 >> Drop.R. for each layer in Normal Pathway = []
+2018-03-16 15:12:39.748163 >> Drop.R. for each layer in Subsampled Pathway = []
+2018-03-16 15:12:39.748198 >> Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = [0.0, 0.5, 0.5]
+2018-03-16 15:12:39.748223 >> ~~Weight Initialization~~
+2018-03-16 15:12:39.748243 >> Initialization method and params for the conv kernel weights = ['fanIn', 2]
+2018-03-16 15:12:39.748261 >> ~~Activation Function~~
+2018-03-16 15:12:39.748278 >> Activation function to use = prelu
+2018-03-16 15:12:39.748302 >> ~~Batch Normalization~~
+2018-03-16 15:12:39.748327 >> Apply BN straight on pathways' inputs (eg straight on segments) = [False, False, True, False]
+2018-03-16 15:12:39.748345 >> Batch Normalization uses a rolling average for inference, over this many batches = 60
+2018-03-16 15:12:39.748363 >> ========== Done with printing session's parameters ==========
+2018-03-16 15:12:39.748380 >> =============================================================
+2018-03-16 15:12:39.748402 >> 
+=========== Creating the CNN model ===============
+2018-03-16 15:12:39.769341 >> ...Building the CNN model...
+2018-03-16 15:12:39.769548 >> [Pathway_NORMAL] is being built...
+2018-03-16 15:12:39.769595 >> 	[Pathway_NORMAL]: Input's Shape: (Train) [10, 1, 25, 25, 25], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 45, 45, 45]
+2018-03-16 15:12:39.769628 >> 	[Conv.Layer_0], Filter Shape: [30, 1, 3, 3, 3]
+2018-03-16 15:12:39.769651 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 1, 25, 25, 25], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 45, 45, 45]
+2018-03-16 15:12:39.898078 >> 	[Conv.Layer_1], Filter Shape: [30, 30, 3, 3, 3]
+2018-03-16 15:12:39.898142 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 30, 23, 23, 23], (Val) [48, 30, 15, 15, 15], (Test) [10, 30, 43, 43, 43]
+2018-03-16 15:12:39.946247 >> 	[Conv.Layer_2], Filter Shape: [40, 30, 3, 3, 3]
+2018-03-16 15:12:39.946295 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 30, 21, 21, 21], (Val) [48, 30, 13, 13, 13], (Test) [10, 30, 41, 41, 41]
+2018-03-16 15:12:39.979053 >> 	[Conv.Layer_3], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:12:39.979096 >> 	[Conv.Layer_3], Input's Shape: (Train) [10, 40, 19, 19, 19], (Val) [48, 40, 11, 11, 11], (Test) [10, 40, 39, 39, 39]
+2018-03-16 15:12:40.008482 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_3] to input of previous layer.
+2018-03-16 15:12:40.022554 >> 	[Conv.Layer_4], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:12:40.022594 >> 	[Conv.Layer_4], Input's Shape: (Train) [10, 40, 17, 17, 17], (Val) [48, 40, 9, 9, 9], (Test) [10, 40, 37, 37, 37]
+2018-03-16 15:12:40.049003 >> 	[Conv.Layer_5], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:12:40.049054 >> 	[Conv.Layer_5], Input's Shape: (Train) [10, 40, 15, 15, 15], (Val) [48, 40, 7, 7, 7], (Test) [10, 40, 35, 35, 35]
+2018-03-16 15:12:40.074863 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_5] to input of previous layer.
+2018-03-16 15:12:40.086811 >> 	[Conv.Layer_6], Filter Shape: [50, 40, 3, 3, 3]
+2018-03-16 15:12:40.086862 >> 	[Conv.Layer_6], Input's Shape: (Train) [10, 40, 13, 13, 13], (Val) [48, 40, 5, 5, 5], (Test) [10, 40, 33, 33, 33]
+2018-03-16 15:12:40.140384 >> 	[Conv.Layer_7], Filter Shape: [50, 50, 3, 3, 3]
+2018-03-16 15:12:40.140444 >> 	[Conv.Layer_7], Input's Shape: (Train) [10, 50, 11, 11, 11], (Val) [48, 50, 3, 3, 3], (Test) [10, 50, 31, 31, 31]
+2018-03-16 15:12:40.166929 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_7] to input of previous layer.
+2018-03-16 15:12:40.179489 >> 	[Pathway_NORMAL]: Output's Shape: (Train) [10, 50, 9, 9, 9], (Val) [48, 50, 1, 1, 1], (Test) [10, 50, 29, 29, 29]
+2018-03-16 15:12:40.179522 >> [Pathway_NORMAL] done.
+2018-03-16 15:12:40.179600 >> [Pathway_SUBSAMPLED[3, 3, 3]] is being built...
+2018-03-16 15:12:40.179637 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: Input's Shape: (Train) [10, 1, 19, 19, 19], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 26, 26, 26]
+2018-03-16 15:12:40.179671 >> 	[Conv.Layer_0], Filter Shape: [30, 1, 3, 3, 3]
+2018-03-16 15:12:40.179695 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 1, 19, 19, 19], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 26, 26, 26]
+2018-03-16 15:12:40.183153 >> 	[Conv.Layer_1], Filter Shape: [30, 30, 3, 3, 3]
+2018-03-16 15:12:40.183188 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 30, 17, 17, 17], (Val) [48, 30, 15, 15, 15], (Test) [10, 30, 24, 24, 24]
+2018-03-16 15:12:40.208419 >> 	[Conv.Layer_2], Filter Shape: [40, 30, 3, 3, 3]
+2018-03-16 15:12:40.208454 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 30, 15, 15, 15], (Val) [48, 30, 13, 13, 13], (Test) [10, 30, 22, 22, 22]
+2018-03-16 15:12:40.234324 >> 	[Conv.Layer_3], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:12:40.234362 >> 	[Conv.Layer_3], Input's Shape: (Train) [10, 40, 13, 13, 13], (Val) [48, 40, 11, 11, 11], (Test) [10, 40, 20, 20, 20]
+2018-03-16 15:12:40.259576 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_3] to input of previous layer.
+2018-03-16 15:12:40.271915 >> 	[Conv.Layer_4], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:12:40.271966 >> 	[Conv.Layer_4], Input's Shape: (Train) [10, 40, 11, 11, 11], (Val) [48, 40, 9, 9, 9], (Test) [10, 40, 18, 18, 18]
+2018-03-16 15:12:40.296582 >> 	[Conv.Layer_5], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:12:40.296633 >> 	[Conv.Layer_5], Input's Shape: (Train) [10, 40, 9, 9, 9], (Val) [48, 40, 7, 7, 7], (Test) [10, 40, 16, 16, 16]
+2018-03-16 15:12:40.321652 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_5] to input of previous layer.
+2018-03-16 15:12:40.333534 >> 	[Conv.Layer_6], Filter Shape: [50, 40, 3, 3, 3]
+2018-03-16 15:12:40.333584 >> 	[Conv.Layer_6], Input's Shape: (Train) [10, 40, 7, 7, 7], (Val) [48, 40, 5, 5, 5], (Test) [10, 40, 14, 14, 14]
+2018-03-16 15:12:40.358658 >> 	[Conv.Layer_7], Filter Shape: [50, 50, 3, 3, 3]
+2018-03-16 15:12:40.358709 >> 	[Conv.Layer_7], Input's Shape: (Train) [10, 50, 5, 5, 5], (Val) [48, 50, 3, 3, 3], (Test) [10, 50, 12, 12, 12]
+2018-03-16 15:12:40.384311 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_7] to input of previous layer.
+2018-03-16 15:12:40.396062 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: Output's Shape: (Train) [10, 50, 3, 3, 3], (Val) [48, 50, 1, 1, 1], (Test) [10, 50, 10, 10, 10]
+2018-03-16 15:12:40.396109 >> [Pathway_SUBSAMPLED[3, 3, 3]] done.
+2018-03-16 15:12:40.431805 >> DEBUG: Shape of the kernel of the first FC layer is : [3, 3, 3]
+2018-03-16 15:12:40.431852 >> DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: [2, 2, 2]
+2018-03-16 15:12:40.440758 >> [Pathway_FC] is being built...
+2018-03-16 15:12:40.440817 >> 	[Pathway_FC]: Input's Shape: (Train) [10, 100, 11, 11, 11], (Val) [48, 100, 3, 3, 3], (Test) [10, 100, 31, 31, 31]
+2018-03-16 15:12:40.440844 >> 	[Conv.Layer_0], Filter Shape: [150, 100, 3, 3, 3]
+2018-03-16 15:12:40.440870 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 100, 11, 11, 11], (Val) [48, 100, 3, 3, 3], (Test) [10, 100, 31, 31, 31]
+2018-03-16 15:12:40.478423 >> 	[Conv.Layer_1], Filter Shape: [150, 150, 1, 1, 1]
+2018-03-16 15:12:40.478477 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 150, 9, 9, 9], (Val) [48, 150, 1, 1, 1], (Test) [10, 150, 29, 29, 29]
+2018-03-16 15:12:40.506834 >> 	[Pathway_FC]: making Residual Connection between output of [Layer_1] to input of previous layer.
+2018-03-16 15:12:40.518724 >> 	[Conv.Layer_2], Filter Shape: [2, 150, 1, 1, 1]
+2018-03-16 15:12:40.518782 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 150, 9, 9, 9], (Val) [48, 150, 1, 1, 1], (Test) [10, 150, 29, 29, 29]
+2018-03-16 15:12:40.544340 >> 	[Pathway_FC]: Output's Shape: (Train) [10, 2, 9, 9, 9], (Val) [48, 2, 1, 1, 1], (Test) [10, 2, 29, 29, 29]
+2018-03-16 15:12:40.544385 >> [Pathway_FC] done.
+2018-03-16 15:12:40.544408 >> Adding the final Softmax Target layer...
+2018-03-16 15:12:40.551187 >> Finished building the CNN's model.
+2018-03-16 15:12:40.551241 >> 
+=========== Saving the model ===============
+2018-03-16 15:12:40.551290 >> Saving network to: /data/deepmedic/examples/output/cnnModels/deepMedic.initial.2018-03-16.15.12.40.551256.save
+2018-03-16 15:12:41.128187 >> Model saved.
+2018-03-16 15:12:41.128233 >> =========== Creation of the model: "deepMedic" finished =================
+2018-03-16 15:14:09.920291 >> =============================== logger created =======================================
+2018-03-16 15:14:09.920341 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-16 15:14:09.920362 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/model/modelConfig.cfg
+2018-03-16 15:14:09.921974 >> 
+===========    NEW CREATE-MODEL SESSION    ============
+2018-03-16 15:14:09.922002 >> =============================================================
+2018-03-16 15:14:09.922022 >> =============== PARAMETERS FOR MODEL CREATION ===============
+2018-03-16 15:14:09.922041 >> =============================================================
+2018-03-16 15:14:09.922059 >> CNN model's name = deepMedic
+2018-03-16 15:14:09.922076 >> Main output folder = /data/deepmedic/examples/output
+2018-03-16 15:14:09.922094 >> Path and filename to save model = /data/deepmedic/examples/output/cnnModels/deepMedic
+2018-03-16 15:14:09.922111 >> ~~~~~~~~~~~~~~~~~~Model parameters~~~~~~~~~~~~~~~~
+2018-03-16 15:14:09.922129 >> Number of Classes (including background) = 2
+2018-03-16 15:14:09.922145 >> ~~Normal Pathway~~
+2018-03-16 15:14:09.922162 >> Number of Input Channels = 1
+2018-03-16 15:14:09.922180 >> Number of Layers = 8
+2018-03-16 15:14:09.922201 >> Number of Feature Maps per layer = [30, 30, 40, 40, 40, 40, 50, 50]
+2018-03-16 15:14:09.922223 >> Kernel Dimensions per layer = [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+2018-03-16 15:14:09.922242 >> Receptive Field = [17, 17, 17]
+2018-03-16 15:14:09.922261 >> Residual connections added at the output of layers (indices from 0) = [3, 5, 7]
+2018-03-16 15:14:09.922278 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-16 15:14:09.922295 >> Lower Rank layers will be made of rank = []
+2018-03-16 15:14:09.922312 >> ~~Subsampled Pathway~~
+2018-03-16 15:14:09.922329 >> Use subsampled Pathway = True
+2018-03-16 15:14:09.922346 >> Number of subsampled pathways that will be built = 1
+2018-03-16 15:14:09.922365 >> Number of Layers (per sub-pathway) = [8]
+2018-03-16 15:14:09.922385 >> Number of Feature Maps per layer (per sub-pathway) = [[30, 30, 40, 40, 40, 40, 50, 50]]
+2018-03-16 15:14:09.922406 >> Kernel Dimensions per layer = [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+2018-03-16 15:14:09.922424 >> Receptive Field = [17, 17, 17]
+2018-03-16 15:14:09.922443 >> Subsampling Factor per dimension (per sub-pathway) = [[3, 3, 3]]
+2018-03-16 15:14:09.922459 >> Residual connections added at the output of layers (indices from 0) = [3, 5, 7]
+2018-03-16 15:14:09.922476 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-16 15:14:09.922493 >> Lower Rank layers will be made of rank = []
+2018-03-16 15:14:09.922510 >> ~~Fully Connected Pathway~~
+2018-03-16 15:14:09.922527 >> Number of additional FC layers (Excluding the Classif. Layer) = 2
+2018-03-16 15:14:09.922545 >> Number of Feature Maps in the additional FC layers = [150, 150]
+2018-03-16 15:14:09.922563 >> Residual connections added at the output of layers (indices from 0) = [1]
+2018-03-16 15:14:09.922585 >> Layers that will be made of Lower Rank (indices from 0) = []
+2018-03-16 15:14:09.922604 >> Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = [3, 3, 3]
+2018-03-16 15:14:09.922621 >> ~~Size Of Image Segments~~
+2018-03-16 15:14:09.922638 >> Size of Segments for Training = [25, 25, 25]
+2018-03-16 15:14:09.922656 >> Size of Segments for Validation = [17, 17, 17]
+2018-03-16 15:14:09.922673 >> Size of Segments for Testing = [45, 45, 45]
+2018-03-16 15:14:09.922689 >> ~~Batch Sizes~~
+2018-03-16 15:14:09.922706 >> Batch Size for Training = 10
+2018-03-16 15:14:09.922722 >> Batch Size for Validation = 48
+2018-03-16 15:14:09.922737 >> Batch Size for Testing = 10
+2018-03-16 15:14:09.922753 >> ~~Dropout Rates~~
+2018-03-16 15:14:09.922769 >> Drop.R. for each layer in Normal Pathway = []
+2018-03-16 15:14:09.922786 >> Drop.R. for each layer in Subsampled Pathway = []
+2018-03-16 15:14:09.922810 >> Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = [0.0, 0.5, 0.5]
+2018-03-16 15:14:09.922827 >> ~~Weight Initialization~~
+2018-03-16 15:14:09.922844 >> Initialization method and params for the conv kernel weights = ['fanIn', 2]
+2018-03-16 15:14:09.922861 >> ~~Activation Function~~
+2018-03-16 15:14:09.922877 >> Activation function to use = prelu
+2018-03-16 15:14:09.922893 >> ~~Batch Normalization~~
+2018-03-16 15:14:09.922910 >> Apply BN straight on pathways' inputs (eg straight on segments) = [False, False, True, False]
+2018-03-16 15:14:09.922927 >> Batch Normalization uses a rolling average for inference, over this many batches = 60
+2018-03-16 15:14:09.922943 >> ========== Done with printing session's parameters ==========
+2018-03-16 15:14:09.922959 >> =============================================================
+2018-03-16 15:14:09.922978 >> 
+=========== Creating the CNN model ===============
+2018-03-16 15:14:09.923409 >> ...Building the CNN model...
+2018-03-16 15:14:09.923600 >> [Pathway_NORMAL] is being built...
+2018-03-16 15:14:09.923638 >> 	[Pathway_NORMAL]: Input's Shape: (Train) [10, 1, 25, 25, 25], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 45, 45, 45]
+2018-03-16 15:14:09.923663 >> 	[Conv.Layer_0], Filter Shape: [30, 1, 3, 3, 3]
+2018-03-16 15:14:09.923685 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 1, 25, 25, 25], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 45, 45, 45]
+2018-03-16 15:14:09.929048 >> 	[Conv.Layer_1], Filter Shape: [30, 30, 3, 3, 3]
+2018-03-16 15:14:09.929084 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 30, 23, 23, 23], (Val) [48, 30, 15, 15, 15], (Test) [10, 30, 43, 43, 43]
+2018-03-16 15:14:09.955418 >> 	[Conv.Layer_2], Filter Shape: [40, 30, 3, 3, 3]
+2018-03-16 15:14:09.955453 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 30, 21, 21, 21], (Val) [48, 30, 13, 13, 13], (Test) [10, 30, 41, 41, 41]
+2018-03-16 15:14:09.980851 >> 	[Conv.Layer_3], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:14:09.980885 >> 	[Conv.Layer_3], Input's Shape: (Train) [10, 40, 19, 19, 19], (Val) [48, 40, 11, 11, 11], (Test) [10, 40, 39, 39, 39]
+2018-03-16 15:14:10.005913 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_3] to input of previous layer.
+2018-03-16 15:14:10.018302 >> 	[Conv.Layer_4], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:14:10.018356 >> 	[Conv.Layer_4], Input's Shape: (Train) [10, 40, 17, 17, 17], (Val) [48, 40, 9, 9, 9], (Test) [10, 40, 37, 37, 37]
+2018-03-16 15:14:10.042786 >> 	[Conv.Layer_5], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:14:10.042834 >> 	[Conv.Layer_5], Input's Shape: (Train) [10, 40, 15, 15, 15], (Val) [48, 40, 7, 7, 7], (Test) [10, 40, 35, 35, 35]
+2018-03-16 15:14:10.067387 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_5] to input of previous layer.
+2018-03-16 15:14:10.078782 >> 	[Conv.Layer_6], Filter Shape: [50, 40, 3, 3, 3]
+2018-03-16 15:14:10.078831 >> 	[Conv.Layer_6], Input's Shape: (Train) [10, 40, 13, 13, 13], (Val) [48, 40, 5, 5, 5], (Test) [10, 40, 33, 33, 33]
+2018-03-16 15:14:10.133876 >> 	[Conv.Layer_7], Filter Shape: [50, 50, 3, 3, 3]
+2018-03-16 15:14:10.133944 >> 	[Conv.Layer_7], Input's Shape: (Train) [10, 50, 11, 11, 11], (Val) [48, 50, 3, 3, 3], (Test) [10, 50, 31, 31, 31]
+2018-03-16 15:14:10.159258 >> 	[Pathway_NORMAL]: making Residual Connection between output of [Layer_7] to input of previous layer.
+2018-03-16 15:14:10.171591 >> 	[Pathway_NORMAL]: Output's Shape: (Train) [10, 50, 9, 9, 9], (Val) [48, 50, 1, 1, 1], (Test) [10, 50, 29, 29, 29]
+2018-03-16 15:14:10.171633 >> [Pathway_NORMAL] done.
+2018-03-16 15:14:10.171713 >> [Pathway_SUBSAMPLED[3, 3, 3]] is being built...
+2018-03-16 15:14:10.171746 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: Input's Shape: (Train) [10, 1, 19, 19, 19], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 26, 26, 26]
+2018-03-16 15:14:10.171768 >> 	[Conv.Layer_0], Filter Shape: [30, 1, 3, 3, 3]
+2018-03-16 15:14:10.171789 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 1, 19, 19, 19], (Val) [48, 1, 17, 17, 17], (Test) [10, 1, 26, 26, 26]
+2018-03-16 15:14:10.175172 >> 	[Conv.Layer_1], Filter Shape: [30, 30, 3, 3, 3]
+2018-03-16 15:14:10.175206 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 30, 17, 17, 17], (Val) [48, 30, 15, 15, 15], (Test) [10, 30, 24, 24, 24]
+2018-03-16 15:14:10.198520 >> 	[Conv.Layer_2], Filter Shape: [40, 30, 3, 3, 3]
+2018-03-16 15:14:10.198567 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 30, 15, 15, 15], (Val) [48, 30, 13, 13, 13], (Test) [10, 30, 22, 22, 22]
+2018-03-16 15:14:10.222794 >> 	[Conv.Layer_3], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:14:10.222841 >> 	[Conv.Layer_3], Input's Shape: (Train) [10, 40, 13, 13, 13], (Val) [48, 40, 11, 11, 11], (Test) [10, 40, 20, 20, 20]
+2018-03-16 15:14:10.246978 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_3] to input of previous layer.
+2018-03-16 15:14:10.258801 >> 	[Conv.Layer_4], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:14:10.258851 >> 	[Conv.Layer_4], Input's Shape: (Train) [10, 40, 11, 11, 11], (Val) [48, 40, 9, 9, 9], (Test) [10, 40, 18, 18, 18]
+2018-03-16 15:14:10.283011 >> 	[Conv.Layer_5], Filter Shape: [40, 40, 3, 3, 3]
+2018-03-16 15:14:10.283058 >> 	[Conv.Layer_5], Input's Shape: (Train) [10, 40, 9, 9, 9], (Val) [48, 40, 7, 7, 7], (Test) [10, 40, 16, 16, 16]
+2018-03-16 15:14:10.307574 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_5] to input of previous layer.
+2018-03-16 15:14:10.318944 >> 	[Conv.Layer_6], Filter Shape: [50, 40, 3, 3, 3]
+2018-03-16 15:14:10.318992 >> 	[Conv.Layer_6], Input's Shape: (Train) [10, 40, 7, 7, 7], (Val) [48, 40, 5, 5, 5], (Test) [10, 40, 14, 14, 14]
+2018-03-16 15:14:10.344017 >> 	[Conv.Layer_7], Filter Shape: [50, 50, 3, 3, 3]
+2018-03-16 15:14:10.344064 >> 	[Conv.Layer_7], Input's Shape: (Train) [10, 50, 5, 5, 5], (Val) [48, 50, 3, 3, 3], (Test) [10, 50, 12, 12, 12]
+2018-03-16 15:14:10.369122 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: making Residual Connection between output of [Layer_7] to input of previous layer.
+2018-03-16 15:14:10.380432 >> 	[Pathway_SUBSAMPLED[3, 3, 3]]: Output's Shape: (Train) [10, 50, 3, 3, 3], (Val) [48, 50, 1, 1, 1], (Test) [10, 50, 10, 10, 10]
+2018-03-16 15:14:10.380478 >> [Pathway_SUBSAMPLED[3, 3, 3]] done.
+2018-03-16 15:14:10.408076 >> DEBUG: Shape of the kernel of the first FC layer is : [3, 3, 3]
+2018-03-16 15:14:10.408121 >> DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: [2, 2, 2]
+2018-03-16 15:14:10.416591 >> [Pathway_FC] is being built...
+2018-03-16 15:14:10.416630 >> 	[Pathway_FC]: Input's Shape: (Train) [10, 100, 11, 11, 11], (Val) [48, 100, 3, 3, 3], (Test) [10, 100, 31, 31, 31]
+2018-03-16 15:14:10.416670 >> 	[Conv.Layer_0], Filter Shape: [150, 100, 3, 3, 3]
+2018-03-16 15:14:10.416691 >> 	[Conv.Layer_0], Input's Shape: (Train) [10, 100, 11, 11, 11], (Val) [48, 100, 3, 3, 3], (Test) [10, 100, 31, 31, 31]
+2018-03-16 15:14:10.454691 >> 	[Conv.Layer_1], Filter Shape: [150, 150, 1, 1, 1]
+2018-03-16 15:14:10.454745 >> 	[Conv.Layer_1], Input's Shape: (Train) [10, 150, 9, 9, 9], (Val) [48, 150, 1, 1, 1], (Test) [10, 150, 29, 29, 29]
+2018-03-16 15:14:10.481968 >> 	[Pathway_FC]: making Residual Connection between output of [Layer_1] to input of previous layer.
+2018-03-16 15:14:10.493709 >> 	[Conv.Layer_2], Filter Shape: [2, 150, 1, 1, 1]
+2018-03-16 15:14:10.493743 >> 	[Conv.Layer_2], Input's Shape: (Train) [10, 150, 9, 9, 9], (Val) [48, 150, 1, 1, 1], (Test) [10, 150, 29, 29, 29]
+2018-03-16 15:14:10.518897 >> 	[Pathway_FC]: Output's Shape: (Train) [10, 2, 9, 9, 9], (Val) [48, 2, 1, 1, 1], (Test) [10, 2, 29, 29, 29]
+2018-03-16 15:14:10.518941 >> [Pathway_FC] done.
+2018-03-16 15:14:10.518963 >> Adding the final Softmax Target layer...
+2018-03-16 15:14:10.525682 >> Finished building the CNN's model.
+2018-03-16 15:14:10.525730 >> 
+=========== Saving the model ===============
+2018-03-16 15:14:10.525778 >> Saving network to: /data/deepmedic/examples/output/cnnModels/deepMedic.initial.2018-03-16.15.14.10.525745.save
+2018-03-16 15:14:11.055750 >> Model saved.
+2018-03-16 15:14:11.055794 >> =========== Creation of the model: "deepMedic" finished =================

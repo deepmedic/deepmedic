@@ -1,0 +1,38 @@
+2018-03-17 19:19:54.900445 >> =============================== logger created =======================================
+2018-03-17 19:19:54.900497 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-17 19:19:54.900521 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/test/testConfig.cfg
+2018-03-17 19:19:54.900541 >> =========== Loading the CNN model for testing... ===============
+2018-03-17 19:19:54.900563 >> WARN: A CNN-Model to use was specified both in the command line input and in the test-config-file! The input by the command line will be used: /data/deepmedic/ModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:19:54.900583 >> ...Loading the network can take a few minutes if the model is big...
+2018-03-17 19:21:17.612839 >> =============================== logger created =======================================
+2018-03-17 19:21:17.612906 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-17 19:21:17.612931 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/test/testConfig.cfg
+2018-03-17 19:21:17.612960 >> =========== Loading the CNN model for testing... ===============
+2018-03-17 19:21:17.612985 >> WARN: A CNN-Model to use was specified both in the command line input and in the test-config-file! The input by the command line will be used: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrainModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:21:17.613023 >> ...Loading the network can take a few minutes if the model is big...
+2018-03-17 19:21:57.544761 >> =============================== logger created =======================================
+2018-03-17 19:21:57.544811 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-17 19:21:57.544835 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/test/testConfig.cfg
+2018-03-17 19:21:57.544855 >> =========== Loading the CNN model for testing... ===============
+2018-03-17 19:21:57.544877 >> WARN: A CNN-Model to use was specified both in the command line input and in the test-config-file! The input by the command line will be used: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrainModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:21:57.544897 >> ...Loading the network can take a few minutes if the model is big...
+2018-03-17 19:23:28.374237 >> =============================== logger created =======================================
+2018-03-17 19:23:28.374288 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-17 19:23:28.374312 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/test/testConfig.cfg
+2018-03-17 19:23:28.374331 >> =========== Loading the CNN model for testing... ===============
+2018-03-17 19:23:28.374356 >> WARN: A CNN-Model to use was specified both in the command line input and in the test-config-file! The input by the command line will be used: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrain/ModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:23:28.374379 >> ...Loading the network can take a few minutes if the model is big...
+2018-03-17 19:23:37.785932 >> The CNN model was loaded successfully from: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrain/ModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:26:13.110950 >> =============================== logger created =======================================
+2018-03-17 19:26:13.111010 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-17 19:26:13.111039 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/test/testConfig.cfg
+2018-03-17 19:26:13.111072 >> =========== Loading the CNN model for testing... ===============
+2018-03-17 19:26:13.111099 >> WARN: A CNN-Model to use was specified both in the command line input and in the test-config-file! The input by the command line will be used: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrain/ModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:26:13.111117 >> ...Loading the network can take a few minutes if the model is big...
+2018-03-17 19:26:22.604831 >> The CNN model was loaded successfully from: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrain/ModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
+2018-03-17 19:27:49.729107 >> =============================== logger created =======================================
+2018-03-17 19:27:49.729166 >> CONFIG: Given THEANO_FLAGS: ,on_unused_input=warn,mode=FAST_RUN,device=cuda,floatX=float32,force_device=True,dnn.enabled=auto,openmp=True
+2018-03-17 19:27:49.729199 >> CONFIG: The configuration file for the session was loaded from: /data/deepmedic/examples/configFiles/configAllData/test/testConfig.cfg
+2018-03-17 19:27:49.729228 >> =========== Loading the CNN model for testing... ===============
+2018-03-17 19:27:49.729260 >> ...Loading the network can take a few minutes if the model is big...
+2018-03-17 19:27:58.891224 >> The CNN model was loaded successfully from: /data/deepmedic/examples/output/cnnModels/ModelTrainedOnAllDataTrain/ModelTrainedOnAllData.ModelTrainedOnAllDataTrain.final.2018-03-17.04.11.23.576219.save
