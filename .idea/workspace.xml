@@ -14,21 +14,31 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="375">
-      <file leaf-file-name="testConfig.cfg" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg">
+      <file leaf-file-name="trainConfig.cfg" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="175">
-              <caret line="7" column="34" lean-forward="false" selection-start-line="7" selection-start-column="34" selection-end-line="7" selection-end-column="34" />
+            <state relative-caret-position="0">
+              <caret line="0" column="31" lean-forward="false" selection-start-line="0" selection-start-column="31" selection-end-line="0" selection-end-column="31" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="trainConfig.cfg" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg">
+      <file leaf-file-name="modelConfig.cfg" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="0">
-              <caret line="0" column="66" lean-forward="true" selection-start-line="0" selection-start-column="66" selection-end-line="0" selection-end-column="66" />
+            <state relative-caret-position="175">
+              <caret line="7" column="55" lean-forward="false" selection-start-line="7" selection-start-column="28" selection-end-line="7" selection-end-column="55" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="testConfig.cfg" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="175">
+              <caret line="7" column="55" lean-forward="false" selection-start-line="7" selection-start-column="55" selection-end-line="7" selection-end-column="55" />
               <folding />
             </state>
           </provider>
@@ -37,14 +47,24 @@
       <file leaf-file-name="trainConfig.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="200">
-              <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
+            <state relative-caret-position="0">
+              <caret line="0" column="92" lean-forward="true" selection-start-line="0" selection-start-column="92" selection-end-line="0" selection-end-column="106" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="testConfig.cfg" pinned="false" current-in-tab="true">
+      <file leaf-file-name="modelConfig.cfg" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="175">
+              <caret line="7" column="0" lean-forward="false" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="36" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="testConfig.cfg" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="375">
@@ -94,7 +114,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
@@ -113,12 +132,13 @@
         <option value="$PROJECT_DIR$/examples/configFiles/configAllData/model/modelConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configAllData/train/trainConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/configAllData/test/testConfig.cfg" />
-        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/test/testChannels_t1c.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/test/testGtLabels.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainChannels_t1c.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
         <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg" />
       </list>
     </option>
@@ -201,14 +221,6 @@
               <item name="examples" type="462c0819:PsiDirectoryNode" />
               <item name="configFiles" type="462c0819:PsiDirectoryNode" />
               <item name="config40AllData" type="462c0819:PsiDirectoryNode" />
-              <item name="test" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
-              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
-              <item name="examples" type="462c0819:PsiDirectoryNode" />
-              <item name="configFiles" type="462c0819:PsiDirectoryNode" />
-              <item name="config40AllData" type="462c0819:PsiDirectoryNode" />
               <item name="train" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
@@ -232,6 +244,14 @@
               <item name="examples" type="462c0819:PsiDirectoryNode" />
               <item name="configFiles" type="462c0819:PsiDirectoryNode" />
               <item name="configSkullStripping" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+              <item name="examples" type="462c0819:PsiDirectoryNode" />
+              <item name="configFiles" type="462c0819:PsiDirectoryNode" />
+              <item name="configSkullStripping" type="462c0819:PsiDirectoryNode" />
+              <item name="model" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
@@ -470,13 +490,6 @@
       </provider>
     </entry>
     <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1950">
-          <caret line="78" column="11" lean-forward="false" selection-start-line="78" selection-start-column="0" selection-end-line="78" selection-end-column="11" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1875">
@@ -605,14 +618,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="175">
-          <caret line="7" column="55" lean-forward="true" selection-start-line="7" selection-start-column="55" selection-end-line="7" selection-end-column="55" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainChannels_t1c.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1768">
@@ -653,10 +658,18 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg">
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="375">
+          <caret line="15" column="12" lean-forward="false" selection-start-line="15" selection-start-column="12" selection-end-line="15" selection-end-column="12" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="175">
-          <caret line="7" column="34" lean-forward="false" selection-start-line="7" selection-start-column="34" selection-end-line="7" selection-end-column="34" />
+          <caret line="7" column="0" lean-forward="false" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="36" />
           <folding />
         </state>
       </provider>
@@ -664,23 +677,31 @@
     <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
-          <caret line="0" column="66" lean-forward="true" selection-start-line="0" selection-start-column="66" selection-end-line="0" selection-end-column="66" />
+          <caret line="0" column="31" lean-forward="false" selection-start-line="0" selection-start-column="31" selection-end-line="0" selection-end-column="31" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="175">
+          <caret line="7" column="55" lean-forward="false" selection-start-line="7" selection-start-column="28" selection-end-line="7" selection-end-column="55" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="200">
-          <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
+        <state relative-caret-position="0">
+          <caret line="0" column="92" lean-forward="true" selection-start-line="0" selection-start-column="92" selection-end-line="0" selection-end-column="106" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg">
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="375">
-          <caret line="15" column="12" lean-forward="false" selection-start-line="15" selection-start-column="12" selection-end-line="15" selection-end-column="12" />
+        <state relative-caret-position="175">
+          <caret line="7" column="55" lean-forward="false" selection-start-line="7" selection-start-column="55" selection-end-line="7" selection-end-column="55" />
           <folding />
         </state>
       </provider>
