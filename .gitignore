@@ -13,6 +13,8 @@ __pycache__/
 *.so
 
 
+/examples/ModelTrainedOnAllData/*
+/examples/ModelTrainedOn40FromAllData/*
 
 # Distribution / packaging
 
