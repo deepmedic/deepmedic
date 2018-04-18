@@ -1,30 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="704e0386-ad38-4f6f-bd67-ddc75f301c43" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_flair.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testRoiMasks.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_flair.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainRoiMasks.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/validationChannels_flair.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/validationChannels_t1c.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/validationGtLabels.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/validationNamesOfPredictions.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/validationRoiMasks.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/weightMapsBackground.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/validation/weightMapsForeground.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/weightMapsBackground.cfg" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/weightMapsForeground.cfg" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-    </list>
+    <list default="true" id="704e0386-ad38-4f6f-bd67-ddc75f301c43" name="Default" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -130,8 +107,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scratches" />
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -159,6 +134,8 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scratches" />
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -235,117 +212,27 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1575">
-          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="336">
-          <caret line="16" column="76" lean-forward="false" selection-start-line="16" selection-start-column="76" selection-end-line="16" selection-end-column="76" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
     <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
     <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py" />
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1638">
-          <caret line="78" column="11" lean-forward="false" selection-start-line="78" selection-start-column="0" selection-end-line="78" selection-end-column="11" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="168">
-          <caret line="8" column="0" lean-forward="false" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1575">
-          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1575">
-          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1575">
-          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="336">
-          <caret line="16" column="76" lean-forward="true" selection-start-line="16" selection-start-column="76" selection-end-line="16" selection-end-column="76" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
     <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
     <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py" />
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1638">
-          <caret line="78" column="11" lean-forward="false" selection-start-line="78" selection-start-column="0" selection-end-line="78" selection-end-column="11" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="168">
-          <caret line="8" column="0" lean-forward="true" selection-start-line="8" selection-start-column="0" selection-end-line="8" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="21">
-          <caret line="1" column="60" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="75" selection-end-column="61" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1071">
-          <caret line="51" column="50" lean-forward="false" selection-start-line="51" selection-start-column="50" selection-end-line="51" selection-end-column="50" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
     <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py" />
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-13">
-          <caret line="20" column="46" lean-forward="false" selection-start-line="20" selection-start-column="46" selection-end-line="20" selection-end-column="46" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
     <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1875">
-          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1768">
-          <caret line="75" column="7" lean-forward="false" selection-start-line="75" selection-start-column="7" selection-end-line="75" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
     <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/train/trainGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="450">
@@ -437,13 +324,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="50">
-          <caret line="2" column="21" lean-forward="false" selection-start-line="2" selection-start-column="21" selection-end-line="2" selection-end-column="21" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
     <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainChannels_t1c.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1768">
@@ -465,13 +346,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="975">
-          <caret line="39" column="65" lean-forward="false" selection-start-line="39" selection-start-column="65" selection-end-line="39" selection-end-column="65" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
     <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainGtLabels.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="2843">
@@ -479,13 +354,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="375">
-          <caret line="15" column="12" lean-forward="false" selection-start-line="15" selection-start-column="12" selection-end-line="15" selection-end-column="12" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
     <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -542,19 +411,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="92" lean-forward="false" selection-start-line="0" selection-start-column="92" selection-end-line="0" selection-end-column="106" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="175">
-          <caret line="7" column="0" lean-forward="false" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" />
   </component>
 </project>
