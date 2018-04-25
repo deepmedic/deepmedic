@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="704e0386-ad38-4f6f-bd67-ddc75f301c43" name="Default" comment="" />
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="TRACKING_ENABLED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileEditorManager">
+    <leaf />
+  </component>
+  <component name="FindInProjectRecents">
+    <findStrings>
+      <find>segmentsdim</find>
+      <find>channels</find>
+      <find>/data</find>
+      <find>labels</find>
+      <find>data/OAS1</find>
+      <find>/data/OASIS/la/labels/</find>
+      <find>/data/OASIS/da/data/</find>
+      <find>.img</find>
+      <find>/N</find>
+      <find>cor</find>
+      <find>icv</find>
+      <find>/data/NormalizedStOlavs/data/</find>
+      <find>.nii.</find>
+      <find>S</find>
+      <find>data</find>
+      <find>/</find>
+      <find>scale</find>
+    </findStrings>
+    <replaceStrings>
+      <replace>/da/data</replace>
+      <replace>la/labels</replace>
+      <replace>da/data/OAS1</replace>
+      <replace>_pred.img</replace>
+      <replace>/Normalized/labels/</replace>
+      <replace>/Normalized/data/</replace>
+      <replace>_processed.nii.gz</replace>
+      <replace>/data/N</replace>
+      <replace>/data/NormalizedStOlavs/data/cor</replace>
+      <replace>/data/NormalizedStOlavs/labels/icv</replace>
+    </replaceStrings>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="IdeDocumentHistory">
+    <option name="CHANGED_PATHS">
+      <list>
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configStOlavs/train/trainChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configStOlavs/train/trainGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configStOlavs/test/testChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configStOlavs/test/testGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configStOlavs/test/testNamesOfPredictions.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/test/testChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/train/trainChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/train/trainGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/test/testGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/model/modelConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/train/trainConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configAllData/test/testConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/test/testChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/test/testGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainChannels_t1c.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainGtLabels.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+        <option value="$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg" />
+      </list>
+    </option>
+  </component>
+  <component name="JsBuildToolGruntFileManager" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsBuildToolPackageJson" detection-done="true" sorting="DEFINITION_ORDER" />
+  <component name="JsGulpfileManager">
+    <detection-done>true</detection-done>
+    <sorting>DEFINITION_ORDER</sorting>
+  </component>
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="3198" />
+    <option name="y" value="-21" />
+    <option name="width" value="781" />
+    <option name="height" value="419" />
+  </component>
+  <component name="ProjectView">
+    <navigator currentView="ProjectPane" proportions="" version="1">
+      <flattenPackages />
+      <showMembers />
+      <showModules />
+      <showLibraryContents />
+      <hideEmptyPackages />
+      <abbreviatePackageNames />
+      <autoscrollToSource />
+      <autoscrollFromSource />
+      <sortByType />
+      <manualOrder />
+      <foldersAlwaysOnTop value="true" />
+    </navigator>
+    <panes>
+      <pane id="ProjectPane">
+        <subPane>
+          <expand>
+            <path>
+              <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+              <item name="image" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="deepmedic" type="b2602c69:ProjectViewProjectNode" />
+              <item name="deepmedic" type="462c0819:PsiDirectoryNode" />
+              <item name="examples" type="462c0819:PsiDirectoryNode" />
+            </path>
+          </expand>
+          <select />
+        </subPane>
+      </pane>
+      <pane id="Scratches" />
+      <pane id="Scope" />
+    </panes>
+  </component>
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Dropbox/Skole/Femte/Master/Code/TestMRIImages" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\deepmedic\examples\configFiles\config40AllData" />
+      <recent name="D:\deepmedic\examples\configFiles\configAllData" />
+      <recent name="C:\Users\oyste\Documents\deepmedic\examples\configFiles\configStOlavs" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="ShelveChangesManager" show_recycled="false">
+    <option name="remove_strategy" value="false" />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="704e0386-ad38-4f6f-bd67-ddc75f301c43" name="Default" comment="" />
+      <created>1519390681444</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1519390681444</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="ToolWindowManager">
+    <frame x="-11" y="-11" width="3862" height="2122" extended-state="6" />
+    <layout>
+      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19453125" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" x="481" y="330" width="466" height="693" />
+      <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
+      <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+    </layout>
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.cfg" />
+  </component>
+  <component name="VcsContentAnnotationSettings">
+    <option name="myLimit" value="2678400000" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager />
+    <watches-manager />
+  </component>
+  <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
+    <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
+    <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
+    <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
+    <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/deepmedic/image/io.py" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testNamesOfPredictions.cfg" />
+    <entry file="file://D:/Deep_MRI_brain_extraction/deep3Dtrain.py" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testChannels_t1c.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/train/trainGtLabels.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="450">
+          <caret line="18" column="70" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="130" selection-end-column="69" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/train/trainChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="550">
+          <caret line="22" column="57" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="131" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/test/testChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1400">
+          <caret line="56" column="57" lean-forward="false" selection-start-line="56" selection-start-column="57" selection-end-line="56" selection-end-column="57" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/test/testGtLabels.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1025">
+          <caret line="41" column="70" lean-forward="false" selection-start-line="41" selection-start-column="70" selection-end-line="41" selection-end-column="70" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/test/testNamesOfPredictions.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1871">
+          <caret line="97" column="33" lean-forward="false" selection-start-line="97" selection-start-column="33" selection-end-line="97" selection-end-column="33" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configStOlavs/model/modelConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="475">
+          <caret line="19" column="68" lean-forward="false" selection-start-line="19" selection-start-column="68" selection-end-line="19" selection-end-column="68" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/train/weightMapsBackground.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/test/testConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="100">
+          <caret line="4" column="40" lean-forward="false" selection-start-line="4" selection-start-column="40" selection-end-line="4" selection-end-column="40" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/train/trainConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="100">
+          <caret line="4" column="41" lean-forward="false" selection-start-line="4" selection-start-column="41" selection-end-line="4" selection-end-column="41" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/test/testChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1000">
+          <caret line="40" column="57" lean-forward="false" selection-start-line="40" selection-start-column="57" selection-end-line="40" selection-end-column="57" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/test/testGtLabels.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1868">
+          <caret line="246" column="50" lean-forward="false" selection-start-line="246" selection-start-column="50" selection-end-line="246" selection-end-column="50" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/train/trainGtLabels.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1868">
+          <caret line="246" column="50" lean-forward="false" selection-start-line="246" selection-start-column="50" selection-end-line="246" selection-end-column="50" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/train/trainChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1868">
+          <caret line="246" column="48" lean-forward="false" selection-start-line="246" selection-start-column="48" selection-end-line="246" selection-end-column="48" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainChannels_t1c.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1768">
+          <caret line="119" column="48" lean-forward="false" selection-start-line="119" selection-start-column="48" selection-end-line="119" selection-end-column="48" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testGtLabels.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-604">
+          <caret line="26" column="6" lean-forward="false" selection-start-line="26" selection-start-column="5" selection-end-line="26" selection-end-column="6" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testChannels_t1c.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-854">
+          <caret line="16" column="47" lean-forward="true" selection-start-line="16" selection-start-column="47" selection-end-line="16" selection-end-column="47" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testGtLabels.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainGtLabels.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2843">
+          <caret line="119" column="50" lean-forward="false" selection-start-line="119" selection-start-column="50" selection-end-line="119" selection-end-column="50" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/test/testConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/train/trainConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="31" lean-forward="false" selection-start-line="0" selection-start-column="31" selection-end-line="0" selection-end-column="31" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/ModelTrainedOnAllData/logs/ModelTrainedOnAllDataTest.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="850">
+          <caret line="21" column="3381" lean-forward="true" selection-start-line="21" selection-start-column="3371" selection-end-line="21" selection-end-column="3392" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/model/modelConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1225">
+          <caret line="49" column="15" lean-forward="false" selection-start-line="49" selection-start-column="0" selection-end-line="49" selection-end-column="15" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/deepMedicOriginal/model/modelConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1125">
+          <caret line="45" column="48" lean-forward="false" selection-start-line="45" selection-start-column="48" selection-end-line="45" selection-end-column="48" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configAllData/model/modelConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1625">
+          <caret line="65" column="121" lean-forward="false" selection-start-line="65" selection-start-column="116" selection-end-line="65" selection-end-column="121" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/deepMedic/train/trainConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1868">
+          <caret line="79" column="0" lean-forward="false" selection-start-line="79" selection-start-column="0" selection-end-line="79" selection-end-column="0" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/deepMedic/model/modelConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1100">
+          <caret line="44" column="62" lean-forward="false" selection-start-line="44" selection-start-column="62" selection-end-line="44" selection-end-column="62" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/config40AllData/test/testConfig.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="175">
+          <caret line="7" column="55" lean-forward="false" selection-start-line="7" selection-start-column="55" selection-end-line="7" selection-end-column="55" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/train/trainConfig.cfg" />
+    <entry file="file://$PROJECT_DIR$/examples/configFiles/configSkullStripping/model/modelConfig.cfg" />
+  </component>
+</project>

@@ -13,6 +13,12 @@ __pycache__/
 *.so
 
 
+/examples/ModelTrainedOnAllData/cnnModels/*
+/examples/ModelTrainedOnAllData/predictions/*
+/examples/ModelTrainedOn40FromAllData/cnnModels/*
+/examples/ModelTrainedOn40FromAllData/predictions/*
+/examples/output/predictions/*
+/examples/output/cnnModels/*
 
 # Distribution / packaging
 
