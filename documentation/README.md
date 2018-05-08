@@ -102,7 +102,7 @@ $ export PATH=$PATH:/path/to/miniconda/bin
 ```
 cd /path/to/deepmedic/root/folder
 conda create -n condaEnv_dm python=2.7        # deepmedic also works with python 3, but will need specific version of parallel python. See issue 58.
-source activate condaEnv_dm
+conda activate condaEnv_dm
 conda install theano                          # Should install theano v1.0, along with mkl-service, pygpu, etc.
 conda install pip
 pip install .                                 # Installs rest of deepmedic's dependencies.
