@@ -53,9 +53,9 @@ class TestSessionParameters(object) :
         self.saveIndividualFmImages = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
         self.saveMultidimensionalImageWithAllFms = cfg[cfg.SAVE_4DIM_FMS] if cfg[cfg.SAVE_4DIM_FMS] is not None else False
         if self.saveIndividualFmImages == True or self.saveMultidimensionalImageWithAllFms == True:
-            indices_fms_per_pathtype_per_layer_to_save =  [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL]] +\
-                                                                [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED]] +\
-                                                                [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC]]
+            indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL]] +\
+                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED]] +\
+                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC]]
             self.indices_fms_per_pathtype_per_layer_to_save = [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save]
         else:
             self.indices_fms_per_pathtype_per_layer_to_save = None
@@ -128,7 +128,7 @@ class TestSessionParameters(object) :
         logPrint("Save all requested FMs in one 4D image = " + str(self.saveMultidimensionalImageWithAllFms))
         if self.saveMultidimensionalImageWithAllFms :
             logPrint(">>> WARN : The 4D image can be hundreds of MBytes if the CNN is big and many FMs are chosen to be saved. Configure wisely.")
-        logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save[:-1]))
+        logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Save Feature Maps at = " + str(self.filepathsToSaveFeaturesForEachPatient))
         
         logPrint("~~~~~~~ Parameters for Preprocessing ~~~~~~")
