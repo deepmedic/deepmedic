@@ -427,7 +427,7 @@ def do_training(sessionTf,
             performInferenceOnWholeVolumes(sessionTf,
                                     cnn3d,
                                     log,
-                                    "test",
+                                    "val",
                                     savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
                                     
                                     listOfFilepathsToEachChannelOfEachPatientValidation,
