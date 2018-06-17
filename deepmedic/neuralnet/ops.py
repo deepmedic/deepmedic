@@ -6,14 +6,12 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 
 from math import ceil
 import numpy as np
 import random
 
-import theano
-import theano.tensor as T
+import tensorflow as tf
 
 try:
     from sys import maxint as MAX_INT
@@ -26,58 +24,63 @@ except ImportError:
 # Functions used by layers but do not change Layer Attributes #
 ###############################################################
 
-def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputInference, inputTesting) :
+def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputVal, inputTest) :
     if dropoutRate > 0.001 : #Below 0.001 I take it as if there is no dropout at all. (To avoid float problems with == 0.0. Although my tries show it actually works fine.)
-        probabilityOfStayingActivated = (1-dropoutRate)
-        srng = T.shared_randomstreams.RandomStreams(rng.randint(999999))
-        dropoutMask = srng.binomial(n=1, size=inputTrainShape, p=probabilityOfStayingActivated, dtype=theano.config.floatX)
-        inputImgAfterDropout = inputTrain * dropoutMask
-        inputImgAfterDropoutInference = inputInference * probabilityOfStayingActivated
-        inputImgAfterDropoutTesting = inputTesting * probabilityOfStayingActivated
+        keep_prob = (1-dropoutRate)
+        
+        random_tensor = keep_prob
+        random_tensor += tf.random_uniform(shape=inputTrainShape, minval=0., maxval=1., seed=rng.randint(999999), dtype="float32")
+        # 0. if [keep_prob, 1.0) and 1. if [1.0, 1.0 + keep_prob)
+        dropoutMask = tf.floor(random_tensor)
+    
+        # tf.nn.dropout(x, keep_prob) scales kept values UP, so that at inference you dont need to scale then. 
+        inputImgAfterDropoutTrain = inputTrain * dropoutMask
+        inputImgAfterDropoutVal = inputVal * keep_prob
+        inputImgAfterDropoutTest = inputTest * keep_prob
     else :
-        inputImgAfterDropout = inputTrain
-        inputImgAfterDropoutInference = inputInference
-        inputImgAfterDropoutTesting = inputTesting
-    return (inputImgAfterDropout, inputImgAfterDropoutInference, inputImgAfterDropoutTesting)
+        inputImgAfterDropoutTrain = inputTrain
+        inputImgAfterDropoutVal = inputVal
+        inputImgAfterDropoutTest = inputTest
+    return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
 
 
 def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, inputVal, inputTest, inputShapeTrain) :
-    numberOfChannels = inputShapeTrain[1]
+    numOfChanns = inputShapeTrain[1]
     
-    gBn_values = np.ones( (numberOfChannels), dtype = 'float32' )
-    gBn = theano.shared(value=gBn_values, borrow=True)
-    bBn_values = np.zeros( (numberOfChannels), dtype = 'float32')
-    bBn = theano.shared(value=bBn_values, borrow=True)
+    gBn = tf.Variable( np.ones( (numOfChanns), dtype='float32'), name="gBn" )
+    bBn = tf.Variable( np.zeros( (numOfChanns), dtype='float32'), name="bBn" )
+    gBn_resh = tf.reshape(gBn, shape=[1,numOfChanns,1,1,1])
+    bBn_resh = tf.reshape(bBn, shape=[1,numOfChanns,1,1,1])
     
     #for rolling average:
-    muBnsArrayForRollingAverage = theano.shared(np.zeros( (rollingAverageForBatchNormalizationOverThatManyBatches, numberOfChannels), dtype = 'float32' ), borrow=True)
-    varBnsArrayForRollingAverage = theano.shared(np.ones( (rollingAverageForBatchNormalizationOverThatManyBatches, numberOfChannels), dtype = 'float32' ), borrow=True)
-    sharedNewMu_B = theano.shared(np.zeros( (numberOfChannels), dtype = 'float32'), borrow=True)
-    sharedNewVar_B = theano.shared(np.ones( (numberOfChannels), dtype = 'float32'), borrow=True)
+    muBnsArrayForRollingAverage = tf.Variable( np.zeros( (rollingAverageForBatchNormalizationOverThatManyBatches, numOfChanns), dtype='float32' ), name="muBnsForRollingAverage" )
+    varBnsArrayForRollingAverage = tf.Variable( np.ones( (rollingAverageForBatchNormalizationOverThatManyBatches, numOfChanns), dtype='float32' ), name="varBnsForRollingAverage" )        
+    sharedNewMu_B = tf.Variable(np.zeros( (numOfChanns), dtype='float32'), name="sharedNewMu_B")
+    sharedNewVar_B = tf.Variable(np.ones( (numOfChanns), dtype='float32'), name="sharedNewVar_B")
     
     e1 = np.finfo(np.float32).tiny 
-    #WARN, PROBLEM, THEANO BUG. The below was returning (True,) instead of a vector, if I have only 1 FM. (Vector is (False,)). Think I corrected this bug.
-    mu_B = inputTrain.mean(axis=[0,2,3,4]) #average over all axis but the 2nd, which is the FM axis.
-    mu_B = T.unbroadcast(mu_B, (0)) #The above was returning a broadcastable (True,) tensor when FM-number=1. Here I make it a broadcastable (False,), which is the "vector" type. This is the same type with the sharedNewMu_B, which we are updating with this. They need to be of the same type.
-    var_B = inputTrain.var(axis=[0,2,3,4])
-    var_B = T.unbroadcast(var_B, (0))
-    var_B_plusE = var_B + e1
+    
+    mu_B, var_B = tf.nn.moments(inputTrain, axes=[0,2,3,4])
     
     #---computing mu and var for inference from rolling average---
-    mu_RollingAverage = muBnsArrayForRollingAverage.mean(axis=0)
+    mu_MoveAv = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
+    mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,numOfChanns,1,1,1])
     effectiveSize = inputShapeTrain[0]*inputShapeTrain[2]*inputShapeTrain[3]*inputShapeTrain[4] #batchSize*voxels in a featureMap. See p5 of the paper.
-    var_RollingAverage = (effectiveSize/(effectiveSize-1))*varBnsArrayForRollingAverage.mean(axis=0)
-    var_RollingAverage_plusE = var_RollingAverage + e1
+    var_MoveAv = (effectiveSize/(effectiveSize-1)) * tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
+    var_MoveAv = var_MoveAv + e1
+    var_MoveAv = tf.reshape(var_MoveAv, shape=[1,numOfChanns,1,1,1])
     
     #OUTPUT FOR TRAINING
-    normXi_train = (inputTrain - mu_B.dimshuffle('x', 0, 'x', 'x', 'x')) /  T.sqrt(var_B_plusE.dimshuffle('x', 0, 'x', 'x', 'x')) 
-    normYi_train = gBn.dimshuffle('x', 0, 'x', 'x', 'x') * normXi_train + bBn.dimshuffle('x', 0, 'x', 'x', 'x') # dimshuffle makes b broadcastable.
+    mu_B_resh = tf.reshape(mu_B, shape=[1,numOfChanns,1,1,1])
+    var_B_resh = tf.reshape(var_B, shape=[1,numOfChanns,1,1,1])
+    normXi_train = (inputTrain - mu_B_resh ) /  tf.sqrt(var_B_resh + e1) # e1 should come OUT of the sqrt! 
+    normYi_train = gBn_resh * normXi_train + bBn_resh
     #OUTPUT FOR VALIDATION
-    normXi_val = (inputVal - mu_RollingAverage.dimshuffle('x', 0, 'x', 'x', 'x')) /  T.sqrt(var_RollingAverage_plusE.dimshuffle('x', 0, 'x', 'x', 'x')) 
-    normYi_val = gBn.dimshuffle('x', 0, 'x', 'x', 'x') * normXi_val + bBn.dimshuffle('x', 0, 'x', 'x', 'x')
+    normXi_val = (inputVal - mu_MoveAv) /  tf.sqrt(var_MoveAv) 
+    normYi_val = gBn_resh * normXi_val + bBn_resh
     #OUTPUT FOR TESTING
-    normXi_test = (inputTest - mu_RollingAverage.dimshuffle('x', 0, 'x', 'x', 'x')) /  T.sqrt(var_RollingAverage_plusE.dimshuffle('x', 0, 'x', 'x', 'x')) 
-    normYi_test = gBn.dimshuffle('x', 0, 'x', 'x', 'x') * normXi_test + bBn.dimshuffle('x', 0, 'x', 'x', 'x')
+    normXi_test = (inputTest - mu_MoveAv) /  tf.sqrt(var_MoveAv) 
+    normYi_test = gBn_resh * normXi_test + bBn_resh
     
     return (normYi_train,
             normYi_val,
@@ -96,52 +99,47 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
     
 def makeBiasParamsAndApplyToFms( fmsTrain, fmsVal, fmsTest, numberOfFms ) :
     b_values = np.zeros( (numberOfFms), dtype = 'float32')
-    b = theano.shared(value=b_values, borrow=True)
-    fmsWithBiasAppliedTrain = fmsTrain + b.dimshuffle('x', 0, 'x', 'x', 'x')
-    fmsWithBiasAppliedVal = fmsVal + b.dimshuffle('x', 0, 'x', 'x', 'x')
-    fmsWithBiasAppliedTest = fmsTest + b.dimshuffle('x', 0, 'x', 'x', 'x')
+    b = tf.Variable(b_values, name="b")
+    b_resh = tf.reshape(b, shape=[1,numberOfFms,1,1,1])
+    fmsWithBiasAppliedTrain = fmsTrain + b_resh
+    fmsWithBiasAppliedVal = fmsVal + b_resh
+    fmsWithBiasAppliedTest = fmsTest + b_resh
     return (b, fmsWithBiasAppliedTrain, fmsWithBiasAppliedVal, fmsWithBiasAppliedTest)
 
 def applyRelu(inputTrain, inputVal, inputTest):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
-    outputTrain= T.maximum(0, inputTrain)
-    outputVal = T.maximum(0, inputVal)
-    outputTest = T.maximum(0, inputTest)
+    outputTrain= tf.maximum(0, inputTrain)
+    outputVal = tf.maximum(0, inputVal)
+    outputTest = tf.maximum(0, inputTest)
     return ( outputTrain, outputVal, outputTest )
 
 def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
     #input is a tensor of shape (batchSize, FMs, r, c, z)
-    aPreluValues = np.ones( (numberOfInputChannels), dtype = 'float32' )*0.01 #"Delving deep into rectifiers" initializes it like this. LeakyRelus are at 0.01
-    aPrelu = theano.shared(value=aPreluValues, borrow=True) #One separate a (activation) per feature map.
-    aPreluBroadCastedForMultiplWithChannels = aPrelu.dimshuffle('x', 0, 'x', 'x', 'x')
+    aPreluValues = np.ones( (numberOfInputChannels), dtype = 'float32' ) * 0.01 #"Delving deep into rectifiers" initializes it like this. LeakyRelus are at 0.01
+    aPrelu = tf.Variable(aPreluValues, name="aPrelu") #One separate a (activation) per feature map.
+    aPrelu5D = tf.reshape(aPrelu, shape=[1, numberOfInputChannels, 1, 1, 1] )
     
-    posTrain = T.maximum(0, inputTrain)
-    negTrain = aPreluBroadCastedForMultiplWithChannels * (inputTrain - abs(inputTrain)) * 0.5
+    posTrain = tf.maximum(0., inputTrain)
+    negTrain = aPrelu5D * (inputTrain - abs(inputTrain)) * 0.5
     outputTrain = posTrain + negTrain
-    posVal = T.maximum(0, inputVal)
-    negVal = aPreluBroadCastedForMultiplWithChannels * (inputVal - abs(inputVal)) * 0.5
+    posVal = tf.maximum(0., inputVal)
+    negVal = aPrelu5D * (inputVal - abs(inputVal)) * 0.5
     outputVal = posVal + negVal
-    posTest = T.maximum(0, inputTest)
-    negTest = aPreluBroadCastedForMultiplWithChannels * (inputTest - abs(inputTest)) * 0.5
+    posTest = tf.maximum(0., inputTest)
+    negTest = aPrelu5D * (inputTest - abs(inputTest)) * 0.5
     outputTest = posTest + negTest
     
     return ( aPrelu, outputTrain, outputVal, outputTest )
 
-def applyElu(alpha, inputTrain, inputVal, inputTest):
-    outputTrain = T.basic.switch(inputTrain > 0, inputTrain, alpha * T.basic.expm1(inputTrain))
-    outputVal = T.basic.switch(inputVal > 0, inputVal, alpha * T.basic.expm1(inputVal))
-    outputTest = T.basic.switch(inputTest > 0, inputTest, alpha * T.basic.expm1(inputTest))
-    return ( outputTrain, outputVal, outputTest )
 
 def applySelu(inputTrain, inputVal, inputTest):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
     lambda01 = 1.0507 # calc in p4 of paper.
     alpha01 = 1.6733
     
-    ( outputTrain, outputVal, outputTest ) = applyElu(alpha01, inputTrain, inputVal, inputTest)
-    outputTrain = lambda01 * outputTrain
-    outputVal = lambda01 *  outputVal
-    outputTest = lambda01 * outputTest
+    outputTrain = lambda01 * tf.nn.elu(inputTrain)
+    outputVal = lambda01 *  tf.nn.elu(inputVal)
+    outputTest = lambda01 * tf.nn.elu(inputTest)
     
     return ( outputTrain, outputVal, outputTest )
 
@@ -153,9 +151,8 @@ def createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng) :
         varianceScale = convWInitMethod[1] # 2 for init ala Delving into Rectifier, 1 for SNN.
         stdForInit = np.sqrt( varianceScale / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) )
         
-    # Perhaps I want to use: theano.config.floatX in the below
     wInitNpArray = np.asarray( rng.normal(loc=0.0, scale=stdForInit, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])), dtype='float32' )
-    W = theano.shared( wInitNpArray, borrow=True )
+    W = tf.Variable( wInitNpArray, dtype="float32", name="W")
     # W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
     return W
 
@@ -164,49 +161,39 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
     # filterShape is the shape of W.
     # Input signal given in shape [BatchSize, Channels, R, C, Z]
     
-    # Conv3d requires filter shape: [ #ChannelsOut, #ChannelsIn, Z, R, C ]
-    wReshapedForConv = W.dimshuffle(0,1,4,2,3)
-    wReshapedForConvShape = (filterShape[0], filterShape[1], filterShape[4], filterShape[2], filterShape[3])
+    # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
+    wReshapedForConv = tf.transpose( W, perm=[4,3,2,1,0] )
     
     # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
-    inputToConvReshapedTrain = inputToConvTrain.dimshuffle(0, 1, 4, 2, 3)
-    inputToConvReshapedShapeTrain = (inputToConvShapeTrain[0], inputToConvShapeTrain[1], inputToConvShapeTrain[4], inputToConvShapeTrain[2], inputToConvShapeTrain[3]) # batch_size, time, num_of_input_channels, rows, columns
-    outputOfConvTrain = T.nnet.conv3d(input = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
-                                  filters = wReshapedForConv, # Number_of_output_filters, Z, Numb_of_input_Channels, r, c
-                                  input_shape = inputToConvReshapedShapeTrain, # Can be None. Used for optimization.
-                                  filter_shape = wReshapedForConvShape, # Can be None. Used for optimization.
-                                  border_mode = 'valid',
-                                  subsample = (1,1,1), # strides
-                                  filter_dilation=(1,1,1) # dilation rate
+    inputToConvReshapedTrain = tf.transpose( inputToConvTrain, perm=[0,4,3,2,1] )
+    outputOfConvTrain = tf.nn.conv3d(input = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
+                                  filter = wReshapedForConv, # TF: Depth, Height, Wight, Chans_in, Chans_out
+                                  strides = [1,1,1,1,1],
+                                  padding = "VALID",
+                                  data_format = "NDHWC"
                                   )
     #Output is in the shape of the input image (signals_shape).
+    outputTrain = tf.transpose( outputOfConvTrain, perm=[0,4,3,2,1] ) #reshape the result, back to the shape of the input image.
     
     #Validation
-    inputToConvReshapedVal = inputToConvVal.dimshuffle(0, 1, 4, 2, 3)
-    inputToConvReshapedShapeVal = (inputToConvShapeVal[0], inputToConvShapeVal[1], inputToConvShapeVal[4], inputToConvShapeVal[2], inputToConvShapeVal[3])
-    outputOfConvVal = T.nnet.conv3d(input = inputToConvReshapedVal,
-                                  filters = wReshapedForConv,
-                                  input_shape = inputToConvReshapedShapeVal,
-                                  filter_shape = wReshapedForConvShape,
-                                  border_mode = 'valid',
-                                  subsample = (1,1,1),
-                                  filter_dilation=(1,1,1)
+    inputToConvReshapedVal = tf.transpose( inputToConvVal, perm=[0,4,3,2,1] )
+    outputOfConvVal = tf.nn.conv3d(input = inputToConvReshapedVal,
+                                  filter = wReshapedForConv,
+                                  strides = [1,1,1,1,1],
+                                  padding = "VALID",
+                                  data_format = "NDHWC"
                                   )
-    #Testing
-    inputToConvReshapedTest = inputToConvTest.dimshuffle(0, 1, 4, 2, 3)
-    inputToConvReshapedShapeTest = (inputToConvShapeTest[0], inputToConvShapeTest[1], inputToConvShapeTest[4], inputToConvShapeTest[2], inputToConvShapeTest[3])
-    outputOfConvTest = T.nnet.conv3d(input = inputToConvReshapedTest,
-                                  filters = wReshapedForConv,
-                                  input_shape = inputToConvReshapedShapeTest,
-                                  filter_shape = wReshapedForConvShape,
-                                  border_mode = 'valid',
-                                  subsample = (1,1,1),
-                                  filter_dilation=(1,1,1)
-                                  )
+    outputVal = tf.transpose( outputOfConvVal, perm=[0,4,3,2,1] )
     
-    outputTrain = outputOfConvTrain.dimshuffle(0, 1, 3, 4, 2) #reshape the result, back to the shape of the input image.
-    outputVal = outputOfConvVal.dimshuffle(0, 1, 3, 4, 2)
-    outputTest = outputOfConvTest.dimshuffle(0, 1, 3, 4, 2)
+    #Testing
+    inputToConvReshapedTest = tf.transpose( inputToConvTest, perm=[0,4,3,2,1] )
+    outputOfConvTest = tf.nn.conv3d(input = inputToConvReshapedTest,
+                                  filter = wReshapedForConv,
+                                  strides = [1,1,1,1,1],
+                                  padding = "VALID",
+                                  data_format = "NDHWC"
+                                  )
+    outputTest = tf.transpose( outputOfConvTest, perm=[0,4,3,2,1] )
     
     outputShapeTrain = [inputToConvShapeTrain[0],
                         filterShape[0],
@@ -235,19 +222,19 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
     # The reshaped 2D Tensor will have dimensions: [ batchSize * r * c * z , #Classses ]
     # The order of the elements in the rows after the reshape should be :
     
-    inputToSoftmaxReshaped = inputToSoftmax.dimshuffle(0, 2, 3, 4, 1) # [batchSize, r, c, z, #classes), the classes stay as the last dimension.
-    inputToSoftmaxFlattened = inputToSoftmaxReshaped.flatten(1) 
+    inputToSoftmaxReshaped = tf.transpose(inputToSoftmax, perm=[0,2,3,4,1]) # [batchSize, r, c, z, #classes), the classes stay as the last dimension.
+    inputToSoftmaxFlattened = tf.reshape(inputToSoftmaxReshaped, shape=[-1]) 
     # flatten is "Row-major" 'C' style. ie, starts from index [0,0,0] and grabs elements in order such that last dim index increases first and first index increases last. (first row flattened, then second follows, etc)
     numberOfVoxelsDenselyClassified = inputToSoftmaxShape[2]*inputToSoftmaxShape[3]*inputToSoftmaxShape[4]
     firstDimOfInputToSoftmax2d = inputToSoftmaxShape[0]*numberOfVoxelsDenselyClassified # batchSize*r*c*z.
-    inputToSoftmax2d = inputToSoftmaxFlattened.reshape((firstDimOfInputToSoftmax2d, numberOfOutputClasses)) # Reshape works in "Row-major", ie 'C' style too.
+    inputToSoftmax2d = tf.reshape(inputToSoftmaxFlattened, shape=[firstDimOfInputToSoftmax2d, numberOfOutputClasses]) # Reshape works in "Row-major", ie 'C' style too.
     # Predicted probability per class.
-    p_y_given_x_2d = T.nnet.softmax(inputToSoftmax2d/softmaxTemperature)
-    p_y_given_x_classMinor = p_y_given_x_2d.reshape((inputToSoftmaxShape[0], inputToSoftmaxShape[2], inputToSoftmaxShape[3], inputToSoftmaxShape[4], inputToSoftmaxShape[1])) #Result: batchSize, R,C,Z, Classes.
-    p_y_given_x = p_y_given_x_classMinor.dimshuffle(0,4,1,2,3) #Result: batchSize, Class, R, C, Z
+    p_y_given_x_2d = tf.nn.softmax(inputToSoftmax2d/softmaxTemperature, dim=-1)
+    p_y_given_x_classMinor = tf.reshape(p_y_given_x_2d, shape=[inputToSoftmaxShape[0], inputToSoftmaxShape[2], inputToSoftmaxShape[3], inputToSoftmaxShape[4], inputToSoftmaxShape[1]]) #Result: batchSize, R,C,Z, Classes.
+    p_y_given_x = tf.transpose(p_y_given_x_classMinor, perm=[0,4,1,2,3]) #Result: batchSize, Class, R, C, Z
     
     # Classification (EM) for each voxel
-    y_pred = T.argmax(p_y_given_x, axis=1) #Result: batchSize, R, C, Z
+    y_pred = tf.argmax(p_y_given_x, axis=1) #Result: batchSize, R, C, Z
     
     return ( p_y_given_x, y_pred )
 
@@ -256,11 +243,11 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
 def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
     image3dBC012WithMirrorPad = image3dBC012
     for time_i in range(0, mirrorFinalBordersForThatMuch[0]) :
-        image3dBC012WithMirrorPad = T.concatenate([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,-1:,:,:] ], axis=2)
+        image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,-1:,:,:] ], axis=2)
     for time_i in range(0, mirrorFinalBordersForThatMuch[1]) :
-        image3dBC012WithMirrorPad = T.concatenate([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,-1:,:] ], axis=3)
+        image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,-1:,:] ], axis=3)
     for time_i in range(0, mirrorFinalBordersForThatMuch[2]) :
-        image3dBC012WithMirrorPad = T.concatenate([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,:,-1:] ], axis=4)
+        image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,:,-1:] ], axis=4)
     return image3dBC012WithMirrorPad
 
 
@@ -269,16 +256,17 @@ def pool3dMirrorPad(image3dBC012, image3dBC012Shape, poolParams) :
     # poolParams: [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode]
     ws = poolParams[0] # window size
     stride = poolParams[1] # stride
-    mode1 = poolParams[3] # max, sum, average_inc_pad, average_exc_pad
+    mode1 = poolParams[3] # MAX or AVG
     
     image3dBC012WithMirrorPad = mirrorFinalBordersOfImage(image3dBC012, poolParams[2])
     
-    T.signal.pool.pool_3d( input=image3dBC012WithMirrorPad,
-                            ws=ws,
-                            ignore_border=True,
-                            st=stride,
-                            pad=(0,0,0),
-                            mode=mode1)
+    pooled_out = tf.nn.pool( input = tf.transpose( image3dBC012WithMirrorPad, perm=[0,4,3,2,1] ),
+                            window_shape=ws,
+                            strides=stride,
+                            padding="VALID", # SAME or VALID
+                            pooling_type=mode1,
+                            data_format="NDHWC") # AVG or MAX
+    pooled_out = tf.transpose( pooled_out, perm=[0,4,3,2,1] )
     
     #calculate the shape of the image after the max pooling.
     #This calculation is for ignore_border=True! Pooling should only be done in full areas in the mirror-padded image.

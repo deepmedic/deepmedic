@@ -6,12 +6,13 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 import numpy as np
 import random
 
-import theano
-import theano.tensor as T
+import tensorflow as tf
+
+from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applySelu, pool3dMirrorPad
+from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, applySoftmaxToFmAndReturnProbYandPredY
 
 try:
     from sys import maxint as MAX_INT
@@ -19,18 +20,6 @@ except ImportError:
     # python3 compatibility
     from sys import maxsize as MAX_INT
 
-from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
-from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, applySoftmaxToFmAndReturnProbYandPredY
-
-
-####################
-# Helper functions #
-####################
-
-def checkDimsOfYpredAndYEqual(y, yPred, stringTrainOrVal) :
-    if y.ndim != yPred.ndim:
-        raise TypeError( "ERROR! y did not have the same shape as y_pred during " + stringTrainOrVal,
-                        ('y', y.type, 'y_pred', yPred.type) )
         
 
 #################################################################
@@ -44,12 +33,8 @@ class Block(object):
     
     def __init__(self) :
         # === Input to the layer ===
-        self.inputTrain = None
-        self.inputVal = None
-        self.inputTest = None
-        self.inputShapeTrain = None
-        self.inputShapeVal = None
-        self.inputShapeTest = None
+        self.input= {"train": None, "val": None, "test": None}
+        self.inputShape = {"train": None, "val": None, "test": None}
         
         # === Basic architecture parameters === 
         self._numberOfFeatureMaps = None
@@ -76,48 +61,44 @@ class Block(object):
         self._sharedNewVar_B = None
         self._newMu_B = None # last value tensor, to update the corresponding shared.
         self._newVar_B = None
-        
+        self._tf_plchld_int32 = tf.placeholder( dtype="int32", name="tf_plchld_int32") # convenience for tf.assign
+        self._op_update_mtrx_bn_inf_mu = None
+        self._op_update_mtrx_bn_inf_var = None
         
         # === Output of the block ===
-        self.outputTrain = None
-        self.outputVal = None
-        self.outputTest = None
-        self.outputShapeTrain = None
-        self.outputShapeVal = None
-        self.outputShapeTest = None
+        self.output = {"train": None, "val": None, "test": None}
+        self.outputShape = {"train": None, "val": None, "test": None}
         # New and probably temporary, for the residual connections to be "visible".
-        self.outputAfterResidualConnIfAnyAtOutpTrain = None
-        self.outputAfterResidualConnIfAnyAtOutpVal = None
-        self.outputAfterResidualConnIfAnyAtOutpTest = None
+        self.outputAfterResidualConnIfAnyAtOutp = {"train": None, "val": None, "test": None}
         
         # ==== Target Block Connected to that layer (softmax, regression, auxiliary loss etc), if any ======
         self.targetBlock = None
         
     # Setters
     def _setBlocksInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest) :
-        self.inputTrain = inputToLayerTrain
-        self.inputVal = inputToLayerVal
-        self.inputTest = inputToLayerTest
-        self.inputShapeTrain = inputToLayerShapeTrain
-        self.inputShapeVal = inputToLayerShapeVal
-        self.inputShapeTest = inputToLayerShapeTest
+        self.input["train"] = inputToLayerTrain
+        self.input["val"] = inputToLayerVal
+        self.input["test"] = inputToLayerTest
+        self.inputShape["train"] = inputToLayerShapeTrain
+        self.inputShape["val"] = inputToLayerShapeVal
+        self.inputShape["test"] = inputToLayerShapeTest
         
     def _setBlocksArchitectureAttributes(self, filterShape, poolingParameters) :
         self._numberOfFeatureMaps = filterShape[0] # Of the output! Used in trainValidationVisualise.py. Not of the input!
-        assert self.inputShapeTrain[1] == filterShape[1]
+        assert self.inputShape["train"][1] == filterShape[1]
         self._poolingParameters = poolingParameters
         
     def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest) :
-        self.outputTrain = outputTrain
-        self.outputVal = outputVal
-        self.outputTest = outputTest
-        self.outputShapeTrain = outputShapeTrain
-        self.outputShapeVal = outputShapeVal
-        self.outputShapeTest = outputShapeTest
+        self.output["train"] = outputTrain
+        self.output["val"] = outputVal
+        self.output["test"] = outputTest
+        self.outputShape["train"] = outputShapeTrain
+        self.outputShape["val"] = outputShapeVal
+        self.outputShape["test"] = outputShapeTest
         # New and probably temporary, for the residual connections to be "visible".
-        self.outputAfterResidualConnIfAnyAtOutpTrain = self.outputTrain
-        self.outputAfterResidualConnIfAnyAtOutpVal = self.outputVal
-        self.outputAfterResidualConnIfAnyAtOutpTest = self.outputTest
+        self.outputAfterResidualConnIfAnyAtOutp["train"] = self.output["train"]
+        self.outputAfterResidualConnIfAnyAtOutp["val"] = self.output["val"]
+        self.outputAfterResidualConnIfAnyAtOutp["test"] = self.output["test"]
         
     def setTargetBlock(self, targetBlockInstance):
         # targetBlockInstance : eg softmax layer. Future: Regression layer, or other auxiliary classifiers.
@@ -126,12 +107,12 @@ class Block(object):
     def getNumberOfFeatureMaps(self):
         return self._numberOfFeatureMaps
     def fmsActivations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
-        return self.outputTest[:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
+        return self.output["test"][:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
     
     # Other API
-    def getL1RegCost(self) : #Called for L1 weigths regularisation
+    def _get_L1_cost(self) : #Called for L1 weigths regularisation
         raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
-    def getL2RegCost(self) : #Called for L2 weigths regularisation
+    def _get_L2_cost(self) : #Called for L2 weigths regularisation
         raise NotImplementedMethod()
     def getTrainableParams(self):
         if self.targetBlock == None :
@@ -139,24 +120,18 @@ class Block(object):
         else :
             return self.params + self.targetBlock.getTrainableParams()
         
-    def updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(self):
+    def updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(self, sessionTf):
         # This function should be erazed when I reimplement the Rolling average.
         if self._appliedBnInLayer :
-            muArrayValue = self._muBnsArrayForRollingAverage.get_value()
-            muArrayValue[self._indexWhereRollingAverageIs] = self._sharedNewMu_B.get_value()
-            self._muBnsArrayForRollingAverage.set_value(muArrayValue, borrow=True)
-            
-            varArrayValue = self._varBnsArrayForRollingAverage.get_value()
-            varArrayValue[self._indexWhereRollingAverageIs] = self._sharedNewVar_B.get_value()
-            self._varBnsArrayForRollingAverage.set_value(varArrayValue, borrow=True)
+            sessionTf.run( fetches=self._op_update_mtrx_bn_inf_mu, feed_dict={self._tf_plchld_int32: self._indexWhereRollingAverageIs} )
+            sessionTf.run( fetches=self._op_update_mtrx_bn_inf_var, feed_dict={self._tf_plchld_int32: self._indexWhereRollingAverageIs} )
             self._indexWhereRollingAverageIs = (self._indexWhereRollingAverageIs + 1) % self._rollingAverageForBatchNormalizationOverThatManyBatches
             
     def getUpdatesForBnRollingAverage(self) :
         # This function or something similar should stay, even if I clean the BN rolling average.
         if self._appliedBnInLayer :
-            #CAREFUL: WARN, PROBLEM, THEANO BUG! If a layer has only 1FM, the .newMu_B ends up being of type (true,) instead of vector!!! Error!!!
-            return [(self._sharedNewMu_B, self._newMu_B),
-                    (self._sharedNewVar_B, self._newVar_B) ]
+            return [ tf.assign( ref=self._sharedNewMu_B, value=self._newMu_B, validate_shape=True ),
+                    tf.assign( ref=self._sharedNewVar_B, value=self._newVar_B, validate_shape=True ) ]
         else :
             return []
         
@@ -202,6 +177,10 @@ class ConvLayer(Block):
             self._newVar_B
             ) = applyBn( rollingAverageForBatchNormalizationOverThatManyBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain)
             self.params = self.params + [self._gBn, self._b]
+            # Create ops for updating the matrices with the bn inference stats.
+            self._op_update_mtrx_bn_inf_mu = tf.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
+            self._op_update_mtrx_bn_inf_var = tf.assign( self._varBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewVar_B )
+    
         else : #Not using batch normalization
             self._appliedBnInLayer = False
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
@@ -290,7 +269,7 @@ class ConvLayer(Block):
         type rng: numpy.random.RandomState
         param rng: a random number generator used to initialize weights
         
-        type inputToLayer:  tensor5 = theano.tensor.TensorType(dtype='float32', broadcastable=(False, False, False, False, False))
+        type inputToLayer:  tensor5
         param inputToLayer: symbolic image tensor, of shape inputToLayerShape
         
         type filterShape: tuple or list of length 5
@@ -325,10 +304,10 @@ class ConvLayer(Block):
         self._setBlocksOutputAttributes(*tupleWithOuputAndShapeTrValTest)
         
     # Override parent's abstract classes.
-    def getL1RegCost(self) : #Called for L1 weigths regularisation
-        return abs(self._W).sum()
-    def getL2RegCost(self) : #Called for L2 weigths regularisation
-        return (self._W ** 2).sum()
+    def _get_L1_cost(self) : #Called for L1 weigths regularisation
+        return tf.reduce_sum(tf.abs(self._W))
+    def _get_L2_cost(self) : #Called for L2 weigths regularisation
+        return tf.reduce_sum(self._W ** 2)
     
     
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
@@ -336,7 +315,7 @@ class LowRankConvLayer(ConvLayer):
     def __init__(self, rank=2) :
         ConvLayer.__init__(self)
         
-        self._WperSubconv = None # List of ._W theano tensors. One per low-rank subconv. Treat carefully. 
+        self._WperSubconv = None # List of ._W tensors. One per low-rank subconv. Treat carefully. 
         del(self._W) # The ._W of the Block parent is not used.
         self._rank = rank # 1 or 2 dimensions
         
@@ -359,7 +338,7 @@ class LowRankConvLayer(ConvLayer):
         rSubconvOutputCropped = rSubconvOutput[:,:, :, cCropSlice if self._rank == 1 else slice(0, MAX_INT), zCropSlice  ]
         cSubconvOutputCropped = cSubconvOutput[:,:, rCropSlice, :, zCropSlice if self._rank == 1 else slice(0, MAX_INT) ]
         zSubconvOutputCropped = zSubconvOutput[:,:, rCropSlice if self._rank == 1 else slice(0, MAX_INT), cCropSlice, : ]
-        concatSubconvOutputs = T.concatenate([rSubconvOutputCropped, cSubconvOutputCropped, zSubconvOutputCropped], axis=1) #concatenate the FMs
+        concatSubconvOutputs = tf.concat([rSubconvOutputCropped, cSubconvOutputCropped, zSubconvOutputCropped], axis=1) #concatenate the FMs
         
         return (concatSubconvOutputs, concatOutputShape)
     
@@ -410,23 +389,34 @@ class LowRankConvLayer(ConvLayer):
         
         
     # Implement parent's abstract classes.
-    def getL1RegCost(self) : #Called for L1 weigths regularisation
+    def _get_L1_cost(self) : #Called for L1 weigths regularisation
         l1Cost = 0
-        for wOfSubconv in self._WperSubconv : l1Cost += abs(wOfSubconv).sum()
+        for wOfSubconv in self._WperSubconv : l1Cost += tf.reduce_sum( tf.abs(wOfSubconv) )
         return l1Cost
-    def getL2RegCost(self) : #Called for L2 weigths regularisation
+    def _get_L2_cost(self) : #Called for L2 weigths regularisation
         l2Cost = 0
-        for wOfSubconv in self._WperSubconv : l2Cost += (wOfSubconv ** 2).sum()
+        for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum( wOfSubconv ** 2 )
         return l2Cost
     def getW(self):
         print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
         
         
-class SoftmaxLayer(Block):
+class TargetLayer(Block):
+    # Mother class of all layers the output of which will be "trained".
+    # i.e. requires a y_gt feed, which is specified for each child in get_output_gt_tensor_feed()
+    def __init__(self):
+        Block.__init__(self)
+        
+    def get_output_gt_tensor_feed(self):
+        raise NotImplementedError("Not implemented virtual function.")
+    
+    
+    
+class SoftmaxLayer(TargetLayer):
     """ Softmax for classification. Note, this is simply the softmax function, after adding bias. Not a ConvLayer """
     
     def __init__(self):
-        Block.__init__(self)
+        TargetLayer.__init__(self)
         self._numberOfOutputClasses = None
         #self._b = None # The only type of trainable parameter that a softmax layer has.
         self._softmaxTemperature = None
@@ -439,8 +429,8 @@ class SoftmaxLayer(Block):
         self._numberOfOutputClasses = layerConnected.getNumberOfFeatureMaps()
         self._softmaxTemperature = softmaxTemperature
         
-        self._setBlocksInputAttributes(layerConnected.outputTrain, layerConnected.outputVal, layerConnected.outputTest,
-                                        layerConnected.outputShapeTrain, layerConnected.outputShapeVal, layerConnected.outputShapeTest)
+        self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"],
+                                        layerConnected.outputShape["train"], layerConnected.outputShape["val"], layerConnected.outputShape["test"])
         
         # At this last classification layer, the conv output needs to have bias added before the softmax.
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
@@ -448,72 +438,49 @@ class SoftmaxLayer(Block):
         (self._b,
         biasedInputToSoftmaxTrain,
         biasedInputToSoftmaxVal,
-        biasedInputToSoftmaxTest) = makeBiasParamsAndApplyToFms( self.inputTrain, self.inputVal, self.inputTest, self._numberOfOutputClasses )
+        biasedInputToSoftmaxTest) = makeBiasParamsAndApplyToFms( self.input["train"], self.input["val"], self.input["test"], self._numberOfOutputClasses )
         self.params = self.params + [self._b]
         
         # ============ Softmax ==============
         #self.p_y_given_x_2d_train = ? Can I implement negativeLogLikelihood without this ?
         ( self.p_y_given_x_train,
-        self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTrain, self.inputShapeTrain, self._numberOfOutputClasses, softmaxTemperature)
+        self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTrain, self.inputShape["train"], self._numberOfOutputClasses, softmaxTemperature)
         ( self.p_y_given_x_val,
-        self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxVal, self.inputShapeVal, self._numberOfOutputClasses, softmaxTemperature)
+        self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxVal, self.inputShape["val"], self._numberOfOutputClasses, softmaxTemperature)
         ( self.p_y_given_x_test,
-        self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTest, self.inputShapeTest, self._numberOfOutputClasses, softmaxTemperature)
+        self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTest, self.inputShape["test"], self._numberOfOutputClasses, softmaxTemperature)
         
-        self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShapeTrain, self.inputShapeVal, self.inputShapeTest)
+        self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShape["train"], self.inputShape["val"], self.inputShape["test"])
         
         layerConnected.setTargetBlock(self)
         
+    def get_output_gt_tensor_feed(self):
+        # Input. Dimensions of y labels: [batchSize, r, c, z]
+        y_gt_train = tf.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
+        y_gt_val = tf.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
+        return (y_gt_train, y_gt_val)
         
-    def negativeLogLikelihood(self, y, weightPerClass):
-        # Used in training.
-        # param y: y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-        # weightPerClass is a vector with 1 element per class.
-        
-        #Weighting the cost of the different classes in the cost-function, in order to counter class imbalance.
-        e1 = np.finfo(np.float32).tiny
-        addTinyProbMatrix = T.lt(self.p_y_given_x_train, 4*e1) * e1
-        
-        weightPerClassBroadcasted = weightPerClass.dimshuffle('x', 0, 'x', 'x', 'x')
-        log_p_y_given_x_train = T.log(self.p_y_given_x_train + addTinyProbMatrix) #added a tiny so that it does not go to zero and I have problems with nan again...
-        weighted_log_p_y_given_x_train = log_p_y_given_x_train * weightPerClassBroadcasted
-        # return -T.mean( weighted_log_p_y_given_x_train[T.arange(y.shape[0]), y] )
-        
-        # Not a very elegant way to do the indexing but oh well...
-        indexDim0 = T.arange( weighted_log_p_y_given_x_train.shape[0] ).dimshuffle( 0, 'x','x','x')
-        indexDim2 = T.arange( weighted_log_p_y_given_x_train.shape[2] ).dimshuffle('x', 0, 'x','x')
-        indexDim3 = T.arange( weighted_log_p_y_given_x_train.shape[3] ).dimshuffle('x','x', 0, 'x')
-        indexDim4 = T.arange( weighted_log_p_y_given_x_train.shape[4] ).dimshuffle('x','x','x', 0)
-        return -T.mean( weighted_log_p_y_given_x_train[ indexDim0, y, indexDim2, indexDim3, indexDim4] )
-    
-    
     def meanErrorTraining(self, y):
         # Returns float = number of errors / number of examples of the minibatch ; [0., 1.]
         # param y: y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
         
-        # check if y has same dimension of y_pred
-        checkDimsOfYpredAndYEqual(y, self.y_pred_train, "training")
-        
         #Mean error of the training batch.
-        tneq = T.neq(self.y_pred_train, y)
-        meanError = T.mean(tneq)
+        tneq = tf.logical_not( tf.equal(self.y_pred_train, y) )
+        meanError = tf.reduce_mean(tneq)
         return meanError
     
     def meanErrorValidation(self, y):
         # y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
         
-        # check if y has same dimension of y_pred
-        checkDimsOfYpredAndYEqual(y, self.y_pred_val, "validation")
-        
         # check if y is of the correct datatype
         if y.dtype.startswith('int'):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
-            tneq = T.neq(self.y_pred_val, y)
-            meanError = T.mean(tneq)
+            tneq = tf.logical_not( tf.equal(self.y_pred_val, y) )
+            meanError = tf.reduce_mean(tneq)
             return meanError #The percentage of the predictions that is not the correct class.
         else:
-            raise NotImplementedError()
+            raise NotImplementedError("Not implemented behaviour for y.dtype different than int.")
         
     def getRpRnTpTnForTrain0OrVal1(self, y, training0OrValidation1):
         # The returned list has (numberOfClasses)x4 integers: >numberOfRealPositives, numberOfRealNegatives, numberOfTruePredictedPositives, numberOfTruePredictedNegatives< for each class (incl background).
@@ -521,24 +488,23 @@ class SoftmaxLayer(Block):
         # param y: y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
         
         yPredToUse = self.y_pred_train if  training0OrValidation1 == 0 else self.y_pred_val
-        checkDimsOfYpredAndYEqual(y, yPredToUse, "training" if training0OrValidation1 == 0 else "validation")
         
         returnedListWithNumberOfRpRnTpTnForEachClass = []
         
-        for class_i in xrange(0, self._numberOfOutputClasses) :
+        for class_i in range(0, self._numberOfOutputClasses) :
             #Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
-            tensorOneAtRealPos = T.eq(y, class_i)
-            tensorOneAtRealNeg = T.neq(y, class_i)
+            tensorOneAtRealPos = tf.equal(y, class_i)
+            tensorOneAtRealNeg = tf.logical_not(tensorOneAtRealPos)
 
-            tensorOneAtPredictedPos = T.eq(yPredToUse, class_i)
-            tensorOneAtPredictedNeg = T.neq(yPredToUse, class_i)
-            tensorOneAtTruePos = T.and_(tensorOneAtRealPos,tensorOneAtPredictedPos)
-            tensorOneAtTrueNeg = T.and_(tensorOneAtRealNeg,tensorOneAtPredictedNeg)
+            tensorOneAtPredictedPos = tf.equal(yPredToUse, class_i)
+            tensorOneAtPredictedNeg = tf.logical_not(tensorOneAtPredictedPos)
+            tensorOneAtTruePos = tf.logical_and(tensorOneAtRealPos,tensorOneAtPredictedPos)
+            tensorOneAtTrueNeg = tf.logical_and(tensorOneAtRealNeg,tensorOneAtPredictedNeg)
                     
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( T.sum(tensorOneAtRealPos) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( T.sum(tensorOneAtRealNeg) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( T.sum(tensorOneAtTruePos) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( T.sum(tensorOneAtTrueNeg) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtRealPos, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtRealNeg, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtTruePos, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtTrueNeg, dtype="int32")) )
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
     

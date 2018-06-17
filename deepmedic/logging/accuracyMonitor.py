@@ -6,23 +6,22 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 import numpy as np
 
-from deepmedic.loggingAndMonitoring.utils import strFl4fNA, strFl5fNA, strListFl4fNA, strListFl5fNA, getMeanOfListExclNA
+from deepmedic.logging.utils import strFl4fNA, strFl5fNA, strListFl4fNA, strListFl5fNA, getMeanOfListExclNA
 
 class AccuracyOfEpochMonitorSegmentation(object) :
     
     NA_PATTERN = "N/A" #not applicable. Eg for accuracy when class not present.
     
     def __init__(self,
-                logger,
+                log,
                 training0orValidation1,
                 epoch, #number Of epochs trained prior to this
                 numberOfClasses,
                 numberOfSubepochsPerEpoch) :
         
-        self.logger = logger
+        self.log = log
         self.training0orValidation1 = training0orValidation1
         self.epoch = epoch
         self.numberOfClasses = numberOfClasses
@@ -63,7 +62,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             self.meanCostOfEachSubep.append(meanCostOfSubepoch)
             
         correctlyPredVoxelsInSubep = 0; # Predicted with the correct class.
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             correctlyPredVoxelsInSubep += perClassRpRnTpTnInSubep[class_i][2] # Add up the true positives per class (which are one vs all).
         self.correctlyPredVoxelsInEachSubep.append(correctlyPredVoxelsInSubep)
         numberOfAllSamples = perClassRpRnTpTnInSubep[0,0] + perClassRpRnTpTnInSubep[0,1] #RealPos + RealNeg wrt any class (eg backgr)
@@ -75,7 +74,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         self.listPerSubepPerClassRpRnTpTn.append(perClassRpRnTpTnInSubep)
         
         listWithPerClassMeanAccSensSpecDscInSubep = [] # Classes x 4 . 4=Mean Acc, sens, spec, dsc.
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             numOfRealPosInSubep = perClassRpRnTpTnInSubep[class_i,0]
             numOfRealNegInSubep = perClassRpRnTpTnInSubep[class_i,1]
             numOfTruePosInSubep = perClassRpRnTpTnInSubep[class_i,2]
@@ -113,18 +112,18 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         currSubep = self.numberOfSubepochsForWhichUpdated - 1
         logStr = trainOrValString + ": Epoch #" + str(self.epoch) + ", Subepoch #" + str(currSubep)
         
-        self.logger.print3( "+++++++++++++++++++++++ Reporting Accuracy over whole subepoch +++++++++++++++++++++++" )
-        self.logger.print3( logStr + ", Overall:\t mean accuracy:   \t" + strFl4fNA(self.meanEmpiricalAccuracyOfEachSubep[currSubep], self.NA_PATTERN) +\
+        self.log.print3( "+++++++++++++++++++++++ Reporting Accuracy over whole subepoch +++++++++++++++++++++++" )
+        self.log.print3( logStr + ", Overall:\t mean accuracy:   \t" + strFl4fNA(self.meanEmpiricalAccuracyOfEachSubep[currSubep], self.NA_PATTERN) +\
                         "\t=> Correctly-Classified-Voxels/All-Predicted-Voxels = " + str(self.correctlyPredVoxelsInEachSubep[currSubep]) + "/" + str(self.numberOfAllSamplesOfEachSubep[currSubep]) )
         if self.training0orValidation1 == 0 : # During training, also report the mean value of the Cost Function:
-            self.logger.print3( logStr + ", Overall:\t mean cost:      \t" + strFl5fNA(self.meanCostOfEachSubep[currSubep], self.NA_PATTERN) ) 
+            self.log.print3( logStr + ", Overall:\t mean cost:      \t" + strFl5fNA(self.meanCostOfEachSubep[currSubep], self.NA_PATTERN) ) 
             
         # Report accuracy over subepoch for each class_i:
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             classString = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
             
-            self.logger.print3( "+++++++++++++++ Reporting Accuracy over whole subepoch for " + classString + " ++++++++ " + extraDescription + " ++++++++++++++++" )
+            self.log.print3( "+++++++++++++++ Reporting Accuracy over whole subepoch for " + classString + " ++++++++ " + extraDescription + " ++++++++++++++++" )
             
             [meanAccClassOfSubep,
             meanAccOnPosOfSubep,
@@ -138,10 +137,10 @@ class AccuracyOfEpochMonitorSegmentation(object) :
                                     self.listPerSubepForegrRpRnTpTn[currSubep] # If class-0, report foreground.
                                     
             logStrClass = logStr + ", " + classString + ":"
-            self.logger.print3(logStrClass+"\t mean accuracy:   \t"+ strFl4fNA(meanAccClassOfSubep, self.NA_PATTERN)+"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels = "+str(numOfTpInSubep+numOfTnInSubep)+"/"+str(numOfRpInSubep+numOfRnInSubep))        
-            self.logger.print3(logStrClass+"\t mean sensitivity:\t"+ strFl4fNA(meanAccOnPosOfSubep, self.NA_PATTERN)+"\t=> TruePos/RealPos = "+str(numOfTpInSubep)+"/"+str(numOfRpInSubep))
-            self.logger.print3(logStrClass+"\t mean specificity:\t"+ strFl4fNA(meanAccOnNegOfSubep, self.NA_PATTERN)+"\t=> TrueNeg/RealNeg = "+str(numOfTnInSubep)+"/"+str(numOfRnInSubep))
-            self.logger.print3(logStrClass+"\t mean Dice:       \t"+ strFl4fNA(meanDiceOfSubep, self.NA_PATTERN))
+            self.log.print3(logStrClass+"\t mean accuracy:   \t"+ strFl4fNA(meanAccClassOfSubep, self.NA_PATTERN)+"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels = "+str(numOfTpInSubep+numOfTnInSubep)+"/"+str(numOfRpInSubep+numOfRnInSubep))        
+            self.log.print3(logStrClass+"\t mean sensitivity:\t"+ strFl4fNA(meanAccOnPosOfSubep, self.NA_PATTERN)+"\t=> TruePos/RealPos = "+str(numOfTpInSubep)+"/"+str(numOfRpInSubep))
+            self.log.print3(logStrClass+"\t mean specificity:\t"+ strFl4fNA(meanAccOnNegOfSubep, self.NA_PATTERN)+"\t=> TrueNeg/RealNeg = "+str(numOfTnInSubep)+"/"+str(numOfRnInSubep))
+            self.log.print3(logStrClass+"\t mean Dice:       \t"+ strFl4fNA(meanDiceOfSubep, self.NA_PATTERN))
             
             
     def reportMeanAccyracyOfEpoch(self) :
@@ -149,34 +148,34 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         logStr = trainOrValString + ": Epoch #" + str(self.epoch)
         
         # Report the multi-class accuracy first.
-        self.logger.print3( "( >>>>>>>>>>>>>>>>>>>> Reporting Accuracy over whole epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
+        self.log.print3( "( >>>>>>>>>>>>>>>>>>>> Reporting Accuracy over whole epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
         meanEmpiricalAccOfEp = getMeanOfListExclNA(self.meanEmpiricalAccuracyOfEachSubep, self.NA_PATTERN)
-        self.logger.print3( logStr + ", Overall:\t mean accuracy of epoch:\t" + strFl4fNA(meanEmpiricalAccOfEp, self.NA_PATTERN)+"\t=> Correctly-Classified-Voxels/All-Predicted-Voxels")
+        self.log.print3( logStr + ", Overall:\t mean accuracy of epoch:\t" + strFl4fNA(meanEmpiricalAccOfEp, self.NA_PATTERN)+"\t=> Correctly-Classified-Voxels/All-Predicted-Voxels")
         if self.training0orValidation1 == 0 : # During training, also report the mean value of the Cost Function:
             meanCostOfEp = getMeanOfListExclNA(self.meanCostOfEachSubep, self.NA_PATTERN)
-            self.logger.print3( logStr + ", Overall:\t mean cost of epoch:    \t" + strFl5fNA(meanCostOfEp, self.NA_PATTERN) )
+            self.log.print3( logStr + ", Overall:\t mean cost of epoch:    \t" + strFl5fNA(meanCostOfEp, self.NA_PATTERN) )
             
-        self.logger.print3( logStr + ", Overall:\t mean accuracy of each subepoch:\t"+ strListFl4fNA(self.meanEmpiricalAccuracyOfEachSubep, self.NA_PATTERN) )
+        self.log.print3( logStr + ", Overall:\t mean accuracy of each subepoch:\t"+ strListFl4fNA(self.meanEmpiricalAccuracyOfEachSubep, self.NA_PATTERN) )
         if self.training0orValidation1 == 0 :
-            self.logger.print3( logStr + ", Overall:\t mean cost of each subepoch:    \t" + strListFl5fNA(self.meanCostOfEachSubep, self.NA_PATTERN) )
+            self.log.print3( logStr + ", Overall:\t mean cost of each subepoch:    \t" + strListFl5fNA(self.meanCostOfEachSubep, self.NA_PATTERN) )
             
         # Report for each class.
-        for class_i in xrange(self.numberOfClasses) :
+        for class_i in range(self.numberOfClasses) :
             classString = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
             
-            self.logger.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + classString + " >>>>>>>>> " + extraDescription + " <<<<<<<<<<<<<" )
+            self.log.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + classString + " >>>>>>>>> " + extraDescription + " <<<<<<<<<<<<<" )
             
             if class_i != 0 :
-                meanAccPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][0] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
-                meanSensPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][1] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
-                meanSpecPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][2] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
-                meanDscPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][3] for subep_i in xrange(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanAccPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][0] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanSensPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][1] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanSpecPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][2] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
+                meanDscPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][3] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
             else : # Foreground Vs Background
-                meanAccPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][0] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
-                meanSensPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][1] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
-                meanSpecPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][2] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
-                meanDscPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][3] for subep_i in xrange(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanAccPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][0] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanSensPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][1] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanSpecPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][2] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
+                meanDscPerSubep = [ self.listPerSubepForegrMeanAccSensSpecDsc[subep_i][3] for subep_i in range(len(self.listPerSubepForegrMeanAccSensSpecDsc)) ]
                 
             meanAccOfEp = getMeanOfListExclNA(meanAccPerSubep, self.NA_PATTERN)
             meanSensOfEp = getMeanOfListExclNA(meanSensPerSubep, self.NA_PATTERN)
@@ -184,18 +183,18 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             meanDscOfEp = getMeanOfListExclNA(meanDscPerSubep, self.NA_PATTERN)
             
             logStrClass = logStr + ", " + classString + ":"
-            self.logger.print3(logStrClass + "\t mean accuracy of epoch:\t"+ strFl4fNA(meanAccOfEp, self.NA_PATTERN) +"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels")
-            self.logger.print3(logStrClass + "\t mean sensitivity of epoch:\t"+ strFl4fNA(meanSensOfEp, self.NA_PATTERN) +"\t=> TruePos/RealPos")
-            self.logger.print3(logStrClass + "\t mean specificity of epoch:\t"+ strFl4fNA(meanSpecOfEp, self.NA_PATTERN) +"\t=> TrueNeg/RealNeg")
-            self.logger.print3(logStrClass + "\t mean Dice of epoch:    \t"+ strFl4fNA(meanDscOfEp, self.NA_PATTERN) )
+            self.log.print3(logStrClass + "\t mean accuracy of epoch:\t"+ strFl4fNA(meanAccOfEp, self.NA_PATTERN) +"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels")
+            self.log.print3(logStrClass + "\t mean sensitivity of epoch:\t"+ strFl4fNA(meanSensOfEp, self.NA_PATTERN) +"\t=> TruePos/RealPos")
+            self.log.print3(logStrClass + "\t mean specificity of epoch:\t"+ strFl4fNA(meanSpecOfEp, self.NA_PATTERN) +"\t=> TrueNeg/RealNeg")
+            self.log.print3(logStrClass + "\t mean Dice of epoch:    \t"+ strFl4fNA(meanDscOfEp, self.NA_PATTERN) )
             
             #Visualised in my scripts:
-            self.logger.print3(logStrClass + "\t mean accuracy of each subepoch:\t"+ strListFl4fNA(meanAccPerSubep, self.NA_PATTERN) )
-            self.logger.print3(logStrClass + "\t mean sensitivity of each subepoch:\t" + strListFl4fNA(meanSensPerSubep, self.NA_PATTERN) )
-            self.logger.print3(logStrClass + "\t mean specificity of each subepoch:\t" + strListFl4fNA(meanSpecPerSubep, self.NA_PATTERN) )
-            self.logger.print3(logStrClass + "\t mean Dice of each subepoch:    \t" + strListFl4fNA(meanDscPerSubep, self.NA_PATTERN) )
+            self.log.print3(logStrClass + "\t mean accuracy of each subepoch:\t"+ strListFl4fNA(meanAccPerSubep, self.NA_PATTERN) )
+            self.log.print3(logStrClass + "\t mean sensitivity of each subepoch:\t" + strListFl4fNA(meanSensPerSubep, self.NA_PATTERN) )
+            self.log.print3(logStrClass + "\t mean specificity of each subepoch:\t" + strListFl4fNA(meanSpecPerSubep, self.NA_PATTERN) )
+            self.log.print3(logStrClass + "\t mean Dice of each subepoch:    \t" + strListFl4fNA(meanDscPerSubep, self.NA_PATTERN) )
             
-        self.logger.print3( ">>>>>>>>>>>>>>>>>>>>>>>>> End Of Accuracy Report at the end of Epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
-        self.logger.print3( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
+        self.log.print3( ">>>>>>>>>>>>>>>>>>>>>>>>> End Of Accuracy Report at the end of Epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
+        self.log.print3( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
         
         

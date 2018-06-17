@@ -6,13 +6,12 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 import os
 
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1, checkRecFieldVsSegmSize, checkKernDimPerLayerCorrect3dAndNumLayers, checkSubsampleFactorEven
 
 
-class CreateModelSessionParameters(object) :
+class ModelParameters(object) :
     #THE LOGIC WHETHER I GOT A PARAMETER THAT I NEED SHOULD BE IN HERE!
     #Checks for whether needed parameters and types were passed correctly
     def checkLayersForResidualsGivenDoNotInclude1st(self,
@@ -29,7 +28,7 @@ class CreateModelSessionParameters(object) :
         return getDefaultModelName()
     @staticmethod
     def getDefaultModelName() :
-        return "cnnModel"
+        return "deepmedic"
     @staticmethod
     def defaultDropFcList(numFMsInExtraFcs) :
         numberOfExtraFcs = len(numFMsInExtraFcs)
@@ -66,12 +65,12 @@ class CreateModelSessionParameters(object) :
     @staticmethod
     def errorRequireKernelDimensionsSubsampled(numFMsPerLayerNormal, numFMsPerLayerSubsampled) :
         print("ERROR: It was requested to use the 2-scale architecture, with a subsampled pathway. Because of limitations to the developed system, the two pathways must have the save size of receptive field. By default, if \"useSubsampledPathway\" = True, and the parameters \"numberFMsPerLayerSubsampled\" and \"kernelDimPerLayerSubsampled\" are not specified, the second pathway will be constructed symmetrical to the first. However, in this case, \"numberFMsPerLayerSubsampled\" was specified. It was found to have ", len(numFMsPerLayerSubsampled)," entries, which specified this amount of layers in the subsampled pathway. This is different than the number of layers in the Normal pathway, specified to be: ", len(numFMsPerLayerNormal),". In this case, we require you to also provide the parameter \"numberFMsPerLayerSubsampled\", specifying kernel dimensions in the subsampled pathway, in a fashion that results in same size of receptive field as the normal pathway.")
-        CreateModelSessionParameters.warnForSameReceptiveField()
+        ArchitectureParameters.warnForSameReceptiveField()
         print("Exiting!"); exit(1)
     @staticmethod
     def errorRequireKernelDimensionsPerLayerSubsampledCorrect() :
         print("ERROR: The parameter \"kernelDimPerLayerSubsampled\" was not provided, or provided incorrectly. It should be provided in the format: kernelDimPerLayerSubsampled = [ [dim1-of-kernels-in-layer-1, dim2-of-kernels-in-layer-1, dim3-of-kernels-in-layer-1], ..., [dim1-of-kernels-in-layer-N, dim2-of-kernels-in-layer-N, dim3-of-kernels-in-layer-N] ]. It is a list of sublists. One sublist should be provided per layer of the SUBSAMPLED pathway. Thus it should have as many entries as the entries in parameter \"numberFMsPerLayerSubsampled\". (WARN: if the latter is not provided, it is by default taken equal to what specified for \"numberFMsPerLayerNormal\", in order to make the pathways symmetrical). Each sublist should contain 3 integer ODD numbers greater than zero, which should specify the dimensions of the 3-dimensional kernels. For instace: kernelDimPerLayerNormal = [[5,5,5],[3,3,3]] for a pathway with 2 layers, the first of which has 5x5x5 kernels and the second 3x3x3 kernels. Please fix and retry. (WARN: The kernel dimensions should be ODD-NUMBERS. System was not thoroughly tested for kernels of even dimensions!)")
-        CreateModelSessionParameters.warnForSameReceptiveField()
+        ArchitectureParameters.warnForSameReceptiveField()
         print("Exiting!"); exit(1)
     errReqKernDimNormalCorr = errorRequireKernelDimensionsPerLayerSubsampledCorrect
     @staticmethod
@@ -94,7 +93,7 @@ class CreateModelSessionParameters(object) :
     @staticmethod
     def errorSubFactor3d() :
         print("ERROR: The parameter \"subsampleFactor\" must have 3 entries, one for each of the 3 dimensions. Please provide it in the format: subsampleFactor = [subFactor-dim1, subFactor-dim2, subFactor-dim3]. Each of the entries should be an integer, eg [3,3,3].")
-        CreateModelSessionParameters.warnSubFactorOdd()
+        ArchitectureParameters.warnSubFactorOdd()
         print("Exiting!"); exit(1)
 
     @staticmethod
@@ -144,82 +143,34 @@ class CreateModelSessionParameters(object) :
         if len(listWithSublists) == 0 :
             return True
         lengthOfFirst = len(listWithSublists[0])
-        for subList_i in xrange( len(listWithSublists) ) :
+        for subList_i in range( len(listWithSublists) ) :
             if lengthOfFirst != len(listWithSublists[subList_i]) :
                 return False
         return True
            
            
     def __init__(   self,
-                    cnnModelName,
-                    sessionLogger,
-                    mainOutputAbsFolder,
-                    folderForSessionCnnModels,
-                    #===MODEL PARAMETERS===
-                    numberClasses,
-                    numberOfInputChannelsNormal,
-                    #===Normal pathway===
-                    numFMsNormal,
-                    kernDimNormal,
-                    residConnAtLayersNormal,
-                    lowerRankLayersNormal,
-                    #==Subsampled pathway==
-                    useSubsampledBool,
-                    numFMsSubsampled,
-                    kernDimSubsampled,
-                    subsampleFactor,
-                    residConnAtLayersSubsampled,
-                    lowerRankLayersSubsampled,
-                    #==FC Layers====
-                    numFMsFc,
-                    kernelDimensionsFirstFcLayer,
-                    residConnAtLayersFc,
-                    
-                    #==Size of Image Segments ==
-                    segmDimTrain,
-                    segmDimVal,
-                    segmDimInfer,
-                    #== Batch Sizes ==
-                    batchSizeTrain,
-                    batchSizeVal,
-                    batchSizeInfer,
-                    
-                    #===Other Architectural Parameters ===
-                    activationFunc,
-                    #==Dropout Rates==
-                    dropNormal,
-                    dropSubsampled,
-                    dropFc,
-                    
-                    #== Weight Initialization==
-                    convWInitMethod,
-                    
-                    #== Batch Normalization ==
-                    bnRollingAverOverThatManyBatches
+                    log,
+                    cfg
                     ):
         
-        #Importants for running session.
-        
-        self.cnnModelName = cnnModelName if cnnModelName else getDefaultModelName()
-        self.sessionLogger = sessionLogger
-        self.mainOutputAbsFolder = mainOutputAbsFolder
-        self.pathAndFilenameToSaveModel = os.path.abspath(folderForSessionCnnModels + "/" + self.cnnModelName)
+        self.log = log        
+        self.cnnModelName = cfg[cfg.MODEL_NAME] if cfg[cfg.MODEL_NAME] is not None else getDefaultModelName()
         
         #===========MODEL PARAMETERS==========
-        self.numberClasses = numberClasses if numberClasses != None else self.errReqNumClasses()
-        self.numberOfInputChannelsNormal = numberOfInputChannelsNormal if numberOfInputChannelsNormal != None or\
-                                                        numberOfInputChannelsNormal<1 else self.errReqNumChannels()
-                                                        
+        self.numberClasses = cfg[cfg.NUM_CLASSES] if cfg[cfg.NUM_CLASSES] is not None else self.errReqNumClasses()
+        self.numberOfInputChannelsNormal = cfg[cfg.NUM_INPUT_CHANS] if cfg[cfg.NUM_INPUT_CHANS] is not None else self.errReqNumChannels()
+        assert self.numberOfInputChannelsNormal > 0
         #===Normal pathway===
-        self.numFMsPerLayerNormal = numFMsNormal if numFMsNormal != None and len(numFMsNormal) > 0 else self.errReqFMsNormal()
+        self.numFMsPerLayerNormal = cfg[cfg.N_FMS_NORM] if cfg[cfg.N_FMS_NORM] is not None and len(cfg[cfg.N_FMS_NORM]) > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
-        self.kernDimPerLayerNormal = kernDimNormal if checkKernDimPerLayerCorrect3dAndNumLayers(kernDimNormal, numOfLayers) else self.errReqKernDimNormal()
+        self.kernDimPerLayerNormal = cfg[cfg.KERN_DIM_NORM] if checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_NORM], numOfLayers) else self.errReqKernDimNormal()
         self.receptiveFieldNormal = calcRecFieldFromKernDimListPerLayerWhenStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
-        residConnAtLayersNormal = residConnAtLayersNormal if residConnAtLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
-        lowerRankLayersNormal = lowerRankLayersNormal if lowerRankLayersNormal != None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+        residConnAtLayersNormal = cfg[cfg.RESID_CONN_LAYERS_NORM] if cfg[cfg.RESID_CONN_LAYERS_NORM] is not None else [] #layer number, starting from 1 for 1st layer. NOT indices.
+        lowerRankLayersNormal = cfg[cfg.LOWER_RANK_LAYERS_NORM] if cfg[cfg.LOWER_RANK_LAYERS_NORM] is not None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         
         #==Subsampled pathway==
-        self.useSubsampledBool = useSubsampledBool if useSubsampledBool != None else False
+        self.useSubsampledBool = cfg[cfg.USE_SUBSAMPLED] if cfg[cfg.USE_SUBSAMPLED] is not None else False
         if not self.useSubsampledBool :
             self.numFMsPerLayerSubsampled = []
             self.kernDimPerLayerSubsampled = []
@@ -229,30 +180,30 @@ class CreateModelSessionParameters(object) :
             lowerRankLayersSubsampled = []
             
         else :
-            self.numFMsPerLayerSubsampled = numFMsSubsampled if numFMsSubsampled != None else self.numFMsPerLayerNormal
+            self.numFMsPerLayerSubsampled = cfg[cfg.N_FMS_SUBS] if cfg[cfg.N_FMS_SUBS] is not None else self.numFMsPerLayerNormal
             self.numFMsPerLayerSubsampled = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.numFMsPerLayerSubsampled)
             # check that all subsampled pathways have the same number of layers. Limitation in the code currently, because I use kernDimSubsampled for all of them.
             if not self.checkThatSublistsHaveSameLength(self.numFMsPerLayerSubsampled):
                 self.errReqSameNumOfLayersPerSubPathway()
 
             numOfLayersInEachSubPath = len(self.numFMsPerLayerSubsampled[0])
-            if kernDimSubsampled == None and numOfLayersInEachSubPath == len(self.numFMsPerLayerNormal) :
+            if cfg[cfg.KERN_DIM_SUBS] == None and numOfLayersInEachSubPath == len(self.numFMsPerLayerNormal) :
                 self.kernDimPerLayerSubsampled = self.kernDimPerLayerNormal
                 self.receptiveFieldSubsampled = self.receptiveFieldNormal
-            elif kernDimSubsampled == None and numOfLayersInEachSubPath != len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
-                self.errorRequireKernelDimensionsSubsampled(self.kernDimPerLayerNormal, numFMsSubsampled)
+            elif cfg[cfg.KERN_DIM_SUBS] == None and numOfLayersInEachSubPath != len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
+                self.errorRequireKernelDimensionsSubsampled(self.kernDimPerLayerNormal, cfg[cfg.N_FMS_SUBS])
             # kernDimSubsampled was specified. Now it's going to be tricky to make sure everything alright.
-            elif not checkKernDimPerLayerCorrect3dAndNumLayers(kernDimSubsampled, numOfLayersInEachSubPath) :
+            elif not checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_SUBS], numOfLayersInEachSubPath) :
                 self.errReqKernDimNormalCorr()
             else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
-                self.kernDimPerLayerSubsampled = kernDimSubsampled
+                self.kernDimPerLayerSubsampled = cfg[cfg.KERN_DIM_SUBS]
                 self.receptiveFieldSubsampled = calcRecFieldFromKernDimListPerLayerWhenStrides1(self.kernDimPerLayerSubsampled)
                 if self.receptiveFieldNormal != self.receptiveFieldSubsampled :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...
-            self.subsampleFactor = subsampleFactor if subsampleFactor != None else [3,3,3]
+            self.subsampleFactor = cfg[cfg.SUBS_FACTOR] if cfg[cfg.SUBS_FACTOR] is not None else [3,3,3]
             self.subsampleFactor = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.subsampleFactor)
-            for secondaryPathway_i in xrange(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
+            for secondaryPathway_i in range(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
                 if len(self.subsampleFactor[secondaryPathway_i]) != 3 :
                     self.errorSubFactor3d()
                 if not checkSubsampleFactorEven(self.subsampleFactor[secondaryPathway_i]) :
@@ -263,52 +214,52 @@ class CreateModelSessionParameters(object) :
             # If less sublists in numFMsPerLayerSubsampled were given than numOfSubsPaths, add more sublists of numFMsPerLayerSubsampled, for the extra subpaths.
             for _ in range( numOfSubsPaths - len(self.numFMsPerLayerSubsampled) ) :
                 numFmsForLayersOfLastSubPath = self.numFMsPerLayerSubsampled[-1]
-                self.numFMsPerLayerSubsampled.append( [ max(1, int(numFmsInLayer_i//2)) for numFmsInLayer_i in numFmsForLayersOfLastSubPath ] ) # half of how many previous subPath had.
+                self.numFMsPerLayerSubsampled.append( [ max(1, int(numFmsInLayer_i)) for numFmsInLayer_i in numFmsForLayersOfLastSubPath ] )
             # If less sublists in subsampleFactor were given than numOfSubsPaths, add more sublists of subsampleFactors, for the extra subpaths.
             for _ in range( numOfSubsPaths - len(self.subsampleFactor) ) :
                 self.subsampleFactor.append( [ subFactorInDim_i + 2 for subFactorInDim_i in self.subsampleFactor[-1] ] ) # Adds one more sublist, eg [5,5,5], which is the last subFactor, increased by +2 in all rcz dimensions.
             
             # Residuals and lower ranks.
-            residConnAtLayersSubsampled = residConnAtLayersSubsampled if residConnAtLayersSubsampled != None else residConnAtLayersNormal
-            lowerRankLayersSubsampled = lowerRankLayersSubsampled if lowerRankLayersSubsampled != None else lowerRankLayersNormal
+            residConnAtLayersSubsampled = cfg[cfg.RESID_CONN_LAYERS_SUBS] if cfg[cfg.RESID_CONN_LAYERS_SUBS] is not None else residConnAtLayersNormal
+            lowerRankLayersSubsampled = cfg[cfg.LOWER_RANK_LAYERS_SUBS] if cfg[cfg.LOWER_RANK_LAYERS_SUBS] is not None else lowerRankLayersNormal
             
         #==FC Layers==
-        self.numFMsInExtraFcs = numFMsFc if numFMsFc != None else []
-        self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer if kernelDimensionsFirstFcLayer != None else [1,1,1]
+        self.numFMsInExtraFcs = cfg[cfg.N_FMS_FC] if cfg[cfg.N_FMS_FC] is not None else []
+        self.kernelDimensionsFirstFcLayer = cfg[cfg.KERN_DIM_1ST_FC] if cfg[cfg.KERN_DIM_1ST_FC] is not None else [1,1,1]
         assert len(self.kernelDimensionsFirstFcLayer) == 3 and (False not in [ dim > 0 for dim in self.kernelDimensionsFirstFcLayer] )
-        residConnAtLayersFc = residConnAtLayersFc if residConnAtLayersFc != None else []
+        residConnAtLayersFc = cfg[cfg.RESID_CONN_LAYERS_FC] if cfg[cfg.RESID_CONN_LAYERS_FC] is not None else []
                                         
         #==Size of Image Segments ==
-        self.segmDimNormalTrain = segmDimTrain if segmDimTrain != None else self.errReqSegmDimTrain()
-        self.segmDimNormalVal = segmDimVal if segmDimVal != None else self.receptiveFieldNormal
-        self.segmDimNormalInfer = segmDimInfer if segmDimInfer != None else self.segmDimNormalTrain
+        self.segmDimNormalTrain = cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None else self.errReqSegmDimTrain()
+        self.segmDimNormalVal = cfg[cfg.SEG_DIM_VAL] if cfg[cfg.SEG_DIM_VAL] is not None else self.receptiveFieldNormal
+        self.segmDimNormalInfer = cfg[cfg.SEG_DIM_INFER] if cfg[cfg.SEG_DIM_INFER] is not None else self.segmDimNormalTrain
         for (tr0_val1_inf2, segmentDimensions) in [ (0,self.segmDimNormalTrain), (1,self.segmDimNormalVal), (2,self.segmDimNormalInfer) ] :
             if not checkRecFieldVsSegmSize(self.receptiveFieldNormal, segmentDimensions) :
                 self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, tr0_val1_inf2)
                 
         #=== Batch Sizes ===
-        self.batchSizeTrain = batchSizeTrain if batchSizeTrain != None else self.errReqBatchSizeTr()
-        self.batchSizeVal = batchSizeVal if batchSizeVal != None else self.batchSizeTrain
-        self.batchSizeInfer = batchSizeInfer if batchSizeInfer != None else self.batchSizeTrain
+        self.batchSizeTrain = cfg[cfg.BATCH_SIZE_TR] if cfg[cfg.BATCH_SIZE_TR] is not None else self.errReqBatchSizeTr()
+        self.batchSizeVal = cfg[cfg.BATCH_SIZE_VAL] if cfg[cfg.BATCH_SIZE_VAL] is not None else self.batchSizeTrain
+        self.batchSizeInfer = cfg[cfg.BATCH_SIZE_INFER] if cfg[cfg.BATCH_SIZE_INFER] is not None else self.batchSizeTrain
         
         #=== Dropout rates ===
-        self.dropNormal = dropNormal if dropNormal != None else []
-        self.dropSubsampled = dropSubsampled if dropSubsampled != None else []
-        self.dropFc = dropFc if dropFc != None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
+        self.dropNormal = cfg[cfg.DROP_NORM] if cfg[cfg.DROP_NORM] is not None else []
+        self.dropSubsampled = cfg[cfg.DROP_SUBS] if cfg[cfg.DROP_SUBS] is not None else []
+        self.dropFc = cfg[cfg.DROP_FC] if cfg[cfg.DROP_FC] is not None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
         self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc, []]
         
         #== Weight Initialization==
-        self.convWInitMethod = convWInitMethod if convWInitMethod != None else ["fanIn", 2]
+        self.convWInitMethod = cfg[cfg.CONV_W_INIT] if cfg[cfg.CONV_W_INIT] is not None else ["fanIn", 2]
         if not self.convWInitMethod[0] in ["normal", "fanIn"]:
             self.errorReqInitializationMethod()
         #== Activation Function ==
-        self.activationFunc = activationFunc if activationFunc != None else "prelu"
+        self.activationFunc = cfg[cfg.ACTIV_FUNC] if cfg[cfg.ACTIV_FUNC] is not None else "prelu"
         if not self.activationFunc in ["linear", "relu", "prelu", "elu", "selu"]:
             self.errorReqActivFunction()
             
         #==BATCH NORMALIZATION==
         self.applyBnToInputOfPathways = [False, False, True, False] # the 3 entry, for FC, should always be True.
-        self.bnRollingAverOverThatManyBatches = bnRollingAverOverThatManyBatches if bnRollingAverOverThatManyBatches != None else 60
+        self.bnRollAverOverThatManyBatches = cfg[cfg.BN_ROLL_AV_BATCHES] if cfg[cfg.BN_ROLL_AV_BATCHES] is not None else 60
         
         #==============CALCULATED=====================
         # Residual Connections backwards, per pathway type :
@@ -342,25 +293,20 @@ class CreateModelSessionParameters(object) :
         #Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
         #MP is applied >>AT THE INPUT of the layer<<. To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each dimension for padding (give 0 for none), the mode (usually 'max' pool). Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
         #If a pathway is not used (eg subsampled), put an empty list in the first dimension entry. 
-        mpParamsNorm = [ [] for layeri in xrange(len(self.numFMsPerLayerNormal)) ] #[[[2,2,2], [1,1,1], [1,1,1], 'max'], [],[],[],[],[],[], []], #first pathway
-        mpParamsSubs = [ [] for layeri in xrange(len(self.numFMsPerLayerSubsampled[0])) ] if self.useSubsampledBool else [] # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
-        mpParamsFc = [ [] for layeri in xrange(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
+        mpParamsNorm = [ [] for layeri in range(len(self.numFMsPerLayerNormal)) ] #[[[2,2,2], [1,1,1], [1,1,1], 'MAX'], [],[],[],[],[],[], []], #first pathway
+        mpParamsSubs = [ [] for layeri in range(len(self.numFMsPerLayerSubsampled[0])) ] if self.useSubsampledBool else [] # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
+        mpParamsFc = [ [] for layeri in range(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
         self.maxPoolingParamsStructure = [ mpParamsNorm, mpParamsSubs, mpParamsFc]
         
         self.softmaxTemperature = 1.0 #Higher temperatures make the probabilities LESS distinctable. Actions have more similar probabilities. 
         
-    #Public
-    def getPathAndFilenameToSaveModel(self) :
-        return self.pathAndFilenameToSaveModel
     
-    def printParametersOfThisSession(self) :
-        logPrint = self.sessionLogger.print3
+    def print_params(self) :
+        logPrint = self.log.print3
         logPrint("=============================================================")
-        logPrint("=============== PARAMETERS FOR MODEL CREATION ===============")
+        logPrint("========== PARAMETERS FOR MAKING THE ARCHITECTURE ===========")
         logPrint("=============================================================")
         logPrint("CNN model's name = " + str(self.cnnModelName))
-        logPrint("Main output folder = " + str(self.mainOutputAbsFolder))
-        logPrint("Path and filename to save model = " + str(self.pathAndFilenameToSaveModel))
         
         logPrint("~~~~~~~~~~~~~~~~~~Model parameters~~~~~~~~~~~~~~~~")
         logPrint("Number of Classes (including background) = " + str(self.numberClasses))
@@ -419,17 +365,15 @@ class CreateModelSessionParameters(object) :
         
         logPrint("~~Batch Normalization~~")
         logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.applyBnToInputOfPathways))
-        logPrint("Batch Normalization uses a rolling average for inference, over this many batches = " + str(self.bnRollingAverOverThatManyBatches))
+        logPrint("Batch Normalization uses a rolling average for inference, over this many batches = " + str(self.bnRollAverOverThatManyBatches))
         
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================")
         
-    def getTupleForCnnCreation(self) :
-        borrowFlag = True
-        dataTypeX = 'float32'
+    def get_args_for_arch(self) :
         
-        cnnCreationTuple = (
-                        self.sessionLogger,
+        args = [
+                        self.log,
                         self.cnnModelName,
                         #=== Model Parameters ===
                         self.numberClasses,
@@ -477,12 +421,9 @@ class CreateModelSessionParameters(object) :
                         self.convWInitMethod,
                         #Batch Normalization
                         self.applyBnToInputOfPathways,
-                        self.bnRollingAverOverThatManyBatches,
-                        
-                        #=== various ===
-                        borrowFlag,
-                        dataTypeX
-                        )
+                        self.bnRollAverOverThatManyBatches
+
+                        ]
         
-        return cnnCreationTuple
+        return args
 

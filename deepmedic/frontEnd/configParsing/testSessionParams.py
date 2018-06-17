@@ -6,83 +6,70 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 
+from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt
 
 class TestSessionParameters(object) :
     #To be called from outside too.
     @staticmethod
-    def getDefaultSessionName() :
-        return "testSession"
+    def getSessionName(sessionName) :
+        return sessionName if sessionName is not None else "testSession"
     
     def __init__(self,
-                 
-                sessionName,
-                sessionLogger,
+                log,
                 mainOutputAbsFolder,
-                cnn3dInstance,
-                cnnModelFilepath,
-                
-                #Input:
-                listWithAListPerCaseWithFilepathPerChannel,
-                gtLabelsFilepaths,
-                roiMasksFilepaths,
-                
-                #Output
-                namesToSavePredictionsAndFeatures,
-                #predictions
-                saveSegmentation,
-                saveProbMapsBoolPerClass,
                 folderForPredictions,
-                
-                #features:
-                saveIndividualFmImages,
-                saveMultidimensionalImageWithAllFms,
-                indicesOfFmsToVisualisePerPathwayAndLayer,
                 folderForFeatures,
-                
-                padInputImagesBool,
-                
-                ):
+                num_classes,
+                cfg):
         #Importants for running session.
-        self.sessionName = sessionName if sessionName else self.getDefaultSessionName()
-        self.sessionLogger = sessionLogger
+        # From Session:
+        self.log = log
         self.mainOutputAbsFolder = mainOutputAbsFolder
         
-        self.cnn3dInstance = cnn3dInstance #Must be filled from outside after initialization
-        self.cnnModelFilepath = cnnModelFilepath
+        # From test config:
+        self.sessionName = self.getSessionName( cfg[cfg.SESSION_NAME] )
+        
+        abs_path_to_cfg = cfg.get_abs_path_to_cfg()
+        abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven( cfg[cfg.SAVED_MODEL], abs_path_to_cfg ) if cfg[cfg.SAVED_MODEL] is not None else None # Where to load the model from.
+        self.savedModelFilepath = check_and_adjust_path_to_ckpt( self.log, abs_path_to_saved) if abs_path_to_saved is not None else None
         
         #Input:
-        self.channelsFilepaths = listWithAListPerCaseWithFilepathPerChannel #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-        self.providedGt = True if gtLabelsFilepaths != None else False
-        self.gtLabelsFilepaths = gtLabelsFilepaths if gtLabelsFilepaths != None else []
-        self.providedRoiMasks = True if roiMasksFilepaths != None else False
-        self.roiMasksFilepaths = roiMasksFilepaths if roiMasksFilepaths != None else []
+        #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
+        listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
+        self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+        self.providedGt = True if cfg[cfg.GT_LABELS] is not None else False
+        self.gtLabelsFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS] is not None else None
+        self.providedRoiMasks = True if cfg[cfg.ROI_MASKS] is not None else False
+        self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if self.providedRoiMasks else None
         
         #Output:
-        self.namesToSavePredictionsAndFeatures = namesToSavePredictionsAndFeatures #Required. Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
+        self.namesToSavePredictionsAndFeatures = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
         #predictions
-        self.saveSegmentation = saveSegmentation if saveSegmentation != None else True
-        self.saveProbMapsBoolPerClass = saveProbMapsBoolPerClass if (saveProbMapsBoolPerClass != None and saveProbMapsBoolPerClass != []) else [True]*cnn3dInstance.numberOfOutputClasses
+        self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
+        self.saveProbMapsBoolPerClass = cfg[cfg.SAVE_PROBMAPS_PER_CLASS] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS] != []) else [True]*num_classes
         self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         #features:
-        self.saveIndividualFmImages = saveIndividualFmImages if saveIndividualFmImages != None else False
-        self.saveMultidimensionalImageWithAllFms = saveMultidimensionalImageWithAllFms if saveMultidimensionalImageWithAllFms != None else False
-        self.indicesOfFmsToVisualisePerPathwayAndLayer = [item if item != None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayer]
+        self.saveIndividualFmImages = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
+        self.saveMultidimensionalImageWithAllFms = cfg[cfg.SAVE_4DIM_FMS] if cfg[cfg.SAVE_4DIM_FMS] is not None else False
+        if self.saveIndividualFmImages == True or self.saveMultidimensionalImageWithAllFms == True:
+            indices_fms_per_pathtype_per_layer_to_save =  [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL]] +\
+                                                                [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED]] +\
+                                                                [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC]]
+            self.indices_fms_per_pathtype_per_layer_to_save = [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save]
+        else:
+            self.indices_fms_per_pathtype_per_layer_to_save = None
         self.filepathsToSaveFeaturesForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Preprocessing
-        self.padInputImagesBool = padInputImagesBool if padInputImagesBool != None else True
+        self.padInputImagesBool = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         
         #Others useful internally or for reporting:
         self.numberOfCases = len(self.channelsFilepaths)
-        self.numberOfClasses = cnn3dInstance.numberOfOutputClasses
-        self.numberOfChannels = cnn3dInstance.numberOfImageChannelsPath1
         
         #HIDDENS, no config allowed for these at the moment:
         self.useSameSubChannelsAsSingleScale = True
         self.subsampledChannelsFilepaths = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
-        self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = [None, None]
         
         self._makeFilepathsForPredictionsAndFeatures( folderForPredictions, folderForFeatures )
         
@@ -93,23 +80,28 @@ class TestSessionParameters(object) :
         self.filepathsToSavePredictionsForEachPatient = []
         self.filepathsToSaveFeaturesForEachPatient = []
         
-        if self.namesToSavePredictionsAndFeatures != None :
-            for case_i in xrange(self.numberOfCases) :
+        if self.namesToSavePredictionsAndFeatures is not None :
+            for case_i in range(self.numberOfCases) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
                 
-    def printParametersOfThisSession(self) :
-        logPrint = self.sessionLogger.print3
+                
+    def get_path_to_load_model_from(self):
+        return self.savedModelFilepath
+    
+    
+    def print_params(self) :
+        logPrint = self.log.print3
+        logPrint("")
         logPrint("=============================================================")
-        logPrint("================= PARAMETERS OF THIS SESSION ================")
+        logPrint("=========== PARAMETERS OF THIS TESTING SESSION ==============")
         logPrint("=============================================================")
         logPrint("sessionName = " + str(self.sessionName))
+        logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
         logPrint("~~~~~~~~~~~~~~~~~~~~INPUT~~~~~~~~~~~~~~~~")
-        logPrint("Number of Classes (from CNN Model) = " + str(self.numberOfClasses))
         logPrint("Number of cases to perform inference on = " + str(self.numberOfCases))
-        logPrint("number of channels (modalities) = " + str(self.numberOfChannels))
         logPrint("Paths to the channels of each case = " + str(self.channelsFilepaths))
         logPrint("User provided Ground Truth labels for DSC calculation = " + str(self.providedGt))
         if not self.providedGt :
@@ -136,7 +128,7 @@ class TestSessionParameters(object) :
         logPrint("Save all requested FMs in one 4D image = " + str(self.saveMultidimensionalImageWithAllFms))
         if self.saveMultidimensionalImageWithAllFms :
             logPrint(">>> WARN : The 4D image can be hundreds of MBytes if the CNN is big and many FMs are chosen to be saved. Configure wisely.")
-        logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indicesOfFmsToVisualisePerPathwayAndLayer[:-1]))
+        logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save[:-1]))
         logPrint("Save Feature Maps at = " + str(self.filepathsToSaveFeaturesForEachPatient))
         
         logPrint("~~~~~~~ Parameters for Preprocessing ~~~~~~")
@@ -144,49 +136,41 @@ class TestSessionParameters(object) :
         if not self.padInputImagesBool :
             logPrint(">>> WARN: Inference near the borders of the image might be incomplete if not padded! Although some speed is gained if not padded. Task-specific, your choice.")
         logPrint("========== Done with printing session's parameters ==========")
-        logPrint("=============================================================")
+        logPrint("=============================================================\n")
         
-    def getTupleForCnnTesting(self) :
-        borrowFlag = True
+    def get_args_for_testing(self) :
         
         validation0orTesting1 = 1
         
-        testTuple = (self.sessionLogger,
-            validation0orTesting1,
-            [self.saveSegmentation, self.saveProbMapsBoolPerClass],
-            self.cnn3dInstance,
-            
-            self.channelsFilepaths,
-            
-            self.providedGt,
-            self.gtLabelsFilepaths,
-            
-            self.providedRoiMasks,
-            self.roiMasksFilepaths,
-            
-            borrowFlag,
-            self.filepathsToSavePredictionsForEachPatient,
-            
-            #----Preprocessing------
-            self.padInputImagesBool,
-            self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-            
-            #for extension
-            self.useSameSubChannelsAsSingleScale,
-            self.subsampledChannelsFilepaths,
-            
-            #--------For FM visualisation---------
-            self.saveIndividualFmImages,
-            self.saveMultidimensionalImageWithAllFms,
-            self.indicesOfFmsToVisualisePerPathwayAndLayer,
-            self.filepathsToSaveFeaturesForEachPatient
-            )
+        args = [self.log,
+                validation0orTesting1,
+                [self.saveSegmentation, self.saveProbMapsBoolPerClass],
+                
+                self.channelsFilepaths,
+                
+                self.providedGt,
+                self.gtLabelsFilepaths,
+                
+                self.providedRoiMasks,
+                self.roiMasksFilepaths,
+                
+                self.filepathsToSavePredictionsForEachPatient,
+                
+                #----Preprocessing------
+                self.padInputImagesBool,
+                
+                #for extension
+                self.useSameSubChannelsAsSingleScale,
+                self.subsampledChannelsFilepaths,
+                
+                #--------For FM visualisation---------
+                self.saveIndividualFmImages,
+                self.saveMultidimensionalImageWithAllFms,
+                self.indices_fms_per_pathtype_per_layer_to_save,
+                self.filepathsToSaveFeaturesForEachPatient
+                ]
         
-        return testTuple
-    
-    def getTupleForCompilationOfTestFunc(self) :
-        testFunctionCompilationTuple = ( self.sessionLogger, )
-        return testFunctionCompilationTuple
+        return args
 
 
 

@@ -55,13 +55,44 @@ def parseAbsFileLinesInList(pathToListingFile) :
 def checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCasesPreviously, pathToGivenListFile, listOfFilepathsToChannelIForEachCase) :
     numberOfContainedCasesInList = len(listOfFilepathsToChannelIForEachCase)
     if numberOfCasesPreviously != numberOfContainedCasesInList :
-        print("ERROR: Given file:", pathToGivenListFile, " contains #", numberOfContainedCasesInList," entries, whereas previously checked files contained #", numberOfCasesPreviously,". All listing-files for channels, masks, etc, should contain the same number of entries, one for each case.\nExiting!")
-        exit(1)
+        raise IOError("ERROR: Given file:", pathToGivenListFile +\
+              "\n\t contains #", numberOfContainedCasesInList," entries, whereas previously checked files contained #", numberOfCasesPreviously,"."+\
+              "\n\t All listing-files for channels, masks, etc, should contain the same number of entries, one for each case.")
         
 def checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile) :
     for entry in listOfPredictionNamesForEachCaseInListingFile :
         if entry.find("/") > -1 or entry.startswith(".") :
-            print("ERROR: in [checkThatAllEntriesOfAListFollowNameConventions()] while checking that all entries follow name-conventions. Entry \"", entry, "\" was found to begin with \'.\' or contain \'/\'. Please correct. Exiting!")
-            exit(1)
+            raise IOError("ERROR: Check that all entries follow name-conventions failed."+\
+                          "\n\t Entry \"", entry, "\" was found to begin with \'.\' or contain \'/\'. Please correct this.")
 
 
+def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
+    STR_DM_CKPT = ".model.ckpt"
+    index_of_str = filepath_to_ckpt.rfind(STR_DM_CKPT)
+    if index_of_str > -1 and len(filepath_to_ckpt) > len(filepath_to_ckpt[:index_of_str])+len(STR_DM_CKPT) : # found.
+        
+        user_input = None
+        string_warn = "It seems that the path to the model to load paramters from, a tensorflow checkpoint, was given wrong."+\
+                       "\n\t The path to checkpoint should be of the form: [...name...date...model.ckpt] (finishing with .ckpt)"+\
+                       "\n\t Note that you should not point to the .data, .index or .meta files that are saved. Rather, shorten their names till the .ckpt"+\
+                       "\n\t Given path seemed longer: " + str(filepath_to_ckpt)
+        try:
+            user_input = raw_input(">>\t " + string_warn +\
+                                   "\n\t Do you wish that we shorten the path to end with [.ckpt] as expected? [y/n] : ")
+            while user_input not in ['y','n']: 
+                user_input = raw_input("Please specify 'y' or 'n': ")
+        except:
+            log.print3("\nWARN:\t " + string_warn +\
+                       "\n\t We tried to request command line input from user whether to shorten it after [.ckpt] but failed (remote use? nohup?"+\
+                       "\n\t Continuing without doing anything. If this fails, try to give the correct path, ending with [.ckpt]")
+        if user_input == 'y':
+            filepath_to_ckpt = filepath_to_ckpt[ : index_of_str+len(STR_DM_CKPT)]
+            log.print3("Changed path to load parameters from: "+str(filepath_to_ckpt))
+        else:
+            log.print3("Continuing without doing anything.")
+            
+    return filepath_to_ckpt
+    
+
+    
+    

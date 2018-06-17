@@ -6,18 +6,17 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 
+from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt
 from deepmedic.dataManagement import samplingType
 
 
 class TrainSessionParameters(object) :
-    #THE LOGIC WHETHER I GOT A PARAMETER THAT I NEED SHOULD BE IN HERE!
     
     #To be called from outside too.
     @staticmethod
-    def getDefaultSessionName() :
-        return "trainSession"
+    def getSessionName(sessionName) :
+        return sessionName if sessionName is not None else "trainSession"
     
     #REQUIRED:
     @staticmethod
@@ -46,11 +45,12 @@ class TrainSessionParameters(object) :
     warnDefNegMasksTr = warnDefaultNegSamplMasksTrain
     @staticmethod
     def errorRequirePredefinedLrSched() :
-        print("ERROR: Parameter \"stable0orAuto1orPredefined2orExponential3LrSchedule\" was set to 2, to use Predefined Schedule for Learning-Rate decrease, but no Predefined Schedule was given. Please specify at which epochs to lower the Learning Rate, by providing the corresponding parameter in the format: predefinedSchedule = [epoch-for-1st-decrease, ..., epoch-for-last-decrease], where the epochs are specified by an integer > 0. Exiting."); exit(1)
+        print("ERROR: Parameter \"typeOfLearningRateSchedule\" was set to \"predefined\", but no predefined schedule was given. Please specify at which epochs to lower the Learning Rate, by providing the corresponding parameter in the format: predefinedSchedule = [epoch-for-1st-decrease, ..., epoch-for-last-decrease], where the epochs are specified by an integer > 0. Exiting."); exit(1)
     errReqPredLrSch = errorRequirePredefinedLrSched
     @staticmethod
     def errorAutoRequiresValSamples() :
-        print("ERROR: Parameter \"stable0orAuto1orPredefined2orExponential3LrSchedule\" was set to 1 (AUTO schedule). This schedule requires performing validation on samples throughout training, because this schedule lowers the Learning Rate when validation-accuracy plateaus. However the parameter \"performValidationOnSamplesThroughoutTraining\" was set to False in the configuration file, or was ommitted, which triggers the default value, False! Please set the parameter performValidationOnSamplesThroughoutTraining = True. You will then need to provide the path to the channels of the validation cases in the format: channelsValidation = [\"path-to-file-that-lists-paths-to-channel-1-for-every-case\", ..., \"path-to-file-that-lists-paths-to-channel-N-for-every-case\"] (python style list-of-strings). Also, you will need to provide the Ground-Truth for the validation cases, in the format:  gtLabelsValidation = \"path-to-file\", where the file lists the paths to the GT labels of each validation case. Exiting!"); exit(1)
+        print("ERROR: Parameter \"typeOfLearningRateSchedule\" was set to \"auto\". This requires performing validation on samples throughout training, because this schedule lowers the Learning Rate when validation-accuracy plateaus. However the parameter \"performValidationOnSamplesThroughoutTraining\" was set to False in the configuration file, or was ommitted, which triggers the default value, False! Please set the parameter performValidationOnSamplesThroughoutTraining = True. You will then need to provide the path to the channels of the validation cases in the format: channelsValidation = [\"path-to-file-that-lists-paths-to-channel-1-for-every-case\", ..., \"path-to-file-that-lists-paths-to-channel-N-for-every-case\"] (python style list-of-strings)."+\
+              "\t Also, you will need to provide the Ground-Truth for the validation cases, in the format:  gtLabelsValidation = \"path-to-file\", where the file lists the paths to the GT labels of each validation case. Exiting!"); exit(1)
     @staticmethod
     def errorRequireChannelsVal() :
         print("ERROR: Parameter \"channelsValidation\" was not provided, although it is required to perform validation, although validation was requested (parameters \"performValidationOnSamplesThroughoutTraining\" or \"performFullInferenceOnValidationImagesEveryFewEpochs\" was set to True). You will need to provide a list with path to files that list where the channels for each validation case can be found. The corresponding parameter must be provided in the format: channelsValidation = [\"path-to-file-that-lists-paths-to-channel-1-for-every-case\", ..., \"path-to-file-that-lists-paths-to-channel-N-for-every-case\"] (python style list-of-strings). Exiting."); exit(1)
@@ -103,318 +103,264 @@ class TrainSessionParameters(object) :
     # Deprecated :
     @staticmethod
     def errorDeprecatedPercPosTraining():
-        print("ERROR: Parameter \"percentOfSamplesToExtractPositiveTrain\" in the config file is now Deprecated! Please remove this entry from the train-config file. If you do not want the default behaviour but instead wish to specify the proportion of Foreground and Background samples yourself, please activate the \"Advanced Sampling\" options (useDefaultTrainingSamplingFromGtAndRoi=False), choose type-of-sampling Foreground/Background (typeOfSamplingForTraining = 0) and use the new variable \"proportionOfSamplesToExtractPerCategoryTraining\" which replaces the functionality of the deprecated (eg. proportionOfSamplesToExtractPerCategoryTraining = [0.3, 0.7]). Exiting."); exit(1) 
+        print("ERROR: Parameter \"percentOfSamplesToExtractPositiveTrain\" in the config file is now Deprecated! "+\
+              " Please remove this entry from the train-config file. If you do not want the default behaviour but "+\
+              "instead wish to specify the proportion of Foreground and Background samples yourself, please "+\
+              " activate the \"Advanced Sampling\" options (useDefaultTrainingSamplingFromGtAndRoi=False), "+\
+              " choose type-of-sampling Foreground/Background (typeOfSamplingForTraining = 0) and use the new "+\
+              "variable \"proportionOfSamplesToExtractPerCategoryTraining\" which replaces the functionality of the deprecated "+\
+              "(eg. proportionOfSamplesToExtractPerCategoryTraining = [0.3, 0.7]). Exiting."); exit(1) 
     errDeprPercPosTr = errorDeprecatedPercPosTraining
     
     def __init__(self,
-                sessionName,
-                sessionLogger,
+                log,
                 mainOutputAbsFolder,
-                cnn3dInstance,
-                cnnModelFilepath,
-                
-                #==================TRAINING====================
                 folderForSessionCnnModels,
-                listWithAListPerCaseWithFilepathPerChannelTrain,
-                gtLabelsFilepathsTrain,
-                
-                #[Optionals]
-                #~~~~~~~~~Sampling~~~~~~~
-                roiMasksFilepathsTrain,
-                percentOfSamplesToExtractPositTrain, # DEPRECATED! Kept for backwards compatibility and issuing an error/warning!
-                #~~~~~~~~~Advanced Sampling~~~~~~~
-                useDefaultTrainingSamplingFromGtAndRoi,
-                samplingTypeTraining, # ForeBackgr0_uniform1_fullImage2_PerClass3
-                proportionOfSamplesPerCategoryTrain,
-                listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
-                
-                #~~~~~~~~Training Cycle ~~~~~~~
-                numberOfEpochs,
-                numberOfSubepochs,
-                numOfCasesLoadedPerSubepoch,
-                segmentsLoadedOnGpuPerSubepochTrain,
-                
-                #~~~~~~~ Learning Rate Schedule ~~~~~~~
-                #Auto requires performValidationOnSamplesThroughoutTraining and providedGtForValidationBool
-                stable0orAuto1orPredefined2orExponential3LrSchedule,
-                
-                #Stable + Auto + Predefined.
-                whenDecreasingDivideLrBy,
-                #Stable + Auto
-                numEpochsToWaitBeforeLoweringLr,
-                #Auto:
-                minIncreaseInValidationAccuracyThatResetsWaiting,
-                #Predefined.
-                predefinedSchedule,
-                #Exponential
-                exponentialSchedForLrAndMom,
-                
-                #~~~~~~~ Augmentation~~~~~~~~~~~~
-                reflectImagesPerAxis,
-                performIntAugm,
-                sampleIntAugmShiftWithMuAndStd,
-                sampleIntAugmMultiWithMuAndStd,
-                
-                #==================VALIDATION=====================
-                performValidationOnSamplesThroughoutTraining,
-                performFullInferenceOnValidationImagesEveryFewEpochs,
-                #Required:
-                listWithAListPerCaseWithFilepathPerChannelVal,
-                gtLabelsFilepathsVal,
-                
-                segmentsLoadedOnGpuPerSubepochVal,
-                
-                #[Optionals]
-                roiMasksFilepathsVal, #For default sampling and for fast inference. Optional. Otherwise from whole image.
-                
-                #~~~~~~~~Full Inference~~~~~~~~
-                numberOfEpochsBetweenFullInferenceOnValImages,
-                #Output                                
-                namesToSavePredictionsAndFeaturesVal,
-                #predictions
-                saveSegmentationVal,
-                saveProbMapsBoolPerClassVal,
                 folderForPredictionsVal,
-                #features:
-                saveIndividualFmImagesVal,
-                saveMultidimensionalImageWithAllFmsVal,
-                indicesOfFmsToVisualisePerPathwayAndLayerVal,
                 folderForFeaturesVal,
-                
-                #~~~~~~~~ Advanced Validation Sampling ~~~~~~~~~~
-                useDefaultUniformValidationSampling,
-                samplingTypeValidation, # ForeBackgr0_uniform1_fullImage2_PerClass3
-                proportionOfSamplesPerCategoryVal,
-                listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal, #[ [weightmap1-case1, weightmap1-case2], ...[wmN-case1, wmN-case2] ]
-                
-                #====Optimization=====
-                learningRate,
-                optimizerSgd0Adam1Rms2,
-                classicMom0Nesterov1,
-                momentumValue,
-                momNonNormalized0Normalized1,
-                #Adam
-                b1Adam,
-                b2Adam,
-                eAdam,
-                #Rms
-                rhoRms,
-                eRms,
-                #Regularization
-                l1Reg,
-                l2Reg,
-                
-                #~~~~ Freeze Layers ~~~~
-                layersToFreezePerPathwayType,
-                
-                #==============Generic and Preprocessing===============
-                padInputImagesBool
-                ):
+                num_classes,
+                model_name,
+                cfg):
         
         #Importants for running session.
-        
-        self.sessionName = sessionName if sessionName else self.getDefaultSessionName()
-        self.sessionLogger = sessionLogger
+        # From Session:
+        self.log = log
         self.mainOutputAbsFolder = mainOutputAbsFolder
-        self.cnn3dInstance = cnn3dInstance #Must be filled from outside after initialization
-        self.cnnModelFilepath = cnnModelFilepath #This is where the model was loaded from.
-        self.cnnModelName = cnn3dInstance.cnnModelName if cnn3dInstance.cnnModelName != None else "defaultCnnModelName"
+        
+        # From Config:
+        self.sessionName = self.getSessionName( cfg[cfg.SESSION_NAME] )
+        
+        abs_path_to_cfg = cfg.get_abs_path_to_cfg()
+        abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven( cfg[cfg.SAVED_MODEL], abs_path_to_cfg ) if cfg[cfg.SAVED_MODEL] is not None else None # Load pretrained model.
+        self.savedModelFilepath = check_and_adjust_path_to_ckpt( self.log, abs_path_to_saved) if abs_path_to_saved is not None else None
         
         #====================TRAINING==========================
-        self.pathAndFilenameToSaveTrainedModels = folderForSessionCnnModels + "/" + self.cnnModelName + "." + self.sessionName
-        #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-        self.channelsFilepathsTrain = listWithAListPerCaseWithFilepathPerChannelTrain if listWithAListPerCaseWithFilepathPerChannelTrain else self.errReqChansTr()
-        self.gtLabelsFilepathsTrain = gtLabelsFilepathsTrain if gtLabelsFilepathsTrain else self.errReqGtTr()
+        self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
+        if cfg[cfg.CHANNELS_TR] is None:
+            self.errReqChansTr()
+        if cfg[cfg.GT_LABELS_TR] is None:
+            self.errReqGtTr()
+        #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
+        listOfAListPerChannelWithFilepathsOfAllCasesTrain = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS_TR]]
+        self.channelsFilepathsTrain = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesTrain)) ] #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+        self.gtLabelsFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_TR], abs_path_to_cfg) )
         
         #[Optionals]
         #~~~~~~~~~Sampling~~~~~~~
-        self.providedRoiMasksTrain = True if roiMasksFilepathsTrain else False
-        self.roiMasksFilepathsTrain = roiMasksFilepathsTrain if roiMasksFilepathsTrain else [] #For Int-Augm and for Mask-Where-Neg if no advanced-sampling-train.
+        self.providedRoiMasksTrain = True if cfg[cfg.ROI_MASKS_TR] else False
+        self.roiMasksFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg) ) if self.providedRoiMasksTrain else []
         
-        if percentOfSamplesToExtractPositTrain != None : #Deprecated. Issue error and ask for correction.
+        if cfg[cfg.PERC_POS_SAMPLES_TR] is not None : #Deprecated. Issue error and ask for correction.
             self.errDeprPercPosTr()
         #~~~~~~~~~Advanced Sampling~~~~~~~
         #ADVANCED CONFIG IS DISABLED HERE IF useDefaultSamplingFromGtAndRoi = True!
-        self.useDefaultTrainingSamplingFromGtAndRoi = useDefaultTrainingSamplingFromGtAndRoi if useDefaultTrainingSamplingFromGtAndRoi != None else True
+        self.useDefaultTrainingSamplingFromGtAndRoi = cfg[cfg.DEFAULT_TR_SAMPLING] if cfg[cfg.DEFAULT_TR_SAMPLING] is not None else True
         DEFAULT_SAMPLING_TYPE_TR = 0
         if self.useDefaultTrainingSamplingFromGtAndRoi :
-            self.samplingTypeInstanceTrain = samplingType.SamplingType( self.sessionLogger, DEFAULT_SAMPLING_TYPE_TR, self.cnn3dInstance.numberOfOutputClasses )
+            self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, DEFAULT_SAMPLING_TYPE_TR, num_classes )
             numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
             self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
             self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = None
         else :
-            samplingTypeToUseTr = samplingTypeTraining if samplingTypeTraining != None else DEFAULT_SAMPLING_TYPE_TR
-            self.samplingTypeInstanceTrain = samplingType.SamplingType( self.sessionLogger, samplingTypeToUseTr, self.cnn3dInstance.numberOfOutputClasses)
-            if samplingTypeToUseTr in [0,3] and proportionOfSamplesPerCategoryTrain :
-                self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( proportionOfSamplesPerCategoryTrain )
+            samplingTypeToUseTr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else DEFAULT_SAMPLING_TYPE_TR
+            self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, samplingTypeToUseTr, num_classes)
+            if samplingTypeToUseTr in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] :
+                self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] )
             else :
                 numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
                 self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
                 
+            # This could be shortened.
+            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] :
+                #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
+                listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]]
+            else :
+                listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = None
             self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain #If None, following bool will turn False.
             
         self.providedWeightMapsToSampleForEachCategoryTraining = True if self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining else False 
         
         #~~~~~~~~ Training Cycle ~~~~~~~~~~~
-        self.numberOfEpochs = numberOfEpochs if numberOfEpochs != None else 35
-        self.numberOfSubepochs = numberOfSubepochs if numberOfSubepochs != None else 20
-        self.numOfCasesLoadedPerSubepoch = numOfCasesLoadedPerSubepoch if numOfCasesLoadedPerSubepoch != None else 50
-        self.segmentsLoadedOnGpuPerSubepochTrain = segmentsLoadedOnGpuPerSubepochTrain if segmentsLoadedOnGpuPerSubepochTrain != None else 1000
+        self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
+        self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
+        self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
+        self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
         
         #~~~~~~~ Learning Rate Schedule ~~~~~~~~
-        #Auto requires performValidationOnSamplesThroughoutTraining and providedGtForValidationBool
-        self.stable0orAuto1orPredefined2orExponential3LrSchedule = stable0orAuto1orPredefined2orExponential3LrSchedule if stable0orAuto1orPredefined2orExponential3LrSchedule != None else 3
-        #Used for Stable + Auto + Predefined.
-        self.whenDecreasingDivideLrBy = whenDecreasingDivideLrBy if whenDecreasingDivideLrBy != None else 2.0
-        #Stable + Auto. Set this to 0 to never lower it!
-        self.numEpochsToWaitBeforeLoweringLr = numEpochsToWaitBeforeLoweringLr if numEpochsToWaitBeforeLoweringLr != None else 3
-        #Auto:
-        self.minIncreaseInValidationAccuracyThatResetsWaiting = minIncreaseInValidationAccuracyThatResetsWaiting if minIncreaseInValidationAccuracyThatResetsWaiting != None else 0.0005
+        
+        assert cfg[cfg.LR_SCH_TYPE] in ['stable', 'predef', 'poly', 'auto', 'expon']
+        self.lr_sched_params = {'type': cfg[cfg.LR_SCH_TYPE] if cfg[cfg.LR_SCH_TYPE] is not None else 'poly',
+                               'predef': { 'epochs': cfg[cfg.PREDEF_SCH],
+                                           'div_lr_by': cfg[cfg.DIV_LR_BY] if cfg[cfg.DIV_LR_BY] is not None else 2.0 },
+                               'auto': { 'min_incr_of_val_acc_considered': cfg[cfg.AUTO_MIN_INCR_VAL_ACC] if cfg[cfg.AUTO_MIN_INCR_VAL_ACC] is not None else 0.0,
+                                         'epochs_wait_before_decr': cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else 5,
+                                         'div_lr_by': cfg[cfg.DIV_LR_BY] if cfg[cfg.DIV_LR_BY] is not None else 2.0 },
+                               'poly': { 'epochs_wait_before_decr': cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else self.numberOfEpochs/3,
+                                         'final_ep_for_sch': self.numberOfEpochs },
+                               'expon': { 'epochs_wait_before_decr': cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else self.numberOfEpochs/3,
+                                          'final_ep_for_sch': self.numberOfEpochs,
+                                          'lr_to_reach_at_last_ep': cfg[cfg.EXPON_SCH][0] if cfg[cfg.EXPON_SCH] is not None else 1.0/(2**(8)),
+                                          'mom_to_reach_at_last_ep': cfg[cfg.EXPON_SCH][1] if cfg[cfg.EXPON_SCH] is not None else 0.9 }
+                                }
         #Predefined.
-        self.predefinedSchedLowerLrAtEpochs = predefinedSchedule
-        if self.stable0orAuto1orPredefined2orExponential3LrSchedule == 2 and self.predefinedSchedLowerLrAtEpochs == None :
+        if self.lr_sched_params['type'] == 'predef' and self.lr_sched_params['predef']['epochs'] is None :
             self.errReqPredLrSch()
-        #Exponential
-        self.exponentialSchedForLrAndMom = exponentialSchedForLrAndMom if exponentialSchedForLrAndMom else [self.numberOfEpochs/2, 1.0/(2**(8)),  0.9]
         
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
-        self.reflectImagesPerAxis = reflectImagesPerAxis if reflectImagesPerAxis else [False, False, False]
-        self.performIntAugm = performIntAugm if performIntAugm != None else False
+        self.reflectImagesPerAxis = cfg[cfg.REFL_AUGM_PER_AXIS] if cfg[cfg.REFL_AUGM_PER_AXIS] else [False, False, False]
+        self.performIntAugm = cfg[cfg.PERF_INT_AUGM_BOOL] if cfg[cfg.PERF_INT_AUGM_BOOL] is not None else False
         if self.performIntAugm :
-            self.sampleIntAugmShiftWithMuAndStd = sampleIntAugmShiftWithMuAndStd if sampleIntAugmShiftWithMuAndStd else [0.0 , 0.1]
-            self.sampleIntAugmMultiWithMuAndStd = sampleIntAugmMultiWithMuAndStd if sampleIntAugmMultiWithMuAndStd else [1.0 , 0.0]
-            self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd = [2, 1,
-                                                    self.sampleIntAugmShiftWithMuAndStd,self.sampleIntAugmMultiWithMuAndStd]
+            self.sampleIntAugmShiftWithMuAndStd = cfg[cfg.INT_AUGM_SHIF_MUSTD] if cfg[cfg.INT_AUGM_SHIF_MUSTD] else [0.0 , 0.05]
+            self.sampleIntAugmMultiWithMuAndStd = cfg[cfg.INT_AUGM_MULT_MUSTD] if cfg[cfg.INT_AUGM_MULT_MUSTD] else [1.0 , 0.02]
+            self.doIntAugm_shiftMuStd_multiMuStd = [True, self.sampleIntAugmShiftWithMuAndStd, self.sampleIntAugmMultiWithMuAndStd]
         else :
-            self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd = [0, "plcholder", [], []]
+            self.doIntAugm_shiftMuStd_multiMuStd = [False, 'plcholder', [], []]
             
         #===================VALIDATION========================
-        self.performValidationOnSamplesThroughoutTraining = performValidationOnSamplesThroughoutTraining if performValidationOnSamplesThroughoutTraining != None else False
-        if self.stable0orAuto1orPredefined2orExponential3LrSchedule == 1 and not self.performValidationOnSamplesThroughoutTraining :
+        self.performValidationOnSamplesThroughoutTraining = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
+        if self.lr_sched_params['type'] == 'auto' and not self.performValidationOnSamplesThroughoutTraining :
             self.errorAutoRequiresValSamples()
-        self.performFullInferenceOnValidationImagesEveryFewEpochs = performFullInferenceOnValidationImagesEveryFewEpochs if performFullInferenceOnValidationImagesEveryFewEpochs != None else False
+        self.performFullInferenceOnValidationImagesEveryFewEpochs = cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
         
         #Input:
         if self.performValidationOnSamplesThroughoutTraining or self.performFullInferenceOnValidationImagesEveryFewEpochs :
-            #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-            self.channelsFilepathsVal = listWithAListPerCaseWithFilepathPerChannelVal if listWithAListPerCaseWithFilepathPerChannelVal else self.errReqChannsVal()
+            if cfg[cfg.CHANNELS_VAL] :
+                listOfAListPerChannelWithFilepathsOfAllCasesVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS_VAL]]
+                #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+                self.channelsFilepathsVal = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesVal)) ]
+            else :
+                self.errReqChannsVal()
+                
         else :
             self.channelsFilepathsVal = []
         if self.performValidationOnSamplesThroughoutTraining :
-            self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal != None else self.errorReqGtLabelsVal()
+            self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
         elif self.performFullInferenceOnValidationImagesEveryFewEpochs :
-            self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal != None else []
+            self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal is not None else []
         else : # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
-        self.providedGtVal = True if self.gtLabelsFilepathsVal != None else False
+        self.providedGtVal = True if self.gtLabelsFilepathsVal is not None else False
         
         #[Optionals]
-        self.providedRoiMasksVal = True if roiMasksFilepathsVal != None else False #For fast inf.
-        self.roiMasksFilepathsVal = roiMasksFilepathsVal if roiMasksFilepathsVal != None else [] #Also for default sampling of neg segs.
+        self.providedRoiMasksVal = True if cfg[cfg.ROI_MASKS_VAL] is not None else False #For fast inf.
+        self.roiMasksFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_VAL], abs_path_to_cfg) ) if self.providedRoiMasksVal else []
         
         #~~~~~Validation on Samples~~~~~~~~
-        self.segmentsLoadedOnGpuPerSubepochVal = segmentsLoadedOnGpuPerSubepochVal if segmentsLoadedOnGpuPerSubepochVal != None else 3000
+        self.segmentsLoadedOnGpuPerSubepochVal = cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] is not None else 3000
         
         #~~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~
         #ADVANCED OPTION ARE DISABLED IF useDefaultUniformValidationSampling = True!
-        self.useDefaultUniformValidationSampling = useDefaultUniformValidationSampling if useDefaultUniformValidationSampling != None else True
+        self.useDefaultUniformValidationSampling = cfg[cfg.DEFAULT_VAL_SAMPLING] if cfg[cfg.DEFAULT_VAL_SAMPLING] is not None else True
         DEFAULT_SAMPLING_TYPE_VAL = 1
         if self.useDefaultUniformValidationSampling :
-            self.samplingTypeInstanceVal = samplingType.SamplingType( self.sessionLogger, DEFAULT_SAMPLING_TYPE_VAL, self.cnn3dInstance.numberOfOutputClasses )
+            self.samplingTypeInstanceVal = samplingType.SamplingType( self.log, DEFAULT_SAMPLING_TYPE_VAL, num_classes )
             numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
             self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
-            self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation = None
+            self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = None
         else :
-            samplingTypeToUseVal = samplingTypeValidation if samplingTypeValidation != None else DEFAULT_SAMPLING_TYPE_VAL
-            self.samplingTypeInstanceVal = samplingType.SamplingType( self.sessionLogger, samplingTypeToUseVal, self.cnn3dInstance.numberOfOutputClasses)
-            if samplingTypeToUseVal in [0,3] and proportionOfSamplesPerCategoryVal :
-                self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( proportionOfSamplesPerCategoryVal )
+            samplingTypeToUseVal = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else DEFAULT_SAMPLING_TYPE_VAL
+            self.samplingTypeInstanceVal = samplingType.SamplingType( self.log, samplingTypeToUseVal, num_classes)
+            if samplingTypeToUseVal in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] :
+                self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] )
             else :
                 numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
                 self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
                 
-            self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesVal #If None, following bool will turn False.
-            
-        self.providedWeightMapsToSampleForEachCategoryValidation = True if self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation else False 
+            # TODO: Shorten this
+            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] :
+                #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
+                self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]]
+            else :
+                self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = None
+                
+        self.providedWeightMapsToSampleForEachCategoryValidation = True if self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal else False 
         
         #~~~~~~Full inference on validation image~~~~~~
-        self.numberOfEpochsBetweenFullInferenceOnValImages = numberOfEpochsBetweenFullInferenceOnValImages if numberOfEpochsBetweenFullInferenceOnValImages != None else 1
+        self.numberOfEpochsBetweenFullInferenceOnValImages = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
         if self.numberOfEpochsBetweenFullInferenceOnValImages == 0 and self.performFullInferenceOnValidationImagesEveryFewEpochs :
             self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
             
         #predictions
-        self.saveSegmentationVal = saveSegmentationVal if saveSegmentationVal != None else True
-        self.saveProbMapsBoolPerClassVal = saveProbMapsBoolPerClassVal if (saveProbMapsBoolPerClassVal != None and saveProbMapsBoolPerClassVal != []) else [True]*cnn3dInstance.numberOfOutputClasses
+        self.saveSegmentationVal = cfg[cfg.SAVE_SEGM_VAL] if cfg[cfg.SAVE_SEGM_VAL] is not None else True
+        self.saveProbMapsBoolPerClassVal = cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) else [True]*num_classes
         self.filepathsToSavePredictionsForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         #features:
-        self.saveIndividualFmImagesVal = saveIndividualFmImagesVal if saveIndividualFmImagesVal != None else False
-        self.saveMultidimensionalImageWithAllFmsVal = saveMultidimensionalImageWithAllFmsVal if saveMultidimensionalImageWithAllFmsVal != None else False
-        self.indicesOfFmsToVisualisePerPathwayAndLayerVal = [item if item != None else [] for item in indicesOfFmsToVisualisePerPathwayAndLayerVal] #By default, save none.
+        self.saveIndividualFmImagesVal = cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
+        self.saveMultidimensionalImageWithAllFmsVal = cfg[cfg.SAVE_4DIM_FMS_VAL] if cfg[cfg.SAVE_4DIM_FMS_VAL] is not None else False
+        if self.saveIndividualFmImagesVal == True or self.saveMultidimensionalImageWithAllFmsVal == True:
+            indices_fms_per_pathtype_per_layer_to_save =   [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] +\
+                                                                    [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] +\
+                                                                    [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
+            self.indices_fms_per_pathtype_per_layer_to_save = [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save] #By default, save none.
+        else:
+            self.indices_fms_per_pathtype_per_layer_to_save = None
         self.filepathsToSaveFeaturesForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Output:
         #Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
-        self.namesToSavePredictionsAndFeaturesVal = namesToSavePredictionsAndFeaturesVal  
+        self.namesToSavePredictionsAndFeaturesVal = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None #CAREFUL: Here we use a different parsing function!
         if not self.namesToSavePredictionsAndFeaturesVal and self.performFullInferenceOnValidationImagesEveryFewEpochs and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
             self.errorRequireNamesOfPredictionsVal()
             
         #===================== OTHERS======================
         #Preprocessing
-        self.padInputImagesBool = padInputImagesBool if padInputImagesBool != None else True
+        self.padInputImagesBool = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         
         #Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
         self.numberOfCasesVal = len(self.channelsFilepathsVal)
-        self.numberOfClasses = cnn3dInstance.numberOfOutputClasses
-        self.numberOfChannels = cnn3dInstance.numberOfImageChannelsPath1
+        self.run_input_checks = cfg[cfg.RUN_INP_CHECKS] if cfg[cfg.RUN_INP_CHECKS] is not None else True
         
         #HIDDENS, no config allowed for these at the moment:
         self.useSameSubChannelsAsSingleScale = True
         self.subsampledChannelsFilepathsTrain = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
         self.subsampledChannelsFilepathsVal = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
-        self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = [None, None] # One element for Normal and one for Subsampled Pathway. Either None for no smoothing, or a List [std-r, std-c, std-z] of the gaussian kernel to smooth with.
         
-        self.numberOfEpochsToWeightTheClassesInTheCostFunction = 0
+        # Reweight classes equally before [0], linearly decrease influence till [1], natural freq after.
+        self.weight_c_in_xentr_and_release_between_eps = [-1, -1] # Give one negative value to disable it
         
         self._makeFilepathsForPredictionsAndFeaturesVal( folderForPredictionsVal, folderForFeaturesVal )
         
         #====Optimization=====
-        self.learningRate = learningRate if learningRate != None else 0.001
-        self.optimizerSgd0Adam1Rms2 = optimizerSgd0Adam1Rms2 if optimizerSgd0Adam1Rms2 != None else 2
+        self.learningRate = cfg[cfg.LRATE] if cfg[cfg.LRATE] is not None else 0.001
+        self.optimizerSgd0Adam1Rms2 = cfg[cfg.OPTIMIZER] if cfg[cfg.OPTIMIZER] is not None else 2
         if self.optimizerSgd0Adam1Rms2 == 0 :
             self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
             self.rhoRms = "placeholder"; self.eRms = "placeholder";
         elif self.optimizerSgd0Adam1Rms2 == 1 :
-            self.b1Adam = b1Adam if b1Adam != None else 0.9 #default in paper and seems good
-            self.b2Adam = b2Adam if b2Adam != None else 0.999 #default in paper and seems good
-            self.eAdam = eAdam if eAdam else 10**(-8)
+            self.b1Adam = cfg[cfg.B1_ADAM] if cfg[cfg.B1_ADAM] is not None else 0.9 #default in paper and seems good
+            self.b2Adam = cfg[cfg.B2_ADAM] if cfg[cfg.B2_ADAM] is not None else 0.999 #default in paper and seems good
+            self.eAdam = cfg[cfg.EPS_ADAM] if cfg[cfg.EPS_ADAM] is not None else 10**(-8)
             self.rhoRms = "placeholder"; self.eRms = "placeholder";
         elif self.optimizerSgd0Adam1Rms2 == 2 :
             self.b1Adam = "placeholder"; self.b2Adam = "placeholder"; self.eAdam = "placeholder";
-            self.rhoRms = rhoRms if rhoRms != None else 0.9 #default in paper and seems good
-            self.eRms = eRms if eRms != None else 10**(-4) # 1e-6 was the default in the paper, but blew up the gradients in first try. Never tried 1e-5 yet.
+            self.rhoRms = cfg[cfg.RHO_RMS] if cfg[cfg.RHO_RMS] is not None else 0.9 #default in paper and seems good
+            self.eRms = cfg[cfg.EPS_RMS] if cfg[cfg.EPS_RMS] is not None else 10**(-4) # 1e-6 was the default in the paper, but blew up the gradients in first try. Never tried 1e-5 yet.
         else :
             self.errorRequireOptimizer012()
             
-        self.classicMom0Nesterov1 = classicMom0Nesterov1 if classicMom0Nesterov1 != None else 1
+        self.classicMom0Nesterov1 = cfg[cfg.MOM_TYPE] if cfg[cfg.MOM_TYPE] is not None else 1
         if self.classicMom0Nesterov1 not in [0,1]:
             self.errorRequireMomentumClass0Nestov1()
-        self.momNonNormalized0Normalized1 = momNonNormalized0Normalized1 if momNonNormalized0Normalized1 != None else 1
+        self.momNonNormalized0Normalized1 = cfg[cfg.MOM_NORM_NONNORM] if cfg[cfg.MOM_NORM_NONNORM] is not None else 1
         if self.momNonNormalized0Normalized1 not in [0,1] :
             self.errorRequireMomNonNorm0Norm1()
-        self.momentumValue = momentumValue if momentumValue != None else 0.6
+        self.momentumValue = cfg[cfg.MOM] if cfg[cfg.MOM] is not None else 0.6
         if self.momentumValue < 0. or self.momentumValue > 1:
             self.errorRequireMomValueBetween01()
             
         #==Regularization==
-        self.l1Reg = l1Reg if l1Reg != None else 0.000001
-        self.l2Reg = l2Reg if l2Reg != None else 0.0001
+        self.L1_reg_weight = cfg[cfg.L1_REG] if cfg[cfg.L1_REG] is not None else 0.000001
+        self.L2_reg_weight = cfg[cfg.L2_REG] if cfg[cfg.L2_REG] is not None else 0.0001
         
         #============= HIDDENS ==============
         # Indices of layers that should not be trained (kept fixed).
-        indicesOfLayersToFreezeNorm = [ l-1 for l in layersToFreezePerPathwayType[0] ] if layersToFreezePerPathwayType[0] != None else []
-        indicesOfLayersToFreezeSubs = [ l-1 for l in layersToFreezePerPathwayType[1] ] if layersToFreezePerPathwayType[1] != None else indicesOfLayersToFreezeNorm
-        indicesOfLayersToFreezeFc = [ l-1 for l in layersToFreezePerPathwayType[2] ] if layersToFreezePerPathwayType[2] != None else []
+        layersToFreezePerPathwayType =  [cfg[cfg.LAYERS_TO_FREEZE_NORM],
+                                         cfg[cfg.LAYERS_TO_FREEZE_SUBS],
+                                         cfg[cfg.LAYERS_TO_FREEZE_FC]]
+        indicesOfLayersToFreezeNorm = [ l-1 for l in layersToFreezePerPathwayType[0] ] if layersToFreezePerPathwayType[0] is not None else []
+        indicesOfLayersToFreezeSubs = [ l-1 for l in layersToFreezePerPathwayType[1] ] if layersToFreezePerPathwayType[1] is not None else indicesOfLayersToFreezeNorm
+        indicesOfLayersToFreezeFc = [ l-1 for l in layersToFreezePerPathwayType[2] ] if layersToFreezePerPathwayType[2] is not None else []
         # Three sublists, one per pathway type: Normal, Subsampled, FC. eg: [[0,1,2],[0,1,2],[]
         self.indicesOfLayersPerPathwayTypeToFreeze = [ indicesOfLayersToFreezeNorm, indicesOfLayersToFreezeSubs, indicesOfLayersToFreezeFc ]
         
@@ -426,7 +372,7 @@ class TrainSessionParameters(object) :
                 self.useSameSubChannelsAsSingleScale, (always True currently)
                 self.subsampledChannelsFilepathsTrain,
                 self.subsampledChannelsFilepathsVal, (Deprecated. But I should support it in future, cause it works well for non-scale pathways)
-                indicesOfFmsToVisualisePerPathwayAndLayerVal (Repeat subsampled!)
+                indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
     def _makeFilepathsForPredictionsAndFeaturesVal(self,
                                             absPathToFolderForPredictionsFromSession,
@@ -434,28 +380,29 @@ class TrainSessionParameters(object) :
                                             ) :
         self.filepathsToSavePredictionsForEachPatientVal = []
         self.filepathsToSaveFeaturesForEachPatientVal = []
-        if self.namesToSavePredictionsAndFeaturesVal != None :
-            for case_i in xrange(self.numberOfCasesVal) :
+        if self.namesToSavePredictionsAndFeaturesVal is not None :
+            for case_i in range(self.numberOfCasesVal) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
                 
-    def printParametersOfThisSession(self) :
-        logPrint = self.sessionLogger.print3
+    def get_path_to_load_model_from(self):
+        return self.savedModelFilepath
+    
+    def print_params(self) :
+        logPrint = self.log.print3
+        logPrint("")
         logPrint("=============================================================")
-        logPrint("=============== PARAMETERS FOR THIS SESSION =================")
+        logPrint("========= PARAMETERS FOR THIS TRAINING SESSION ==============")
         logPrint("=============================================================")
         logPrint("Session's name = " + str(self.sessionName))
-        logPrint("CNN model's name = " + str(self.cnnModelName))
-        logPrint("CNN model was loaded from = " + str(self.cnnModelFilepath))
+        logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
         logPrint("~~Output~~")
         logPrint("Main output folder = " + str(self.mainOutputAbsFolder))
-        logPrint("Path and filename to save trained models = " + str(self.pathAndFilenameToSaveTrainedModels))
+        logPrint("Path and filename to save trained models = " + str(self.filepath_to_save_models))
         
         logPrint("~~~~~~~~~~~~~~~~~~Generic Information~~~~~~~~~~~~~~~~")
-        logPrint("Number of Classes (incl. background) (from cnnModel) = " + str(self.numberOfClasses))
-        logPrint("Number of Channels (Normal Pathway) (from cnnModel) = " + str(self.numberOfChannels))
         logPrint("Number of Cases for Training = " + str(self.numberOfCasesTrain))
         logPrint("Number of Cases for Validation = " + str(self.numberOfCasesVal))
         
@@ -482,19 +429,22 @@ class TrainSessionParameters(object) :
         logPrint("Number of Segments loaded on GPU per subepoch for Training = " + str(self.segmentsLoadedOnGpuPerSubepochTrain) + ". NOTE: This number of segments divided by the batch-size defines the number of optimization-iterations that will be performed every subepoch!")
         
         logPrint("~~Learning Rate Schedule~~")
-        logPrint("Schedule Type: Stable (0), Auto (1), Predefined (2), Exponential (3) = " + str(self.stable0orAuto1orPredefined2orExponential3LrSchedule))
-        logPrint("[Stable/Auto/Predefined] When decreasing Learning Rate, divide LR by = " + str(self.whenDecreasingDivideLrBy))
-        logPrint("[Stable/Auto] Wait that many epochs before lowering LR = " + str(self.numEpochsToWaitBeforeLoweringLr))
-        logPrint("[Auto] Minimum increase in validation accuracy (0. to 1.) that resets the waiting counter = " + str(self.minIncreaseInValidationAccuracyThatResetsWaiting))
-        logPrint("[Predefined] Predefined Schedule of Epochs when the LR will be lowered = " + str(self.predefinedSchedLowerLrAtEpochs))
-        logPrint("[Exponential] [Number of initial epochs to not change LR and Mom, final value of LR, final value of Momentum] = " + str(self.exponentialSchedForLrAndMom))
+        logPrint("Type of schedule = " + str(self.lr_sched_params['type']))
+        logPrint("[Predef] Predefined schedule of epochs when the LR will be lowered = " + str(self.lr_sched_params['predef']['epochs']))
+        logPrint("[Predef] When decreasing Learning Rate, divide LR by = " + str(self.lr_sched_params['predef']['div_lr_by']) )
+        logPrint("[Poly] Initial epochs to wait before lowering LR = " + str(self.lr_sched_params['poly']['epochs_wait_before_decr']) )
+        logPrint("[Poly] Final epoch for the schedule = " + str(self.lr_sched_params['poly']['final_ep_for_sch']) )
+        logPrint("[Auto] Initial epochs to wait before lowering LR = " + str(self.lr_sched_params['auto']['epochs_wait_before_decr']) )
+        logPrint("[Auto] When decreasing Learning Rate, divide LR by = " + str(self.lr_sched_params['auto']['div_lr_by']) )
+        logPrint("[Auto] Minimum increase in validation accuracy (0. to 1.) that resets the waiting counter = " + str(self.lr_sched_params['auto']['min_incr_of_val_acc_considered']))
+        logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
         
         logPrint("~~Data Augmentation During Training~~")
         logPrint("Reflect images per axis = " + str(self.reflectImagesPerAxis))
         logPrint("Perform intensity-augmentation [I'= (I+shift)*mult] = " + str(self.performIntAugm))
-        logPrint("[Int. Augm.] Sample Shift from N(mu,std) = " + str(self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd[2]))
-        logPrint("[Int. Augm.] Sample Multi from N(mu,std) = " + str(self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd[3]))
-        logPrint("[Int. Augm.] (DEBUGGING:) full parameters [no(0)/images(1)/segms(2), nonNorm(0)/norm(1), shift, mult] = " + str(self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd))
+        logPrint("[Int. Augm.] Sample Shift from N(mu,std) = " + str(self.doIntAugm_shiftMuStd_multiMuStd[1]))
+        logPrint("[Int. Augm.] Sample Multi from N(mu,std) = " + str(self.doIntAugm_shiftMuStd_multiMuStd[2]))
+        logPrint("[Int. Augm.] (DEBUGGING:) full parameters [ doIntAugm, shift, mult] = " + str(self.doIntAugm_shiftMuStd_multiMuStd))
         
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.performValidationOnSamplesThroughoutTraining))
@@ -514,7 +464,7 @@ class TrainSessionParameters(object) :
         logPrint("Sampling Categories = " + str(self.samplingTypeInstanceVal.getStringsPerCategoryToSample()) )
         logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceVal.getPercentOfSamplesPerCategoryToSample()))
         logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryValidation))
-        logPrint("Paths to weight-maps for sampling of each category = " + str(self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation))
+        logPrint("Paths to weight-maps for sampling of each category = " + str(self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal))
         
         logPrint("~~~~~Validation with Full Inference on Validation Cases~~~~~")
         logPrint("Perform Full-Inference on Val. cases every that many epochs = " + str(self.numberOfEpochsBetweenFullInferenceOnValImages))
@@ -525,7 +475,7 @@ class TrainSessionParameters(object) :
         logPrint("~~Feature Maps~~")
         logPrint("Save Feature Maps = " + str(self.saveIndividualFmImagesVal))
         logPrint("Save FMs in a 4D-image = " + str(self.saveMultidimensionalImageWithAllFmsVal))
-        logPrint("Min/Max Indices of FMs to visualise per pathway-type and per layer = " + str(self.indicesOfFmsToVisualisePerPathwayAndLayerVal))
+        logPrint("Min/Max Indices of FMs to visualise per pathway-type and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Filepaths to save FMs per case = " + str(self.filepathsToSaveFeaturesForEachPatientVal))
         
         logPrint("~~Optimization~~")
@@ -537,8 +487,8 @@ class TrainSessionParameters(object) :
         logPrint("Momentum Non-Normalized (0) or Normalized (1) = " + str(self.momNonNormalized0Normalized1))
         logPrint("Momentum Value = " + str(self.momentumValue))
         logPrint("~~L1/L2 Regularization~~")
-        logPrint("L1 Regularization term = " + str(self.l1Reg))
-        logPrint("L2 Regularization term = " + str(self.l2Reg))
+        logPrint("L1 Regularization term = " + str(self.L1_reg_weight))
+        logPrint("L2 Regularization term = " + str(self.L2_reg_weight))
         
         logPrint("~~Freeze Weights of Certain Layers~~")
         logPrint("Indices of layers from each type of pathway that will be kept fixed (first layer is 0):")
@@ -547,18 +497,17 @@ class TrainSessionParameters(object) :
         logPrint("FC pathway's layers to freeze = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
         
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
+        logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
         logPrint("Pad Input Images = " + str(self.padInputImagesBool))
         
         logPrint("========== Done with printing session's parameters ==========")
-        logPrint("=============================================================")
+        logPrint("=============================================================\n")
         
-    def getTupleForCnnTraining(self) :
-        borrowFlag = True
+    def get_args_for_train_routine(self) :
         
-        trainTuple = (self.sessionLogger,
-                self.pathAndFilenameToSaveTrainedModels,
-                self.cnn3dInstance,
+        args = [self.log,
+                self.filepath_to_save_models,
                 
                 self.performValidationOnSamplesThroughoutTraining,
                 [self.saveSegmentationVal, self.saveProbMapsBoolPerClassVal],
@@ -575,14 +524,13 @@ class TrainSessionParameters(object) :
                 self.providedWeightMapsToSampleForEachCategoryTraining, #Always true, since either GT labels or advanced-mask-where-to-pos
                 self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
                 self.providedWeightMapsToSampleForEachCategoryValidation, #If false, corresponding samples will be extracted uniformly from whole image.
-                self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
+                self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal,
                 
                 self.providedRoiMasksTrain, # also used for int-augm.
                 self.roiMasksFilepathsTrain,# also used for int-augm
                 self.providedRoiMasksVal, # also used for fast inf
                 self.roiMasksFilepathsVal, # also used for fast inf and also for uniform sampling of segs.
                 
-                borrowFlag,
                 self.numberOfEpochs,
                 self.numberOfSubepochs,
                 self.numOfCasesLoadedPerSubepoch,
@@ -595,9 +543,8 @@ class TrainSessionParameters(object) :
                 
                 #-------Preprocessing-----------
                 self.padInputImagesBool,
-                self.smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
                 #-------Data Augmentation-------
-                self.intAugmOnPairs2Images1None0_imAlreadyNormal_ShiftMuStd_MultiMuStd,
+                self.doIntAugm_shiftMuStd_multiMuStd,
                 self.reflectImagesPerAxis,
                 
                 self.useSameSubChannelsAsSingleScale,
@@ -605,66 +552,52 @@ class TrainSessionParameters(object) :
                 self.subsampledChannelsFilepathsTrain,
                 self.subsampledChannelsFilepathsVal,
                 
-                #Learning Rate Schedule:
-                self.stable0orAuto1orPredefined2orExponential3LrSchedule,
-                self.minIncreaseInValidationAccuracyThatResetsWaiting,
-                self.numEpochsToWaitBeforeLoweringLr,
-                self.whenDecreasingDivideLrBy,
-                self.predefinedSchedLowerLrAtEpochs,
-                self.exponentialSchedForLrAndMom,
-                
-                #Weighting Classes differently in the CNN's cost function during training:
-                self.numberOfEpochsToWeightTheClassesInTheCostFunction,
-                
+                # Validation
                 self.performFullInferenceOnValidationImagesEveryFewEpochs, #Even if not providedGtForValidationBool, inference will be performed if this == True, to save the results, eg for visual.
                 self.numberOfEpochsBetweenFullInferenceOnValImages, # Should not be == 0, except if performFullInferenceOnValidationImagesEveryFewEpochsBool == False
                 
                 #--------For FM visualisation---------
                 self.saveIndividualFmImagesVal,
                 self.saveMultidimensionalImageWithAllFmsVal,
-                self.indicesOfFmsToVisualisePerPathwayAndLayerVal,
-                self.filepathsToSaveFeaturesForEachPatientVal
-                )
-        return trainTuple
+                self.indices_fms_per_pathtype_per_layer_to_save,
+                self.filepathsToSaveFeaturesForEachPatientVal,
+                
+                #-------- Others --------
+                self.run_input_checks
+                ]
+        return args
     
+    def get_args_for_trainer(self) :
+        args = [self.log,
+                self.indicesOfLayersPerPathwayTypeToFreeze,
+                self.costFunctionLetter,
+                # Regularisation
+                self.L1_reg_weight,
+                self.L2_reg_weight,
+                # Cost Schedules
+                #Weighting Classes differently in the CNN's cost function during training:
+                self.weight_c_in_xentr_and_release_between_eps,
+                ]
+        return args
     
-    def getTupleForInitializingTrainingState(self) :
-        initializingTrainingStateTuple = (
-                        self.sessionLogger,
-                        
-                        self.indicesOfLayersPerPathwayTypeToFreeze,
-                        #=====COST FUNCTION=====
-                        self.costFunctionLetter,
-                        
-                        #=====OPTIMIZATION=====
-                        self.learningRate,
-                        self.optimizerSgd0Adam1Rms2,
-                        self.classicMom0Nesterov1, 
-                        self.momentumValue,
-                        self.momNonNormalized0Normalized1,
-                        self.b1Adam,
-                        self.b2Adam,
-                        self.eAdam,
-                        self.rhoRms,
-                        self.eRms,
-                        # Regularisation
-                        self.l1Reg,
-                        self.l2Reg
-                        )
-        
-        return initializingTrainingStateTuple
+    def get_args_for_optimizer(self) :
+        args = [self.log,
+                self.optimizerSgd0Adam1Rms2,
+                
+                self.lr_sched_params,
+                
+                self.learningRate,
+                self.momentumValue,
+                self.classicMom0Nesterov1, 
+                self.momNonNormalized0Normalized1,
+                self.b1Adam,
+                self.b2Adam,
+                self.eAdam,
+                self.rhoRms,
+                self.eRms
+                ]
+        return args
 
-    def getTupleForCompilationOfTrainFunc(self) :
-        trainFunctionCompilationTuple = ( self.sessionLogger, )
-        return trainFunctionCompilationTuple
-       
-    def getTupleForCompilationOfValFunc(self) :
-        valFunctionCompilationTuple = ( self.sessionLogger, )
-        return valFunctionCompilationTuple
-       
-    def getTupleForCompilationOfTestFunc(self) :
-        testFunctionCompilationTuple = ( self.sessionLogger, )
-        return testFunctionCompilationTuple
 
 
 

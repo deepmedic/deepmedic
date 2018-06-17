@@ -8,7 +8,6 @@
 from __future__ import absolute_import, division
 
 import numpy as np
-from scipy.ndimage.filters import gaussian_filter
 
 
 def reflectImageArrayIfNeeded(reflectFlags, imageArray) :
@@ -16,15 +15,6 @@ def reflectImageArrayIfNeeded(reflectFlags, imageArray) :
     
     reflImageArray = imageArray[::stepsForReflectionPerDimension[0], ::stepsForReflectionPerDimension[1], ::stepsForReflectionPerDimension[2]]
     return reflImageArray
-
-
-def smoothImageWithGaussianFilterIfNeeded(smoothImageWithGaussianFilterStds, imageArray) :
-    # Either None for no smoothing, or a List with 3 elements, [std-r, std-c, std-z] of the gaussian kernel to smooth with.
-    #If I do not want to smooth at all a certain axis, pass std=0 for it. Works, I tried. Returns the actual voxel value.
-    if smoothImageWithGaussianFilterStds == None :
-        return imageArray
-    else :
-        return gaussian_filter(imageArray, smoothImageWithGaussianFilterStds)
     
 
 def calculateTheZeroIntensityOf3dImage(image3d) :
