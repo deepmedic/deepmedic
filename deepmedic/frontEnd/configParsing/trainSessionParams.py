@@ -236,7 +236,7 @@ class TrainSessionParameters(object) :
         if self.performValidationOnSamplesThroughoutTraining :
             self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
         elif self.performFullInferenceOnValidationImagesEveryFewEpochs :
-            self.gtLabelsFilepathsVal = gtLabelsFilepathsVal if gtLabelsFilepathsVal is not None else []
+            self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else []
         else : # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
         self.providedGtVal = True if self.gtLabelsFilepathsVal is not None else False
