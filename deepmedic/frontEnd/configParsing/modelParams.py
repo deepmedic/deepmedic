@@ -258,7 +258,7 @@ class ModelParameters(object) :
             self.errorReqActivFunction()
             
         #==BATCH NORMALIZATION==
-        self.applyBnToInputOfPathways = [False, False, True, False] # the 3 entry, for FC, should always be True.
+        self.applyBnToInputOfPathways = [False, False, True] # Per pathway type. The 3rd entry, for FC, should always be True.
         self.bnRollAverOverThatManyBatches = cfg[cfg.BN_ROLL_AV_BATCHES] if cfg[cfg.BN_ROLL_AV_BATCHES] is not None else 60
         
         #==============CALCULATED=====================
