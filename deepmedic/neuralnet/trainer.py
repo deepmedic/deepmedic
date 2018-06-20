@@ -29,7 +29,7 @@ class Trainer(object):
     def __init__(   self,
                     log,
                     indicesOfLayersPerPathwayTypeToFreeze,
-                    costFunctionLetter,
+                    losses_and_weights,
                     L1_reg_weight,
                     L2_reg_weight,
                     # Cost schedules
@@ -46,11 +46,11 @@ class Trainer(object):
         self._L1_reg_weight = L1_reg_weight
         self._L2_reg_weight = L2_reg_weight
         # Costs
-        self._cost_function_letter = costFunctionLetter  # "L", "D" or "J"
+        self._losses_and_weights = losses_and_weights  # "L", "D" or "J"
         self._total_cost = None # This is set-up by calling self.setup_costs(...)
         # Params for costs
         self._weight_c_in_xentr_and_release_between_eps = weight_c_in_xentr_and_release_between_eps
-        self._setup_costs()
+        self._setup_costs(log)
         
         
         ################# OPTIMIZER AND SCHEDULES ###############
@@ -96,27 +96,29 @@ class Trainer(object):
         self._op_assign_last_epoch_lr_lowered = None
         
     ############## All the logic wrt cost / regularizers should be done here ##############
-    def _setup_costs(self):
+    def _setup_costs(self, log):
         if not self._total_cost is None:
-            log.print3("ERROR: Problem in Trainer. It was called to setup the total cost, but it was not None.")
-            log.print3("\n\t This should not happen. Setup should be called only once.\n Exiting!")
+            log.print3("ERROR: Problem in Trainer. It was called to setup the total cost, but it was not None."+\
+                       "\n\t This should not happen. Setup should be called only once.\n Exiting!")
             exit(1)
         
-        # The cost function to use.
-        if self._cost_function_letter == "L" :
-            y_gt = self._net._output_gt_tensor_feeds['train']['y_gt']
+        cost = 0
+        # Cost functions
+        y_gt = self._net._output_gt_tensor_feeds['train']['y_gt']
+        if "xentr" in self._losses_and_weights and self._losses_and_weights["xentr"] is not None:
+            log.print3("COST: Using cross entropy with weight: " +str(self._losses_and_weights["xentr"]))
             w_per_cl_vec = self._compute_w_per_class_vector_for_xentr( self._net.num_classes, y_gt )
-            x_entr = cfs.x_entr( self._net.finalTargetLayer.p_y_given_x_train, y_gt, self._net.num_classes, w_per_cl_vec )
-        else :
-            log.print3("ERROR: Problem in Trainer. The parameter self._cost_function_letter did not have an acceptable value( L,D,J ).\n Exiting.")
-            exit(1)
+            cost += self._losses_and_weights["xentr"] * cfs.x_entr( self._net.finalTargetLayer.p_y_given_x_train, y_gt, w_per_cl_vec )
+        if "iou" in self._losses_and_weights and self._losses_and_weights["iou"] is not None:
+            log.print3("COST: Using iou loss with weight: " +str(self._losses_and_weights["iou"]))
+            cost += self._losses_and_weights["iou"] * cfs.iou( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
+        if "dsc" in self._losses_and_weights and self._losses_and_weights["dsc"] is not None:
+            log.print3("COST: Using dsc loss with weight: " +str(self._losses_and_weights["dsc"]))
+            cost += self._losses_and_weights["dsc"] * cfs.dsc( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
             
         cost_L1_reg = self._L1_reg_weight * self._net._get_L1_cost()
-        cost_L2_reg = self._L2_reg_weight * self._net._get_L2_cost()
-        
-        cost = (x_entr
-                + cost_L1_reg
-                + cost_L2_reg )
+        cost_L2_reg = self._L2_reg_weight * self._net._get_L2_cost()        
+        cost = cost + cost_L1_reg + cost_L2_reg
         
         self._total_cost = cost
         

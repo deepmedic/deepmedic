@@ -364,8 +364,8 @@ class TrainSessionParameters(object) :
         # Three sublists, one per pathway type: Normal, Subsampled, FC. eg: [[0,1,2],[0,1,2],[]
         self.indicesOfLayersPerPathwayTypeToFreeze = [ indicesOfLayersToFreezeNorm, indicesOfLayersToFreezeSubs, indicesOfLayersToFreezeFc ]
         
-        self.costFunctionLetter = "L"
-        
+        self.losses_and_weights = cfg[cfg.LOSSES_WEIGHTS] if cfg[cfg.LOSSES_WEIGHTS] is not None else {"xentr": 1.0, "iou": None, "dsc": None}
+        assert True in [ self.losses_and_weights[k] is not None for k in ["xentr", "iou", "dsc"] ]
         """
         #NOTES: variables that have to do with number of pathways: 
                 self.indicesOfLayersPerPathwayTypeToFreeze (="all" always currently. Hardcoded)
@@ -374,6 +374,7 @@ class TrainSessionParameters(object) :
                 self.subsampledChannelsFilepathsVal, (Deprecated. But I should support it in future, cause it works well for non-scale pathways)
                 indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
+        
     def _makeFilepathsForPredictionsAndFeaturesVal(self,
                                             absPathToFolderForPredictionsFromSession,
                                             absPathToFolderForFeaturesFromSession
@@ -486,7 +487,8 @@ class TrainSessionParameters(object) :
         logPrint("Momentum Type: Classic (0) or Nesterov (1) = " + str(self.classicMom0Nesterov1))
         logPrint("Momentum Non-Normalized (0) or Normalized (1) = " + str(self.momNonNormalized0Normalized1))
         logPrint("Momentum Value = " + str(self.momentumValue))
-        logPrint("~~L1/L2 Regularization~~")
+        logPrint("~~Costs~~")
+        logPrint("Loss functions and their weights = " + str(self.losses_and_weights))
         logPrint("L1 Regularization term = " + str(self.L1_reg_weight))
         logPrint("L2 Regularization term = " + str(self.L2_reg_weight))
         
@@ -570,7 +572,7 @@ class TrainSessionParameters(object) :
     def get_args_for_trainer(self) :
         args = [self.log,
                 self.indicesOfLayersPerPathwayTypeToFreeze,
-                self.costFunctionLetter,
+                self.losses_and_weights,
                 # Regularisation
                 self.L1_reg_weight,
                 self.L2_reg_weight,

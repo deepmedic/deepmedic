@@ -95,6 +95,8 @@ class TrainConfig(Config):
     #RMS
     RHO_RMS = "rhoRms"
     EPS_RMS = "epsilonRms"
+    #Losses
+    LOSSES_WEIGHTS = "losses_and_weights"
     #Regularization L1 and L2.
     L1_REG = "L1_reg"
     L2_REG = "L2_reg"
