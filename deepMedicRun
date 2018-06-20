@@ -25,6 +25,8 @@ from deepmedic.frontEnd.testSession import TestSession
 
 from deepmedic.frontEnd.configParsing.modelParams import ModelParameters
 
+from tensorflow.python.client import device_lib
+
 
 OPT_MODEL = "-model"
 OPT_TRAIN = "-train"
@@ -154,6 +156,7 @@ if __name__ == '__main__':
     
     check_dev_passed_correctly(args.device)
     set_environment(args.device)
+    log.print3("Available devices to Tensorflow:\n" + str(device_lib.list_local_devices()))
     
     try:
         #Find out what session we are being asked to perform:

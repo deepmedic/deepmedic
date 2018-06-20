@@ -18,7 +18,6 @@ from deepmedic.routines.testing import performInferenceOnWholeVolumes
 
 import tensorflow as tf
 
-
 class TestSession(Session):
     
     def __init__(self, cfg):
@@ -83,19 +82,21 @@ class TestSession(Session):
         graphTf = tf.Graph()
         
         with graphTf.as_default():
-            
-            self._log.print3("=========== Making the CNN graph... ===============")
-            cnn3d = Cnn3d()
-            with tf.variable_scope("net"):
-                cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
+            device_for_sess = "/CPU:0" if len(os.environ["CUDA_VISIBLE_DEVICES"]) == 0 else "/device:GPU:0"
+            with graphTf.device(device_for_sess): # Throws an error if GPU is specified but not available.
+                self._log.print3("=========== Making the CNN graph... ===============")
+                cnn3d = Cnn3d()
+                with tf.variable_scope("net"):
+                    cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
+                    
+                self._log.print3("=========== Compiling the Testing Function ============")
+                self._log.print3("=======================================================\n")
                 
-            self._log.print3("=========== Compiling the Testing Function ============")
-            self._log.print3("=======================================================\n")
-            
-            cnn3d.setup_ops_n_feeds_to_test( self._log,
-                                                     self._params.indices_fms_per_pathtype_per_layer_to_save )
-            # Create the saver
-            saver_all = tf.train.Saver() # saver_net would suffice
+                cnn3d.setup_ops_n_feeds_to_test( self._log,
+                                                         self._params.indices_fms_per_pathtype_per_layer_to_save )
+            with graphTf.device("/CPU:0"): # Savers can only be on cpu.
+                # Create the saver
+                saver_all = tf.train.Saver() # saver_net would suffice
             
         with tf.Session( graph=graphTf, config=tf.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
             file_to_load_params_from = self._params.get_path_to_load_model_from()
