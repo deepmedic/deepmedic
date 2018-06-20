@@ -56,7 +56,7 @@ class Trainer(object):
         ################# OPTIMIZER AND SCHEDULES ###############
         
         ######### training state ##########
-        self._num_epochs_trained_tfv = tf.Variable(0, dtype="int32", trainable=False, name="num_epochs_trained")
+        self._num_epochs_trained_tfv = tf.Variable(0, dtype="int64", trainable=False, name="num_epochs_trained") # int32 tf.vars cannot be (explicitly) loaded to gpu.
         # State Ops
         # TODO: All the ops should be constructed and kept into one place (eg dict), and then can be easily called from outside...
         # ... INSTEAD of called a public function such as set_lr or change_lr.

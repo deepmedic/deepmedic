@@ -78,40 +78,40 @@ class TrainSession(Session):
         
         with graphTf.as_default():
             device_for_sess = "/CPU:0" if len(os.environ["CUDA_VISIBLE_DEVICES"]) == 0 else "/device:GPU:0"
-            with graphTf.device(device_for_sess): # Throws an error if GPU is specified but not available.
+            with graphTf.device(device_for_sess): # Explicit device assignment, throws an error if GPU is specified but not available.
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
                 with tf.variable_scope("net"):
                     cnn3d.make_cnn_model( *model_params.get_args_for_arch() )
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
-                    
-                with tf.variable_scope("trainer"):
-                    self._log.print3("=========== Building Trainer ===========\n")
-                    trainer = Trainer( *( self._params.get_args_for_trainer() + [cnn3d] ) )
-                    trainer.create_optimizer( *self._params.get_args_for_optimizer() ) # Trainer and net connect here.
-                    
-                # The below should not create any new tf.variables.
-                self._log.print3("=========== Compiling the Training Function ===========")
-                self._log.print3("=======================================================\n")
-                cnn3d.setup_ops_n_feeds_to_train( self._log,
-                                                  trainer.get_total_cost(),
-                                                  trainer.get_param_updates_wrt_total_cost() # list of ops
-                                                )
-                
-                self._log.print3("=========== Compiling the Validation Function =========")
-                cnn3d.setup_ops_n_feeds_to_val( self._log )
-                
-                self._log.print3("=========== Compiling the Testing Function ============")
-                cnn3d.setup_ops_n_feeds_to_test( self._log,
-                                                 self._params.indices_fms_per_pathtype_per_layer_to_save ) # For validation with full segmentation
             
-            with graphTf.device("/CPU:0"): # Savers can only be on cpu.
-                # Create the savers
-                saver_all = tf.train.Saver() # Will be used during training for saving everything.
-                collection_vars_net = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="net") # Alternative: tf.train.Saver([v for v in tf.all_variables() if v.name.startswith("net"])
-                saver_net = tf.train.Saver( var_list = collection_vars_net ) # Used to load the net's parameters.
-                collection_vars_trainer = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
-                saver_trainer = tf.train.Saver( var_list = collection_vars_trainer ) # Used to load the trainer's parameters.
+            # No explicit device assignment for the rest. Because trained has piecewise_constant that is only on cpu, and so is saver.        
+            with tf.variable_scope("trainer"):
+                self._log.print3("=========== Building Trainer ===========\n")
+                trainer = Trainer( *( self._params.get_args_for_trainer() + [cnn3d] ) )
+                trainer.create_optimizer( *self._params.get_args_for_optimizer() ) # Trainer and net connect here.
+                
+            # The below should not create any new tf.variables.
+            self._log.print3("=========== Compiling the Training Function ===========")
+            self._log.print3("=======================================================\n")
+            cnn3d.setup_ops_n_feeds_to_train( self._log,
+                                              trainer.get_total_cost(),
+                                              trainer.get_param_updates_wrt_total_cost() # list of ops
+                                            )
+            
+            self._log.print3("=========== Compiling the Validation Function =========")
+            cnn3d.setup_ops_n_feeds_to_val( self._log )
+            
+            self._log.print3("=========== Compiling the Testing Function ============")
+            cnn3d.setup_ops_n_feeds_to_test( self._log,
+                                             self._params.indices_fms_per_pathtype_per_layer_to_save ) # For validation with full segmentation
+            
+            # Create the savers
+            saver_all = tf.train.Saver() # Will be used during training for saving everything.
+            collection_vars_net = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="net") # Alternative: tf.train.Saver([v for v in tf.all_variables() if v.name.startswith("net"])
+            saver_net = tf.train.Saver( var_list = collection_vars_net ) # Used to load the net's parameters.
+            collection_vars_trainer = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
+            saver_trainer = tf.train.Saver( var_list = collection_vars_trainer ) # Used to load the trainer's parameters.
             
         # self._print_vars_in_collection(collection_vars_net, "net")
         # self._print_vars_in_collection(collection_vars_trainer, "trainer")

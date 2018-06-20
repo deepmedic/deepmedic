@@ -89,14 +89,13 @@ class TestSession(Session):
                 with tf.variable_scope("net"):
                     cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
                     
-                self._log.print3("=========== Compiling the Testing Function ============")
-                self._log.print3("=======================================================\n")
-                
-                cnn3d.setup_ops_n_feeds_to_test( self._log,
-                                                         self._params.indices_fms_per_pathtype_per_layer_to_save )
-            with graphTf.device("/CPU:0"): # Savers can only be on cpu.
-                # Create the saver
-                saver_all = tf.train.Saver() # saver_net would suffice
+            self._log.print3("=========== Compiling the Testing Function ============")
+            self._log.print3("=======================================================\n")
+            
+            cnn3d.setup_ops_n_feeds_to_test( self._log,
+                                             self._params.indices_fms_per_pathtype_per_layer_to_save )
+            # Create the saver
+            saver_all = tf.train.Saver() # saver_net would suffice
             
         with tf.Session( graph=graphTf, config=tf.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
             file_to_load_params_from = self._params.get_path_to_load_model_from()
