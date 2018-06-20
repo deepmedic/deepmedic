@@ -102,8 +102,8 @@ class Trainer(object):
                        "\n\t This should not happen. Setup should be called only once.\n Exiting!")
             exit(1)
         
-        cost = 0
         # Cost functions
+        cost = 0
         y_gt = self._net._output_gt_tensor_feeds['train']['y_gt']
         if "xentr" in self._losses_and_weights and self._losses_and_weights["xentr"] is not None:
             log.print3("COST: Using cross entropy with weight: " +str(self._losses_and_weights["xentr"]))
