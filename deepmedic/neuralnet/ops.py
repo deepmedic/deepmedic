@@ -229,7 +229,7 @@ def applySoftmaxToFmAndReturnProbYandPredY( inputToSoftmax, inputToSoftmaxShape,
     firstDimOfInputToSoftmax2d = inputToSoftmaxShape[0]*numberOfVoxelsDenselyClassified # batchSize*r*c*z.
     inputToSoftmax2d = tf.reshape(inputToSoftmaxFlattened, shape=[firstDimOfInputToSoftmax2d, numberOfOutputClasses]) # Reshape works in "Row-major", ie 'C' style too.
     # Predicted probability per class.
-    p_y_given_x_2d = tf.nn.softmax(inputToSoftmax2d/softmaxTemperature, dim=-1)
+    p_y_given_x_2d = tf.nn.softmax(inputToSoftmax2d/softmaxTemperature, axis=-1)
     p_y_given_x_classMinor = tf.reshape(p_y_given_x_2d, shape=[inputToSoftmaxShape[0], inputToSoftmaxShape[2], inputToSoftmaxShape[3], inputToSoftmaxShape[4], inputToSoftmaxShape[1]]) #Result: batchSize, R,C,Z, Classes.
     p_y_given_x = tf.transpose(p_y_given_x_classMinor, perm=[0,4,1,2,3]) #Result: batchSize, Class, R, C, Z
     
