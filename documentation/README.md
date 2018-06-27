@@ -4,9 +4,10 @@ The DeepMedic
 ### News
 
 June 2018:
-* Backend will be changed to TensorFlow in the next few days.
-* Currently TF is on branch dm_tensorflow. Validated on 4 problems already, awaiting one more successful validation and will be pushed to Master in the next few days.
-* Theano backend will be retired in a deprecated branch.
+### This version with Theano Backend is now DEPRECATED and no longer supported.
+* Since DM's version 0.7, the backend has been switched to Tensorflow.
+* Big thanks and respect to the Theano dev and MILA lab for Theano.
+
 
 28 Oct 2017 (v0.6.1):
 * Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
