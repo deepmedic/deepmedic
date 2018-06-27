@@ -187,7 +187,7 @@ class Pathway(object):
                                                     
                                                     convWInitMethod,
                                                     useBnPerLayer, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
-                                                    rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                    movingAvForBnOverXBatches,
                                                     activFuncPerLayer,
                                                     dropoutRatesPerLayer=[],
                                                     
@@ -239,7 +239,7 @@ class Pathway(object):
                             poolingParameters=thisLayerPoolingParameters,
                             convWInitMethod=convWInitMethod,
                             useBnFlag = thisLayerUseBn,
-                            rollingAverageForBatchNormalizationOverThatManyBatches=rollingAverageForBatchNormalizationOverThatManyBatches,
+                            movingAvForBnOverXBatches=movingAvForBnOverXBatches,
                             activationFunc=thisLayerActivFunc,
                             dropoutRate=thisLayerDropoutRate
                             ) 

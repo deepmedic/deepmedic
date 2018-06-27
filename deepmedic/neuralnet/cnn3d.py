@@ -120,13 +120,13 @@ class Cnn3d(object):
 
         
     # for inference with batch-normalization. Every training batch, this is called to update an internal matrix of each layer, with the last mus and vars, so that I can compute the rolling average for inference.
-    def updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference(self, sessionTf) :
-        self._updateMatricesOfBnRollingAverageForInference(sessionTf)
+    def updateMatricesOfBnMovingAvForInference(self, sessionTf) :
+        self._updateMatricesOfBnMovingAvForInference(sessionTf)
         
-    def _updateMatricesOfBnRollingAverageForInference(self, sessionTf):
+    def _updateMatricesOfBnMovingAvForInference(self, sessionTf):
         for pathway in self.pathways :
             for layer in pathway.getLayers() :
-                layer.updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(sessionTf)  # Will do nothing if no BN.
+                layer.updateMatricesOfBnMovingAvForInference(sessionTf)  # Will do nothing if no BN.
                     
     def _getUpdatesForBnRollingAverage(self) :
         # These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
@@ -315,7 +315,7 @@ class Cnn3d(object):
                         convWInitMethod,
                         # Batch Normalization
                         applyBnToInputOfPathways,  # one Boolean flag per pathway type. Placeholder for the FC pathway.
-                        rollingAverageForBatchNormalizationOverThatManyBatches,
+                        movingAvForBnOverXBatches,
                         
                         ):
         
@@ -380,8 +380,8 @@ class Cnn3d(object):
         thisPathWayKernelDimensions = kernelDimensions
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
-        thisPathwayUseBnPerLayer = [rollingAverageForBatchNormalizationOverThatManyBatches > 0] * thisPathwayNumOfLayers
-        thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
+        thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
+        thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
@@ -399,7 +399,7 @@ class Cnn3d(object):
                                                                          
                                                                          convWInitMethod,
                                                                          thisPathwayUseBnPerLayer,
-                                                                         rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                         movingAvForBnOverXBatches,
                                                                          thisPathwayActivFuncPerLayer,
                                                                          dropoutRatesForAllPathways[thisPathwayType],
                                                                          
@@ -428,8 +428,8 @@ class Cnn3d(object):
             thisPathWayKernelDimensions = kernelDimensionsSubsampled
             
             thisPathwayNumOfLayers = len(thisPathWayNKerns)
-            thisPathwayUseBnPerLayer = [rollingAverageForBatchNormalizationOverThatManyBatches > 0] * thisPathwayNumOfLayers
-            thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
+            thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
+            thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
             
             thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
             thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
@@ -450,7 +450,7 @@ class Cnn3d(object):
                                                                      
                                                                      convWInitMethod,
                                                                      thisPathwayUseBnPerLayer,
-                                                                     rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                     movingAvForBnOverXBatches,
                                                                      thisPathwayActivFuncPerLayer,
                                                                      dropoutRatesForAllPathways[thisPathwayType],
                                                                      
@@ -510,8 +510,8 @@ class Cnn3d(object):
         thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
-        thisPathwayUseBnPerLayer = [rollingAverageForBatchNormalizationOverThatManyBatches > 0] * thisPathwayNumOfLayers
-        thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if rollingAverageForBatchNormalizationOverThatManyBatches > 0 else False  # For the 1st layer, ask specific flag.
+        thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
+        thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
@@ -529,7 +529,7 @@ class Cnn3d(object):
                                                                          
                                                                          convWInitMethod,
                                                                          thisPathwayUseBnPerLayer,
-                                                                         rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                         movingAvForBnOverXBatches,
                                                                          thisPathwayActivFuncPerLayer,
                                                                          dropoutRatesForAllPathways[thisPathwayType],
                                                                          

@@ -211,7 +211,7 @@ class TrainSessionParameters(object) :
         self.performIntAugm = cfg[cfg.PERF_INT_AUGM_BOOL] if cfg[cfg.PERF_INT_AUGM_BOOL] is not None else False
         if self.performIntAugm :
             self.sampleIntAugmShiftWithMuAndStd = cfg[cfg.INT_AUGM_SHIF_MUSTD] if cfg[cfg.INT_AUGM_SHIF_MUSTD] else [0.0 , 0.05]
-            self.sampleIntAugmMultiWithMuAndStd = cfg[cfg.INT_AUGM_MULT_MUSTD] if cfg[cfg.INT_AUGM_MULT_MUSTD] else [1.0 , 0.02]
+            self.sampleIntAugmMultiWithMuAndStd = cfg[cfg.INT_AUGM_MULT_MUSTD] if cfg[cfg.INT_AUGM_MULT_MUSTD] else [1.0 , 0.01]
             self.doIntAugm_shiftMuStd_multiMuStd = [True, self.sampleIntAugmShiftWithMuAndStd, self.sampleIntAugmMultiWithMuAndStd]
         else :
             self.doIntAugm_shiftMuStd_multiMuStd = [False, 'plcholder', [], []]

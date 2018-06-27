@@ -55,7 +55,7 @@ class Block(object):
         # ONLY WHEN BN! All of these are for the rolling average! If I fix this, only 2 will remain!
         self._muBnsArrayForRollingAverage = None # Array
         self._varBnsArrayForRollingAverage = None # Arrays
-        self._rollingAverageForBatchNormalizationOverThatManyBatches = None
+        self._movingAvForBnOverXBatches = None
         self._indexWhereRollingAverageIs = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
         self._sharedNewMu_B = None # last value shared, to update the rolling average array.
         self._sharedNewVar_B = None
@@ -120,12 +120,12 @@ class Block(object):
         else :
             return self.params + self.targetBlock.getTrainableParams()
         
-    def updateTheMatricesWithTheLastMusAndVarsForTheRollingAverageOfBNInference(self, sessionTf):
+    def updateMatricesOfBnMovingAvForInference(self, sessionTf):
         # This function should be erazed when I reimplement the Rolling average.
         if self._appliedBnInLayer :
             sessionTf.run( fetches=self._op_update_mtrx_bn_inf_mu, feed_dict={self._tf_plchld_int32: self._indexWhereRollingAverageIs} )
             sessionTf.run( fetches=self._op_update_mtrx_bn_inf_var, feed_dict={self._tf_plchld_int32: self._indexWhereRollingAverageIs} )
-            self._indexWhereRollingAverageIs = (self._indexWhereRollingAverageIs + 1) % self._rollingAverageForBatchNormalizationOverThatManyBatches
+            self._indexWhereRollingAverageIs = (self._indexWhereRollingAverageIs + 1) % self._movingAvForBnOverXBatches
             
     def getUpdatesForBnRollingAverage(self) :
         # This function or something similar should stay, even if I clean the BN rolling average.
@@ -150,7 +150,7 @@ class ConvLayer(Block):
                 inputToLayerShapeVal,
                 inputToLayerShapeTest,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
-                rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
+                movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc,
                 dropoutRate) :
         # ---------------- Order of what is applied -----------------
@@ -160,9 +160,9 @@ class ConvLayer(Block):
         #---------------------------------------------------------
         #------------------ Batch Normalization ------------------
         #---------------------------------------------------------
-        if useBnFlag and rollingAverageForBatchNormalizationOverThatManyBatches > 0 :
+        if useBnFlag and movingAvForBnOverXBatches > 0 :
             self._appliedBnInLayer = True
-            self._rollingAverageForBatchNormalizationOverThatManyBatches = rollingAverageForBatchNormalizationOverThatManyBatches
+            self._movingAvForBnOverXBatches = movingAvForBnOverXBatches
             (inputToNonLinearityTrain,
             inputToNonLinearityVal,
             inputToNonLinearityTest,
@@ -175,7 +175,7 @@ class ConvLayer(Block):
             self._sharedNewVar_B,
             self._newMu_B,
             self._newVar_B
-            ) = applyBn( rollingAverageForBatchNormalizationOverThatManyBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain)
+            ) = applyBn( movingAvForBnOverXBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain)
             self.params = self.params + [self._gBn, self._b]
             # Create ops for updating the matrices with the bn inference stats.
             self._op_update_mtrx_bn_inf_mu = tf.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
@@ -262,7 +262,7 @@ class ConvLayer(Block):
                 poolingParameters, # Can be []
                 convWInitMethod,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
-                rollingAverageForBatchNormalizationOverThatManyBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
+                movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc="relu",
                 dropoutRate=0.0):
         """
@@ -293,7 +293,7 @@ class ConvLayer(Block):
                                                                                         inputToLayerShapeVal,
                                                                                         inputToLayerShapeTest,
                                                                                         useBnFlag,
-                                                                                        rollingAverageForBatchNormalizationOverThatManyBatches,
+                                                                                        movingAvForBnOverXBatches,
                                                                                         activationFunc,
                                                                                         dropoutRate)
         

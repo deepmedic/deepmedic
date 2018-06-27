@@ -65,7 +65,7 @@ def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(log,
             
             listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining = results_from_train[:-1] # [-1] is from the updates_grouped_op that returns nothing.
             
-            cnn3d.updateTheMatricesOfTheLayersWithTheLastMusAndVarsForTheMovingAverageOfTheBatchNormInference(sessionTf) #I should put this inside the 3dCNN.
+            cnn3d.updateMatricesOfBnMovingAvForInference(sessionTf) #I should put this inside the 3dCNN.
             
             costOfThisBatch = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[0]
             listWithNumberOfRpRnPpPnForEachClass = listWithCostMeanErrorAndRpRnTpTnForEachClassFromTraining[1:]
