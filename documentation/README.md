@@ -2,7 +2,7 @@ DeepMedic
 =====================================
 
 ### News
-June 2018 (v0.7.0) (STILL NEEDS MORE VALIDATION):
+June 2018 (v0.7.0):
 * Back end changed to TensorFlow.
 * API/command line options changed slightly. Documentation updated accordingly.
 * Updated the default config in ./examples/config/deepmedic with three pathways.
