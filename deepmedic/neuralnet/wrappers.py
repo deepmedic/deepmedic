@@ -14,33 +14,33 @@ class PathwayWrapperForSampling(object):
     def __init__(self, pathwayInstance) :
         self._pType = pathwayInstance.pType()
         self._subsFactor = pathwayInstance.subsFactor()
-        self._shapeOfInputTrainValTest = pathwayInstance.getShapeOfInput()
-        self._shapeOfOutputTrainValTest = pathwayInstance.getShapeOfOutput()
+        self._inputShape = {"train": pathwayInstance.getShapeOfInput("train"),
+                              "val": pathwayInstance.getShapeOfInput("val"),
+                              "test": pathwayInstance.getShapeOfInput("test")}
     def pType(self):
         return self._pType
     def subsFactor(self):
         return self._subsFactor
-    def getShapeOfInput(self):
-        return self._shapeOfInputTrainValTest
-    def getShapeOfOutput(self):
-        return self._shapeOfOutputTrainValTest
+    def getShapeOfInput(self, train_val_test_str):
+        assert train_val_test_str in ["train", "val", "test"]
+        return self._inputShape[train_val_test_str]
         
 class CnnWrapperForSampling(object):
-    # Only for the parallel process used during training. So that it won't re-load theano etc. There was a problem with cnmem when reloading theano.
-    def __init__(self, cnn3dInstance) :
+    # Only for the parallel process used during training. So that it won't re-load theano/tensorflow etc. There was a problem with cnmem when reloading theano.
+    def __init__(self, cnn3d) :
         # Cnn
-        self.recFieldCnn = cnn3dInstance.recFieldCnn
-        self.batchSizeTrainValTest = [ cnn3dInstance.batchSize, cnn3dInstance.batchSizeValidation, cnn3dInstance.batchSizeTesting ]
-        self.finalTargetLayer_outputShapeTrainValTest = [cnn3dInstance.finalTargetLayer.outputShapeTrain,
-                                                        cnn3dInstance.finalTargetLayer.outputShapeVal,
-                                                        cnn3dInstance.finalTargetLayer.outputShapeTest ]
+        self.num_classes = cnn3d.num_classes
+        self.recFieldCnn = cnn3d.recFieldCnn
+        self.finalTargetLayer_outputShape = {"train": cnn3d.finalTargetLayer.outputShape["train"],
+                                             "val": cnn3d.finalTargetLayer.outputShape["val"],
+                                             "test": cnn3d.finalTargetLayer.outputShape["test"]}
         # Pathways related
-        self._numPathwaysThatRequireInput = cnn3dInstance.getNumPathwaysThatRequireInput()
-        self.numSubsPaths = cnn3dInstance.numSubsPaths
+        self._numPathwaysThatRequireInput = cnn3d.getNumPathwaysThatRequireInput()
+        self.numSubsPaths = cnn3d.numSubsPaths
         
         self.pathways = []
-        for pathway_i in range(len(cnn3dInstance.pathways)) :
-            self.pathways.append( PathwayWrapperForSampling(cnn3dInstance.pathways[pathway_i]) )
+        for pathway_i in range(len(cnn3d.pathways)) :
+            self.pathways.append( PathwayWrapperForSampling(cnn3d.pathways[pathway_i]) )
         
     def getNumPathwaysThatRequireInput(self) :
         return self._numPathwaysThatRequireInput

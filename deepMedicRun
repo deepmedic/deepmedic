@@ -10,33 +10,45 @@ from __future__ import absolute_import, print_function, division
 import sys
 import os
 import argparse
+import traceback
 
 sys.setrecursionlimit(20000)
 
-from deepmedic.frontEndModules.frontEndHelpers.parsingFilesHelpers import getAbsPathEvenIfRelativeIsGiven
+from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven
 
-OPTION_NEW = "-newModel"
+from deepmedic.frontEnd.configParsing.modelConfig import ModelConfig
+from deepmedic.frontEnd.configParsing.trainConfig import TrainConfig
+from deepmedic.frontEnd.configParsing.testConfig import TestConfig
+
+from deepmedic.frontEnd.trainSession import TrainSession
+from deepmedic.frontEnd.testSession import TestSession
+
+from deepmedic.frontEnd.configParsing.modelParams import ModelParameters
+
+from tensorflow.python.client import device_lib
+
+
+OPT_MODEL = "-model"
 OPT_TRAIN = "-train"
 OPT_TEST = "-test"
-OPT_MODEL = "-model"
+OPT_LOAD = "-load"
 
 OPT_DEVICE = "-dev"
 ARG_CPU_PROC = "cpu"
 ARG_GPU_PROC = "cuda"
 DEF_DEV_PROC = ARG_CPU_PROC
 
-OPT_PRETR = "-pretrained"
-OPT_PRETR_LAYERS = "-layers"
-OPT_PRETR_RESET = "-resetOptimizer"
+OPT_RESET = "-resetopt"
 
-def strIsInt(s):
+
+def str_is_int(s):
     try: 
         int(s)
         return True
     except ValueError:
         return False
     
-def setupArgParser() :
+def setup_arg_parser() :
     parser = argparse.ArgumentParser( prog='DeepMedic', formatter_class=argparse.RawTextHelpFormatter,
     description="\nThis software allows creation and supervised training of 3D, multi-scale CNN models for segmentation of structures in biomedical NIFTI volumes.\n"+\
                 "The project is hosted at: https://github.com/Kamnitsask/deepmedic \n"+\
@@ -46,30 +58,22 @@ def setupArgParser() :
                 "We hope our work aids you in your endeavours.\n"+\
                 "For questions and feedback contact: konstantinos.kamnitsas12@ic.ac.uk")
     
-    parser.add_argument(OPTION_NEW, dest='model_conf', type=str, help="Create a new CNN model with model parameters at given config file [MODEL_CONF].")
-    parser.add_argument(OPT_TRAIN, dest='training_conf', type=str, help="Train a CNN model with training parameters at given config file [TRAINING_CONF].\n"+\
-                                                                    "This option can follow a ["+OPTION_NEW+" MODEL_CONF] option, to create a new model and start training it immediately.\n"+\
-                                                                    "Otherwise, existing model can be specified in the training-config file or by the additional option ["+OPT_MODEL+"].")
-    parser.add_argument(OPT_TEST, dest='testing_conf', type=str, help="Test with an existing CNN model. The testing session's parameters should be given in config file [TESTING_CONF].\n"+\
-                                                                    "Existing model can be specified in the given training-config file or by the additional option ["+OPT_MODEL+"].\n"+\
-                                                                    "This option cannot be used in combination with ["+OPTION_NEW+"] or ["+OPT_TRAIN+"].")
-    parser.add_argument(OPT_MODEL, dest='saved_model', type=str, help="The path to a saved existing cnn model, to train or test with.\n"+\
-                                                                    "This option can follow a ["+OPT_TRAIN+"] or ["+OPT_TEST+"] option. Not in combination with a ["+OPTION_NEW+"].\n"+\
-                                                                    "If given, this option will override any \"model\" parameters given in the train or testing configuration file.")
+    parser.add_argument(OPT_MODEL, dest='model_cfg', type=str, help="Specify the architecture of the model to be used, by providing a config file [MODEL_CFG].")
+    parser.add_argument(OPT_TRAIN, dest='train_cfg', type=str, help="Train a model with training parameters given by specifying config file [TRAINING_CFG].\n"+\
+                                                                    "This option must follow a ["+OPT_MODEL+" MODEL_CFG] option, so that architecture of the to-train model is specified.\n"+\
+                                                                    "Additionally, an existing checkpoint of the model can be specified in the [TRAIN_CFG] file or by the additional option ["+OPT_LOAD+"], to continue training it.")
+    parser.add_argument(OPT_TEST, dest='test_cfg', type=str, help="Test with an existing model. The testing session's parameters should be given in config file [TEST_CFG].\n"+\
+                                                                    "This option must follow a ["+OPT_MODEL+" MODEL_CFG] option, so that architecture of the model is specified.\n"+\
+                                                                    "Existing pretrained model can be specified in the given [TEST_CFG] file or by the additional option ["+OPT_LOAD+"].\n"+\
+                                                                    "This option cannot be used in combination with ["+OPT_MODEL+"] or ["+OPT_TRAIN+"].")
+    parser.add_argument(OPT_LOAD, dest='saved_model', type=str, help="The path to a saved existing checkpoint with learnt weights of the model, to train or test with.\n"+\
+                                                                    "This option must follow a ["+OPT_TRAIN+"] or ["+OPT_TEST+"] option.\n"+\
+                                                                    "If given, this option will override any \"model\" parameters given in the [TRAIN_CFG] or [TEST_CFG] files.")
     parser.add_argument(OPT_DEVICE, default = DEF_DEV_PROC, dest='device', type=str,  help="Specify the device to run the process on. Values: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (default = " + DEF_DEV_PROC + ").\n"+\
                                                                     "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + DEF_DEV_PROC + " " + ARG_GPU_PROC + "2.\n"+\
-                                                                    "NOTE#1: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation."+\
-                                                                    "NOTE#2: If you get problems using the GPU with ["+DEF_DEV_PROC+" "+ARG_GPU_PROC+"], try using the old Theano backend with ["+DEF_DEV_PROC+" "+ARG_GPU_PROC+"] or disaable cuDNN. See docs Sec 1.3 and 2.2.")
-    parser.add_argument(OPT_PRETR, dest='pretrained_model', type=str, help="Use to transfer the weights from a previously trained model to a new model.\n"+\
-                                                                    "This option must follow a ["+OPTION_NEW+"] option.\n"+\
-                                                                    "Usage: ./deepMedicRun "+OPTION_NEW+" /path/to/model/config "+OPT_PRETR+" /path/to/pretrained/model \n"+\
-                                                                    "NOTE: By default, parameters are transfered to all layers except the classification layer. Use option ["+OPT_PRETR_LAYERS+"] to manually specify layers to pretrain.")
-    parser.add_argument(OPT_PRETR_LAYERS, dest='layers_to_transfer', nargs='+', type=int, help="Use only after a ["+OPT_PRETR+"] option.\n"+\
-                                                                    "Specify to which layers of the new model parameters should be transferred to.\n"+\
-                                                                    "First layer is 1. Classification layer of original DeepMedic is 11. Same layers from each parallel-pathway will be transfered.\n"+\
-                                                                    "Usage: ./deepMedicRun "+OPTION_NEW+" /path/to/model/config "+OPT_PRETR+" /path/to/pretrained/model "+OPT_PRETR_LAYERS+" 1 2 3 ...")
-    parser.add_argument(OPT_PRETR_RESET, dest='reset_optimizer', action='store_true', help="Use optionally with a ["+OPT_TRAIN+"] command. Does not take an argument.\n"+\
-                                                                    "Usage: ./deepMedicRun "+OPT_TRAIN+" /path/to/train/config "+OPT_PRETR_RESET+" ...etc...\n"+\
+                                                                    "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
+    parser.add_argument(OPT_RESET, dest='reset_trainer', action='store_true', help="Use optionally with a ["+OPT_TRAIN+"] command. Does not take an argument.\n"+\
+                                                                    "Usage: ./deepMedicRun " + OPT_MODEL + " /path/to/model/config "+OPT_TRAIN+" /path/to/train/config "+OPT_RESET+" ...etc...\n"+\
                                                                     "Resets the model\'s optimization state before starting the training session (eg number of epochs already trained, current learning rate etc).\n"+\
                                                                     "IMPORTANT: Trainable parameters are NOT reinitialized! \n"+\
                                                                     "Useful to begin a secondary training session with new learning-rate schedule, in order to fine-tune a previously trained model (Doc., Sec. 3.2)")
@@ -77,118 +81,105 @@ def setupArgParser() :
     return parser
 
 
-    
-def checkDevicePassedCorrectly(devArg) :
+def check_dev_passed_correctly(devArg) :
     if devArg == ARG_CPU_PROC: return
     if devArg == ARG_GPU_PROC: return
-    if devArg.startswith(ARG_GPU_PROC) and strIsInt(devArg[ len(ARG_GPU_PROC) : ]) : return
+    if devArg.startswith(ARG_GPU_PROC) and str_is_int(devArg[ len(ARG_GPU_PROC) : ]) : return
     
     print(  "ERROR: Value for the [" + OPT_DEVICE + "] option was not specified correctly. Specify the device to run the process on. \n"+\
             "\tValues: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (Default = " + DEF_DEV_PROC + ").\n"+\
             "\tIn the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + ARG_GPU_PROC + "2. Exiting.")
     exit(1)
-        
-# Deprecated
-def readEnvFileAndSetEnv():
-    #This adds the necessary libraries to the path/ld_library_path, if given in the accompanying file: ./environment.txt (deprecated)
-    pathToEnvironmentFile = os.getcwd() + "/environment.txt"
-    if os.path.isfile(pathToEnvironmentFile) :
-        envGivenInFile = {}
-        exec(open(pathToEnvironmentFile).read(), envGivenInFile)
-        if "path_to_theano" in envGivenInFile :
-            sys.path.insert(1, envGivenInFile["path_to_theano"])
-        if "path_to_nose" in envGivenInFile :
-            sys.path.insert(1, envGivenInFile["path_to_nose"])
-        if "path_to_nibabel" in envGivenInFile :
-            sys.path.insert(1, envGivenInFile["path_to_nibabel"])
-        if "path_to_parallelPython" in envGivenInFile :
-            sys.path.insert(1, envGivenInFile["path_to_parallelPython"])
-            
-def setEnvironment(deviceString) :
-    # Deprecated, will be removed.
-    readEnvFileAndSetEnv()
-       
-    MKL_THREADING_LAYER = "MKL_THREADING_LAYER"
-    if not MKL_THREADING_LAYER in os.environ.keys():
-        os.environ[MKL_THREADING_LAYER]="GNU" # Seems theano 0.10beta requires it. See commit: https://github.com/Theano/Theano/commit/1901d9806037054f929f8c3df7d3fcd74c229c08
     
-    # Set the necessary theano flags.
-    THEANO_FLAGS = "THEANO_FLAGS"     
-    if not THEANO_FLAGS in os.environ.keys():
-        os.environ[THEANO_FLAGS]=""
-    if not os.environ[THEANO_FLAGS].find("on_unused_input=") >= 0: os.environ[THEANO_FLAGS] += ",on_unused_input=warn"
-    if not os.environ[THEANO_FLAGS].find("mode=") >= 0: os.environ[THEANO_FLAGS] += ",mode=FAST_RUN"
-    if not os.environ[THEANO_FLAGS].find("device=") >= 0: os.environ[THEANO_FLAGS] += ",device=" + deviceString
-    if not os.environ[THEANO_FLAGS].find("floatX=") >= 0: os.environ[THEANO_FLAGS] += ",floatX=float32"
-    if not os.environ[THEANO_FLAGS].find("force_device=") >= 0: os.environ[THEANO_FLAGS] += ",force_device=True"
-    if not os.environ[THEANO_FLAGS].find("dnn.enabled=") >= 0: os.environ[THEANO_FLAGS] += ",dnn.enabled=auto"
-    # if not os.environ[THEANO_FLAGS].find("gpuarray.preallocate=") >= 0: os.environ[THEANO_FLAGS] += ",gpuarray.preallocate=1"
-    if not os.environ[THEANO_FLAGS].find("openmp=") >= 0: os.environ[THEANO_FLAGS] += ",openmp=True" #  Parallelism with OpenMP: http://deeplearning.net/software/theano//tutorial/multi_cores.html
-    # can also add to theano_flags: cuda.root=/path/to/cuda/root
-
+    
+def set_environment(dev_string):
+    if dev_string == ARG_CPU_PROC:
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+        return
+    
+    if dev_string == ARG_GPU_PROC: return
+    if dev_string.startswith(ARG_GPU_PROC) and str_is_int( dev_string[ len(ARG_GPU_PROC): ] ):
+        os.environ["CUDA_VISIBLE_DEVICES"] = dev_string[ len(ARG_GPU_PROC) : ]
+    
 
 #################################################
 #                        MAIN                   #
 #################################################
 if __name__ == '__main__':
     cwd = os.getcwd()
-    parser = setupArgParser()
+    parser = setup_arg_parser()
     args = parser.parse_args()
     
     if len(sys.argv) == 1:
         print("For help on the usage of this program, please use the option -h."); exit(1)
         
-    if not (args.model_conf or args.training_conf or args.testing_conf) :
+    if not args.model_cfg :
+        print("ERROR: Option ["+OPT_MODEL+"] must be specified, pointing to a [MODEL_CFG] file that describes the architecture.\n"+\
+              "Please try [-h] for more information. Exiting."); exit(1)
+    if not (args.train_cfg or args.test_cfg) :
         print("ERROR: One of the options must be specified:\n"+\
-              "\t["+OPTION_NEW+"] to create a new model.\n"+\
               "\t["+OPT_TRAIN+"] to start a training session on a model.\n"+\
               "\t["+OPT_TEST+"] to test with an existing model.\n"+\
               "Please try [-h] for more information. Exiting."); exit(1)
         
     #Preliminary checks:
-    if args.model_conf and args.saved_model :
-        print("ERROR:\t["+OPTION_NEW+"] and ["+OPT_MODEL+"] options cannot be used together.\n"+\
-              "\tUse ["+OPT_MODEL+"] to create a new cnn model.\n"+\
-              "\t["+OPT_MODEL+"] can follow a ["+OPT_MODEL+"] or ["+OPT_TEST+"] option, to specify which saved model to use.\n"+\
-              "\tPlease try -h for more information. Exiting."); exit(1)
-    if args.testing_conf and (args.model_conf or args.training_conf) :
-        print("ERROR:\t["+OPT_TEST+"] cannot be used in conjuction with ["+OPTION_NEW+"] or ["+OPT_TRAIN+"].\n"+\
-              "\tTo test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model, or specify a model with ["+OPT_MODEL+"].. Exiting."); exit(1)
-    if args.pretrained_model and not args.model_conf :
-        print("ERROR:\tThe option ["+OPT_PRETR+"] can only be used together with the ["+OPTION_NEW+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
-    if args.layers_to_transfer and not args.pretrained_model :
-        print("ERROR:\tThe option ["+OPT_PRETR_LAYERS+"] can only be used together with the ["+OPT_PRETR+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
-    if args.reset_optimizer and not args.training_conf :
-        print("ERROR:\tThe option ["+OPT_PRETR_RESET+"] can only be used together with the ["+OPT_TRAIN+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
+    if args.test_cfg and args.train_cfg:
+        print("ERROR:\t["+OPT_TEST+"] cannot be used in conjuction with ["+OPT_TRAIN+"].\n"+\
+              "\tTo test with an existing network, please just specify a configuration file for the testing process, which will include a path to a trained model, or specify a model with ["+OPT_LOAD+"].. Exiting."); exit(1)
+              
+    if args.reset_trainer and not args.train_cfg :
+        print("ERROR:\tThe option ["+OPT_RESET+"] can only be used together with the ["+OPT_TRAIN+"] option.\n\tPlease try -h for more information. Exiting."); exit(1)
         
-    checkDevicePassedCorrectly(args.device)
     
-    #Set the environment for Theano.
-    setEnvironment(args.device)
-    
-    cnnInstanceLoaded = None
-    filenameAndPathWhereNewlyCreatedModelWasSaved = None
-    
-    #Find out what procedure we are being asked to perform:
-    if args.model_conf :#and not args.training_conf and not args.testing_conf:
-        #Just create and save a new CNN model.
-        from deepmedic.frontEndModules import deepMedicNewModel
-        absPathToModelConf = getAbsPathEvenIfRelativeIsGiven(args.model_conf, cwd)
-        absPathToPreTrainedModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.pretrained_model, cwd)  if args.pretrained_model else None # pretraining.
-        listOfLayersToTransfer = args.layers_to_transfer if args.layers_to_transfer else None # layers to transfer from pretrained model
-        (cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved) = deepMedicNewModel.deepMedicNewModelMain(absPathToModelConf, absPathToPreTrainedModelGivenInCmdLine, listOfLayersToTransfer)
+    # Parse main files.
+    if args.model_cfg:
+        abs_path_model_cfg = getAbsPathEvenIfRelativeIsGiven(args.model_cfg, cwd)
+        model_cfg = ModelConfig( args.model_cfg )
         
-    if args.training_conf : #and not args.model_conf and not args.testing_conf: #Second part was checked already.
-        #Run training
-        from deepmedic.frontEndModules import deepMedicTrain
-        absPathToTrainConf = getAbsPathEvenIfRelativeIsGiven(args.training_conf, cwd)
-        absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
-        deepMedicTrain.deepMedicTrainMain(absPathToTrainConf, absPathToCnnModelGivenInCmdLine, cnnInstanceLoaded, filenameAndPathWhereNewlyCreatedModelWasSaved, args.reset_optimizer)
+    # Create session.
+    if args.train_cfg:
+        abs_path_train_cfg = getAbsPathEvenIfRelativeIsGiven(args.train_cfg, cwd)
+        session = TrainSession( TrainConfig(abs_path_train_cfg) )
+    elif args.test_cfg:
+        abs_path_test_cfg = getAbsPathEvenIfRelativeIsGiven(args.test_cfg, cwd)
+        session = TestSession( TestConfig(abs_path_test_cfg) )
         
-    if args.testing_conf : #and not args.model_conf and not args.training_conf : #Second part was checked already.
-        #Test with an existing model.
-        from deepmedic.frontEndModules import deepMedicTest
-        absPathToTestConf = getAbsPathEvenIfRelativeIsGiven(args.testing_conf, cwd)
-        absPathToCnnModelGivenInCmdLine = getAbsPathEvenIfRelativeIsGiven(args.saved_model, cwd)  if args.saved_model else None
-        deepMedicTest.deepMedicTestMain(absPathToTestConf, absPathToCnnModelGivenInCmdLine)
+    #Create output folders and logger.
+    session.make_output_folders()
+    session.setup_logger()
+    
+    log = session.get_logger()
+    
+    log.print3("")
+    log.print3("======================== Starting new session ============================")
+    log.print3("Command line arguments given: \n" + str(args) )
+    
+    check_dev_passed_correctly(args.device)
+    set_environment(args.device)
+    log.print3("Available devices to Tensorflow:\n" + str(device_lib.list_local_devices()))
+    
+    try:
+        #Find out what session we are being asked to perform:
+        if args.model_cfg: # Should be always true.
+            log.print3("CONFIG: The configuration file for the [model] given is: " + str( model_cfg.get_abs_path_to_cfg() ))
+            model_params = ModelParameters( log, model_cfg )
+            model_params.print_params()
+            
+        # Sessions
+        log.print3("CONFIG: The configuration file for the [session] was loaded from: " + str(session.get_abs_path_to_cfg() ))
+        session.override_file_cfg_with_cmd_line_cfg(args)
+        _ = session.compile_session_params_from_cfg(model_params)
+    
+        if args.train_cfg:
+            session.run_session(model_params, args.reset_trainer)
+        elif args.test_cfg:
+            session.run_session(model_params)
+        # All done.
+    except (Exception, KeyboardInterrupt) as e:
+        log.print3("")
+        log.print3("ERROR: Caught exception from main process: " + str(e) )
+        log.print3( traceback.format_exc() )
+        
+    log.print3("Finished.")
+    
         

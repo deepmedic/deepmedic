@@ -24,7 +24,7 @@ NA_PATTERN = "N/A"
 SESSION_NAME_PATTERN = "Session\'s name ="
 SUBEPS_PER_EP_PATTERN = "Number of Subepochs per epoch ="
 NUM_EPS_BETWEEN_FULLINF_PATTERN = "Perform Full-Inference on Val. cases every that many epochs ="
-NUM_OF_CLASSES_PATTERN = "Number of Classes (incl. background) (from cnnModel) ="
+NUM_OF_CLASSES_PATTERN = "Number of Classes (including background) ="
 
 # Patterns for extracting detailed metrics:
 VALIDATION_PATT = "VALIDATION:"
@@ -551,7 +551,7 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
 
 
 if __name__ == '__main__':
-
+    
     myArgParser = setupArgParser()
     args = myArgParser.parse_args()
     if len(sys.argv) == 1:

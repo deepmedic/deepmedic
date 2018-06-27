@@ -6,13 +6,12 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from six.moves import xrange
 
 import time
 import numpy as np
 import math
 
-from deepmedic.loggingAndMonitoring.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
+from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.dataManagement.sampling import load_imgs_of_single_case
 from deepmedic.dataManagement.sampling import getCoordsOfAllSegmentsOfAnImage
 from deepmedic.dataManagement.sampling import extractDataOfSegmentsUsingSampledSliceCoords
@@ -20,15 +19,17 @@ from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWi
 from deepmedic.image.processing import unpadCnnOutputs
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
-from deepmedic.loggingAndMonitoring.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
+from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
 # Main routine for testing.
-def performInferenceOnWholeVolumes(myLogger,
-                            validation0orTesting1,
+def performInferenceOnWholeVolumes(
+                            sessionTf,
+                            cnn3d,
+                            log,
+                            val_or_test,
                             savePredictionImagesSegmentationAndProbMapsList,
-                            cnn3dInstance,
-                            
+
                             listOfFilepathsToEachChannelOfEachPatient,
                             
                             providedGtLabelsBool, #boolean. DSC calculation will be performed if this is provided.
@@ -37,12 +38,10 @@ def performInferenceOnWholeVolumes(myLogger,
                             providedRoiMaskForFastInfBool,
                             listOfFilepathsToRoiMaskFastInfOfEachPatient,
                             
-                            borrowFlag,
                             listOfNamesToGiveToPredictionsIfSavingResults,
                             
                             #----Preprocessing------
                             padInputImagesBool,
-                            smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
                             
                             useSameSubChannelsAsSingleScale,
                             listOfFilepathsToEachSubsampledChannelOfEachPatient,
@@ -53,43 +52,43 @@ def performInferenceOnWholeVolumes(myLogger,
                             indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,#NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just []. If not [], the list should contain one entry per layer of the pathway, even if just []. The layer entries, if not [], they should have to integers, lower and upper FM to visualise. Excluding the highest index.
                             listOfNamesToGiveToFmVisualisationsIfSaving
                             ) :
-    validationOrTestingString = "Validation" if validation0orTesting1 == 0 else "Testing"
-    myLogger.print3("###########################################################################################################")
-    myLogger.print3("############################# Starting full Segmentation of " + str(validationOrTestingString) + " subjects ##########################")
-    myLogger.print3("###########################################################################################################")
+    validation_or_testing_str = "Validation" if val_or_test == "val" else "Testing"
+    log.print3("###########################################################################################################")
+    log.print3("############################# Starting full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
+    log.print3("###########################################################################################################")
     
-    start_validationOrTesting_time = time.clock()
+    start_time = time.time()
     
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     
-    NUMBER_OF_CLASSES = cnn3dInstance.numberOfOutputClasses
+    NUMBER_OF_CLASSES = cnn3d.num_classes
     
     total_number_of_images = len(listOfFilepathsToEachChannelOfEachPatient)    
-    batch_size = cnn3dInstance.batchSizeTesting
+    batch_size = cnn3d.batchSize["test"]
     
     #one dice score for whole + for each class)
     # A list of dimensions: total_number_of_images X NUMBER_OF_CLASSES
-    diceCoeffs1 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #AllpredictedLes/AllLesions
-    diceCoeffs2 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideRoiMask/AllLesions
-    diceCoeffs3 = [ [-1] * NUMBER_OF_CLASSES for i in xrange(total_number_of_images) ] #predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
+    diceCoeffs1 = [ [-1] * NUMBER_OF_CLASSES for i in range(total_number_of_images) ] #AllpredictedLes/AllLesions
+    diceCoeffs2 = [ [-1] * NUMBER_OF_CLASSES for i in range(total_number_of_images) ] #predictedInsideRoiMask/AllLesions
+    diceCoeffs3 = [ [-1] * NUMBER_OF_CLASSES for i in range(total_number_of_images) ] #predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
     
-    recFieldCnn = cnn3dInstance.recFieldCnn
+    recFieldCnn = cnn3d.recFieldCnn
     
     #stride is how much I move in each dimension to acquire the next imagePart. 
     #I move exactly the number I segment in the centre of each image part (originally this was 9^3 segmented per imagePart).
-    numberOfCentralVoxelsClassified = cnn3dInstance.finalTargetLayer.outputShapeTest[2:]
+    numberOfCentralVoxelsClassified = cnn3d.finalTargetLayer.outputShape["test"][2:]
     strideOfImagePartsPerDimensionInVoxels = numberOfCentralVoxelsClassified
     
-    rczHalfRecFieldCnn = [ (recFieldCnn[i]-1)//2 for i in xrange(3) ]
+    rczHalfRecFieldCnn = [ (recFieldCnn[i]-1)//2 for i in range(3) ]
     
     #Find the total number of feature maps that will be created:
     #NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just []. If not [], the list should contain one entry per layer of the pathway, even if just []. The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
     if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
         totalNumberOfFMsToProcess = 0
-        for pathway in cnn3dInstance.pathways :
+        for pathway in cnn3d.pathways :
             indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]
-            if indicesOfFmsToVisualisePerLayerOfCertainPathway!=[] :
-                for layer_i in xrange(len(pathway.getLayers())) :
+            if indicesOfFmsToVisualisePerLayerOfCertainPathway != [] :
+                for layer_i in range(len(pathway.getLayers())) :
                     indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
                     if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway!=[] :
                         #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
@@ -97,9 +96,9 @@ def performInferenceOnWholeVolumes(myLogger,
                         indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] = min(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1], numberOfFeatureMapsInThisLayer)
                         totalNumberOfFMsToProcess += indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] - indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0]
                         
-    for image_i in xrange(total_number_of_images) :
-        myLogger.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        myLogger.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #"+str(image_i)+" ~~~~~~~~~~~~~~~~~~~~")
+    for image_i in range(total_number_of_images) :
+        log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #"+str(image_i)+" ~~~~~~~~~~~~~~~~~~~~")
         
         #load the image channels in cpu
         
@@ -110,8 +109,8 @@ def performInferenceOnWholeVolumes(myLogger,
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
         ] = load_imgs_of_single_case(
-                                    myLogger,
-                                    2,
+                                    log,
+                                    "test",
                                     
                                     image_i,
                                     
@@ -119,6 +118,7 @@ def performInferenceOnWholeVolumes(myLogger,
                                     
                                     providedGtLabelsBool,
                                     listOfFilepathsToGtLabelsOfEachPatient,
+                                    num_classes = cnn3d.num_classes,
                                     
                                     providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
                                     forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
@@ -127,15 +127,13 @@ def performInferenceOnWholeVolumes(myLogger,
                                     listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
                                     
                                     useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
-                                    usingSubsampledPathways = cnn3dInstance.numSubsPaths > 0,
+                                    usingSubsampledPathways = cnn3d.numSubsPaths > 0,
                                     listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
                                     
                                     padInputImagesBool = padInputImagesBool,
                                     cnnReceptiveField = recFieldCnn, # only used if padInputsBool
-                                    dimsOfPrimeSegmentRcz = cnn3dInstance.pathways[0].getShapeOfInput()[2][2:], # only used if padInputsBool
+                                    dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:], # only used if padInputsBool
                                     
-                                    smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage = smoothChannelsWithGaussFilteringStdsForNormalAndSubsampledImage,
-                                    normAugmNone0OnImages1OrSegments2AlreadyNormalized1SubtrUpToPropOfStdAndDivideWithUpToPerc = [0, -1,-1,-1],
                                     reflectImageWithHalfProb = [0,0,0]
                                     )
         niiDimensions = list(imageChannels[0].shape)
@@ -146,61 +144,69 @@ def performInferenceOnWholeVolumes(myLogger,
             multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
             
         # Tile the image and get all slices of the segments that it fully breaks down to.
-        [sliceCoordsOfSegmentsInImage] = getCoordsOfAllSegmentsOfAnImage(myLogger=myLogger,
-                                                                        dimsOfPrimarySegment=cnn3dInstance.pathways[0].getShapeOfInput()[2][2:],
+        [sliceCoordsOfSegmentsInImage] = getCoordsOfAllSegmentsOfAnImage(log=log,
+                                                                        dimsOfPrimarySegment=cnn3d.pathways[0].getShapeOfInput("test")[2:],
                                                                         strideOfSegmentsPerDimInVoxels=strideOfImagePartsPerDimensionInVoxels,
                                                                         batch_size = batch_size,
                                                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
                                                                         roiMask = roiMask
                                                                         )
-        myLogger.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
+        log.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
+        
         
         totalNumberOfImagePartsToProcessForThisImage = len(sliceCoordsOfSegmentsInImage)
-        myLogger.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
+        log.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
         
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
         number_of_batches = totalNumberOfImagePartsToProcessForThisImage//batch_size
         extractTimePerSubject = 0; loadingTimePerSubject = 0; fwdPassTimePerSubject = 0
-        for batch_i in xrange(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
+        for batch_i in range(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
             
             printProgressStep = max(1, number_of_batches//5)
             if batch_i%printProgressStep == 0:
-                myLogger.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
+                log.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
                 
             # Extract the data for the segments of this batch. ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords() of training and use it here as well. )
-            start_extract_time = time.clock()
+            start_extract_time = time.time()
             sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batch_size : (batch_i+1)*batch_size ]
-            [channsOfSegmentsPerPath] = extractDataOfSegmentsUsingSampledSliceCoords(cnn3dInstance=cnn3dInstance,
+            [channsOfSegmentsPerPath] = extractDataOfSegmentsUsingSampledSliceCoords(cnn3d=cnn3d,
                                                                                     sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
                                                                                     channelsOfImageNpArray=imageChannels,#chans,niiDims
                                                                                     channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
                                                                                     recFieldCnn=recFieldCnn
                                                                                     )
-            end_extract_time = time.clock()
+            end_extract_time = time.time()
             extractTimePerSubject += end_extract_time - start_extract_time
             
-            # Load the data of the batch on the GPU
-            start_loading_time = time.clock()
-            cnn3dInstance.sharedInpXTest.set_value(np.asarray(channsOfSegmentsPerPath[0], dtype='float32'), borrow=borrowFlag)
-            for index in xrange(len(channsOfSegmentsPerPath[1:])) :
-                cnn3dInstance.sharedInpXPerSubsListTest[index].set_value(np.asarray(channsOfSegmentsPerPath[1+index], dtype='float32'), borrow=borrowFlag)
-            end_loading_time = time.clock()
+            # ======= Run the inference ============
+            
+            ops_to_fetch = cnn3d.get_main_ops('test')
+            list_of_ops = [ ops_to_fetch['pred_probs'] ] + ops_to_fetch['list_of_fms_per_layer']
+            
+            # No loading of data in bulk as in training, cause here it's only 1 batch per iteration.
+            start_loading_time = time.time()
+            feeds = cnn3d.get_main_feeds('test')
+            feeds_dict = { feeds['x'] : np.asarray(channsOfSegmentsPerPath[0], dtype='float32') }
+            for path_i in range(len(channsOfSegmentsPerPath[1:])) :
+                feeds_dict.update( { feeds['x_sub_'+str(path_i)]: np.asarray(channsOfSegmentsPerPath[1+path_i], dtype='float32') } )
+            end_loading_time = time.time()
             loadingTimePerSubject += end_loading_time - start_loading_time
             
-            # Do the inference
-            start_training_time = time.clock()
-            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3dInstance.cnnTestAndVisualiseAllFmsFunction(0)
-            end_training_time = time.clock()
-            fwdPassTimePerSubject += end_training_time - start_training_time
+            start_testing_time = time.time()
+            # Forward pass
+            # featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = cnn3d.cnnTestAndVisualiseAllFmsFunction( *input_args_to_net )
+            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = sessionTf.run( fetches=list_of_ops, feed_dict=feeds_dict )
+            end_testing_time = time.time()
+            fwdPassTimePerSubject += end_testing_time - start_testing_time
             
-            predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[-1]
-            listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[:-1]
+            predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[0]
+            listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[1:] # If no FMs visualised, this should return []
             #No reshape needed, cause I now do it internally. But to dimensions (batchSize, FMs, R,C,Z).
             
             #~~~~~~~~~~~~~~~~CONSTRUCT THE PREDICTED PROBABILITY MAPS~~~~~~~~~~~~~~
             #From the results of this batch, create the prediction image by putting the predictions to the correct place in the image.
-            for imagePart_in_this_batch_i in xrange(batch_size) :
+            for imagePart_in_this_batch_i in range(batch_size) :
                 #Now put the label-cube in the new-label-segmentation-image, at the correct position. 
                 #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
                 sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedProbMap_i]
@@ -220,16 +226,14 @@ def performInferenceOnWholeVolumes(myLogger,
                 #currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray is the index in the multidimensional array that holds all the to-be-visualised-fms. It is the one that corresponds to the next to-be-visualised indexOfTheLayerInTheReturnedListByTheBatchTraining.
                 currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
                 #indexOfTheLayerInTheReturnedListByTheBatchTraining is the index over all the layers in the returned list. I will work only with the ones specified to visualise.
-                indexOfTheLayerInTheReturnedListByTheBatchTraining = -1
+                indexOfTheLayerInTheReturnedListByTheBatchTraining = 0
                 
-                for pathway in cnn3dInstance.pathways :
-                    for layer_i in xrange(len(pathway.getLayers())) :
-                        indexOfTheLayerInTheReturnedListByTheBatchTraining += 1
+                for pathway in cnn3d.pathways :
+                    for layer_i in range(len(pathway.getLayers())) :
                         if indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]==[] or indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ][layer_i]==[] :
                             continue
                         indicesOfFmsToExtractFromThisLayer = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ][layer_i]
-                        
-                        fmsReturnedForATestBatchForCertainLayer = listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch[indexOfTheLayerInTheReturnedListByTheBatchTraining][:, indicesOfFmsToExtractFromThisLayer[0]:indicesOfFmsToExtractFromThisLayer[1],:,:,:]
+                        fmsReturnedForATestBatchForCertainLayer = listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch[indexOfTheLayerInTheReturnedListByTheBatchTraining]
                         #We specify a range of fms to visualise from a layer. currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray : highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding defines were to put them in the multidimensional-image-array.
                         highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding = currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray + indicesOfFmsToExtractFromThisLayer[1] - indicesOfFmsToExtractFromThisLayer[0]
                         fmImageInMultidimArrayToReconstructInThisIteration = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray: highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding]
@@ -278,7 +282,7 @@ def performInferenceOnWholeVolumes(myLogger,
                             centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = centralVoxelsOfAllFmsInLayer
                             
                         #----For every image part within this batch, reconstruct the corresponding part of the feature maps of the layer we are currently visualising in this loop.
-                        for imagePart_in_this_batch_i in xrange(batch_size) :
+                        for imagePart_in_this_batch_i in range(batch_size) :
                             #Now put the label-cube in the new-label-segmentation-image, at the correct position. 
                             #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
                             sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
@@ -290,14 +294,14 @@ def performInferenceOnWholeVolumes(myLogger,
                                     coordsOfTopLeftVoxelForThisPart[2] + rczHalfRecFieldCnn[2] : coordsOfTopLeftVoxelForThisPart[2] + rczHalfRecFieldCnn[2] + strideOfImagePartsPerDimensionInVoxels[2]
                                     ] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[imagePart_in_this_batch_i]
                         currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = highIndexOfFmsInTheMultidimensionalImageToFillInThisIterationExcluding
+                        
+                        indexOfTheLayerInTheReturnedListByTheBatchTraining += 1
+                        
                 imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
 
             #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
-            
-        #Clear GPU from testing data.
-        cnn3dInstance.freeGpuTestingData()
         
-        myLogger.print3("TIMING: Segmentation of this subject: [Extracting:] "+ str(extractTimePerSubject) +\
+        log.print3("TIMING: Segmentation of this subject: [Extracting:] "+ str(extractTimePerSubject) +\
                                                             " [Loading:] " + str(loadingTimePerSubject) +\
                                                             " [ForwardPass:] " + str(fwdPassTimePerSubject) +\
                                                             " [Total:] " + str(extractTimePerSubject+loadingTimePerSubject+fwdPassTimePerSubject) + "(s)")
@@ -322,10 +326,10 @@ def performInferenceOnWholeVolumes(myLogger,
                                             image_i,
                                             suffixToAdd,
                                             npDtypeForPredictedImage,
-                                            myLogger
+                                            log
                                             )
         #== saving probability maps ==
-        for class_i in xrange(0, NUMBER_OF_CLASSES) :
+        for class_i in range(0, NUMBER_OF_CLASSES) :
             if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
                 npDtypeForPredictedImage = np.dtype(np.float32)
                 suffixToAdd = "_ProbMapClass" + str(class_i)
@@ -339,20 +343,20 @@ def performInferenceOnWholeVolumes(myLogger,
                                                 image_i,
                                                 suffixToAdd,
                                                 npDtypeForPredictedImage,
-                                                myLogger
+                                                log
                                                 )
         #== saving feature maps ==
         if saveIndividualFmImagesForVisualisation :
             currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
-            for pathway_i in xrange( len(cnn3dInstance.pathways) ) :
-                pathway = cnn3dInstance.pathways[pathway_i]
+            for pathway_i in range( len(cnn3d.pathways) ) :
+                pathway = cnn3d.pathways[pathway_i]
                 indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[ pathway.pType() ]
                 if indicesOfFmsToVisualisePerLayerOfCertainPathway!=[] :
-                    for layer_i in xrange( len(pathway.getLayers()) ) :
+                    for layer_i in range( len(pathway.getLayers()) ) :
                         indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
                         if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway!=[] :
                             #If the user specifies to grab more feature maps than exist (eg 9999), correct it, replacing it with the number of FMs in the layer.
-                            for fmActualNumber in xrange(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
+                            for fmActualNumber in range(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0], indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]) :
                                 fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
                                 unpaddedFmToSave = fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
                                 saveFmImgToNiiWithOriginalHdr(  unpaddedFmToSave,
@@ -362,7 +366,7 @@ def performInferenceOnWholeVolumes(myLogger,
                                                                 pathway_i,
                                                                 layer_i,
                                                                 fmActualNumber,
-                                                                myLogger
+                                                                log
                                                                 )
                                 currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
         if saveMultidimensionalImageWithAllFms :
@@ -374,16 +378,16 @@ def performInferenceOnWholeVolumes(myLogger,
                                                     listOfNamesToGiveToFmVisualisationsIfSaving,
                                                     listOfFilepathsToEachChannelOfEachPatient,
                                                     image_i,
-                                                    myLogger )
+                                                    log )
         #================= FINISHED SAVING RESULTS ====================
         
         #================= EVALUATE DSC FOR EACH SUBJECT ========================
         if providedGtLabelsBool : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
-            myLogger.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) + " ++++++++++++++++++++++++++")
+            log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) + " ++++++++++++++++++++++++++")
             #Unpad whatever needed.
             unpaddedGtLabelsImage = gtLabelsImage if not padInputImagesBool else unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
             #calculate DSC per class.
-            for class_i in xrange(0, NUMBER_OF_CLASSES) :
+            for class_i in range(0, NUMBER_OF_CLASSES) :
                 if class_i == 0 : #in this case, do the evaluation for the segmentation of the WHOLE FOREGROUND (ie, all classes merged except background)
                     binaryPredSegmClassI = unpaddedPredSegmentation > 0 # Merge every class except the background (assumed to be label == 0 )
                     binaryGtLabelClassI = unpaddedGtLabelsImage > 0
@@ -404,25 +408,25 @@ def performInferenceOnWholeVolumes(myLogger,
                 diceCoeff3 = calculateDiceCoefficient(binaryPredSegmClassIWithinRoi, binaryGtLabelClassI * unpaddedRoiMaskIfGivenElse1)
                 diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 != -1 else NA_PATTERN
                 
-            myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
-            printExplanationsAboutDice(myLogger)
+            log.print3("ACCURACY: (" + str(validation_or_testing_str) + ") The Per-Class DICE Coefficients for subject with index #"+str(image_i)+" equal: DICE1="+strListFl4fNA(diceCoeffs1[image_i],NA_PATTERN)+" DICE2="+strListFl4fNA(diceCoeffs2[image_i],NA_PATTERN)+" DICE3="+strListFl4fNA(diceCoeffs3[image_i],NA_PATTERN))
+            printExplanationsAboutDice(log)
             
     #================= Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. ====================
     if providedGtLabelsBool and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
-        myLogger.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
-        myLogger.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
+        log.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
+        log.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
         meanDiceCoeffs1 = getMeanPerColOf2dListExclNA(diceCoeffs1, NA_PATTERN)
         meanDiceCoeffs2 = getMeanPerColOf2dListExclNA(diceCoeffs2, NA_PATTERN)
         meanDiceCoeffs3 = getMeanPerColOf2dListExclNA(diceCoeffs3, NA_PATTERN)
-        myLogger.print3("ACCURACY: (" + str(validationOrTestingString) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) + " DICE2="+strListFl4fNA(meanDiceCoeffs2, NA_PATTERN)+" DICE3="+strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
-        printExplanationsAboutDice(myLogger)
+        log.print3("ACCURACY: (" + str(validation_or_testing_str) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) + " DICE2="+strListFl4fNA(meanDiceCoeffs2, NA_PATTERN)+" DICE3="+strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
+        printExplanationsAboutDice(log)
         
-    end_validationOrTesting_time = time.clock()
-    myLogger.print3("TIMING: "+validationOrTestingString+" process took time: "+str(end_validationOrTesting_time-start_validationOrTesting_time)+"(s)")
+    end_time = time.time()
+    log.print3("TIMING: "+validation_or_testing_str+" process took time: "+str(end_time-start_time)+"(s)")
     
-    myLogger.print3("###########################################################################################################")
-    myLogger.print3("############################# Finished full Segmentation of " + str(validationOrTestingString) + " subjects ##########################")
-    myLogger.print3("###########################################################################################################")
+    log.print3("###########################################################################################################")
+    log.print3("############################# Finished full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
+    log.print3("###########################################################################################################")
 
 
 def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
@@ -432,9 +436,9 @@ def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
     diceCoeff = (2.0 * numberOfTruePositives) / (np.sum(predictedBinaryLabels) + numberOfGtPositives) if numberOfGtPositives!=0 else -1
     return diceCoeff
 
-def printExplanationsAboutDice(myLogger) :
-    myLogger.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground, i.e all labels merged, except the background label=0. Useful for multi-class problems.")
-    myLogger.print3("EXPLANATION: DICE1 is calculated as segmentation over whole volume VS whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
-    myLogger.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
+def printExplanationsAboutDice(log) :
+    log.print3("EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground, i.e all labels merged, except the background label=0. Useful for multi-class problems.")
+    log.print3("EXPLANATION: DICE1 is calculated as segmentation over whole volume VS whole Ground Truth (GT). DICE2 is the segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
+    log.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
 
     

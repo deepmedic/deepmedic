@@ -1,12 +1,13 @@
-The DeepMedic
+DeepMedic
 =====================================
 
 ### News
 
-June 2018:
-* Backend will be changed to TensorFlow in the next few days.
-* Currently TF is on branch dm_tensorflow. Validated on 4 problems already, awaiting one more successful validation and will be pushed to Master in the next few days.
-* Theano backend will be retired in a deprecated branch.
+27 June 2018 (v0.7.0):
+* Back end changed to TensorFlow.
+* API/command line options changed slightly. Documentation updated accordingly.
+* Updated the default config in ./examples/config/deepmedic with three pathways.
+* Refactored/reorganized the code.
 
 28 Oct 2017 (v0.6.1):
 * Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
@@ -32,9 +33,6 @@ June 2018:
 * Master branch was updated with better monitoring of training progress and a better plotting script. This version is not backwards compatible. CPickle will fail loading previously trained models from previous versions of the code.
 * Previous version of master branch tagged as v0.5. Use this if you wish to continue working with previously trained models.
 
-Important Issue:
-* Current saving of CNN's state is not backwards compatible. This means that any change to the code of the cnn3d.py and cnnLayerTypes.py will not allow CPickle to load models created with previous versions. This has big priority to solve. Until then, please use tags (versions) compatible with your trained models.
-
 ### Introduction
 
 This project aims to offer easy access to Deep Learning for segmentation of structures of interest in biomedical 3D scans. It is a system that allows the easy creation of a 3D Convolutional Neural Network, which can be trained to detect and segment structures if corresponding ground truth labels are provided for training. The system processes NIFTI images, making its use straightforward for many biomedical tasks.
@@ -58,9 +56,9 @@ The system was initially developed for the segmentation of brain lesions in MRI 
   * [1.4. Required Data Pre-Processing](#13-required-data-pre-processing)
 * [2. Running the Software](#2-running-the-software)
   * [2.1 Training a tiny CNN - Making sure it works](#21-training-a-tiny-cnn---making-sure-it-works)
-  * [2.2 Common errors when utilizing a GPU](#22-common-errors-when-utilizing-a-gpu)
+  * [2.2 Running it on a GPU](#22-running-it-on-a-gpu)
 * [3. How it works](#3-how-it-works)
-  * [3.1 Model Creation](#31-model-creation)
+  * [3.1 Architecture](#31-specifying-model-architecture)
   * [3.2 Training](#32-training)
   * [3.3 Testing](#33-testing)
 * [4. How to run DeepMedic on your data](#4-how-to-run-deepmedic-on-your-data)
@@ -73,11 +71,9 @@ The system was initially developed for the segmentation of brain lesions in MRI 
 
 The system is written in python. The following libraries are required:
 
-- [Theano](http://deeplearning.net/software/theano/): This is the Deep Learning library that the back end is implemented with.
-- See [list of Theano dependencies](http://deeplearning.net/software/theano/install_ubuntu.html), such as libgpuarray, BLAS, pycuda, skcuda etc.
+- [TensorFlow](https://www.tensorflow.org/): This is the Deep Learning library that the back end is implemented with.
 - [NiBabel](http://nipy.org/nibabel/): The library used for loading NIFTI files.
-- [Parallel Python](http://www.parallelpython.com/): Library used to parallelize parts of the training process.
-- [scipy](https://www.scipy.org/) : Package of tools for statistics, optimization, integration, algebra, machine learning.
+- [Parallel Python](http://www.parallelpython.com/): Parallelization library. Note [issue#58](https://github.com/Kamnitsask/deepmedic/issues/58) when installing it for python3.
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
 - [six](https://pypi.python.org/pypi/six) : Python compatibility library.
 
@@ -91,47 +87,56 @@ git clone https://github.com/Kamnitsask/deepmedic/
 ```
 After cloning it, all dependencies can be installed as described below.
 
+#### Install using virtual environment (preferred)
 
-#### Install using conda (preferred)
-
-Since Theano-v0.9, a new GPU backend based on libgpuarray has been introduced. Its dependencies are much easier to install via *conda*, as they include C libraries that pip can't install.
-The below steps should guide you for installing conda, theano and dependencies, and installing deepmedic.
-
-**Install conda**:
-Download an installer for your OS from [link](https://conda.io/miniconda.html) and run it.
-Ensure that the path to miniconda's bin folder (by default ~/miniconda2(or 3)/bin) is in your $PATH (unix). Do this with the following command in a *bash* shell, which you can also add to your ~/.profile:
+If you do not have sudo/root privileges on a system, we suggest you install using a virtual environment.
+From a *bash* shell, create a virtual environment in a folder that you wish:
 ```cshell
-$ export PATH=$PATH:/path/to/miniconda/bin
+virtualenv -p python2 FOLDER_FOR_ENVS/ve_tf_dmtf     # or python3 
+source FOLDER_FOR_ENVS/ve_tf_dmtf/bin/activate       # If using csh, source ve_tf_dmtf/bin/activate.csh
+```
+Then continue with the steps below.
+
+#### Install TensorFlow and DeepMedic
+
+**Install TensorFlow** (TF): Please follow instructions on (https://www.tensorflow.org/install/).
+By consulting the previous link, ensure that your system has **CUDA** version and **cuDNN** versions compatible with the tensorflow version you are installing.
+```cshell
+$ pip install --upgrade tensorflow-gpu               # or plain tensorflow, if you dont have a capable GPU.2
+```
+**Problem installing TF on MacOS**: Seems there is often a problem installing TF on MacOS.
+If the above fails, eg giving a `Could not find version that satisfies requirement tensorflow`, see the appropriate documentation for MacOS of TF in the above link.
+Something I've found working on Macs installing TF with the following:
+```
+python2 pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py2-none-any.whl # adapt python2, py2, or version of TF as required.
 ```
 
-**Install Theano and DeepMedic's dependencies**:
+**Install DeepMedic** and rest of its dependencies:
+```cshell
+$ cd DEEPMEDIC_ROOT_FOLDER
+$ pip install .
 ```
-cd /path/to/deepmedic/root/folder
-conda create -n condaEnv_dm python=2.7        # deepmedic also works with python 3, but will need specific version of parallel python. See issue 58.
-conda activate condaEnv_dm
-conda install theano                          # Should install theano v1.0, along with mkl-service, pygpu, etc.
-conda install pip
-pip install .                                 # Installs rest of deepmedic's dependencies.
-```
+This will grab rest of dependencies described in Sec.1.
+Note: If you are using **python3**, please see [issue#58](https://github.com/Kamnitsask/deepmedic/issues/58). The pp module will need a manual (easy) installation of a specific version, that is compatible with python3.
 
 #### 1.3. GPU Processing
 
 #### Install CUDA:
 Small networks can be run on the cpu. But 3D CNNs of considerable size require processing on the GPU. For this, an installation of [Nvidia’s CUDA](https://developer.nvidia.com/cuda-toolkit) is n
-eeded. Make sure to acquire a version compatible with your GPU drivers. Theano needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **c
+eeded. Make sure to acquire a version compatible with your GPU drivers. TensorFlow needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **c
 ublas.so** libraries, which need to be visible in the environment’s.
 
 Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example in a *bash* shell:
 
 ```cshell
-$ export PATH=/path/to/cuda/bin:$PATH
+$ export CUDA_HOME=/path/to/cuda                   # If using cshell instead of bash: setenv CUDA_HOME /path/to/cuda   
 $ export LD_LIBRARY_PATH=/path/to/cuda/lib64
+$ export PATH=/path/to/cuda/bin:$PATH
 ```
 
 #### Install cuDNN:
 We highly suggest you also install cuDNN ([link to instructions](http://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#download)).
 It is easy (simply copy cuDNN files in your Cuda folders in unix) and really offers high acceleration (eg a full MR brain volume segmentation in under 20 secs, in comparison to 1.40 mins without).
-
 
 
 
@@ -171,83 +176,55 @@ We will here train a tiny CNN model and make sure everything works as expected. 
 
 NOTE: First see [Section 1.2](#12-installation) for installation of the required packages. 
 
-Lets **create** a model :
+Lets **train** a model:
 ```cshell
-./deepMedicRun -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
+./deepMedicRun -model ./examples/configFiles/tinyCnn/model/modelConfig.cfg \
+               -train examples/configFiles/tinyCnn/train/trainConfigWithValidation.cfg
 ```
 
-This command parses the given configuration file, creates a CNN model with the specified architecture, initializes and saves it. The folder `./examples/output/` should have been created by the process, where all output is saved. When the process finishes (roughly after a couple of minutes) a new and untrained model should be saved using [cPickle](https://docs.python.org/2/library/pickle.html) at `./examples/output/cnnModels/tinyCnn.initial.DATE+TIME.save`. All output of the process is logged for later reference. This should be found at `examples/output/logs/tinyCnn.txt`. Please make sure that the process finishes normally, the model and the logs created. If everything looks fine, briefly rejoice and continue... 
-
-Lets **train** the model with the command (replace *DATE+TIME*):
-```cshell
-./deepMedicRun -train examples/configFiles/tinyCnn/train/trainConfigWithValidation.cfg \
-                       -model examples/output/cnnModels/tinyCnn.initial.DATE+TIME.save
-```
-
-The model should be loaded and training for two epochs should be performed. After each epoch the trained model is saved at `examples/output/cnnModels/trainSessionWithValidTinyCnn`. The logs for the sessions should be found in `examples/output/logs/trainSessionWithValidTinyCnn.txt`. Finally, after each epoch, the model performs segmentation of the validation images and the segmentation results (.nii files) should appear in `examples/output/predictions/trainSessionWithValidTinyCnn/predictions/`. If the training finishes normally (should take 5 mins) and you can see the mentioned files in the corresponding folders, beautiful. 
+This command parses the given model-configuration file that defines the architecture and creates the corresponding CNN model. It then parses the training-config that specifies metaparameters for the training scheme. The folder `./examples/output/` should have been created by the process, where all output is saved. The model will then be trained for two epochs. All output of the process is logged for later reference. This should be found at `examples/output/logs/trainSessionWithValidTiny.txt`. After each epoch the trained model is saved at `examples/output/saved_models/trainSessionWithValidTiny`. Tensorflow saves the model in form of **checkpoint** files. You should find `./examples/output/cnnModels/tinyCnn.initial.DATE+TIME.model.ckpt.[data..., index]` created after each epoch. Each **set** of `DATE+TIMEmodel.ckpt[data,index]` is refered to as one checkpoint, i.e. a saved model. Finally, after each epoch, the model performs segmentation of the validation images and the segmentation results (.nii files) should appear in `examples/output/predictions/trainSessionWithValidTiny/predictions/`. If the training finishes normally (should take 5 mins) and you can see the mentioned files in the corresponding folders, beautiful. Briefly rejoice and continue... 
 
 You can **plot the training progress** using an accompanying script, which parses the training logs:
 ```
-python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTinyCnn.txt -d
+python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTiny.txt -d
 ```
-
 
 Now lets **test** with the trained model (replace *DATE+TIME*):
 ```cshell
-./deepMedicRun -test examples/configFiles/tinyCnn/test/testConfig.cfg \
-                       -model examples/output/cnnModels/trainSessionWithValidTinyCnn/tinyCnn.trainSessionWithValidTinyCnn.final.DATE+TIME.save
+./deepMedicRun -model ./examples/configFiles/tinyCnn/model/modelConfig.cfg \
+               -test ./examples/configFiles/tinyCnn/test/testConfig.cfg \
+               -load ./examples/output/saved_models/trainSessionWithValidTiny/tinyCnn.trainSessionWithValidTiny.final.DATE+TIME.model.ckpt
 ```
+Of course replace `DATE+TIME` accordingly.
 
-This should perform segmentation of the testing images and the results should appear in `examples/output/predictions/testSessionTinyCnn/` in the `output` folder. In the `features` folder you should also find some files, which are feature maps from the second layer. DeepMedic gives you this functionality (see testConfig.cfg). If the testing process finishes normally and all output files seem to be there, **everything seems to be working!** *On the CPU*... 
+Note that we specify which previously-trained model/checkpoint to load parameters from with the `-load` option. **But please note**, the path given does NOT correspond neither to the `data` nor `index` file. It rather needs to refer to the checkpoint set (i.e., **should end with** `.model.ckpt`). Tensorflow's loader peculiarity. This process should perform segmentation of the testing images and the results should appear in `examples/output/predictions/testSessionTiny/` in the `output` folder. In the `features` folder you should also find some files, which are feature maps from the second layer. DeepMedic gives you this functionality (see testConfig.cfg). If the testing process finishes normally and all output files seem to be there, **everything seems to be working!** *On the CPU*... 
+
+#### 2.2 Running it on a GPU
 
 Now lets check the important part... If using the **DeepMedic on the GPU** is alright on your system. First, delete the `examples/output/` folder for a clean start. Now, most importantly, place the path to **CUDA**'s *nvcc* into your *PATH* and to the *cublas.so* in your *LD_LIBRARY_PATH* (see [section 1.3](#13-gpu-processing))
 
-You need to perform the steps we did before for creating a model, training it and testing with it, but on the GPU. To do this, repeat the previous commands and pass the additional option `-dev cuda`. For example: 
+You need to perform the steps we did before for training and testing with a model, but on the GPU. To do this, repeat the previous commands and pass the additional option `-dev cuda`. For example: 
 
 ```cshell
-./deepMedicRun -dev cuda -newModel ./examples/configFiles/tinyCnn/model/modelConfig.cfg
+./deepMedicRun -model ./examples/configFiles/tinyCnn/model/modelConfig.cfg \
+               -train ./examples/configFiles/tinyCnn/train/trainConfigWithValidation.cfg \
+               -dev cuda0
 ```
-The processes should result in similar outputs as before. If all processes finish as normal and you get no errors, amazing. **Now it seems that really everything works :)** Continue to the next section and find more details about the DeepMedic and how to use the large version of our network!
 
-#### 2.2 Common errors when utilizing a GPU
+You can replace 0 to specify another device number, if your machine has multiple GPUs. The processes should result in similar outputs as before. **Make sure the process runs on the GPU**, by running the command `nvidia-smi`. You should see your python process assigned to the specified GPU. If all processes finish as normal and you get no errors, amazing. **Now it seems that really everything works :)** Continue to the next section and find more details about the DeepMedic and how to use the large version of our network!
 
-Common errors that indicate something is wrong with the CUDA installation or your environment variables :
+**Possible problems with the GPU**: If TensorFlow does not find correct versions for **CUDA** and **cuDNN** (depends on TensorFlow version), it will fall back to the CPU version by default. If this happens, right after the model creation and before the main training process starts, some warnings will be thrown by TensorFlow, along the lines below:
 ```
-EnvironmentError: You forced the use of gpu device 'gpu', but nvcc was not found. Set it in your PATH environment variable or set the Theano flags 'cuda.root' to its directory
+2018-06-06 14:39:34.036373: I tensorflow/core/platform/cpu_feature_guard.cc:140] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2018-06-06 14:39:35.676554: E tensorflow/stream_executor/cuda/cuda_driver.cc:406] failed call to cuInit: CUDA_ERROR_NO_DEVICE
+2018-06-06 14:39:35.676616: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:158] retrieving CUDA diagnostic information for host: neuralmedic.doc.ic.ac.uk
+2018-06-06 14:39:35.676626: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:165] hostname: neuralmedic.doc.ic.ac.uk
+2018-06-06 14:39:35.676664: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:189] libcuda reported version is: 384.111.0
+2018-06-06 14:39:35.676699: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:193] kernel reported version is: 384.111.0
+2018-06-06 14:39:35.676708: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:300] kernel version seems to match DSO: 384.111.0
 ```
-The above may be thrown because the CUDA nvcc compiler is not correctly set in your PATH.
 
-```
-ERROR (theano.sandbox.cuda): Failed to compile cuda_ndarray.cu: libcublas.so.6.5: cannot open shared object file: No such file or directory
-...
-EnvironmentError: You forced the use of gpu device gpu, but CUDA initialization failed with error:
-cuda unavailable
-```
-The above is probably thrown because the CUDA libraries such as cublas.so are not correctly set in your LD_LIBRARY_PATH.
-
-```
-EnvironmentError: You forced the use of gpu device gpu, but CUDA initialization failed with error:
-Unable to get the number of gpus available: CUDA driver version is insufficient for CUDA runtime version
-```
-or something like:
-```
-Exception: ('The following error happened while compiling the node', GpuCAReduce{add}{1}(<CudaNdarrayType(float32, vector)>), '\n', 'nvcc return status', 1, 'for cmd', 'nvcc -shared -O3 -arch=sm_52 -m64 
--Xcompiler -fno-math-errno,-Wno-unused-label,-Wno-unused-variable,-Wno-write-strings,-DCUDA_NDARRAY_CUH=c72d035fdf91890f3b36710688069b2e,-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION,-fPIC,-fvisibility=hidden 
-...
--L/usr/lib -lcudart -lcublas -lcuda_ndarray -lpython2.7', '[GpuCAReduce{add}{1}(<CudaNdarrayType(float32, vector)>)]')
-```
-may be thrown because you are using a version of CUDA that is not compatible with your GPU's drivers. *Note: On March 2016, I ve been using v7.0 for NVIDIA Titans, K40s, GTX 980s, and v6.5 for anything older.*
-
-Also, there seems to be [an issue]((https://github.com/Theano/Theano/issues/5463)) where in some setups, libgpuarray (the new GPU backend) and cuDNN don't go well together. Near the beginning of the process, you may see a warning such as:
-```
-ERROR (theano.gpuarray): Could not initialize pygpu, support disabled
-...
-RuntimeError: Could not find cudnn library (looked for v5[.1])
-```
-The process may even continue, but running on the CPU. In such cases, first make sure that you have added the paths to the cuDnn files in cuda/lib64 and cuda/include folders, as described in [section 1.3](#13-gpu-processing). If you continue having problems, try disabling cuDNN by passing the following theano-flag before any command line call of deepMedicRun:
-```cshell
-$ THEANO_FLAGS='dnn.enabled=False' python ./deepMedicRun ...rest of options...
-```
+If the process does not start on the GPU as required, please ensure you have *CUDA* and *cuDNN* versions that are compatible with the TF version you have (https://www.tensorflow.org/install), and that you environment variables are correctly setup. See Section 1.4 about some pointers, and the *CUDA* website.
 
 
 ### 3. How it works
@@ -258,30 +235,30 @@ The **.cfg configuration files** in `examples/configFiles/deepMedicOriginal/` di
 
 **_Note:_** The config files are parsed as python scripts, thus follow **python syntax**. Any commented-out configuration variables are internally given **default values**.
 
-#### 3.1. Model Creation
+#### 3.1. Specifying Model Architecture
 
-To create a new CNN model, you need to point to a config file with the parameters of a model:
+When performing training or testing, we need to define the architecture of the network. For this, we point to a model-config file, using the option `-model` :
 ```
-./deepMedicRun -dev cuda -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg
+-model ./examples/configFiles/deepMedic/model/modelConfig.cfg
 ```
 
-After reading the parameters given in modelConfig.cfg, a CNN-model will be created and saved with cPickle in the output folder. The session prints all the parameters that are used for the model-creation on the screen and to a log.txt file. 
+After reading the parameters given in modelConfig.cfg, the graph of a network is created internally. The session prints all parameters that are used for the model-creation on the screen and to the log.txt file. 
 
 **Parameters for defining Network Architecture**
 
 ![alt text](documentation/deepMedic.png "Double pathway CNN for multi-scale processing")
-Figure 1: The architecture of an example of our double-pathway architecture for multi-scale processing. At each layer, the number and size of feature maps (FMs) is depicted in the format (*Number-Of-FMs x Dimensions*).
+Figure 1: An example of a double-pathway architecture for multi-scale processing. At each layer, the number and size of feature maps (FMs) is depicted in the format (*Number-Of-FMs x Dimensions*). Actual DeepMedic has 11 layers by default.
 
 The main parameters to specify the CNN model are the following.
 
 *Generic:*
 
-- modelName: the cnn-model’s name, will be used for naming the files that the model is being saved with after its creation, but also during training.
+- modelName: This is used for **naming the checkpoints when saving** every epoch of training. Change it to distinguish between architectures.
 - folderForOutput: The main output folder. Saved model and logs will be placed here.
 
 *Task Specific:*
 
-- numberOfOutputClasses: DeepMedic is multiclass system. This number should include the background, and defines the number of FMs in the last, classification layer (=2 in Fig.1)
+- numberOfOutputClasses: DeepMedic is multiclass system. This number should **include the background**, and defines the number of FMs in the last, classification layer (=2 in Fig.1)
 - numberOfInputChannels: Specify the number of modalities/sequences/channels of the scans.
 
 *Architecture:*
@@ -298,26 +275,17 @@ The main parameters to specify the CNN model are the following.
 
 More variables are available, but are of less importance (regularization, optimizer, etc). They are described in the config files of the provided examples. 
 
+
 #### 3.2. Training
 
-After a model is created, it is pickled and saved. You can then train it using your manually segmented, ground-truth annotations. Again, you need to point to a configuration file with the parameters of the training session. Training can be started in 3 ways.
+You train a model using your manually segmented, ground-truth annotations. For this, you need to point to a configuration file with the parameters of the training session. We use the `-model` option, that defines a network architecture, together with the `-train` option, that points to a training-config files, that specifies parameters about the training scheme and the optimization:
+```
+./deepMedicRun -model ./examples/configFiles/deepMedic/model/modelConfig.cfg \
+               -train ./examples/configFiles/deepMedic/train/trainConfig.cfg \
+               -dev cuda0
+```
+Note that you can change 0 with another number of a GPU device, if your machine has **multiple GPUs**.
 
-a) By adding the `-model` option and specifying the file with a saved/pickled model (created by a -newModel process or half trained from a previous training-session).
-```
-./deepMedicRun -dev cuda -train ./examples/configFiles/deepMedic/train/trainConfig.cfg \
-                                -model ./path-to-saved-model
-```
-
-b) The path to the saved model to train can be specified in the config file. In this case, the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
-```
-./deepMedicRun -dev cuda -train ./examples/configFiles/deepMedic/train/trainConfig.cfg
-```
-
-c) The model created from a model-creation session can be passed straight to a training session, after it is saved. **Note:** If a path to another model is specified in the config-file, it is disregarded.
-```
-./deepMedicRun -dev cuda -newModel ./examples/configFiles/deepMedic/model/modelConfig.cfg \
-                       		-train ./examples/configFiles/deepMedic/train/trainConfig.cfg
-```
 
 **The Training Session**
 
@@ -344,19 +312,39 @@ For each epoch {
 	Save predictions from Full-Inference (segm./prob.maps/features)
 }
 ```
+The validation on samples and the full segmention of the scans of validation subjects are optional.
 
-The validation on samples and the full segmention of the scans of validation subjects are optional. The **progress of training can be plotted** by using the accompanying `plotTrainingProgress.py` script, which parses the training logs for the reported validation and training accuracy metrics:
+**Plotting Training Progress**
+
+The progress of training can be plotted by using the accompanying `plotTrainingProgress.py` script, which parses the training logs for the reported validation and training accuracy metrics. A common usage example is:
 ```
-python plotTrainingProgress.py examples/output/logs/trainSessionDeepMedic.txt -d
+python plotTrainingProgress.py examples/output/logs/trainSession\_1.txt examples/output/logs/trainSession\_2.txt \
+       -d -m 20 -c 1
 ```
+Try option `-h` for help. Here, two logs/experiments are specified, to plot metrics for both to compare. Any number is allowed. `-d` requests a *detailed* plot with more metrics. `-m 20` runs a moving average over 20 subepochs for smoothing the curves. `-c 1` requests plotting class with label=1. Note that in case of multiple labels, `-c 0` actually reports the metrics NOT for the background class (as we did not find this useful in most applications), but rather for the *whole-foreground* class, which can be imagined as if all labels except 0 (assumed background) are fused into one.
 
 **Resuming an Interrupted Training Session**
 
-A training session can be interrupted for various reasons. Because of this, the **state of the model is saved in the end of each epoch** and can be found in the output folder. Except for its trainable kernels, we also save the state of the optimizer and parameters of the training session (eg number of epochs trained, current learning rate) in order to be able to seamlessly continue it. **An interrupted training session can be continued** similarly to how it was started, following (a) or (b) above. Not (c), which will create a brand new model. Use the `-train` option to point to the config file of the training session. However, now point to a half-trained saved model, either within the config file or using the `-model` option as above.
+A training session can be interrupted for various reasons. Because of this, the **state of the model is saved in the end of each epoch** and can be found in the output folder. Except for its trainable kernels, we also save the state of the optimizer and parameters of the training session (eg number of epochs trained, current learning rate) in order to be able to seamlessly continue it. **An interrupted training session can be continued** similarly to how it was started, but by additionally specifying the saved model checkpoint where to load trained parameters and continue from:
 
-**Pre-Trained Models, transferring weights or fine-tuning**
+```
+./deepMedicRun -model ./examples/configFiles/deepMedic/model/modelConfig.cfg \
+               -train ./examples/configFiles/deepMedic/train/trainConfig.cfg \
+               -load ./examples/output/saved_models/trainSessionDm/deepMedic.trainSessionDm.DATE+TIME.model.ckpt \
+               -dev cuda0
+```
+Alternatively, the checkpoint can be defined in the trainConfig file. Importantly, the path must NOT point to the .index or .data files. **It must be ending with the .model.ckpt**, so that the loader can then find the matching .index and .data files.
 
-A common practice with neural networks is to transfer the parameters of a pretrained network to another one and/or fine-tune the network for a new task by training on a second database. For details on how to perform this with this software, please see the documentation [here](https://github.com/Kamnitsask/deepmedic/blob/master/documentation/docTransferParamsResetOpt.md).
+**Pre-Trained Models, fine-tuning**
+
+Common practice with neural networks is to take a network pre-trained on one task/database, and fine-tune it for a new task by training on a second database. This can be naturally done pointing to the pretrained network's checkcpoint (`-load`) and its architecture (`-model`) when starting to train. Very importantly though, one may need to *reset the state of the trainer* at the beginning of the fine-tuning, secondary session. Without this, the trainer will still have a saved state (number of epochs trained, velocities of momentum, learning rate etc) from the first training session. All these parameters can be reset, so that they are reinitialized by the new training-session configuration simply with the `-resetopt` option, as follows:
+```
+./deepMedicRun -model ./examples/configFiles/deepMedic/model/modelConfig.cfg \
+               -train ./examples/configFiles/deepMedic/train/trainConfigForRefinement.cfg \
+               -load ./path/to/pretrained/network/filename.DATE+TIME.model.ckpt \
+               -resetopt \
+               -dev cuda0
+```
 
 **Training Parameters**
 
@@ -364,7 +352,7 @@ A common practice with neural networks is to transfer the parameters of a pretra
 
 - sessionName: The name of the session. Used to save the trained models, logs and results.
 - folderForOutput: The main output folder.
-- cnnModelFilePath: path to a saved CNN model (disregarded if training started as b or c).
+- cnnModelFilePath: path to a saved CNN model (in case one wants to resume training. Disregarded if -load is used.).
 
 *Input for Training:*
 
@@ -381,7 +369,7 @@ A common practice with neural networks is to transfer the parameters of a pretra
 
 *Learning Rate Schedule:*
 
-- stable0orAuto1orPredefined2orExponential3LrSchedule : Schedules to lower the Learning Rate with. Stable lowers LR every few epochs. Auto lowers it when validation accuracy plateaus (unstable). Predefined requires the user to specify which epochs to lower it. Exponential lowers it over time while it increases momentum. We advice to use constant LR, observe progress of training and lower it manually when improvement plateaus. Otherwise, use exponential, but make sure that training is long enough to ensure convergence before LR is significantly reduced.
+- typeOfLearningRateSchedule : Schedules to lower the Learning Rate with. 'stable' keeps LR constant. 'predef' lowers it at predefined epochs, requiring the user to specify at which epochs to lower LR. Auto lowers LR when validation accuracy plateaus (unstable).  'poly' slowly lowers LR over time. We advice to use constant LR, observe progress of training by plotting it (see above), and lower LR manually when improvement plateaus by creating your own 'predef' schedule. Otherwise, use 'poly', but make sure that training is long enough for convergence, by experimenting a bit with the total number of training epochs.
 
 *Data Augmentation:*
 
@@ -398,19 +386,18 @@ A common practice with neural networks is to transfer the parameters of a pretra
 
 #### 3.3. Testing
 
-When a training epoch is finished, the model’s state is saved. These pickled models can be used for segmenting previously unseen scans. A testing configuration file has to be specified. Testing can be started in two ways.
+When a training epoch is finished, the model’s state is saved. These models can be used for segmenting previously unseen scans. A testing configuration file has to be specified. Testing can be started in two ways.
 
 
 a) A model is specified straight from the command line.
 ```
-./deepMedicRun -dev cuda -test ./examples/configFiles/deepMedic/test/testConfig.cfg \
-                       		-model ./path-to-saved-model
+./deepMedicRun -model ./examples/configFiles/deepMedic/model/modelConfig.cfg \
+               -test ./examples/configFiles/deepMedic/test/testConfig.cfg \
+               -load ./path-to-saved-model/filename.model.ckpt \
+               -dev cuda0
 ```
 
-b) The path to a saved model can be instead specified in the testing config file, and then the `-model` option can be ommited. **Note:** A file specified by `-model` option overrides any specified in the config-file.
-```
-./deepMedicRun -dev cuda -test ./examples/configFiles/deepMedic/test/testConfig.cfg
-```
+b) The path to a saved model can be instead specified in the testing config file, and then the `-load` option can be ommited. **Note:** A file specified by `-load` option overrides any specified in the config-file.
 
 After the model is loaded, inference will be performed on the testing subjects. Predicted segmentation masks, posterior probability maps for each class,  as well as the feature maps of any layer can be saved. If ground-truth is provided, DeepMedic will also report DSC metrics for its predictions.
 
@@ -459,7 +446,7 @@ To run the DeepMedic on your data, the following are the minimum steps you need 
 **g)** If you wish to periodically perform **validation** throughout training, similar to the above, point to the files of validation subjects via the variables `channelsValidation`, `gtLabelsValidation` and `roiMasksValidation`. If you do not wish to perform validation (it is time consuming), set to `False` the variables `performValidationOnSamplesThroughoutTraining`
 and `performFullInferenceOnValidationImagesEveryFewEpochs`.
 
-**h)** (optional) If you need to adjust the length of the training session, eg for a smaller network, easiest way is to lower the total number of epochs `numberOfEpochs=35`. You should also then adjust the pre-defined schedule via `predefinedSchedule`. Another option is to use exponentially decreasing schedule for the learning rate, by setting `stable0orAuto1orPredefined2orExponential3LrSchedule = 3`.
+**h)** (optional) If you need to adjust the length of the training session, eg for a smaller network, easiest way is to lower the total number of epochs `numberOfEpochs=35`. You should also then adjust the pre-defined schedule via `predefinedSchedule`. Another option is to use a decreasing schedule for the learning rate, by setting `typeOfLearningRateSchedule = 'poly'`.
 
 **i)** **To test** a trained network, you need to point to the images of the testing subjects, similar to point d) for the training. Adjust the variable `channels = ["./testChannels_flair.cfg", "./testChannels_t1c.cfg"]` to point to the modalities of the test subjects. If ROI masks are available, point to them via `roiMasks` and inference will only be performed within the ROI. Else comment this variable out. Similarly, if you provide the ground-truth labels for the testing subjects via `gtLabels`, accuracy of the prediction will be calculated and the DSC metric will be reported. Otherwise just comment this variable out.
 
