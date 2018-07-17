@@ -243,8 +243,10 @@ def deepMedicTestMain(testConfigFilepath, absPathToSavedModelFromCmdLine) :
         filepathToCnnModelToLoad = absPathToSavedModelFromCmdLine
     elif absPathToSavedModelFromCmdLine :
         filepathToCnnModelToLoad = absPathToSavedModelFromCmdLine
-    else :
+    elif configGet(testConfig.CNN_MODEL_FILEPATH):
         filepathToCnnModelToLoad = getAbsPathEvenIfRelativeIsGiven(configGet(testConfig.CNN_MODEL_FILEPATH), testConfigFilepath)
+    else:
+        sessionLogger.print3("ERROR: File where to load a network from was not specified. Specify in testConfig file or via command line. Exiting."); exit(1)
     sessionLogger.print3("...Loading the network can take a few minutes if the model is big...")
     cnn3dInstance = load_object_from_gzip_file(filepathToCnnModelToLoad)
     sessionLogger.print3("The CNN model was loaded successfully from: " + str(filepathToCnnModelToLoad))

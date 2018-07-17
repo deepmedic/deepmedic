@@ -317,8 +317,12 @@ def deepMedicTrainMain(trainConfigFilepath, absPathToSavedModelFromCmdLine, cnnI
         if absPathToSavedModelFromCmdLine and configGet(trainConfig.CNN_MODEL_FILEPATH) :
             sessionLogger.print3("WARN: A CNN-Model to use was specified both in the command line input and in the train-config-file! The input by the command line will be used: " + str(absPathToSavedModelFromCmdLine) )
             filepathToCnnModel = absPathToSavedModelFromCmdLine
-        else :
+        elif absPathToSavedModelFromCmdLine:
+            filepathToCnnModel = absPathToSavedModelFromCmdLine
+        elif configGet(trainConfig.CNN_MODEL_FILEPATH):
             filepathToCnnModel = getAbsPathEvenIfRelativeIsGiven(configGet(trainConfig.CNN_MODEL_FILEPATH), trainConfigFilepath)
+        else:
+            sessionLogger.print3("ERROR: File where to load a network from was not specified. Specify in trainConfig file or via command line. Exiting."); exit(1)
         sessionLogger.print3("...Loading the network can take a few minutes if the model is big...")
         cnn3dInstance = load_object_from_gzip_file(filepathToCnnModel)
         sessionLogger.print3("The CNN model was loaded successfully from: " + str(filepathToCnnModel))
