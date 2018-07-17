@@ -70,7 +70,7 @@ def setup_arg_parser() :
                                                                     "This option must follow a ["+OPT_TRAIN+"] or ["+OPT_TEST+"] option.\n"+\
                                                                     "If given, this option will override any \"model\" parameters given in the [TRAIN_CFG] or [TEST_CFG] files.")
     parser.add_argument(OPT_DEVICE, default = DEF_DEV_PROC, dest='device', type=str,  help="Specify the device to run the process on. Values: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (default = " + DEF_DEV_PROC + ").\n"+\
-                                                                    "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + DEF_DEV_PROC + " " + ARG_GPU_PROC + "2.\n"+\
+                                                                    "In the case of multiple GPUs, specify a particular GPU device with a number, in the format: " + OPT_DEVICE + " " + ARG_GPU_PROC + "0 \n"+\
                                                                     "NOTE: For GPU processing, CUDA libraries must be first added in your environment's PATH and LD_LIBRARY_PATH. See accompanying documentation.")
     parser.add_argument(OPT_RESET, dest='reset_trainer', action='store_true', help="Use optionally with a ["+OPT_TRAIN+"] command. Does not take an argument.\n"+\
                                                                     "Usage: ./deepMedicRun " + OPT_MODEL + " /path/to/model/config "+OPT_TRAIN+" /path/to/train/config "+OPT_RESET+" ...etc...\n"+\
@@ -93,14 +93,18 @@ def check_dev_passed_correctly(devArg) :
     
     
 def set_environment(dev_string):
+    # Setup cpu / gpu devices.
+    sess_device = None
     if dev_string == ARG_CPU_PROC:
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
-        return
-    
-    if dev_string == ARG_GPU_PROC: return
+        sess_device = "/CPU:0"
+    elif dev_string == ARG_GPU_PROC:
+        sess_device = None # With None, TF will get all cuda devices and assign to the first.
     if dev_string.startswith(ARG_GPU_PROC) and str_is_int( dev_string[ len(ARG_GPU_PROC): ] ):
         os.environ["CUDA_VISIBLE_DEVICES"] = dev_string[ len(ARG_GPU_PROC) : ]
-    
+        sess_device = "/device:GPU:0"
+        
+    return (sess_device)
 
 #################################################
 #                        MAIN                   #
@@ -155,7 +159,7 @@ if __name__ == '__main__':
     log.print3("Command line arguments given: \n" + str(args) )
     
     check_dev_passed_correctly(args.device)
-    set_environment(args.device)
+    (sess_device) = set_environment(args.device)
     log.print3("Available devices to Tensorflow:\n" + str(device_lib.list_local_devices()))
     
     try:
@@ -171,9 +175,9 @@ if __name__ == '__main__':
         _ = session.compile_session_params_from_cfg(model_params)
     
         if args.train_cfg:
-            session.run_session(model_params, args.reset_trainer)
+            session.run_session(sess_device, model_params, args.reset_trainer)
         elif args.test_cfg:
-            session.run_session(model_params)
+            session.run_session(sess_device, model_params)
         # All done.
     except (Exception, KeyboardInterrupt) as e:
         log.print3("")

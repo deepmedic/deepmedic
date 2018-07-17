@@ -71,14 +71,14 @@ class TrainSession(Session):
     
     
     def run_session(self, *args):
-        (model_params,
+        (sess_device,
+         model_params,
          reset_trainer) = args
         
         graphTf = tf.Graph()
         
         with graphTf.as_default():
-            device_for_sess = "/CPU:0" if len(os.environ["CUDA_VISIBLE_DEVICES"]) == 0 else "/device:GPU:0"
-            with graphTf.device(device_for_sess): # Explicit device assignment, throws an error if GPU is specified but not available.
+            with graphTf.device(sess_device): # Explicit device assignment, throws an error if GPU is specified but not available.
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
                 with tf.variable_scope("net"):
