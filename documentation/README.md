@@ -197,7 +197,7 @@ Now lets **test** with the trained model (replace *DATE+TIME*):
 ```
 Of course replace `DATE+TIME` accordingly.
 
-Note that we specify which previously-trained model/checkpoint to load parameters from with the `-load` option. **But please note**, the path given does NOT correspond neither to the `data` nor `index` file. It rather needs to refer to the checkpoint set (i.e., **should end with** `.model.ckpt`). Tensorflow's loader peculiarity. This process should perform segmentation of the testing images and the results should appear in `examples/output/predictions/testSessionTiny/` in the `output` folder. In the `features` folder you should also find some files, which are feature maps from the second layer. DeepMedic gives you this functionality (see testConfig.cfg). If the testing process finishes normally and all output files seem to be there, **everything seems to be working!** *On the CPU*... 
+Note that we specify which previously-trained model/checkpoint to load parameters from with the `-load` option. **But please note**, the path given does NOT correspond neither to the `data` nor `index` file. It rather needs to refer to the checkpoint set (i.e., **should end with** `.model.ckpt`). Tensorflow's loader peculiarity. This process should perform segmentation of the testing images and the results should appear in `examples/output/predictions/testSessionTiny/` in the `predictions` folder. In the `features` folder you should also find some files, which are feature maps from the second layer. DeepMedic gives you this functionality (see testConfig.cfg). If the testing process finishes normally and all output files seem to be there, **everything seems to be working!** *On the CPU*... 
 
 #### 2.2 Running it on a GPU
 
