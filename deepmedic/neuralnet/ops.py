@@ -108,9 +108,9 @@ def makeBiasParamsAndApplyToFms( fmsTrain, fmsVal, fmsTest, numberOfFms ) :
 
 def applyRelu(inputTrain, inputVal, inputTest):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
-    outputTrain= tf.maximum(0, inputTrain)
-    outputVal = tf.maximum(0, inputVal)
-    outputTest = tf.maximum(0, inputTest)
+    outputTrain= tf.maximum(0., inputTrain)
+    outputVal = tf.maximum(0., inputVal)
+    outputTest = tf.maximum(0., inputTest)
     return ( outputTrain, outputVal, outputTest )
 
 def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
@@ -131,6 +131,12 @@ def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
     
     return ( aPrelu, outputTrain, outputVal, outputTest )
 
+def applyElu(inputTrain, inputVal, inputTest):
+    #input is a tensor of shape (batchSize, FMs, r, c, z)
+    outputTrain = tf.nn.elu(inputTrain)
+    outputVal = tf.nn.elu(inputVal)
+    outputTest = tf.nn.elu(inputTest)
+    return ( outputTrain, outputVal, outputTest )
 
 def applySelu(inputTrain, inputVal, inputTest):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
