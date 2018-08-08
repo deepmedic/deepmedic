@@ -189,6 +189,10 @@ def getSampledDataAndLabelsForSubepoch(log,
                     imagePartsChannelsToLoadOnGpuForSubepochPerPathway[pathway_i].append(channelsForThisImagePartPerPathway[pathway_i])
                 gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch.append(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
                 
+        
+        # Done with case/subject. Segments have been sampled. Delete the volume arrays to release RAM.
+        del allChannelsOfPatientInNpArray; del gtLabelsImage; del roiMask; del arrayWithWeightMapsWhereToSampleForEachCategory; del allSubsampledChannelsOfPatientInNpArray; del tupleOfPaddingPerAxesLeftRight
+        
     #I need to shuffle them, together imageParts and lesionParts!
     [imagePartsChannelsToLoadOnGpuForSubepochPerPathway,
     gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch ] = shuffleTheSegmentsForThisSubepoch( imagePartsChannelsToLoadOnGpuForSubepochPerPathway,
@@ -688,6 +692,9 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                                         leftBoundaryRcz[1] : rightBoundaryRcz[1],
                                                                         leftBoundaryRcz[2] : rightBoundaryRcz[2] ]
     
+    # Make COPIES of the segents, instead of having a VIEW (slice) of them. This is so that the the whole volume are afterwards released from RAM.
+    channelsForThisImagePartPerPathway = [ [ np.copy( channel ) for channel in path ] for path in channelsForThisImagePartPerPathway  ]
+    gtLabelsForTheCentralClassifiedPartOfThisImagePart = np.copy(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
     return [ channelsForThisImagePartPerPathway, gtLabelsForTheCentralClassifiedPartOfThisImagePart ]
 
 
