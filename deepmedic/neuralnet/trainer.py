@@ -75,12 +75,12 @@ class Trainer(object):
         # I could also have one trainer per optimizer, and one trainer-manager.
         # In that case, the above "Trainer" section could be moved to the "trainer-manager" class.
         self._lr_sched_params = None # To control if schedule-specific API is available (eg auto)
+        self._curr_lr = None # Tensor (or tfv if auto). Used for printing.
+        self._curr_mom = None # Tensor. Used for printing.
         # State
         self._init_lr_tfv = None  # used by exponential schedule
         # Mom is only for SGD/RmsProp
         self._init_mom_tfv = None  # used by exponential schedule
-        self._curr_lr = None # Tensor (or tfv if auto). Used for printing.
-        self._curr_mom = None # Tensor. Used for printing.
         
         # ====== [Auto] - learning rate schedule ====
         # These should only be defined if auto-schedule is chosen.
