@@ -79,7 +79,8 @@ class Trainer(object):
         self._init_lr_tfv = None  # used by exponential schedule
         # Mom is only for SGD/RmsProp
         self._init_mom_tfv = None  # used by exponential schedule
-
+        self._curr_lr = None # Tensor (or tfv if auto). Used for printing.
+        self._curr_mom = None # Tensor. Used for printing.
         
         # ====== [Auto] - learning rate schedule ====
         # These should only be defined if auto-schedule is chosen.
@@ -144,30 +145,30 @@ class Trainer(object):
         
         # Learning rate and momentum
         self._init_lr_tfv = tf.Variable(learning_rate_init, dtype="float32", trainable=False, name="init_lr") # This is important for the learning rate schedule to work.
-        current_lr =  self._get_lr_from_schedule()
+        self._curr_lr =  self._get_lr_from_schedule()
         
         # SGD and RMS only.
         self._init_mom_tfv = tf.Variable(momentum_init, dtype="float32", trainable=False, name="init_mom")
-        current_mom = self._get_mom_from_schedule()
+        self._curr_mom = self._get_mom_from_schedule()
         
         # Optimizer
         params_to_opt = self._net.get_trainable_params(log, self._indicesOfLayersPerPathwayTypeToFreeze)
         if sgd0orAdam1orRmsProp2 == 0:
             self._optimizer = optimizers_dm.SgdOptimizer( params_to_opt,
-                                                          current_lr,
-                                                          current_mom,
+                                                          self._curr_lr,
+                                                          self._curr_mom,
                                                           momentumTypeNONNormalized0orNormalized1,
                                                           classicMomentum0OrNesterov1 )
         elif sgd0orAdam1orRmsProp2 == 1:
             self._optimizer = optimizers_dm.AdamOptimizer( params_to_opt,
-                                                           current_lr,
+                                                           self._curr_lr,
                                                            b1ParamForAdam,
                                                            b2ParamForAdam,
                                                            epsilonForAdam )
         elif sgd0orAdam1orRmsProp2 == 2:
             self._optimizer = optimizers_dm.RmsPropOptimizer( params_to_opt,
-                                                              current_lr,
-                                                              current_mom,
+                                                              self._curr_lr,
+                                                              self._curr_mom,
                                                               momentumTypeNONNormalized0orNormalized1,
                                                               classicMomentum0OrNesterov1,
                                                               rhoParamForRmsProp,
@@ -310,7 +311,12 @@ class Trainer(object):
         self._run_lr_sched_updates(log, sessionTf, mean_val_acc_of_ep)
         
         # Done with everything in epoch. Increase number of trained epochs.
-        sessionTf.run( self._op_increase_num_epochs_trained )
+        num_eps_trained = sessionTf.run( self._op_increase_num_epochs_trained )
+        
+        log.print3("Trainer: Current learning rate: "+str( sessionTf.run(self._curr_lr) ))
+        log.print3("Trainer: Current momentum: "+str( sessionTf.run(self._curr_mom) ))
+        log.print3("Trainer: Number of epochs the model has been trained: "+str( num_eps_trained ))
+        
         
         
     def _run_lr_sched_updates(self, log, sessionTf, mean_val_acc_of_ep): # This should be the only API.
