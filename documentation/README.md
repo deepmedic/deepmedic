@@ -106,9 +106,9 @@ $ pip install --upgrade tensorflow-gpu               # or plain tensorflow, if y
 ```
 **Problem installing TF on MacOS**: Seems there is often a problem installing TF on MacOS.
 If the above fails, eg giving a `Could not find version that satisfies requirement tensorflow`, see the appropriate documentation for MacOS of TF in the above link.
-Something I've found working on Macs installing TF with the following:
+Something I've found working on Macs is installing TF with the following:
 ```
-python2 pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py2-none-any.whl # adapt python2, py2, or version of TF as required.
+pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py2-none-any.whl # adapt py2 to py3, or version of TF as required.
 ```
 
 **Install DeepMedic** and rest of its dependencies:
