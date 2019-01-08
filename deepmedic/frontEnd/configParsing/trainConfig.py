@@ -97,6 +97,7 @@ class TrainConfig(Config):
     EPS_RMS = "epsilonRms"
     #Losses
     LOSSES_WEIGHTS = "losses_and_weights"
+    W_C_IN_COST = "reweight_classes_in_cost"
     #Regularization L1 and L2.
     L1_REG = "L1_reg"
     L2_REG = "L2_reg"

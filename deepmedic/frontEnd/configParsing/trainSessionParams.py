@@ -316,8 +316,14 @@ class TrainSessionParameters(object) :
         self.subsampledChannelsFilepathsTrain = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
         self.subsampledChannelsFilepathsVal = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
         
-        # Reweight classes equally before [0], linearly decrease influence till [1], natural freq after.
-        self.weight_c_in_xentr_and_release_between_eps = [-1, -1] # Give one negative value to disable it
+        # Re-weight samples in the cost function *on a per-class basis*: Type of re-weighting and training schedule.
+        # E.g. to exclude a class, or counter class imbalance.
+        # "type": string/None, "prms": any/None, "schedule": [ min_epoch, max_epoch ]
+        # Type, prms combinations: "freq", None || "per_c", [0., 2., 1., ...] (as many as classes)
+        # "schedule": Constant before epoch [0], linear change towards equal weight (=1) until epoch [1], constant equal weights (=1) afterwards.
+        self.reweight_classes_in_cost = cfg[cfg.W_C_IN_COST] if cfg[cfg.W_C_IN_COST] is not None else {"type": None, "prms": None, "schedule": [0, self.numberOfEpochs]}
+        if self.reweight_classes_in_cost["type"] == "per_c":
+            assert len(self.reweight_classes_in_cost["prms"]) == num_classes
         
         self._makeFilepathsForPredictionsAndFeaturesVal( folderForPredictionsVal, folderForFeaturesVal )
         
@@ -491,7 +497,7 @@ class TrainSessionParameters(object) :
         logPrint("Loss functions and their weights = " + str(self.losses_and_weights))
         logPrint("L1 Regularization term = " + str(self.L1_reg_weight))
         logPrint("L2 Regularization term = " + str(self.L2_reg_weight))
-        
+        logPrint("Reweight samples in cost on a per-class basis = " + str(self.reweight_classes_in_cost))
         logPrint("~~Freeze Weights of Certain Layers~~")
         logPrint("Indices of layers from each type of pathway that will be kept fixed (first layer is 0):")
         logPrint("Normal pathway's layers to freeze = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[0]))
@@ -578,7 +584,7 @@ class TrainSessionParameters(object) :
                 self.L2_reg_weight,
                 # Cost Schedules
                 #Weighting Classes differently in the CNN's cost function during training:
-                self.weight_c_in_xentr_and_release_between_eps,
+                self.reweight_classes_in_cost
                 ]
         return args
     
