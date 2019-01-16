@@ -72,7 +72,7 @@ class SamplingType(object) :
                                                                 
                                                                 dimensionsOfImageChannel
                                                                 ) :
-        # CURRENTLY, REQUIRES THAT IF YOU PROVIDE WEIGHT MAPS, YOU SHOULD PROVIDE FOR ALL CLASSES OF THE SAMPLING-TYPE!!!
+        # If weight-maps are provided, they should be provided for *every* class of the sampling-type.
         
         # a) Check if weighted maps are given. In that case, use them.
         # b) If no weightMaps, and ROI/GT given, use them.
@@ -83,13 +83,15 @@ class SamplingType(object) :
             if providedWeightMapsToSampleForEachCategory : #Both weight maps should be provided currently.
                 numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
                 if numOfProvidedWeightMaps != self.getNumberOfCategoriesToSample() :
-                    self.log.print3("ERROR: For SamplingType = Fore/Background(0), [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! Two (fore/back) were expected! Exiting!"); exit(1)        
+                    self.log.print3("ERROR: For SamplingType = Fore/Background(0), [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
+                                    "Two (fore/back) were expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory
             elif not providedGtLabelsBool:
-                self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], if weighted-maps are not provided, at least Ground Truth labels should be given to extract foreground! Exiting!"); exit(1)
+                self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], if weighted-maps are not provided, "+\
+                                "at least Ground Truth labels should be given to extract foreground! Exiting!"); exit(1)
             elif providedRoiMaskBool : # and providedGtLabelsBool
-                maskForForegroundSampling = (gtLabelsImage>0).astype(int)
-                maskForBackgroundSampling_roiMinusGtLabels = (roiMask>0) * (maskForForegroundSampling==0)
+                maskForForegroundSampling = ( (gtLabelsImage>0)*(roiMask>0) ).astype(int)
+                maskForBackgroundSampling_roiMinusGtLabels = ( (maskForForegroundSampling==0)*(roiMask>0) ).astype(int)
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ maskForForegroundSampling, maskForBackgroundSampling_roiMinusGtLabels ] #Foreground / Background (in sequence)
             else : # no weightmaps, gt provided and roi is not provided.
                 maskForForegroundSampling = (gtLabelsImage>0).astype(int)
@@ -99,7 +101,8 @@ class SamplingType(object) :
             if providedWeightMapsToSampleForEachCategory :
                 numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
                 if numOfProvidedWeightMaps != 1 :
-                    self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! One was expected! Exiting!"); exit(1)
+                    self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
+                                    "One was expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should be an array with dim1==1 already.
             elif providedRoiMaskBool :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ roiMask ] #Be careful to not change either of the two arrays later or there'll be a problem.
@@ -109,26 +112,34 @@ class SamplingType(object) :
             if providedWeightMapsToSampleForEachCategory :
                 numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
                 if numOfProvidedWeightMaps != 1 :
-                    self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! One was expected! Exiting!"); exit(1)
+                    self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
+                                    "One was expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should be an array with dim1==1 already.
             elif providedRoiMaskBool :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ roiMask ] #Be careful to not change either of the two arrays later or there'll be a problem.
             else :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ np.ones(dimensionsOfImageChannel, dtype="int16") ]
-        elif self.samplingType == 3 : # Targetted per class.
+        elif self.samplingType == 3 : # Targeted per class.
             if providedWeightMapsToSampleForEachCategory :
                 numOfProvidedWeightMaps = len(arrayWithWeightMapsWhereToSampleForEachCategory)
                 if numOfProvidedWeightMaps != self.getNumberOfCategoriesToSample() :
-                    self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! As many as the classes [" + str(self.getNumberOfCategoriesToSample()) + "] (incl Background) were expected! Exiting!"); exit(1)
+                    self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
+                                    "As many as the classes [" + str(self.getNumberOfCategoriesToSample()) + "] (incl Background) were expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = arrayWithWeightMapsWhereToSampleForEachCategory #Should have as many entries as classes (incl backgr).
-            elif providedGtLabelsBool :
+            elif not providedGtLabelsBool:
+                self.log.print3("ERROR: For SamplingType=TargettedPerClass(3), either weightMaps for each class or GT labels should be given! Exiting!"); exit(1)
+            elif providedRoiMaskBool : # and providedGtLabelsBool
                 finalWeightMapsToSampleFromPerCategoryForSubject = []
                 for cat_i in range( self.getNumberOfCategoriesToSample() ) : # Should be the same number as the number of actual classes, including background.
-                    finalWeightMapsToSampleFromPerCategoryForSubject.append( (gtLabelsImage == cat_i).astype(int) )
-            else :
-                self.log.print3("ERROR: For SamplingType=TargettedPerClass(3), either weightMaps for each class or GT labels should be given! Exiting!"); exit(1)
+                    finalWeightMapsToSampleFromPerCategoryForSubject.append( ( (gtLabelsImage==cat_i)*(roiMask>0) ).astype(int) )
+            else : # no weightmaps, gt provided and roi is not provided.
+                finalWeightMapsToSampleFromPerCategoryForSubject = []
+                for cat_i in range( self.getNumberOfCategoriesToSample() ) : # Should be the same number as the number of actual classes, including background.
+                    finalWeightMapsToSampleFromPerCategoryForSubject.append( (gtLabelsImage==cat_i).astype(int) )
+                
         else :
             self.log.print3("ERROR: Sampling-type-number passed in [logicDecidingAndGivingFinalSamplingMapsForEachCategory] was invalid. Should be [0,1,2,3]. Exiting!"); exit(1)
             
         return finalWeightMapsToSampleFromPerCategoryForSubject
     
+
