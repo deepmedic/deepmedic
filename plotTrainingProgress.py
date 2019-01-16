@@ -182,7 +182,7 @@ def getRegExprForParsingMetric(validation0orTraining1, basic0detailed1, class_i,
             sentenceToLookFor = SPEC_SENTENCE
         elif intSpecifyingMetric01234 == 3 : #looking for dice on samples
             sentenceToLookFor = DSC_SAMPLES_SENTENCE
-    regExp1 = ".*" + validationOrTrainingString + ".*" + classPrefixString + ".*" + sentenceToLookFor
+    regExp1 = ".*" + validationOrTrainingString + ".*" + classPrefixString + ":.*" + sentenceToLookFor
     return (regExp1, sentenceToLookFor)
 
 
