@@ -284,13 +284,14 @@ class TrainSessionParameters(object) :
         self.saveSegmentationVal = cfg[cfg.SAVE_SEGM_VAL] if cfg[cfg.SAVE_SEGM_VAL] is not None else True
         self.saveProbMapsBoolPerClassVal = cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) else [True]*num_classes
         self.filepathsToSavePredictionsForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
+        self.suffixForSegmAndProbsDictVal = cfg[cfg.SUFFIX_SEGM_PROB_VAL] if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
         #features:
         self.saveIndividualFmImagesVal = cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
         self.saveMultidimensionalImageWithAllFmsVal = cfg[cfg.SAVE_4DIM_FMS_VAL] if cfg[cfg.SAVE_4DIM_FMS_VAL] is not None else False
         if self.saveIndividualFmImagesVal == True or self.saveMultidimensionalImageWithAllFmsVal == True:
-            indices_fms_per_pathtype_per_layer_to_save =   [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] +\
-                                                                    [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] +\
-                                                                    [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
+            indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] +\
+                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] +\
+                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
             self.indices_fms_per_pathtype_per_layer_to_save = [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save] #By default, save none.
         else:
             self.indices_fms_per_pathtype_per_layer_to_save = None
@@ -387,12 +388,18 @@ class TrainSessionParameters(object) :
                                             ) :
         self.filepathsToSavePredictionsForEachPatientVal = []
         self.filepathsToSaveFeaturesForEachPatientVal = []
-        if self.namesToSavePredictionsAndFeaturesVal is not None :
+        
+        if self.namesToSavePredictionsAndFeaturesVal is not None : # standard behavior
             for case_i in range(self.numberOfCasesVal) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
+        else : # Names for predictions not given. Special handling...
+            for case_i in xrange(self.numberOfCasesVal) :
+                self.filepathsToSavePredictionsForEachPatientVal.append( absPathToFolderForPredictionsFromSession )
+                self.filepathsToSaveFeaturesForEachPatientVal.append( absPathToFolderForPredictionsFromSession )
+
                 
     def get_path_to_load_model_from(self):
         return self.savedModelFilepath
@@ -479,6 +486,7 @@ class TrainSessionParameters(object) :
         logPrint("Save Segmentations = " + str(self.saveSegmentationVal))
         logPrint("Save Probability Maps for each class = " + str(self.saveProbMapsBoolPerClassVal))
         logPrint("Filepaths to save results per case = " + str(self.filepathsToSavePredictionsForEachPatientVal))
+        logPrint("Suffixes with which to save segmentations and probability maps = " + str(self.suffixForSegmAndProbsDictVal))
         logPrint("~~Feature Maps~~")
         logPrint("Save Feature Maps = " + str(self.saveIndividualFmImagesVal))
         logPrint("Save FMs in a 4D-image = " + str(self.saveMultidimensionalImageWithAllFmsVal))
@@ -518,9 +526,10 @@ class TrainSessionParameters(object) :
                 self.filepath_to_save_models,
                 
                 self.performValidationOnSamplesThroughoutTraining,
-                [self.saveSegmentationVal, self.saveProbMapsBoolPerClassVal],
+                {"segm": self.saveSegmentationVal, "prob": self.saveProbMapsBoolPerClassVal},
                 
                 self.filepathsToSavePredictionsForEachPatientVal,
+                self.suffixForSegmAndProbsDictVal,
                 
                 self.channelsFilepathsTrain,
                 self.channelsFilepathsVal,

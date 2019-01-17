@@ -70,16 +70,16 @@ def saveImgToNiiWithOriginalHdr(imgToSave,
         
         
 def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
-                                                   listOfNamesToGiveToPredictions,
-                                                   listOfFilepathsToEachChannelOfEachPatient,
-                                                   case_i, #the index (in the list of filepathnames) of the current image segmented.
-                                                   suffixToAdd = "",
-                                                   npDtype = np.dtype(np.float32),
-                                                   log=None) :
+                                    namesForSavingPreds,
+                                    listOfFilepathsToEachChannelOfEachPatient,
+                                    case_i, # the index (in the list of filepathnames) of the current image segmented.
+                                    suffixToAdd = "",
+                                    npDtype = np.dtype(np.float32),
+                                    log=None) :
     
     #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
-    if log!=None :
+    if log is not None :
         log.print3("Saving the new label (segmentation) image for the subject #"+str(case_i))
     else :
         print("Saving the new label (segmentation) image for the subject #"+str(case_i))
@@ -87,12 +87,15 @@ def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
     filepathOriginToCopyHeader = listOfFilepathsToEachChannelOfEachPatient[case_i][0]
     
     filepathTarget = "PLACEHOLDER"
-    if listOfNamesToGiveToPredictions[case_i].endswith(".nii.gz") :
-        filepathTarget = listOfNamesToGiveToPredictions[case_i][:-7] + suffixToAdd + ".nii.gz"
-    elif listOfNamesToGiveToPredictions[case_i].endswith(".nii") :
-        filepathTarget = listOfNamesToGiveToPredictions[case_i][:-4] + suffixToAdd + ".nii.gz"
+    nameForSavingPred = namesForSavingPreds[case_i]
+    if os.path.isdir( nameForSavingPred ) :
+        filepathTarget = nameForSavingPred + "/" + suffixToAdd + ".nii.gz"
+    elif nameForSavingPred.endswith(".nii.gz") :
+        filepathTarget = nameForSavingPred[:-7] + "_" + suffixToAdd + ".nii.gz"
+    elif nameForSavingPred.endswith(".nii") :
+        filepathTarget = nameForSavingPred[:-4] + "_" + suffixToAdd + ".nii.gz"
     else :
-        filepathTarget = listOfNamesToGiveToPredictions[case_i] + suffixToAdd + ".nii.gz"
+        filepathTarget = nameForSavingPred + "_" + suffixToAdd + ".nii.gz"
         
     saveImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
                                 filepathTarget,
@@ -103,15 +106,16 @@ def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
 
 
 def saveFmImgToNiiWithOriginalHdr(  fmImageCreatedByVisualisation,
-                                                        listOfNamesToGiveToPredictions,
-                                                        
-                                                        listOfFilepathsToEachChannelOfEachPatient,
-                                                        
-                                                        image_i,
-                                                        index_of_typeOfPathway_to_visualize,
-                                                        index_of_layer_in_pathway_to_visualize,
-                                                        index_of_FM_in_pathway_to_visualize,
-                                                        log=None) : #the index (in the list of filepathnames) of the current image segmented :
+                                    namesForSavingPreds,
+                                    
+                                    listOfFilepathsToEachChannelOfEachPatient,
+                                    
+                                    image_i,
+                                    index_of_typeOfPathway_to_visualize,
+                                    index_of_layer_in_pathway_to_visualize,
+                                    index_of_FM_in_pathway_to_visualize,
+                                    log=None) :
+    # image_i: the index (in the list of filepathnames) of the current image segmented.
     #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
     #... I can get the header, affine RAS trans etc from it and copy it for the new image.
     
@@ -124,14 +128,14 @@ def saveFmImgToNiiWithOriginalHdr(  fmImageCreatedByVisualisation,
         
     filepathOriginToCopyHeader = listOfFilepathsToEachChannelOfEachPatient[image_i][0]
     filepathTarget = "PLACEHOLDER"
-    if listOfNamesToGiveToPredictions[image_i].endswith(".nii.gz") :
-        filepathTarget = listOfNamesToGiveToPredictions[image_i][:-7] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
+    if namesForSavingPreds[image_i].endswith(".nii.gz") :
+        filepathTarget = namesForSavingPreds[image_i][:-7] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
         + "_layer" + str(index_of_layer_in_pathway_to_visualize) + "_fm" + str(index_of_FM_in_pathway_to_visualize) + ".nii.gz"
-    elif listOfNamesToGiveToPredictions[image_i].endswith(".nii") :
-        filepathTarget = listOfNamesToGiveToPredictions[image_i][:-4] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
+    elif namesForSavingPreds[image_i].endswith(".nii") :
+        filepathTarget = namesForSavingPreds[image_i][:-4] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
         + "_layer" + str(index_of_layer_in_pathway_to_visualize) + "_fm" + str(index_of_FM_in_pathway_to_visualize) + ".nii.gz"
     else :
-        filepathTarget = listOfNamesToGiveToPredictions[image_i] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
+        filepathTarget = namesForSavingPreds[image_i] + "_pathway" + str(index_of_typeOfPathway_to_visualize)\
         + "_layer" + str(index_of_layer_in_pathway_to_visualize) + "_fm" + str(index_of_FM_in_pathway_to_visualize) + ".nii.gz"
         
     saveImgToNiiWithOriginalHdr(fmImageCreatedByVisualisation,
@@ -143,7 +147,7 @@ def saveFmImgToNiiWithOriginalHdr(  fmImageCreatedByVisualisation,
 
 
 def save4DImgWithAllFmsToNiiWithOriginalHdr(multidimImageWithAllVisualisedFms,
-                                            listOfNamesToGiveToFmVisualisationsIfSaving,
+                                            namesForSavingFms,
                                             listOfFilepathsToEachChannelOfEachPatient,
                                             image_i,
                                             log=None) : #the index (in the list of filepathnames) of the current image segmented :
@@ -158,12 +162,12 @@ def save4DImgWithAllFmsToNiiWithOriginalHdr(multidimImageWithAllVisualisedFms,
         
     filepathOriginToCopyHeader = listOfFilepathsToEachChannelOfEachPatient[image_i][0]
     filepathTarget = "PLACEHOLDER"
-    if listOfNamesToGiveToFmVisualisationsIfSaving[image_i].endswith(".nii.gz") :
-        filepathTarget = listOfNamesToGiveToFmVisualisationsIfSaving[image_i][:-7] + "_allFmsMultiDim.nii.gz"
-    elif listOfNamesToGiveToFmVisualisationsIfSaving[image_i].endswith(".nii") :
-        filepathTarget = listOfNamesToGiveToFmVisualisationsIfSaving[image_i][:-4] + "_allFmsMultiDim.nii.gz"
+    if namesForSavingFms[image_i].endswith(".nii.gz") :
+        filepathTarget = namesForSavingFms[image_i][:-7] + "_allFmsMultiDim.nii.gz"
+    elif namesForSavingFms[image_i].endswith(".nii") :
+        filepathTarget = namesForSavingFms[image_i][:-4] + "_allFmsMultiDim.nii.gz"
     else :
-        filepathTarget = listOfNamesToGiveToFmVisualisationsIfSaving[image_i] + "_allFmsMultiDim.nii.gz"
+        filepathTarget = namesForSavingFms[image_i] + "_allFmsMultiDim.nii.gz"
         
     saveImgToNiiWithOriginalHdr(multidimImageWithAllVisualisedFms,
                                 filepathTarget,

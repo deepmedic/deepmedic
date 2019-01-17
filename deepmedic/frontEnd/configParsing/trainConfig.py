@@ -71,6 +71,7 @@ class TrainConfig(Config):
     NAMES_FOR_PRED_PER_CASE_VAL = "namesForPredictionsPerCaseVal"
     SAVE_SEGM_VAL = "saveSegmentationVal"
     SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
+    SUFFIX_SEGM_PROB_VAL = "suffixForSegmAndProbsDictVal"
     SAVE_INDIV_FMS_VAL = "saveIndividualFmsVal"
     SAVE_4DIM_FMS_VAL = "saveAllFmsIn4DimImageVal"
     INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal"

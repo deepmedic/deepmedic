@@ -49,6 +49,7 @@ class TestSessionParameters(object) :
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
         self.saveProbMapsBoolPerClass = cfg[cfg.SAVE_PROBMAPS_PER_CLASS] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS] != []) else [True]*num_classes
         self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
+        self.suffixForSegmAndProbsDict = cfg[cfg.SUFFIX_SEGM_PROB] if cfg[cfg.SUFFIX_SEGM_PROB] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
         #features:
         self.saveIndividualFmImages = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
         self.saveMultidimensionalImageWithAllFms = cfg[cfg.SAVE_4DIM_FMS] if cfg[cfg.SAVE_4DIM_FMS] is not None else False
@@ -80,14 +81,18 @@ class TestSessionParameters(object) :
         self.filepathsToSavePredictionsForEachPatient = []
         self.filepathsToSaveFeaturesForEachPatient = []
         
-        if self.namesToSavePredictionsAndFeatures is not None :
+        if self.namesToSavePredictionsAndFeatures is not None : # standard behavior
             for case_i in range(self.numberOfCases) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
+        else : # Names for predictions not given. Special handling...
+            for case_i in xrange(self.numberOfCases) :
+                self.filepathsToSavePredictionsForEachPatient.append( absPathToFolderForPredictionsFromSession )
+                self.filepathsToSaveFeaturesForEachPatient.append( absPathToFolderForPredictionsFromSession )
                 
-                
+    
     def get_path_to_load_model_from(self):
         return self.savedModelFilepath
     
@@ -120,6 +125,7 @@ class TestSessionParameters(object) :
         logPrint("Save the predicted segmentation = " + str(self.saveSegmentation))
         logPrint("Save the probability maps = " + str(self.saveProbMapsBoolPerClass))
         logPrint("Paths where to save predictions per case = " + str(self.filepathsToSavePredictionsForEachPatient))
+        logPrint("Suffixes with which to save segmentations and probability maps = " + str(self.suffixForSegmAndProbsDict))
         if not (self.saveSegmentation or self.saveProbMapsBoolPerClass) :
             logPrint(">>> WARN: Segmentation and Probability Maps won't be saved. I guess you only wanted the feature maps?")
             
@@ -144,7 +150,7 @@ class TestSessionParameters(object) :
         
         args = [self.log,
                 validation0orTesting1,
-                [self.saveSegmentation, self.saveProbMapsBoolPerClass],
+                {"segm": self.saveSegmentation, "prob": self.saveProbMapsBoolPerClass},
                 
                 self.channelsFilepaths,
                 
@@ -155,6 +161,7 @@ class TestSessionParameters(object) :
                 self.roiMasksFilepaths,
                 
                 self.filepathsToSavePredictionsForEachPatient,
+                self.suffixForSegmAndProbsDict,
                 
                 #----Preprocessing------
                 self.padInputImagesBool,

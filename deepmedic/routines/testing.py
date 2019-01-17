@@ -28,7 +28,7 @@ def performInferenceOnWholeVolumes(
                             cnn3d,
                             log,
                             val_or_test,
-                            savePredictionImagesSegmentationAndProbMapsList,
+                            savePredictedSegmAndProbsDict,
 
                             listOfFilepathsToEachChannelOfEachPatient,
                             
@@ -38,7 +38,8 @@ def performInferenceOnWholeVolumes(
                             providedRoiMaskForFastInfBool,
                             listOfFilepathsToRoiMaskFastInfOfEachPatient,
                             
-                            listOfNamesToGiveToPredictionsIfSavingResults,
+                            namesForSavingSegmAndProbs,
+                            suffixForSegmAndProbsDict,
                             
                             #----Preprocessing------
                             padInputImagesBool,
@@ -49,9 +50,13 @@ def performInferenceOnWholeVolumes(
                             #--------For FM visualisation---------
                             saveIndividualFmImagesForVisualisation,
                             saveMultidimensionalImageWithAllFms,
-                            indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,#NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just []. If not [], the list should contain one entry per layer of the pathway, even if just []. The layer entries, if not [], they should have to integers, lower and upper FM to visualise. Excluding the highest index.
-                            listOfNamesToGiveToFmVisualisationsIfSaving
+                            indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                            namesForSavingFms
                             ) :
+    # saveIndividualFmImagesForVisualisation: should contain an entry per pathwayType, even if just []...
+    #       ... If not [], the list should contain one entry per layer of the pathway, even if just [].
+    #       ... The layer entries, if not [], they should have to integers, lower and upper FM to visualise. Excluding the highest index.
+    
     validation_or_testing_str = "Validation" if val_or_test == "val" else "Testing"
     log.print3("###########################################################################################################")
     log.print3("############################# Starting full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
@@ -315,34 +320,32 @@ def performInferenceOnWholeVolumes(
         if isinstance(roiMask, (np.ndarray)) : #If roiMask was given:
             unpaddedRoiMaskIfGivenElse1 = roiMask if not padInputImagesBool else unpadCnnOutputs(roiMask, tupleOfPaddingPerAxesLeftRight)
             
-        if savePredictionImagesSegmentationAndProbMapsList[0] == True : #save predicted segmentation
-            npDtypeForPredictedImage = np.dtype(np.int16)
-            suffixToAdd = "_Segm"
+        if savePredictedSegmAndProbsDict["segm"] == True : #save predicted segmentation
+            suffixToAdd = suffixForSegmAndProbsDict["segm"]
             #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
             unpaddedPredSegmentationWithinRoi = unpaddedPredSegmentation * unpaddedRoiMaskIfGivenElse1
             savePredImgToNiiWithOriginalHdr( unpaddedPredSegmentationWithinRoi,
-                                            listOfNamesToGiveToPredictionsIfSavingResults,
+                                            namesForSavingSegmAndProbs,
                                             listOfFilepathsToEachChannelOfEachPatient,
                                             image_i,
                                             suffixToAdd,
-                                            npDtypeForPredictedImage,
+                                            np.dtype(np.int16),
                                             log
                                             )
         #== saving probability maps ==
         for class_i in range(0, NUMBER_OF_CLASSES) :
-            if (len(savePredictionImagesSegmentationAndProbMapsList[1]) >= class_i + 1) and (savePredictionImagesSegmentationAndProbMapsList[1][class_i] == True) : #save predicted probMap for class
-                npDtypeForPredictedImage = np.dtype(np.float32)
-                suffixToAdd = "_ProbMapClass" + str(class_i)
+            if (len(savePredictedSegmAndProbsDict["prob"]) >= class_i + 1) and (savePredictedSegmAndProbsDict["prob"][class_i] == True) : #save predicted probMap for class
+                suffixToAdd = suffixForSegmAndProbsDict["prob"] + str(class_i)
                 #Save the image. Pass the filename paths of the normal image so that I can dublicate the header info, eg RAS transformation.
                 predProbMapClassI = predProbMapsPerClass[class_i,:,:,:]
                 unpaddedPredProbMapClassI = predProbMapClassI if not padInputImagesBool else unpadCnnOutputs(predProbMapClassI, tupleOfPaddingPerAxesLeftRight)
                 unpaddedPredProbMapClassIWithinRoi = unpaddedPredProbMapClassI * unpaddedRoiMaskIfGivenElse1
                 savePredImgToNiiWithOriginalHdr( unpaddedPredProbMapClassIWithinRoi,
-                                                listOfNamesToGiveToPredictionsIfSavingResults,
+                                                namesForSavingSegmAndProbs,
                                                 listOfFilepathsToEachChannelOfEachPatient,
                                                 image_i,
                                                 suffixToAdd,
-                                                npDtypeForPredictedImage,
+                                                np.dtype(np.float32),
                                                 log
                                                 )
         #== saving feature maps ==
@@ -360,7 +363,7 @@ def performInferenceOnWholeVolumes(
                                 fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
                                 unpaddedFmToSave = fmToSave if not padInputImagesBool else unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
                                 saveFmImgToNiiWithOriginalHdr(  unpaddedFmToSave,
-                                                                listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                                namesForSavingFms,
                                                                 listOfFilepathsToEachChannelOfEachPatient,
                                                                 image_i,
                                                                 pathway_i,
@@ -375,7 +378,7 @@ def performInferenceOnWholeVolumes(
                 unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms, tupleOfPaddingPerAxesLeftRight)
             #Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
             save4DImgWithAllFmsToNiiWithOriginalHdr( unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
-                                                    listOfNamesToGiveToFmVisualisationsIfSaving,
+                                                    namesForSavingFms,
                                                     listOfFilepathsToEachChannelOfEachPatient,
                                                     image_i,
                                                     log )

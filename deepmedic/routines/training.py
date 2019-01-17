@@ -115,9 +115,10 @@ def do_training(sessionTf,
                 fileToSaveTrainedCnnModelTo,
                 
                 performValidationOnSamplesDuringTrainingProcessBool,
-                savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
+                savePredictedSegmAndProbsDict,
                 
-                listOfNamesToGiveToPredictionsValidationIfSavingWhenEvalDice,
+                namesForSavingSegmAndProbs,
+                suffixForSegmAndProbsDict,
                 
                 listOfFilepathsToEachChannelOfEachPatientTraining,
                 listOfFilepathsToEachChannelOfEachPatientValidation,
@@ -165,7 +166,7 @@ def do_training(sessionTf,
                 saveIndividualFmImagesForVisualisation,
                 saveMultidimensionalImageWithAllFms,
                 indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                listOfNamesToGiveToFmVisualisationsIfSaving,
+                namesForSavingFms,
                 
                 #-------- Others --------
                 run_input_checks
@@ -428,7 +429,7 @@ def do_training(sessionTf,
                                     cnn3d,
                                     log,
                                     "val",
-                                    savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation,
+                                    savePredictedSegmAndProbsDict,
                                     
                                     listOfFilepathsToEachChannelOfEachPatientValidation,
                                     
@@ -438,7 +439,8 @@ def do_training(sessionTf,
                                     providedRoiMaskForValidationBool,
                                     listOfFilepathsToRoiMaskOfEachPatientValidation,
                                     
-                                    listOfNamesToGiveToPredictionsIfSavingResults = "Placeholder" if not savePredictionImagesSegmentationAndProbMapsListWhenEvaluatingDiceForValidation else listOfNamesToGiveToPredictionsValidationIfSavingWhenEvalDice,
+                                    namesForSavingSegmAndProbs = namesForSavingSegmAndProbs,
+                                    suffixForSegmAndProbsDict = suffixForSegmAndProbsDict,
                                     
                                     #----Preprocessing------
                                     padInputImagesBool=padInputImagesBool,
@@ -452,7 +454,7 @@ def do_training(sessionTf,
                                     saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
                                     saveMultidimensionalImageWithAllFms=saveMultidimensionalImageWithAllFms,
                                     indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                                    listOfNamesToGiveToFmVisualisationsIfSaving=listOfNamesToGiveToFmVisualisationsIfSaving
+                                    namesForSavingFms=namesForSavingFms
                                     )
         
     end_training_time = time.time()
