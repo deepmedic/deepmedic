@@ -35,6 +35,8 @@ class TrainSession(Session):
         return sess_name
     
     def make_output_folders(self):
+        self._main_out_folder_abs = getAbsPathEvenIfRelativeIsGiven( self._cfg[self._cfg.FOLDER_OUTP],
+                                                                     self.get_abs_path_to_cfg() )
         [self._log_folder_abs,
          self._out_folder_models,
          self._out_folder_preds,
