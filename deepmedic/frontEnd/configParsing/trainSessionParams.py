@@ -382,13 +382,12 @@ class TrainSessionParameters(object) :
                 indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
         
-    def _makeFilepathsForPredictionsAndFeaturesVal(self,
-                                            absPathToFolderForPredictionsFromSession,
-                                            absPathToFolderForFeaturesFromSession
-                                            ) :
+    def _makeFilepathsForPredictionsAndFeaturesVal( self,
+                                                    absPathToFolderForPredictionsFromSession,
+                                                    absPathToFolderForFeaturesFromSession
+                                                    ) :
         self.filepathsToSavePredictionsForEachPatientVal = []
         self.filepathsToSaveFeaturesForEachPatientVal = []
-        
         if self.namesToSavePredictionsAndFeaturesVal is not None : # standard behavior
             for case_i in range(self.numberOfCasesVal) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
@@ -396,11 +395,15 @@ class TrainSessionParameters(object) :
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
         else : # Names for predictions not given. Special handling...
-            for case_i in xrange(self.numberOfCasesVal) :
+            if self.numberOfCasesVal > 1 : # Many cases, create corresponding namings for files.
+                for case_i in range(self.numberOfCasesVal) :
+                    self.filepathsToSavePredictionsForEachPatientVal.append( absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz" )
+                    self.filepathsToSaveFeaturesForEachPatientVal.append( absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz" )
+            else : # Only one case. Just give the output prediction folder, the io.py will save output accordingly.
                 self.filepathsToSavePredictionsForEachPatientVal.append( absPathToFolderForPredictionsFromSession )
                 self.filepathsToSaveFeaturesForEachPatientVal.append( absPathToFolderForPredictionsFromSession )
-
-                
+    
+    
     def get_path_to_load_model_from(self):
         return self.savedModelFilepath
     

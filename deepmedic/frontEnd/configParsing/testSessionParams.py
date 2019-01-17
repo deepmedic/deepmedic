@@ -75,12 +75,11 @@ class TestSessionParameters(object) :
         self._makeFilepathsForPredictionsAndFeatures( folderForPredictions, folderForFeatures )
         
     def _makeFilepathsForPredictionsAndFeatures(self,
-                                            absPathToFolderForPredictionsFromSession,
-                                            absPathToFolderForFeaturesFromSession
-                                            ) :
+                                                absPathToFolderForPredictionsFromSession,
+                                                absPathToFolderForFeaturesFromSession
+                                                ) :
         self.filepathsToSavePredictionsForEachPatient = []
         self.filepathsToSaveFeaturesForEachPatient = []
-        
         if self.namesToSavePredictionsAndFeatures is not None : # standard behavior
             for case_i in range(self.numberOfCases) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
@@ -88,10 +87,14 @@ class TestSessionParameters(object) :
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
                 self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
         else : # Names for predictions not given. Special handling...
-            for case_i in xrange(self.numberOfCases) :
+            if self.numberOfCases > 1 : # Many cases, create corresponding namings for files.
+                for case_i in range(self.numberOfCases) :
+                    self.filepathsToSavePredictionsForEachPatient.append( absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz" )
+                    self.filepathsToSaveFeaturesForEachPatient.append( absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz" )
+            else : # Only one case. Just give the output prediction folder, the io.py will save output accordingly.
                 self.filepathsToSavePredictionsForEachPatient.append( absPathToFolderForPredictionsFromSession )
                 self.filepathsToSaveFeaturesForEachPatient.append( absPathToFolderForPredictionsFromSession )
-                
+    
     
     def get_path_to_load_model_from(self):
         return self.savedModelFilepath

@@ -16,7 +16,8 @@ def loadVolume(filepath):
     # Loads the image specified by filepath.
     # Returns a 3D np array.
     # The image can be 2D, but will be returned as 3D, with dimensions =[x, y, 1]
-    # It can also be 4D, of shape [x,y,z,1], and will be returned as 3D. If it's 4D with 4th dimension > 1, assertion will be raised. 
+    # It can also be 4D, of shape [x,y,z,1], and will be returned as 3D.
+    # If it's 4D with 4th dimension > 1, assertion will be raised.
     proxy = nib.load(filepath)
     img = proxy.get_data()
     proxy.uncache()
@@ -37,7 +38,7 @@ def saveImgToNiiWithOriginalHdr(imgToSave,
                                     filepathTarget,
                                     filepathOriginToCopyHeader,
                                     npDtype = np.dtype(np.float32),
-                                    log=None) :
+                                    log=None):
     # imgToSave: 3d np array.
     # filepathTarget: filepath where to save.
     # filepathOriginToCopyHeader: original image, where to copy the header over to the target image.
@@ -72,13 +73,13 @@ def saveImgToNiiWithOriginalHdr(imgToSave,
 def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
                                     namesForSavingPreds,
                                     listOfFilepathsToEachChannelOfEachPatient,
-                                    case_i, # the index (in the list of filepathnames) of the current image segmented.
+                                    case_i,
                                     suffixToAdd = "",
                                     npDtype = np.dtype(np.float32),
-                                    log=None) :
-    
-    #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
-    #... I can get the header, affine RAS trans etc from it and copy it for the new image.
+                                    log=None):
+    # case_i: # the index (in the list of filepathnames) of the current image segmented.
+    # Needs as argument the cases' filepaths and index of the currently segmented case, so that ...
+    # ... I can get the header, affine RAS trans etc from it and copy it for the new image.
     if log is not None :
         log.print3("Saving the new label (segmentation) image for the subject #"+str(case_i))
     else :
@@ -88,7 +89,7 @@ def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
     
     filepathTarget = "PLACEHOLDER"
     nameForSavingPred = namesForSavingPreds[case_i]
-    if os.path.isdir( nameForSavingPred ) :
+    if os.path.isdir(nameForSavingPred) : # Only if names not given and it's only 1 case (see testSessionParams)
         filepathTarget = nameForSavingPred + "/" + suffixToAdd + ".nii.gz"
     elif nameForSavingPred.endswith(".nii.gz") :
         filepathTarget = nameForSavingPred[:-7] + "_" + suffixToAdd + ".nii.gz"
@@ -107,19 +108,17 @@ def savePredImgToNiiWithOriginalHdr(labelImageCreatedByPredictions,
 
 def saveFmImgToNiiWithOriginalHdr(  fmImageCreatedByVisualisation,
                                     namesForSavingPreds,
-                                    
                                     listOfFilepathsToEachChannelOfEachPatient,
-                                    
                                     image_i,
                                     index_of_typeOfPathway_to_visualize,
                                     index_of_layer_in_pathway_to_visualize,
                                     index_of_FM_in_pathway_to_visualize,
-                                    log=None) :
-    # image_i: the index (in the list of filepathnames) of the current image segmented.
-    #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
-    #... I can get the header, affine RAS trans etc from it and copy it for the new image.
+                                    log=None):
+    # case_i: # the index (in the list of filepathnames) of the current image segmented.
+    # Needs as argument the cases' filepaths and index of the currently segmented case, so that ...
+    # ... I can get the header, affine RAS trans etc from it and copy it for the new image.
     
-    stringToPrint = "Saving the new Fm-activation image for the subject #"+str(image_i)+", pathway:" + str(index_of_typeOfPathway_to_visualize)\
+    stringToPrint = "Saving the new FM-activation image for the subject #"+str(image_i)+", pathway:" + str(index_of_typeOfPathway_to_visualize)\
            + ", layer: " + str(index_of_layer_in_pathway_to_visualize) + " FM: " + str(index_of_FM_in_pathway_to_visualize)        
     if log!=None :
         log.print3(stringToPrint)
@@ -150,11 +149,9 @@ def save4DImgWithAllFmsToNiiWithOriginalHdr(multidimImageWithAllVisualisedFms,
                                             namesForSavingFms,
                                             listOfFilepathsToEachChannelOfEachPatient,
                                             image_i,
-                                            log=None) : #the index (in the list of filepathnames) of the current image segmented :
-    #give as arguments the list of the patient filepaths and the index of the currently segmented image, so that ...
-    #... I can get the header, affine RAS trans etc from it and copy it for the new image.
-    
-    stringToPrint = "Saving a multi-dimensional image, with all the FMs as a 4th dimension, for the subject #"+str(image_i)        
+                                            log=None):
+    stringToPrint = "Saving multi-dimensional image, with all FMs as 4th dimension, " +\
+                    "for subject #"+str(image_i)
     if log!=None :
         log.print3(stringToPrint)
     else :
