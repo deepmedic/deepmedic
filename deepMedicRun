@@ -138,7 +138,7 @@ if __name__ == '__main__':
     # Parse main files.
     if args.model_cfg:
         abs_path_model_cfg = getAbsPathEvenIfRelativeIsGiven(args.model_cfg, cwd)
-        model_cfg = ModelConfig( args.model_cfg )
+        model_cfg = ModelConfig( abs_path_model_cfg )
         
     # Create session.
     if args.train_cfg:
@@ -173,7 +173,7 @@ if __name__ == '__main__':
         log.print3("CONFIG: The configuration file for the [session] was loaded from: " + str(session.get_abs_path_to_cfg() ))
         session.override_file_cfg_with_cmd_line_cfg(args)
         _ = session.compile_session_params_from_cfg(model_params)
-    
+        
         if args.train_cfg:
             session.run_session(sess_device, model_params, args.reset_trainer)
         elif args.test_cfg:
