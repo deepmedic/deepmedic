@@ -174,7 +174,7 @@ class Pathway(object):
         
     def makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(self,
                                                     log,
-                                                    
+                                                    rng,
                                                     inputTrain,
                                                     inputVal,
                                                     inputTest,
@@ -195,10 +195,8 @@ class Pathway(object):
                                                     
                                                     indicesOfLowerRankLayersForPathway=[],
                                                     ranksOfLowerRankLayersForPathway = [],
-                                                    
                                                     indicesOfLayersToConnectResidualsInOutputForPathway=[]
                                                     ) :
-        rng = np.random.RandomState(55789)
         log.print3("[Pathway_" + str(self.getStringType()) + "] is being built...")
         
         self._recField = self.calcRecFieldOfPathway(kernelDimsPerLayer)
