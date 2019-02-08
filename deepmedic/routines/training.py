@@ -9,7 +9,8 @@ from __future__ import absolute_import, print_function, division
 
 import sys
 import time
-import pp
+from multiprocessing.pool import ThreadPool
+
 import numpy as np
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
@@ -179,9 +180,8 @@ def do_training(sessionTf,
     cnn3dWrapper = CnnWrapperForSampling(cnn3d) 
     
     #---------To run PARALLEL the extraction of parts for the next subepoch---
-    ppservers = () # tuple of all parallel python servers to connect with
-    job_server = pp.Server(ncpus=1, ppservers=ppservers) # Creates jobserver with automatically detected number of workers
-    
+    threadPool = ThreadPool(processes=1)
+
     tupleWithParametersForTraining = (log,
                                     "train",
                                     run_input_checks,
@@ -236,9 +236,7 @@ def do_training(sessionTf,
                                     [0, -1,-1,-1], #don't perform intensity-augmentation during validation.
                                     [0,0,0] #don't perform reflection-augmentation during validation.
                                     )
-    tupleWithLocalFunctionsThatWillBeCalledByTheMainJob = ( )
-    tupleWithModulesToImportWhichAreUsedByTheJobFunctions = ( "from __future__ import absolute_import, print_function, division",
-                "time", "numpy as np", "from deepmedic.dataManagement.sampling import *" )
+    
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequencially load the data for it.
     #------End for parallel------
     
@@ -294,19 +292,16 @@ def do_training(sessionTf,
                     boolItIsTheVeryFirstSubepochOfThisProcess = False
                 else : #It was done in parallel with the training of the previous epoch, just grab the results...
                     [channsOfSegmentsForSubepPerPathwayVal,
-                    labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation() #fromParallelProcessing that had started from last loop when it was submitted.
+                    labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of threadpool.join()
                     
                 # Below is computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
                 numberOfBatchesValidation = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3d.batchSize["val"]
                 
                 
                 #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
-                #submit the parallel job
                 log.print3("PARALLEL: Before Validation in subepoch #" +str(subepoch) + ", the parallel job for extracting Segments for the next Training is submitted.")
-                parallelJobToGetDataForNextTraining = job_server.submit(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
-                                                                        tupleWithParametersForTraining, #tuple with the arguments required
-                                                                        tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
-                                                                        tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling functions (not the mods of the ext-functions).
+                parallelJobToGetDataForNextTraining = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
+                                                                        tupleWithParametersForTraining) #tuple with the arguments required
                 
                 #------------------------------------DO VALIDATION--------------------------------
                 log.print3("-V-V-V-V-V- Now Validating for this subepoch before commencing the training iterations... -V-V-V-V-V-")
@@ -361,7 +356,7 @@ def do_training(sessionTf,
             else :
                 #It was done in parallel with the validation (or with previous training iteration, in case I am not performing validation).
                 [channsOfSegmentsForSubepPerPathwayTrain,
-                labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining() #fromParallelProcessing that had started from last loop when it was submitted.
+                labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining.get() # From parallel process/thread.
             
             numberOfBatchesTraining = len(channsOfSegmentsForSubepPerPathwayTrain[0]) // cnn3d.batchSize["train"] #Computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
             
@@ -370,16 +365,12 @@ def do_training(sessionTf,
             if performValidationOnSamplesDuringTrainingProcessBool :
                 #submit the parallel job
                 log.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Validation.")
-                parallelJobToGetDataForNextValidation = job_server.submit(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
-                                                                            tupleWithParametersForValidation, #tuple with the arguments required
-                                                                            tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
-                                                                            tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling functions (not the mods of the ext-functions).
+                parallelJobToGetDataForNextValidation = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
+                                                                            tupleWithParametersForValidation) #tuple with the arguments required
             else : #extract in parallel the samples for the next subepoch's training.
                 log.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Training.")
-                parallelJobToGetDataForNextTraining = job_server.submit(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
-                                                                            tupleWithParametersForTraining, #tuple with the arguments required
-                                                                            tupleWithLocalFunctionsThatWillBeCalledByTheMainJob, #tuple of local functions that I need to call
-                                                                            tupleWithModulesToImportWhichAreUsedByTheJobFunctions) #tuple of the external modules that I need, of which I am calling
+                parallelJobToGetDataForNextTraining = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
+                                                                            tupleWithParametersForTraining) #tuple with the arguments required
                 
             #-------------------------------START TRAINING IN BATCHES------------------------------
             log.print3("-T-T-T-T-T- Now Training for this subepoch... This may take a few minutes... -T-T-T-T-T-")
