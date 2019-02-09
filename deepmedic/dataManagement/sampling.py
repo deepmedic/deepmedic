@@ -68,12 +68,13 @@ def getSampledDataAndLabelsForSubepoch(log,
                                                                             max_subjects_on_gpu_for_subepoch = maxNumSubjectsLoadedPerSubepoch,
                                                                             get_max_subjects_for_gpu_even_if_total_less = False,
                                                                             log=log)
-        log.print3("Out of [" + str(total_number_of_subjects) + "] subjects given for [" + training_or_validation_str + "], it was specified to extract Segments from maximum [" + str(maxNumSubjectsLoadedPerSubepoch) + "] per subepoch.")
+        log.print3("Out of [" + str(total_number_of_subjects) + "] subjects given for [" + training_or_validation_str + "], "+
+                   "it was specified to extract Segments from maximum [" + str(maxNumSubjectsLoadedPerSubepoch) + "] per subepoch.")
         log.print3("Shuffled indices of subjects that were randomly chosen: "+str(randomIndicesList_for_gpu))
         
         #This is x. Will end up with dimensions: numberOfPathwaysThatTakeInput, partImagesLoadedPerSubepoch, channels, r,c,z, but flattened.
-        imagePartsChannelsToLoadOnGpuForSubepochPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
-        gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch = [] # Labels only for the central/predicted part of segments.
+        channelsOfSegmentsForSubepochListPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
+        lblsForPredictedPartOfSegmentsForSubepochList = [] # Labels only for the central/predicted part of segments.
         numOfSubjectsLoadingThisSubepochForSampling = len(randomIndicesList_for_gpu) #Can be different than maxNumSubjectsLoadedPerSubepoch, cause of available images number.
         
         dimsOfPrimeSegmentRcz=cnn3d.pathways[0].getShapeOfInput(train_or_val)[2:]
@@ -110,7 +111,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                                             listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal, 
                                             num_classes = cnn3d.num_classes,
                                             
-                                            providedWeightMapsToSampleForEachCategory = providedWeightMapsToSampleForEachCategory, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
+                                            providedWeightMapsToSampleForEachCategory = providedWeightMapsToSampleForEachCategory, # If true, must provide all. Placeholder in testing.
                                             forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
                                             
                                             providedRoiMaskBool = providedRoiMaskBool,
@@ -135,7 +136,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                                                                                                     providedWeightMapsToSampleForEachCategory,
                                                                                                     arrayWithWeightMapsWhereToSampleForEachCategory,
                                                                                                     
-                                                                                                    True, #providedGtLabelsBool. True both for training and for validation. Prerequisite from user-interface.
+                                                                                                    True, #providedGtLabelsBool. True both for train and val.
                                                                                                     gtLabelsImage,
                                                                                                     
                                                                                                     providedRoiMaskBool,
@@ -187,8 +188,8 @@ def getSampledDataAndLabelsForSubepoch(log,
                                                                             doIntAugm_shiftMuStd_multiMuStd
                                                                             )
                     for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                        imagePartsChannelsToLoadOnGpuForSubepochPerPathway[pathway_i].append(channelsForThisImagePartPerPathway[pathway_i])
-                    gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch.append(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
+                        channelsOfSegmentsForSubepochListPerPathway[pathway_i].append(channelsForThisImagePartPerPathway[pathway_i])
+                    lblsForPredictedPartOfSegmentsForSubepochList.append(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
                     
             
             # Done with case/subject. Segments have been sampled. Delete the volume arrays to release RAM.
@@ -196,26 +197,26 @@ def getSampledDataAndLabelsForSubepoch(log,
             del arrayWithWeightMapsWhereToSampleForEachCategory; del allSubsampledChannelsOfPatientInNpArray; del tupleOfPaddingPerAxesLeftRight
             
         #I need to shuffle them, together imageParts and lesionParts!
-        [imagePartsChannelsToLoadOnGpuForSubepochPerPathway,
-        gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch ] = shuffleTheSegmentsForThisSubepoch( imagePartsChannelsToLoadOnGpuForSubepochPerPathway,
-                                                                                                    gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch )
+        [channelsOfSegmentsForSubepochListPerPathway,
+        lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleTheSegmentsForThisSubepoch( channelsOfSegmentsForSubepochListPerPathway,
+                                                                                                    lblsForPredictedPartOfSegmentsForSubepochList )
         
         end_getAllImageParts_time = time.clock()
         log.print3("TIMING: Extracting all the Segments for next " + training_or_validation_str + " took time: "+str(end_getAllImageParts_time-start_getAllImageParts_time)+"(s)")
         
         log.print3(":=:=:=:=:=:=:=:=: Finished extracting Segments from the images for next " + training_or_validation_str + ". :=:=:=:=:=:=:=:=:")
         
-        channelsOfSegmentsToProcessForSubepochPerPathwayArrays = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in imagePartsChannelsToLoadOnGpuForSubepochPerPathway ]
-        gtLabelsForCentralPredictedPartOfSegmentsForSubepoch = np.asarray(gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch, dtype="int32") # Could be int16 to save RAM?
-        
-    except Exception as e:
+        channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channelsOfSegmentsForSubepochListPerPathway ]
+        lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lblsForPredictedPartOfSegmentsForSubepochList, dtype="int32") # Could be int16 to save RAM?
+    
+    except (Exception, KeyboardInterrupt) as e:
         log.print3("")
         log.print3("ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(...): " + str(e))
         log.print3( traceback.format_exc() )
         raise e
     
-    return [channelsOfSegmentsToProcessForSubepochPerPathwayArrays,
-            gtLabelsForCentralPredictedPartOfSegmentsForSubepoch ]
+    return [channelsOfSegmentsForSubepochArrayPerPathway,
+            lblsForPredictedPartOfSegmentsForSubepochArray ]
     
     
 def get_random_ind_of_cases_to_train_subep(total_number_of_subjects, 
@@ -456,7 +457,9 @@ def sampleImageParts(   log,
     #In the end, the final vector will be true only for the indices of lesions that are within all boundaries.
     booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries = np.zeros(weightMapToSampleFrom.shape, dtype="int32")
     
-    #The following loop leads to booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries to be true for the indices that allow you to get an image part CENTERED on them, and be safely within image boundaries. Note that if the imagePart is of even dimension, the "central" voxel is one voxel to the left.
+    # This loop leads to booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries to be true for the indices ...
+    # ...that allow getting an imagePart CENTERED on them, and be safely within image boundaries. Note that ...
+    # ... if the imagePart is of even dimension, the "central" voxel is one voxel to the left.
     for rcz_i in range( len(dimsOfSegmentRcz) ) :
         if dimsOfSegmentRcz[rcz_i]%2 == 0: #even
             dimensionDividedByTwo = dimsOfSegmentRcz[rcz_i]//2
@@ -480,21 +483,24 @@ def sampleImageParts(   log,
                                                                                             size = numOfSegmentsToExtractForThisSubject,
                                                                                             replace=True,
                                                                                             p=flattenedConstrainedWithImageBoundariesMaskToSample)
-    #np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), where each of the array in the tuple has the same shape as the listOfIndices. They have the r/c/z coords that correspond to the index of the flattened version.
-    #So, coordsOfCentralVoxelsOfPartsSampled will end up being an array with shape: 3(rcz) x numOfSegmentsToExtractForThisSubject.
+    # np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), 
+    # where each of the array in the tuple has the same shape as the listOfIndices. 
+    # They have the r/c/z coords that correspond to the index of the flattened version.
+    # So, coordsOfCentralVoxelsOfPartsSampled will be array of shape: 3(rcz) x numOfSegmentsToExtractForThisSubject.
     coordsOfCentralVoxelsOfPartsSampled = np.asarray(np.unravel_index(indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts,
                                                                     constrainedWithImageBoundariesMaskToSample.shape #the shape of the roiMask/scan.
                                                                     )
                                                     )
-    #Array with shape: 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
+    # Array with shape: 3(rcz) x NumberOfImagePartSamples x 2.
+    # Last dimension has [0] for lowest boundary of slice, and [1] for highest boundary. INCLUSIVE BOTH SIDES.
     sliceCoordsOfImagePartsSampled = np.zeros(list(coordsOfCentralVoxelsOfPartsSampled.shape) + [2], dtype="int32")
     sliceCoordsOfImagePartsSampled[:,:,0] = coordsOfCentralVoxelsOfPartsSampled - halfImagePartBoundaries[ :, np.newaxis, 0 ] #np.newaxis broadcasts. To broadcast the -+.
     sliceCoordsOfImagePartsSampled[:,:,1] = coordsOfCentralVoxelsOfPartsSampled + halfImagePartBoundaries[ :, np.newaxis, 1 ]
-    """
-    The slice coordinates returned are INCLUSIVE BOTH sides.
-    """
-    #coordsOfCentralVoxelsOfPartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
-    #sliceCoordsOfImagePartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. The last dim has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
+    
+    # coordsOfCentralVoxelsOfPartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
+    # sliceCoordsOfImagePartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. ...
+    # ... The last dim has [0] for the lower boundary of the slice, and [1] for the higher boundary.
+    # ... The slice coordinates returned are INCLUSIVE BOTH sides.
     imagePartsSampled = [coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled]
     return imagePartsSampled
 
@@ -508,13 +514,23 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
                                                 subsampledImagePartDimensions
                                                 ) :
     """
-    This returns an image part from the sampled data, given the image_part_slices_coords, which has the coordinates where the normal-scale image part starts and ends (inclusive).
-    Actually, in this case, the right (end) part of image_part_slices_coords is not used.
+    This returns an image part from the sampled data, given the image_part_slices_coords,
+    which has the coordinates where the normal-scale image part starts and ends (inclusive).
+    (Actually, in this case, the right (end) part of image_part_slices_coords is not used.)
     
-    The way it works is NOT optimal. From the begining of the normal-resolution part, it goes further to the left 1 image PATCH (depending on subsampling factor) and then forward 3 PATCHES. This stops it from being used with arbitrary size of subsampled-image-part (decoupled by the normal-patch). Now, the subsampled patch has to be of the same size as the normal-scale. In order to change this, I should find where THE FIRST TOP LEFT CENTRAL (predicted) VOXEL is, and do the back-one-(sub)patch + front-3-(sub)patches from there, not from the begining of the patch.
+    The way it works is NOT optimal. From the beginning of the normal-resolution part,
+    it goes further to the left 1 receptive-field and then forward xSubsamplingFactor receptive-fields.
+    This stops it from being used with arbitrary size of subsampled segment (decoupled by the high-res segment).
+    Now, the subsampled patch has to be of the same size as the normal-scale.
+    To change this, I should find where THE FIRST TOP LEFT CENTRAL (predicted) VOXEL is, 
+    and do the back-one-(sub)patch + front-3-(sub)patches from there, not from the begining of the patch.
     
     Current way it works (correct):
-    If I have eg subsample factor=3 and 9 central-pred-voxels, I get 3 "central" voxels/patches for the subsampled-part. Straightforward. If I have a number of central voxels that is not an exact multiple of the subfactor, eg 10 central-voxels, I get 3+1 central voxels in the subsampled-part. When the cnn is convolving them, they will get repeated to 4(last-layer-neurons)*3(factor) = 12, and will get sliced down to 10, in order to have same dimension with the 1st pathway.
+    If I have eg subsample factor=3 and 9 central-pred-voxels, I get 3 "central" voxels/patches for the
+    subsampled-part. Straightforward. If I have a number of central voxels that is not an exact multiple of
+    the subfactor, eg 10 central-voxels, I get 3+1 central voxels in the subsampled-part. 
+    When the cnn is convolving them, they will get repeated to 4(last-layer-neurons)*3(factor) = 12, 
+    and will get sliced down to 10, in order to have same dimension with the 1st pathway.
     """
     subsampledImageDimensions = subsampledImageChannels[0].shape
     
@@ -536,7 +552,7 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
     zSlotsPreviously = ((subSamplingFactor[2]-1)//2)*recFieldCnn[2] if subSamplingFactor[2]%2==1 \
                                                 else (subSamplingFactor[2]-2)//2*recFieldCnn[2] + recFieldCnn[2]//2
     #1*17
-    rToCentralVoxelOfAnAveragedArea = subSamplingFactor[0]//2 if subSamplingFactor[0]%2==1 else (subSamplingFactor[0]//2 - 1) #one closer to the beginning of the dim. Same happens when I get parts of image.
+    rToCentralVoxelOfAnAveragedArea = subSamplingFactor[0]//2 if subSamplingFactor[0]%2==1 else (subSamplingFactor[0]//2 - 1) #one closer to the beginning of dim. Same happens when I get parts of image.
     cToCentralVoxelOfAnAveragedArea = subSamplingFactor[1]//2 if subSamplingFactor[1]%2==1 else (subSamplingFactor[1]//2 - 1)
     zToCentralVoxelOfAnAveragedArea =  subSamplingFactor[2]//2 if subSamplingFactor[2]%2==1 else (subSamplingFactor[2]//2 - 1)
     #This is where to start taking voxels from the subsampled image. From the beginning of the imagePart(1 st patch)...
@@ -546,7 +562,7 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
     #If the patch is 17x17, I want a 17x17 subsampled Patch. BUT if the imgPART is 25x25 (9voxClass), I want 3 subsampledPatches in my subsampPart to cover this area!
     #That is what the last term below is taking care of.
     #CAST TO INT because ceil returns a float, and later on when computing rHighNonInclToPutTheNotPaddedInSubsampledImPart I need to do INTEGER DIVISION.
-    rhighNonIncl = int(rlow + subSamplingFactor[0]*recFieldCnn[0] + (math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_rDim*1.0)/subSamplingFactor[0]) - 1) * subSamplingFactor[0]) #not including this index in the image-part
+    rhighNonIncl = int(rlow + subSamplingFactor[0]*recFieldCnn[0] + (math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_rDim*1.0)/subSamplingFactor[0]) - 1) * subSamplingFactor[0]) # excluding index in segment
     clow = image_part_slices_coords[1][0] + cToCentralVoxelOfAnAveragedArea - cSlotsPreviously
     chighNonIncl = int(clow + subSamplingFactor[1]*recFieldCnn[1] + (math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_cDim*1.0)/subSamplingFactor[1]) - 1) * subSamplingFactor[1])
     zlow = image_part_slices_coords[2][0] + zToCentralVoxelOfAnAveragedArea - zSlotsPreviously
@@ -588,20 +604,20 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
 
 
 
-def shuffleTheSegmentsForThisSubepoch(  imagePartsChannelsToLoadOnGpuForSubepochPerPathway,
-                                        gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch ) :
-    numOfPathwayWithInput = len(imagePartsChannelsToLoadOnGpuForSubepochPerPathway)
-    inputToZip = [ sublistForPathway for sublistForPathway in imagePartsChannelsToLoadOnGpuForSubepochPerPathway ]
-    inputToZip += [ gtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch ]
+def shuffleTheSegmentsForThisSubepoch(  channelsOfSegmentsForSubepochListPerPathway,
+                                        lblsForPredictedPartOfSegmentsForSubepochList ) :
+    numOfPathwayWithInput = len(channelsOfSegmentsForSubepochListPerPathway)
+    inputToZip = [ sublistForPathway for sublistForPathway in channelsOfSegmentsForSubepochListPerPathway ]
+    inputToZip += [ lblsForPredictedPartOfSegmentsForSubepochList ]
     
     combined = list(zip(*inputToZip)) #list() for python3 compatibility, as range cannot get assignment in shuffle()
     random.shuffle(combined)
     shuffledInputListsToZip = list(zip(*combined))
     
-    shuffledImagePartsChannelsToLoadOnGpuForSubepochPerPathway = [ sublistForPathway for sublistForPathway in shuffledInputListsToZip[:numOfPathwayWithInput] ]
-    shuffledGtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch = shuffledInputListsToZip[numOfPathwayWithInput]
+    shuffledChannelsOfSegmentsForSubepochListPerPathway = [ sublistForPathway for sublistForPathway in shuffledInputListsToZip[:numOfPathwayWithInput] ]
+    shuffledLblsForPredictedPartOfSegmentsForSubepochList = shuffledInputListsToZip[numOfPathwayWithInput]
     
-    return [shuffledImagePartsChannelsToLoadOnGpuForSubepochPerPathway, shuffledGtLabelsForTheCentralPredictedPartOfSegmentsInGpUForSubepoch]
+    return [shuffledChannelsOfSegmentsForSubepochListPerPathway, shuffledLblsForPredictedPartOfSegmentsForSubepochList]
 
 
 
@@ -674,7 +690,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
             continue
         #this datastructure is similar to channelsForThisImagePart, but contains voxels from the subsampled image.
         dimsOfPrimarySegment = cnn3d.pathways[pathway_i].getShapeOfInput(train_or_val)[2:]
-        slicesCoordsOfSegmForPrimaryPathway = [ [leftBoundaryRcz[0], rightBoundaryRcz[0]-1], [leftBoundaryRcz[1], rightBoundaryRcz[1]-1], [leftBoundaryRcz[2], rightBoundaryRcz[2]-1] ] #the right hand values are placeholders in this case.
+        slicesCoordsOfSegmForPrimaryPathway = [ [leftBoundaryRcz[0], rightBoundaryRcz[0]-1], [leftBoundaryRcz[1], rightBoundaryRcz[1]-1], [leftBoundaryRcz[2], rightBoundaryRcz[2]-1] ] # rightmost  are placeholders here.
         channsForThisSubsampledPartAndPathway = getImagePartFromSubsampledImageForTraining(dimsOfPrimarySegment=dimsOfPrimarySegment,
                                                                                         recFieldCnn=cnn3d.recFieldCnn,
                                                                                         subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
