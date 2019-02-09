@@ -73,7 +73,6 @@ The system is written in python. The following libraries are required:
 
 - [TensorFlow](https://www.tensorflow.org/): This is the Deep Learning library that the back end is implemented with.
 - [NiBabel](http://nipy.org/nibabel/): The library used for loading NIFTI files.
-- [Parallel Python](http://www.parallelpython.com/): Parallelization library. Note [issue#58](https://github.com/Kamnitsask/deepmedic/issues/58) when installing it for python3.
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
 - [six](https://pypi.python.org/pypi/six) : Python compatibility library.
 
@@ -117,7 +116,6 @@ $ cd DEEPMEDIC_ROOT_FOLDER
 $ pip install .
 ```
 This will grab rest of dependencies described in Sec.1.
-Note: If you are using **python3**, please see [issue#58](https://github.com/Kamnitsask/deepmedic/issues/58). The pp module will need a manual (easy) installation of a specific version, that is compatible with python3.
 
 #### 1.3. GPU Processing
 
