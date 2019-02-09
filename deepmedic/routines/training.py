@@ -11,7 +11,6 @@ import sys
 import time
 from multiprocessing.pool import ThreadPool, Pool
 import traceback
-import signal
 
 import numpy as np
 
