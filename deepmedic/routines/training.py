@@ -20,8 +20,6 @@ from deepmedic.routines.testing import performInferenceOnWholeVolumes
 
 from deepmedic.logging.utils import datetimeNowAsStr
 
-TINY_FLOAT = np.finfo(np.float32).tiny
-
 
 # The main subroutine of do_training, that runs for every batch of validation and training.
 def doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(log,
@@ -180,7 +178,7 @@ def do_training(sessionTf,
     cnn3dWrapper = CnnWrapperForSampling(cnn3d) 
     
     #---------To run PARALLEL the extraction of parts for the next subepoch---
-    threadPool = ThreadPool(processes=1)
+    threadPool = ThreadPool(processes=1) # Could also use Pool(...) from Pool module, with same API.
 
     tupleWithParametersForTraining = (log,
                                     "train",
@@ -294,18 +292,17 @@ def do_training(sessionTf,
                     [channsOfSegmentsForSubepPerPathwayVal,
                     labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of threadpool.join()
                     
-                # Below is computed with number of extracted samples, in case I dont manage to extract as many as I wanted initially.
-                numberOfBatchesValidation = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3d.batchSize["val"]
-                
-                
                 #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
                 log.print3("PARALLEL: Before Validation in subepoch #" +str(subepoch) + ", the parallel job for extracting Segments for the next Training is submitted.")
-                parallelJobToGetDataForNextTraining = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
-                                                                        tupleWithParametersForTraining) #tuple with the arguments required
+                parallelJobToGetDataForNextTraining = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, # func to execute.
+                                                                        tupleWithParametersForTraining) # tuble with args for func
                 
                 #------------------------------------DO VALIDATION--------------------------------
                 log.print3("-V-V-V-V-V- Now Validating for this subepoch before commencing the training iterations... -V-V-V-V-V-")
                 start_validationForSubepoch_time = time.time()
+                
+                # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
+                numberOfBatchesValidation = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3d.batchSize["val"]
                 
                 doTrainOrValidationOnBatchesAndReturnMeanAccuraciesOfSubepoch(log,
                                                                               sessionTf,
