@@ -222,7 +222,7 @@ def do_training(sessionTf,
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequentially load the data for it.
     
     # For parallel extraction of samples for next train/val while processing previous iteration.
-    workerPool = ThreadPool(processes=1) # Or multiprocessing.Pool.Pool(...), same API.
+    worker_pool = ThreadPool(processes=1) # Or multiprocessing.Pool.Pool(...), same API.
     
     try:
         model_num_epochs_trained = trainer.get_num_epochs_trained_tfv().eval(session=sessionTf)
@@ -256,11 +256,11 @@ def do_training(sessionTf,
                         boolItIsTheVeryFirstSubepochOfThisProcess = False
                     else : #It was done in parallel with the training of the previous epoch, just grab the results.
                         [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of workerPool.join()
+                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of worker_pool.join()
                         
                     #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
                     log.print3("PARALLEL: Before Validation in subepoch #" +str(subepoch) + ", the parallel job for extracting Segments for the next Training is submitted.")
-                    parallelJobToGetDataForNextTraining = workerPool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
+                    parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
                     
                     #------------------------------------DO VALIDATION--------------------------------
                     log.print3("-V-V-V-V-V- Now Validating for this subepoch before commencing the training iterations... -V-V-V-V-V-")
@@ -292,10 +292,10 @@ def do_training(sessionTf,
                 #------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
                 if performValidationOnSamplesDuringTrainingProcessBool :
                     log.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Validation.")
-                    parallelJobToGetDataForNextValidation = workerPool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForValidation)
+                    parallelJobToGetDataForNextValidation = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForValidation)
                 else :
                     log.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Training.")
-                    parallelJobToGetDataForNextTraining = workerPool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
+                    parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
                     
                 #-------------------------------START TRAINING IN BATCHES------------------------------
                 log.print3("-T-T-T-T-T- Now Training for this subepoch... This may take a few minutes... -T-T-T-T-T-")
@@ -375,13 +375,13 @@ def do_training(sessionTf,
         log.print3("")
         log.print3("ERROR: Caught exception in do_training(...): " + str(e))
         log.print3( traceback.format_exc() )
-        workerPool.terminate() # Will wait. A KeybInt will kill this (py3)
-        workerPool.join()
+        worker_pool.terminate() # Will wait. A KeybInt will kill this (py3)
+        worker_pool.join()
         return 1
     else:
         log.print3("Closing multiprocess pool.")
-        workerPool.close()
-        workerPool.join()
+        worker_pool.close()
+        worker_pool.join()
     
     # Save the final trained model.
     filename_to_save_with = fileToSaveTrainedCnnModelTo + ".final." + datetimeNowAsStr()
