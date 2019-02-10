@@ -153,18 +153,18 @@ def inferenceWholeVolumes(  sessionTf,
         log.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
         
         
-        totalNumberOfImagePartsToProcessForThisImage = len(sliceCoordsOfSegmentsInImage)
-        log.print3("Total number of Segments to process:"+str(totalNumberOfImagePartsToProcessForThisImage))
+        num_segments_for_case = len(sliceCoordsOfSegmentsInImage)
+        log.print3("Total number of Segments to process:"+str(num_segments_for_case))
         
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
-        number_of_batches = totalNumberOfImagePartsToProcessForThisImage//batch_size
+        num_batches = num_segments_for_case//batch_size
         extractTimePerSubject = 0; loadingTimePerSubject = 0; fwdPassTimePerSubject = 0
-        for batch_i in range(number_of_batches) : #batch_size = how many image parts in one batch. Has to be the same with the batch_size it was created with. This is no problem for testing. Could do all at once, or just 1 image part at time.
+        for batch_i in range(num_batches) :
             
-            printProgressStep = max(1, number_of_batches//5)
-            if batch_i%printProgressStep == 0:
-                log.print3("Processed "+str(batch_i*batch_size)+"/"+str(number_of_batches*batch_size)+" Segments.")
+            print_progress_step = max(1, num_batches//5)
+            if batch_i == 0 or ((batch_i+1) % print_progress_step) == 0 or (batch_i+1) == num_batches :
+                log.print3("Processed "+str((batch_i+1)*batch_size)+"/"+str(num_segments_for_case)+" segments.")
                 
             # Extract the data for the segments of this batch. ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords() of training and use it here as well. )
             start_extract_time = time.time()

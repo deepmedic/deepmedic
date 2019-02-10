@@ -218,13 +218,13 @@ class TrainSessionParameters(object) :
             self.doIntAugm_shiftMuStd_multiMuStd = [False, 'plcholder', [], []]
             
         #===================VALIDATION========================
-        self.performValidationOnSamplesThroughoutTraining = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
-        if self.lr_sched_params['type'] == 'auto' and not self.performValidationOnSamplesThroughoutTraining :
+        self.val_on_samples_during_train = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
+        if self.lr_sched_params['type'] == 'auto' and not self.val_on_samples_during_train :
             self.errorAutoRequiresValSamples()
-        self.validate_on_whole_volumes = cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
+        self.val_on_whole_volumes = cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
         
         #Input:
-        if self.performValidationOnSamplesThroughoutTraining or self.validate_on_whole_volumes :
+        if self.val_on_samples_during_train or self.val_on_whole_volumes :
             if cfg[cfg.CHANNELS_VAL] :
                 listOfAListPerChannelWithFilepathsOfAllCasesVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS_VAL]]
                 #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
@@ -234,9 +234,9 @@ class TrainSessionParameters(object) :
                 
         else :
             self.channelsFilepathsVal = []
-        if self.performValidationOnSamplesThroughoutTraining :
+        if self.val_on_samples_during_train :
             self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
-        elif self.validate_on_whole_volumes :
+        elif self.val_on_whole_volumes :
             self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else []
         else : # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
@@ -278,7 +278,7 @@ class TrainSessionParameters(object) :
         
         #~~~~~~Full inference on validation image~~~~~~
         self.num_epochs_between_val_on_whole_volumes = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
-        if self.num_epochs_between_val_on_whole_volumes == 0 and self.validate_on_whole_volumes :
+        if self.num_epochs_between_val_on_whole_volumes == 0 and self.val_on_whole_volumes :
             self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
             
         #predictions
@@ -301,7 +301,7 @@ class TrainSessionParameters(object) :
         #Output:
         #Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
         self.namesToSavePredictionsAndFeaturesVal = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None #CAREFUL: Here we use a different parsing function!
-        if not self.namesToSavePredictionsAndFeaturesVal and self.validate_on_whole_volumes and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
+        if not self.namesToSavePredictionsAndFeaturesVal and self.val_on_whole_volumes and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
             self.errorRequireNamesOfPredictionsVal()
             
         #===================== OTHERS======================
@@ -466,8 +466,8 @@ class TrainSessionParameters(object) :
         logPrint("[Int. Augm.] (DEBUGGING:) full parameters [ doIntAugm, shift, mult] = " + str(self.doIntAugm_shiftMuStd_multiMuStd))
         
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
-        logPrint("Perform Validation on Samples throughout training? = " + str(self.performValidationOnSamplesThroughoutTraining))
-        logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.validate_on_whole_volumes))
+        logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
+        logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
         logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " + str(self.channelsFilepathsVal))
         logPrint("Provided Ground-Truth for Validation = " + str(self.providedGtVal) + ". NOTE: Required for Val on samples. Not Req for Full-Inference, but DSC will be reported if provided.")
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
@@ -530,7 +530,7 @@ class TrainSessionParameters(object) :
         args = [self.log,
                 self.filepath_to_save_models,
                 
-                self.performValidationOnSamplesThroughoutTraining,
+                self.val_on_samples_during_train,
                 {"segm": self.saveSegmentationVal, "prob": self.saveProbMapsBoolPerClassVal},
                 
                 self.filepathsToSavePredictionsForEachPatientVal,
@@ -576,7 +576,7 @@ class TrainSessionParameters(object) :
                 self.subsampledChannelsFilepathsVal,
                 
                 # Validation
-                self.validate_on_whole_volumes,
+                self.val_on_whole_volumes,
                 self.num_epochs_between_val_on_whole_volumes,
                 
                 #--------For FM visualisation---------
