@@ -17,7 +17,7 @@ import numpy as np
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.neuralnet.wrappers import CnnWrapperForSampling
 from deepmedic.dataManagement.sampling import getSampledDataAndLabelsForSubepoch
-from deepmedic.routines.testing import performInferenceOnWholeVolumes
+from deepmedic.routines.testing import inferenceWholeVolumes
 
 from deepmedic.logging.utils import datetimeNowAsStr
 
@@ -145,6 +145,7 @@ def do_training(sessionTf,
                 maxNumSubjectsLoadedPerSubepoch,  # Max num of cases loaded every subepoch for segments extraction.
                 imagePartsLoadedInGpuPerSubepoch,
                 imagePartsLoadedInGpuPerSubepochValidation,
+                num_parallel_proc_sampling,
                 
                 #-------Sampling Type---------
                 samplingTypeInstanceTraining, # Instance of the deepmedic/samplingType.SamplingType class for training and validation
@@ -346,33 +347,32 @@ def do_training(sessionTf,
                     and (model_num_epochs_trained % everyThatManyEpochsComputeDiceOnTheFullValidationImages == 0):
                 log.print3("***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #"+str(epoch)+"...***")
                 
-                performInferenceOnWholeVolumes(sessionTf,
-                        cnn3d,
-                        log,
-                        "val",
-                        savePredictedSegmAndProbsDict,
-                        listOfFilepathsToEachChannelOfEachPatientValidation,
-                        providedGtForValidationBool,
-                        listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
-                        providedRoiMaskForValidationBool,
-                        listOfFilepathsToRoiMaskOfEachPatientValidation,
-                        namesForSavingSegmAndProbs = namesForSavingSegmAndProbs,
-                        suffixForSegmAndProbsDict = suffixForSegmAndProbsDict,
-                        
-                        #----Preprocessing------
-                        padInputImagesBool=padInputImagesBool,
-                        
-                        #for the cnn extension
-                        useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
-                        
-                        listOfFilepathsToEachSubsampledChannelOfEachPatient=listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
-                        
-                        #--------For FM visualisation---------
-                        saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
-                        saveMultidimensionalImageWithAllFms=saveMultidimensionalImageWithAllFms,
-                        indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                        namesForSavingFms=namesForSavingFms
-                        )
+                res_code = inferenceWholeVolumes(sessionTf,
+                                cnn3d,
+                                log,
+                                "val",
+                                savePredictedSegmAndProbsDict,
+                                listOfFilepathsToEachChannelOfEachPatientValidation,
+                                providedGtForValidationBool,
+                                listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
+                                providedRoiMaskForValidationBool,
+                                listOfFilepathsToRoiMaskOfEachPatientValidation,
+                                namesForSavingSegmAndProbs = namesForSavingSegmAndProbs,
+                                suffixForSegmAndProbsDict = suffixForSegmAndProbsDict,
+                                
+                                #----Preprocessing------
+                                padInputImagesBool=padInputImagesBool,
+                                
+                                #for the cnn extension
+                                useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
+                                listOfFilepathsToEachSubsampledChannelOfEachPatient=listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
+                                
+                                #--------For FM visualisation---------
+                                saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
+                                saveMultidimensionalImageWithAllFms=saveMultidimensionalImageWithAllFms,
+                                indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                                namesForSavingFms=namesForSavingFms
+                                )
         end_training_time = time.time()
         log.print3("TIMING: Training process took time: "+str(end_training_time-start_training_time)+"(s)")
         
@@ -380,13 +380,19 @@ def do_training(sessionTf,
         log.print3("")
         log.print3("ERROR: Caught exception in do_training(...): " + str(e))
         log.print3( traceback.format_exc() )
-        threadPool.terminate()
+        threadPool.terminate() # Will wait. A KeybInt will kill this (py3)
+        threadPool.join()
+        return 1
     else:
         log.print3("Closing multiprocess pool.")
         threadPool.close()
-    finally:
         threadPool.join()
-        
-    log.print3("The whole do_training() function has finished.")
     
+    # Save the final trained model.
+    filename_to_save_with = fileToSaveTrainedCnnModelTo + ".final." + datetimeNowAsStr()
+    log.print3("Saving the final model at:" + str(filename_to_save_with))
+    saver_all.save( sessionTf, filename_to_save_with+".model.ckpt", write_meta_graph=False )
+            
+    log.print3("The whole do_training() function has finished.")
+    return 0
 

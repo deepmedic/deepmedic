@@ -39,6 +39,7 @@ class TrainConfig(Config):
     NUM_SUBEP = "numberOfSubepochs"
     NUM_CASES_LOADED_PERSUB = "numOfCasesLoadedPerSubepoch"
     NUM_TR_SEGMS_LOADED_PERSUB = "numberTrainingSegmentsLoadedOnGpuPerSubep"
+    NUM_OF_PROC_SAMPL = "num_processes_sampling"
     #~~~~~ Learning rate schedule ~~~~~
     LR_SCH_TYPE = "typeOfLearningRateSchedule"
     #Stable + Auto + Predefined.

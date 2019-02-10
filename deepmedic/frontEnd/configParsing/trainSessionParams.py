@@ -185,6 +185,7 @@ class TrainSessionParameters(object) :
         self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
         self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
+        self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 0
         
         #~~~~~~~ Learning Rate Schedule ~~~~~~~~
         
@@ -444,6 +445,7 @@ class TrainSessionParameters(object) :
         logPrint("Number of Subepochs per epoch = " + str(self.numberOfSubepochs))
         logPrint("Number of cases to load per Subepoch (for extracting the samples for this subepoch) = " + str(self.numOfCasesLoadedPerSubepoch))
         logPrint("Number of Segments loaded on GPU per subepoch for Training = " + str(self.segmentsLoadedOnGpuPerSubepochTrain) + ". NOTE: This number of segments divided by the batch-size defines the number of optimization-iterations that will be performed every subepoch!")
+        logPrint("Number of parallel processes for sampling = " + str(self.num_parallel_proc_sampling))
         
         logPrint("~~Learning Rate Schedule~~")
         logPrint("Type of schedule = " + str(self.lr_sched_params['type']))
@@ -556,6 +558,7 @@ class TrainSessionParameters(object) :
                 self.numOfCasesLoadedPerSubepoch,
                 self.segmentsLoadedOnGpuPerSubepochTrain,
                 self.segmentsLoadedOnGpuPerSubepochVal,
+                self.num_parallel_proc_sampling,
                 
                 #-------Sampling Type---------
                 self.samplingTypeInstanceTrain,

@@ -14,7 +14,7 @@ from deepmedic.frontEnd.configParsing.testSessionParams import TestSessionParame
 from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTestingSession, handle_exception_tf_restore
 
 from deepmedic.neuralnet.cnn3d import Cnn3d
-from deepmedic.routines.testing import performInferenceOnWholeVolumes
+from deepmedic.routines.testing import inferenceWholeVolumes
 
 import tensorflow as tf
 
@@ -123,7 +123,7 @@ class TestSession(Session):
             self._log.print3("=========== Testing with the CNN model ===============")
             self._log.print3("======================================================\n")
             
-            performInferenceOnWholeVolumes( *( [sessionTf, cnn3d] + self._params.get_args_for_testing() ) )
+            res_code = inferenceWholeVolumes( *( [sessionTf, cnn3d] + self._params.get_args_for_testing() ) )
         
         self._log.print3("")
         self._log.print3("======================================================")

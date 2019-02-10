@@ -23,21 +23,16 @@ from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
 # Main routine for testing.
-def performInferenceOnWholeVolumes(
-                            sessionTf,
+def inferenceWholeVolumes(  sessionTf,
                             cnn3d,
                             log,
                             val_or_test,
                             savePredictedSegmAndProbsDict,
-
                             listOfFilepathsToEachChannelOfEachPatient,
-                            
                             providedGtLabelsBool, #boolean. DSC calculation will be performed if this is provided.
                             listOfFilepathsToGtLabelsOfEachPatient,
-                            
                             providedRoiMaskForFastInfBool,
                             listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                            
                             namesForSavingSegmAndProbs,
                             suffixForSegmAndProbsDict,
                             
@@ -51,8 +46,7 @@ def performInferenceOnWholeVolumes(
                             saveIndividualFmImagesForVisualisation,
                             saveMultidimensionalImageWithAllFms,
                             indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                            namesForSavingFms
-                            ) :
+                            namesForSavingFms ) :
     # saveIndividualFmImagesForVisualisation: should contain an entry per pathwayType, even if just []...
     #       ... If not [], the list should contain one entry per layer of the pathway, even if just [].
     #       ... The layer entries, if not [], they should have to integers, lower and upper FM to visualise. Excluding the highest index.
@@ -430,6 +424,7 @@ def performInferenceOnWholeVolumes(
     log.print3("###########################################################################################################")
     log.print3("############################# Finished full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
     log.print3("###########################################################################################################")
+    return 0
 
 
 def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
