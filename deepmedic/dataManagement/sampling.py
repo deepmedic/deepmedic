@@ -17,23 +17,22 @@ from deepmedic.image.io import loadVolume
 from deepmedic.image.processing import reflectImageArrayIfNeeded, calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 
-class Checks(object):
-    run_input_checks = True # Set it in getSampledDataAndLabelsForSubepoch
-
 # Order of calls:
 # getSampledDataAndLabelsForSubepoch
 #    get_random_ind_of_cases_to_train_subep
 #    getNumberOfSegmentsToExtractPerCategoryFromEachSubject
-#    load_imgs_of_single_case
-#    sampleImageParts
-#    extractDataOfASegmentFromImagesUsingSampledSliceCoords
-#        getImagePartFromSubsampledImageForTraining
-#    shuffleTheSegmentsForThisSubepoch
+#    load_case_and_get_samples
+#        load_imgs_of_single_case
+#        sampleImageParts
+#        extractDataOfASegmentFromImagesUsingSampledSliceCoords
+#            getImagePartFromSubsampledImageForTraining
+#    shuffleSegmentsOfThisSubepoch
 
-# Main sampling process during training. Executed in parallel while training on a batch on the GPU.
+# Main sampling process during training. Executed in parallel while training on a batch on GPU.
 # Called from training.do_training()
 def getSampledDataAndLabelsForSubepoch(log,
                                         train_or_val,
+                                        num_parallel_proc_sampling,
                                         run_input_checks,
                                         cnn3d,
                                         maxNumSubjectsLoadedPerSubepoch,
@@ -56,10 +55,12 @@ def getSampledDataAndLabelsForSubepoch(log,
                                         doIntAugm_shiftMuStd_multiMuStd,
                                         reflectImageWithHalfProbDuringTraining
                                         ):
+    # Returns: channelsOfSegmentsForSubepochArrayPerPathway - List of arrays, one per pathway. Each array [N_samples, Channs, R,C,Z]
+    #        lblsForPredictedPartOfSegmentsForSubepochArray - Array of shape: [N_samples, R_out, C_out, Z_out)
+    
     try: # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
         start_getAllImageParts_time = time.clock()
         training_or_validation_str = "Training" if train_or_val == "train" else "Validation"
-        Checks.run_input_checks = run_input_checks
         
         log.print3(":=:=:=:=:=:=:=:=: Starting to extract Segments from the images for next " + training_or_validation_str + "... :=:=:=:=:=:=:=:=:")
         
@@ -72,134 +73,57 @@ def getSampledDataAndLabelsForSubepoch(log,
                    "it was specified to extract Segments from maximum [" + str(maxNumSubjectsLoadedPerSubepoch) + "] per subepoch.")
         log.print3("Shuffled indices of subjects that were randomly chosen: "+str(randomIndicesList_for_gpu))
         
-        #This is x. Will end up with dimensions: numberOfPathwaysThatTakeInput, partImagesLoadedPerSubepoch, channels, r,c,z, but flattened.
+        # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
         channelsOfSegmentsForSubepochListPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
         lblsForPredictedPartOfSegmentsForSubepochList = [] # Labels only for the central/predicted part of segments.
         numOfSubjectsLoadingThisSubepochForSampling = len(randomIndicesList_for_gpu) #Can be different than maxNumSubjectsLoadedPerSubepoch, cause of available images number.
         
-        dimsOfPrimeSegmentRcz=cnn3d.pathways[0].getShapeOfInput(train_or_val)[2:]
         
         # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
-        stringsPerCategoryToSample = samplingTypeInstance.getStringsPerCategoryToSample()
-        numberOfCategoriesToSample = samplingTypeInstance.getNumberOfCategoriesToSample()
         percentOfSamplesPerCategoryToSample = samplingTypeInstance.getPercentOfSamplesPerCategoryToSample()
         arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = getNumberOfSegmentsToExtractPerCategoryFromEachSubject(numberOfImagePartsToLoadInGpuPerSubepoch,
                                                                                                                             percentOfSamplesPerCategoryToSample,
                                                                                                                             numOfSubjectsLoadingThisSubepochForSampling)
-        numOfInpChannelsForPrimaryPath = len(listOfFilepathsToEachChannelOfEachPatient[0])
         
         log.print3("SAMPLING: Starting iterations to extract Segments from each subject for next " + training_or_validation_str + "...")
         
         for index_for_vector_with_images_on_gpu in range(0, numOfSubjectsLoadingThisSubepochForSampling) :
-            log.print3("SAMPLING: Going to load the images and extract segments from the subject #" + str(index_for_vector_with_images_on_gpu + 1) + "/" +str(numOfSubjectsLoadingThisSubepochForSampling))
             
-            [allChannelsOfPatientInNpArray, # nparray(channels,dim0,dim1,dim2)
-            gtLabelsImage,
-            roiMask,
-            arrayWithWeightMapsWhereToSampleForEachCategory, #can be returned "placeholderNothing" if it's testing phase or not "provided weighted maps". In this case, I will sample from GT/ROI.
-            allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
-            tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
-            ] = load_imgs_of_single_case(
-                                            log,
-                                            train_or_val,
-                                            
-                                            randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu],
-                                            
-                                            listOfFilepathsToEachChannelOfEachPatient,
-                                            
-                                            providedGtLabelsBool=True, # If this getTheArr function is called (training), gtLabels should already been provided.
-                                            listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal, 
-                                            num_classes = cnn3d.num_classes,
-                                            
-                                            providedWeightMapsToSampleForEachCategory = providedWeightMapsToSampleForEachCategory, # If true, must provide all. Placeholder in testing.
-                                            forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
-                                            
-                                            providedRoiMaskBool = providedRoiMaskBool,
-                                            listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient,
-                                            
-                                            useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
-                                            
-                                            usingSubsampledPathways=cnn3d.numSubsPaths > 0,
-                                            listOfFilepathsToEachSubsampledChannelOfEachPatient=listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                                            
-                                            padInputImagesBool=padInputImagesBool,
-                                            cnnReceptiveField=cnn3d.recFieldCnn, # only used if padInputsBool
-                                            dimsOfPrimeSegmentRcz=dimsOfPrimeSegmentRcz, # only used if padInputsBool
-                                            
-                                            reflectImageWithHalfProb = reflectImageWithHalfProbDuringTraining
-                                        )
-            log.print3("DEBUG: Index of this case in the original user-defined list of subjects: " + str(randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu]))
-            log.print3("Images for subject loaded.")
+            args_sampling_job = (log,
+                                train_or_val,
+                                run_input_checks,
+                                cnn3d,
+                                samplingTypeInstance,
+                                listOfFilepathsToEachChannelOfEachPatient,
+                                listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
+                                providedRoiMaskBool,
+                                listOfFilepathsToRoiMaskOfEachPatient,
+                                providedWeightMapsToSampleForEachCategory,
+                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient,
+                                useSameSubChannelsAsSingleScale,
+                                listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                                # Pre-processing:
+                                padInputImagesBool,
+                                doIntAugm_shiftMuStd_multiMuStd,
+                                reflectImageWithHalfProbDuringTraining,
+                                
+                                index_for_vector_with_images_on_gpu,
+                                numOfSubjectsLoadingThisSubepochForSampling,
+                                randomIndicesList_for_gpu,
+                                arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject )
+
+            (channelsOfSegmentsFromThisCasePerPathway,
+            lblsOfPredictedPartOfSegmentsFromThisCase) = load_case_and_get_samples( *args_sampling_job )
             
-            dimensionsOfImageChannel = allChannelsOfPatientInNpArray[0].shape
-            finalWeightMapsToSampleFromPerCategoryForSubject = samplingTypeInstance.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
-                                                                                                    providedWeightMapsToSampleForEachCategory,
-                                                                                                    arrayWithWeightMapsWhereToSampleForEachCategory,
-                                                                                                    
-                                                                                                    True, #providedGtLabelsBool. True both for train and val.
-                                                                                                    gtLabelsImage,
-                                                                                                    
-                                                                                                    providedRoiMaskBool,
-                                                                                                    roiMask,
-                                                                                                    
-                                                                                                    dimensionsOfImageChannel)
-            #THE number of imageParts in memory per subepoch does not need to be constant. The batch_size does.
-            #But I could have less batches per subepoch if some images dont have lesions I guess. Anyway.
+            for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
+                channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channelsOfSegmentsFromThisCasePerPathway[pathway_i] # concat does not copy.
+            lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisCase # concat does not copy.
             
-            for cat_i in range(numberOfCategoriesToSample) :
-                catString = stringsPerCategoryToSample[cat_i]
-                numOfSegmsToExtractForThisCatFromThisSubject = arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i][index_for_vector_with_images_on_gpu]
-                finalWeightMapToSampleFromForThisCat = finalWeightMapsToSampleFromPerCategoryForSubject[cat_i]
-                
-                # Check if the weight map is fully-zeros. In this case, don't call the sampling function, just continue.
-                # Note that this way, the data loaded on GPU will not be as much as I initially wanted. Thus calculate number-of-batches from this actual number of extracted segments.
-                if np.sum(finalWeightMapToSampleFromForThisCat>0) == 0 :
-                    log.print3("WARN: The sampling mask/map was found just zeros! No [" + catString + "] image parts were sampled for this subject!")
-                    continue
-                
-                log.print3("From subject #"+str(index_for_vector_with_images_on_gpu)+", sampling that many segments of Category [" + catString + "] : " + str(numOfSegmsToExtractForThisCatFromThisSubject) )
-                imagePartsSampled = sampleImageParts(log = log,
-                                                    numOfSegmentsToExtractForThisSubject = numOfSegmsToExtractForThisCatFromThisSubject,
-                                                    dimsOfSegmentRcz = dimsOfPrimeSegmentRcz,
-                                                    dimensionsOfImageChannel = dimensionsOfImageChannel, #image dimensions for this subject. All images should have the same.
-                                                    weightMapToSampleFrom=finalWeightMapToSampleFromForThisCat)
-                log.print3("Finished sampling segments of Category [" + catString + "]. Number sampled: " + str( len(imagePartsSampled[0][0]) ) )
-                
-                # Use the just sampled coordinates of slices to actually extract the segments (data) from the subject's images. 
-                for image_part_i in range(len(imagePartsSampled[0][0])) :
-                    coordsOfCentralVoxelOfThisImPart = imagePartsSampled[0][:,image_part_i]
-                    #sliceCoordsOfThisImagePart = imagePartsSampled[1][:,image_part_i,:] #[0] is the central voxel coords.
-                    
-                    [ channelsForThisImagePartPerPathway,
-                    gtLabelsForTheCentralClassifiedPartOfThisImagePart # used to be gtLabelsForThisImagePart, before extracting only for the central voxels.
-                    ] = extractDataOfASegmentFromImagesUsingSampledSliceCoords(
-                                                                            train_or_val,
-                                                                            
-                                                                            cnn3d,
-                                                                            
-                                                                            coordsOfCentralVoxelOfThisImPart,
-                                                                            numOfInpChannelsForPrimaryPath,
-                                                                            
-                                                                            allChannelsOfPatientInNpArray,
-                                                                            allSubsampledChannelsOfPatientInNpArray,
-                                                                            gtLabelsImage,
-                                                                            
-                                                                            # Intensity Augmentation
-                                                                            doIntAugm_shiftMuStd_multiMuStd
-                                                                            )
-                    for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                        channelsOfSegmentsForSubepochListPerPathway[pathway_i].append(channelsForThisImagePartPerPathway[pathway_i])
-                    lblsForPredictedPartOfSegmentsForSubepochList.append(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
-                    
-            
-            # Done with case/subject. Segments have been sampled. Delete the volume arrays to release RAM.
-            del allChannelsOfPatientInNpArray; del gtLabelsImage; del roiMask
-            del arrayWithWeightMapsWhereToSampleForEachCategory; del allSubsampledChannelsOfPatientInNpArray; del tupleOfPaddingPerAxesLeftRight
             
         #I need to shuffle them, together imageParts and lesionParts!
         [channelsOfSegmentsForSubepochListPerPathway,
-        lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleTheSegmentsForThisSubepoch( channelsOfSegmentsForSubepochListPerPathway,
-                                                                                                    lblsForPredictedPartOfSegmentsForSubepochList )
+        lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleSegmentsOfThisSubepoch(channelsOfSegmentsForSubepochListPerPathway,
+                                                                                        lblsForPredictedPartOfSegmentsForSubepochList )
         
         end_getAllImageParts_time = time.clock()
         log.print3("TIMING: Extracting all the Segments for next " + training_or_validation_str + " took time: "+str(end_getAllImageParts_time-start_getAllImageParts_time)+"(s)")
@@ -217,6 +141,7 @@ def getSampledDataAndLabelsForSubepoch(log,
     
     return [channelsOfSegmentsForSubepochArrayPerPathway,
             lblsForPredictedPartOfSegmentsForSubepochArray ]
+    
     
     
 def get_random_ind_of_cases_to_train_subep(total_number_of_subjects, 
@@ -281,11 +206,151 @@ def getNumberOfSegmentsToExtractPerCategoryFromEachSubject( numberOfImagePartsTo
 
     
     
+def load_case_and_get_samples(log,
+                              train_or_val,
+                              run_input_checks,
+                              cnn3d,
+                              samplingTypeInstance,
+                              listOfFilepathsToEachChannelOfEachPatient,
+                              listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
+                              providedRoiMaskBool,
+                              listOfFilepathsToRoiMaskOfEachPatient,
+                              providedWeightMapsToSampleForEachCategory,
+                              forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient,
+                              useSameSubChannelsAsSingleScale,
+                              listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                              # Pre-processing:
+                              padInputImagesBool,
+                              doIntAugm_shiftMuStd_multiMuStd,
+                              reflectImageWithHalfProbDuringTraining,
+                              
+                              index_for_vector_with_images_on_gpu,
+                              numOfSubjectsLoadingThisSubepochForSampling,
+                              randomIndicesList_for_gpu,
+                              arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject
+                              ):
+    # returns: ( channelsOfSegmentsFromThisCasePerPathway, lblsOfPredictedPartOfSegmentsFromThisCase )
+    
+    log.print3("SAMPLING: Going to load the images and extract segments from the subject #" + str(index_for_vector_with_images_on_gpu + 1) + "/" +str(numOfSubjectsLoadingThisSubepochForSampling))
+    
+    # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
+    channelsOfSegmentsFromThisCasePerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
+    lblsOfPredictedPartOfSegmentsFromThisCase = [] # Labels only for the central/predicted part of segments.
+    
+    dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput(train_or_val)[2:]
+    numOfInpChannelsForPrimaryPath = len(listOfFilepathsToEachChannelOfEachPatient[0])
+    
+    [allChannelsOfPatientInNpArray, # nparray(channels,dim0,dim1,dim2)
+    gtLabelsImage,
+    roiMask,
+    arrayWithWeightMapsWhereToSampleForEachCategory, #can be returned "placeholderNothing" if it's testing phase or not "provided weighted maps". In this case, I will sample from GT/ROI.
+    allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
+    tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
+    ] = load_imgs_of_single_case(
+                                log,
+                                train_or_val,
+                                run_input_checks,
+                                randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu],
+                                
+                                listOfFilepathsToEachChannelOfEachPatient,
+                                
+                                providedGtLabelsBool=True, # If this getTheArr function is called (training), gtLabels should already been provided.
+                                listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal, 
+                                num_classes = cnn3d.num_classes,
+                                
+                                providedWeightMapsToSampleForEachCategory = providedWeightMapsToSampleForEachCategory, # If true, must provide all. Placeholder in testing.
+                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
+                                
+                                providedRoiMaskBool = providedRoiMaskBool,
+                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient,
+                                
+                                useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
+                                
+                                usingSubsampledPathways=cnn3d.numSubsPaths > 0,
+                                listOfFilepathsToEachSubsampledChannelOfEachPatient=listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                                
+                                padInputImagesBool=padInputImagesBool,
+                                cnnReceptiveField=cnn3d.recFieldCnn, # only used if padInputsBool
+                                dimsOfPrimeSegmentRcz=dimsOfPrimeSegmentRcz, # only used if padInputsBool
+                                
+                                reflectImageWithHalfProb = reflectImageWithHalfProbDuringTraining
+                                )
+    log.print3("DEBUG: Index of this case in the original user-defined list of subjects: " + str(randomIndicesList_for_gpu[index_for_vector_with_images_on_gpu]))
+    log.print3("Images for subject loaded.")
+    
+    dimensionsOfImageChannel = allChannelsOfPatientInNpArray[0].shape
+    finalWeightMapsToSampleFromPerCategoryForSubject = samplingTypeInstance.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
+                                                                                            providedWeightMapsToSampleForEachCategory,
+                                                                                            arrayWithWeightMapsWhereToSampleForEachCategory,
+                                                                                            
+                                                                                            True, #providedGtLabelsBool. True both for train and val.
+                                                                                            gtLabelsImage,
+                                                                                            
+                                                                                            providedRoiMaskBool,
+                                                                                            roiMask,
+                                                                                            
+                                                                                            dimensionsOfImageChannel)
+    #THE number of imageParts in memory per subepoch does not need to be constant. The batch_size does.
+    #But I could have less batches per subepoch if some images dont have lesions I guess. Anyway.
+    
+    for cat_i in range( samplingTypeInstance.getNumberOfCategoriesToSample() ) :
+        catString = samplingTypeInstance.getStringsPerCategoryToSample()[cat_i]
+        numOfSegmsToExtractForThisCatFromThisSubject = arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i][index_for_vector_with_images_on_gpu]
+        finalWeightMapToSampleFromForThisCat = finalWeightMapsToSampleFromPerCategoryForSubject[cat_i]
+        
+        # Check if the weight map is fully-zeros. In this case, don't call the sampling function, just continue.
+        # Note that this way, the data loaded on GPU will not be as much as I initially wanted. Thus calculate number-of-batches from this actual number of extracted segments.
+        if np.sum(finalWeightMapToSampleFromForThisCat>0) == 0 :
+            log.print3("WARN: The sampling mask/map was found just zeros! No [" + catString + "] image parts were sampled for this subject!")
+            continue
+        
+        log.print3("From subject #"+str(index_for_vector_with_images_on_gpu)+", sampling that many segments of Category [" + catString + "] : " + str(numOfSegmsToExtractForThisCatFromThisSubject) )
+        imagePartsSampled = sampleImageParts(log = log,
+                                            numOfSegmentsToExtractForThisSubject = numOfSegmsToExtractForThisCatFromThisSubject,
+                                            dimsOfSegmentRcz = dimsOfPrimeSegmentRcz,
+                                            dimensionsOfImageChannel = dimensionsOfImageChannel, #image dimensions for this subject. All images should have the same.
+                                            weightMapToSampleFrom=finalWeightMapToSampleFromForThisCat)
+        log.print3("Finished sampling segments of Category [" + catString + "]. Number sampled: " + str( len(imagePartsSampled[0][0]) ) )
+        
+        # Use the just sampled coordinates of slices to actually extract the segments (data) from the subject's images. 
+        for image_part_i in range(len(imagePartsSampled[0][0])) :
+            coordsOfCentralVoxelOfThisImPart = imagePartsSampled[0][:,image_part_i]
+            #sliceCoordsOfThisImagePart = imagePartsSampled[1][:,image_part_i,:] #[0] is the central voxel coords.
+            
+            [ channelsForThisImagePartPerPathway,
+            gtLabelsForTheCentralClassifiedPartOfThisImagePart # used to be gtLabelsForThisImagePart, before extracting only for the central voxels.
+            ] = extractDataOfASegmentFromImagesUsingSampledSliceCoords(
+                                                                    train_or_val,
+                                                                    
+                                                                    cnn3d,
+                                                                    
+                                                                    coordsOfCentralVoxelOfThisImPart,
+                                                                    numOfInpChannelsForPrimaryPath,
+                                                                    
+                                                                    allChannelsOfPatientInNpArray,
+                                                                    allSubsampledChannelsOfPatientInNpArray,
+                                                                    gtLabelsImage,
+                                                                    
+                                                                    # Intensity Augmentation
+                                                                    doIntAugm_shiftMuStd_multiMuStd
+                                                                    )
+            for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
+                channelsOfSegmentsFromThisCasePerPathway[pathway_i].append(channelsForThisImagePartPerPathway[pathway_i])
+            lblsOfPredictedPartOfSegmentsFromThisCase.append(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
+            
+    # Done with case/subject. Segments have been sampled. Delete the volume arrays to release RAM. (THIS IS LIKELY REDUNDANT. FUNCTION EXITS.)
+    del allChannelsOfPatientInNpArray; del gtLabelsImage; del roiMask
+    del arrayWithWeightMapsWhereToSampleForEachCategory; del allSubsampledChannelsOfPatientInNpArray; del tupleOfPaddingPerAxesLeftRight
+    
+    return (channelsOfSegmentsFromThisCasePerPathway, lblsOfPredictedPartOfSegmentsFromThisCase)
+
+
+
 # roi_mask_filename and roiMinusLesion_mask_filename can be passed "no". In this case, the corresponding return result is nothing.
 # This is so because: the do_training() function only needs the roiMinusLesion_mask, whereas the do_testing() only needs the roi_mask.        
 def load_imgs_of_single_case(log,
                              train_val_or_test,
-                             
+                             run_input_checks,
                              index_of_wanted_image, #THIS IS THE CASE's index!
                              
                              listOfFilepathsToEachChannelOfEachPatient,
@@ -362,7 +427,6 @@ def load_imgs_of_single_case(log,
             allChannelsOfPatientInNpArray[channel_i] = -4.0
             
         
-            
     #Load the class labels.
     if providedGtLabelsBool : #For training (exact target labels) or validation on samples labels.
         fullFilenamePathOfGtLabels = listOfFilepathsToGtLabelsOfEachPatient[index_of_wanted_image]
@@ -371,7 +435,9 @@ def load_imgs_of_single_case(log,
         if imageGtLabels.dtype.kind not in ['i','u']:
             log.print3("WARN: GT labels were found of dtype=["+str(imageGtLabels.dtype)+"]. Rounding and casting them to int!")
             imageGtLabels = np.rint(imageGtLabels).astype("int32")
-        check_gt_vs_num_classes(log, imageGtLabels, num_classes)
+            
+        if run_input_checks:
+            check_gt_vs_num_classes(log, imageGtLabels, num_classes)
         
         imageGtLabels = reflectImageArrayIfNeeded(reflectFlags, imageGtLabels) #reflect if flag ==1 .
         
@@ -604,8 +670,8 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
 
 
 
-def shuffleTheSegmentsForThisSubepoch(  channelsOfSegmentsForSubepochListPerPathway,
-                                        lblsForPredictedPartOfSegmentsForSubepochList ) :
+def shuffleSegmentsOfThisSubepoch(  channelsOfSegmentsForSubepochListPerPathway,
+                                    lblsForPredictedPartOfSegmentsForSubepochList ) :
     numOfPathwayWithInput = len(channelsOfSegmentsForSubepochListPerPathway)
     inputToZip = [ sublistForPathway for sublistForPathway in channelsOfSegmentsForSubepochListPerPathway ]
     inputToZip += [ lblsForPredictedPartOfSegmentsForSubepochList ]
@@ -625,16 +691,12 @@ def shuffleTheSegmentsForThisSubepoch(  channelsOfSegmentsForSubepochListPerPath
 # This is used in training/val only.
 def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                         train_or_val,
-                                                        
                                                         cnn3d,
-                                                        
                                                         coordsOfCentralVoxelOfThisImPart,
                                                         numOfInpChannelsForPrimaryPath,
-                                                        
                                                         allChannelsOfPatientInNpArray,
                                                         allSubsampledChannelsOfPatientInNpArray,
                                                         gtLabelsImage,
-                                                        
                                                         # Intensity Augmentation
                                                         doIntAugm_shiftMuStd_multiMuStd
                                                         ) :
@@ -717,7 +779,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                                         leftBoundaryRcz[1] : rightBoundaryRcz[1],
                                                                         leftBoundaryRcz[2] : rightBoundaryRcz[2] ]
     
-    # Make COPIES of the segents, instead of having a VIEW (slice) of them. This is so that the the whole volume are afterwards released from RAM.
+    # Make COPIES of the segments, instead of having a VIEW (slice) of them. This is so that the the whole volume are afterwards released from RAM.
     channelsForThisImagePartPerPathway = [ [ np.copy( channel ) for channel in path ] for path in channelsForThisImagePartPerPathway  ]
     gtLabelsForTheCentralClassifiedPartOfThisImagePart = np.copy(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
     return [ channelsForThisImagePartPerPathway, gtLabelsForTheCentralClassifiedPartOfThisImagePart ]
@@ -838,7 +900,6 @@ def extractDataOfSegmentsUsingSampledSliceCoords(cnn3d,
 ###########################################
 
 def check_gt_vs_num_classes(log, img_gt, num_classes):
-    if not Checks.run_input_checks : return
     max_in_gt = np.max(img_gt)
     if np.max(img_gt) > num_classes-1 : # num_classes includes background=0
         message = "ERROR:\t GT labels included a label value ["+str(max_in_gt)+"] that is greater than what the cnn expects."+\

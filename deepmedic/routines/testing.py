@@ -110,7 +110,7 @@ def inferenceWholeVolumes(  sessionTf,
         ] = load_imgs_of_single_case(
                                     log,
                                     "test",
-                                    
+                                    False, # run_input_checks.
                                     image_i,
                                     
                                     listOfFilepathsToEachChannelOfEachPatient,

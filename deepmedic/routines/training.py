@@ -181,42 +181,44 @@ def do_training(sessionTf,
     # This created problems in the GPU when cnmem is used. Not sure this is needed with Tensorflow. Probably.
     cnn3dWrapper = CnnWrapperForSampling(cnn3d)
     
-    tupleWithArgsForTraining = (    log,
-                                    "train",
-                                    run_input_checks,
-                                    cnn3dWrapper,
-                                    maxNumSubjectsLoadedPerSubepoch,
-                                    imagePartsLoadedInGpuPerSubepoch,
-                                    samplingTypeInstanceTraining,
-                                    listOfFilepathsToEachChannelOfEachPatientTraining,
-                                    listOfFilepathsToGtLabelsOfEachPatientTraining,
-                                    providedRoiMaskForTrainingBool,
-                                    listOfFilepathsToRoiMaskOfEachPatientTraining,
-                                    providedWeightMapsToSampleForEachCategoryTraining,
-                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
-                                    useSameSubChannelsAsSingleScale,
-                                    listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
-                                    padInputImagesBool,
-                                    doIntAugm_shiftMuStd_multiMuStd,
-                                    reflectImageWithHalfProbDuringTraining )
-    tupleWithArgsForValidation = (  log,
-                                    "val",
-                                    run_input_checks,
-                                    cnn3dWrapper,
-                                    maxNumSubjectsLoadedPerSubepoch,
-                                    imagePartsLoadedInGpuPerSubepochValidation,
-                                    samplingTypeInstanceValidation,
-                                    listOfFilepathsToEachChannelOfEachPatientValidation,
-                                    listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
-                                    providedRoiMaskForValidationBool,
-                                    listOfFilepathsToRoiMaskOfEachPatientValidation,
-                                    providedWeightMapsToSampleForEachCategoryValidation,
-                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
-                                    useSameSubChannelsAsSingleScale,
-                                    listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
-                                    padInputImagesBool,
-                                    [False,[],[]], #don't perform intensity-augmentation during validation.
-                                    [0,0,0] ) #don't perform reflection-augmentation during validation.
+    args_for_sampling_train = ( log,
+                                "train",
+                                num_parallel_proc_sampling,
+                                run_input_checks,
+                                cnn3dWrapper,
+                                maxNumSubjectsLoadedPerSubepoch,
+                                imagePartsLoadedInGpuPerSubepoch,
+                                samplingTypeInstanceTraining,
+                                listOfFilepathsToEachChannelOfEachPatientTraining,
+                                listOfFilepathsToGtLabelsOfEachPatientTraining,
+                                providedRoiMaskForTrainingBool,
+                                listOfFilepathsToRoiMaskOfEachPatientTraining,
+                                providedWeightMapsToSampleForEachCategoryTraining,
+                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+                                useSameSubChannelsAsSingleScale,
+                                listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
+                                padInputImagesBool,
+                                doIntAugm_shiftMuStd_multiMuStd,
+                                reflectImageWithHalfProbDuringTraining )
+    args_for_sampling_val = (   log,
+                                "val",
+                                num_parallel_proc_sampling,
+                                run_input_checks,
+                                cnn3dWrapper,
+                                maxNumSubjectsLoadedPerSubepoch,
+                                imagePartsLoadedInGpuPerSubepochValidation,
+                                samplingTypeInstanceValidation,
+                                listOfFilepathsToEachChannelOfEachPatientValidation,
+                                listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
+                                providedRoiMaskForValidationBool,
+                                listOfFilepathsToRoiMaskOfEachPatientValidation,
+                                providedWeightMapsToSampleForEachCategoryValidation,
+                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientValidation,
+                                useSameSubChannelsAsSingleScale,
+                                listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
+                                padInputImagesBool,
+                                [False,[],[]], #don't perform intensity-augmentation during validation.
+                                [0,0,0] ) #don't perform reflection-augmentation during validation.
     
     use_parallelism = num_parallel_proc_sampling > -1
     sampling_job_submitted_train = False
@@ -252,7 +254,7 @@ def do_training(sessionTf,
                 if val_on_samples_during_train :
                     if not sampling_job_submitted_val :
                         [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = getSampledDataAndLabelsForSubepoch( *tupleWithArgsForValidation )
+                        labelsForCentralOfSegmentsForSubepVal] = getSampledDataAndLabelsForSubepoch( *args_for_sampling_val )
                     else : #It was done in parallel with the training of the previous epoch, just grab the results.
                         [channsOfSegmentsForSubepPerPathwayVal,
                         labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of worker_pool.join()
@@ -261,7 +263,7 @@ def do_training(sessionTf,
                     #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
                     if use_parallelism:
                         log.print3("[PARALLEL]: Before Validation in subepoch #" +str(subepoch) + ", the job for extracting Segments for next Training is submitted.")
-                        parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
+                        parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
                         sampling_job_submitted_train = True
                     
                     #------------------------------------DO VALIDATION--------------------------------
@@ -285,7 +287,7 @@ def do_training(sessionTf,
                 #-------------------------GET DATA FOR THIS SUBEPOCH's TRAINING---------------------------------
                 if not sampling_job_submitted_train :
                     [channsOfSegmentsForSubepPerPathwayTrain,
-                    labelsForCentralOfSegmentsForSubepTrain] = getSampledDataAndLabelsForSubepoch( *tupleWithArgsForTraining )
+                    labelsForCentralOfSegmentsForSubepTrain] = getSampledDataAndLabelsForSubepoch( *args_for_sampling_train )
                 else : #It was done in parallel with the validation (or previous training, if I am not performing validation).
                     [channsOfSegmentsForSubepPerPathwayTrain,
                     labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining.get()
@@ -294,11 +296,11 @@ def do_training(sessionTf,
                 #------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
                 if use_parallelism and not val_on_whole_volumes_this_epoch and val_on_samples_during_train :
                     log.print3("[PARALLEL]: Before Training in subepoch #" +str(subepoch) + ", submitting the job for extracting Segments for the next Validation.")
-                    parallelJobToGetDataForNextValidation = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForValidation)
+                    parallelJobToGetDataForNextValidation = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_val)
                     sampling_job_submitted_val = True
                 elif use_parallelism and not val_on_whole_volumes_this_epoch : # and not val_on_samples_during_train, extract training samples.
                     log.print3("[PARALLEL]: Before Training in subepoch #" +str(subepoch) + ", submitting the job for extracting Segments for the next Training.")
-                    parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
+                    parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
                     sampling_job_submitted_train = True
                 
                 #-------------------------------START TRAINING IN BATCHES------------------------------
