@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 import sys
 import time
-from multiprocessing.pool import ThreadPool, Pool
+from multiprocessing.pool import ThreadPool
 import traceback
 
 import numpy as np
@@ -163,8 +163,8 @@ def do_training(sessionTf,
                 listOfFilepathsToEachSubsampledChannelOfEachPatientValidation, # deprecated, not supported
                 
                 # Validation
-                performFullInferenceOnValidationImagesEveryFewEpochsBool,
-                everyThatManyEpochsComputeDiceOnTheFullValidationImages,
+                validate_on_whole_volumes,
+                num_epochs_between_val_on_whole_volumes,
                 
                 #--------For FM visualisation---------
                 saveIndividualFmImagesForVisualisation,
@@ -199,8 +199,7 @@ def do_training(sessionTf,
                                     listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
                                     padInputImagesBool,
                                     doIntAugm_shiftMuStd_multiMuStd,
-                                    reflectImageWithHalfProbDuringTraining
-                                    )
+                                    reflectImageWithHalfProbDuringTraining )
     tupleWithArgsForValidation = (  log,
                                     "val",
                                     run_input_checks,
@@ -218,12 +217,12 @@ def do_training(sessionTf,
                                     listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
                                     padInputImagesBool,
                                     [False,[],[]], #don't perform intensity-augmentation during validation.
-                                    [0,0,0] #don't perform reflection-augmentation during validation.
-                                    )
+                                    [0,0,0] ) #don't perform reflection-augmentation during validation.
+    
     boolItIsTheVeryFirstSubepochOfThisProcess = True #to know so that in the very first I sequentially load the data for it.
     
     # For parallel extraction of samples for next train/val while processing previous iteration.
-    threadPool = ThreadPool(processes=1) # Or multiprocessing.Pool.Pool(...), same API.
+    workerPool = ThreadPool(processes=1) # Or multiprocessing.Pool.Pool(...), same API.
     
     try:
         model_num_epochs_trained = trainer.get_num_epochs_trained_tfv().eval(session=sessionTf)
@@ -234,6 +233,11 @@ def do_training(sessionTf,
             validationAccuracyMonitorForEpoch = None if not performValidationOnSamplesDuringTrainingProcessBool else \
                                             AccuracyOfEpochMonitorSegmentation(log, 1, model_num_epochs_trained, cnn3d.num_classes, number_of_subepochs ) 
                                             
+            validate_on_whole_volumes_this_epoch = False
+            if validate_on_whole_volumes and (model_num_epochs_trained+1) % num_epochs_between_val_on_whole_volumes == 0:
+                validate_on_whole_volumes_this_epoch = True
+                
+                
             log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             log.print3("~~~~~~~~~~~~~~~~~~~~Starting new Epoch! Epoch #"+str(epoch)+"/"+str(n_epochs)+" ~~~~~~~~~~~~~~~~~~~~~~~~~")
             log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -252,29 +256,26 @@ def do_training(sessionTf,
                         boolItIsTheVeryFirstSubepochOfThisProcess = False
                     else : #It was done in parallel with the training of the previous epoch, just grab the results.
                         [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of threadpool.join()
+                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of workerPool.join()
                         
                     #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
                     log.print3("PARALLEL: Before Validation in subepoch #" +str(subepoch) + ", the parallel job for extracting Segments for the next Training is submitted.")
-                    parallelJobToGetDataForNextTraining = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, # func to execute.
-                                                                            tupleWithArgsForTraining) # tuble with args for func
+                    parallelJobToGetDataForNextTraining = workerPool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
                     
                     #------------------------------------DO VALIDATION--------------------------------
                     log.print3("-V-V-V-V-V- Now Validating for this subepoch before commencing the training iterations... -V-V-V-V-V-")
                     start_validationForSubepoch_time = time.time()
                     # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
                     numberOfBatchesValidation = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3d.batchSize["val"]
-                    
                     trainOrValidateForSubepoch( log,
                                                 sessionTf,
                                                 "val",
-                                                numberOfBatchesValidation, # Computed by the number of extracted samples. So, adapts.
+                                                numberOfBatchesValidation,
                                                 cnn3d,
                                                 subepoch,
                                                 validationAccuracyMonitorForEpoch,
                                                 channsOfSegmentsForSubepPerPathwayVal,
                                                 labelsForCentralOfSegmentsForSubepVal)
-                    
                     end_validationForSubepoch_time = time.time()
                     log.print3("TIMING: Validating on the batches of this subepoch #"+str(subepoch)+" took time: "+\
                                str(end_validationForSubepoch_time-start_validationForSubepoch_time)+"(s)")
@@ -284,28 +285,23 @@ def do_training(sessionTf,
                     [channsOfSegmentsForSubepPerPathwayTrain,
                     labelsForCentralOfSegmentsForSubepTrain] = getSampledDataAndLabelsForSubepoch( *tupleWithArgsForTraining )
                     boolItIsTheVeryFirstSubepochOfThisProcess = False
-                else :
-                    #It was done in parallel with the validation (or with previous training iteration, in case I am not performing validation).
+                else : #It was done in parallel with the validation (or previous training, if I am not performing validation).
                     [channsOfSegmentsForSubepPerPathwayTrain,
-                    labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining.get() # From parallel process/thread.
+                    labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining.get()
                 
                 #------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
                 if performValidationOnSamplesDuringTrainingProcessBool :
-                    #submit the parallel job
                     log.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Validation.")
-                    parallelJobToGetDataForNextValidation = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
-                                                                                tupleWithArgsForValidation) #tuple with the arguments required
-                else : #extract in parallel the samples for the next subepoch's training.
+                    parallelJobToGetDataForNextValidation = workerPool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForValidation)
+                else :
                     log.print3("PARALLEL: Before Training in subepoch #" +str(subepoch) + ", submitting the parallel job for extracting Segments for the next Training.")
-                    parallelJobToGetDataForNextTraining = threadPool.apply_async(getSampledDataAndLabelsForSubepoch, #local function to call and execute in parallel.
-                                                                                tupleWithArgsForTraining) #tuple with the arguments required
+                    parallelJobToGetDataForNextTraining = workerPool.apply_async(getSampledDataAndLabelsForSubepoch, tupleWithArgsForTraining)
                     
                 #-------------------------------START TRAINING IN BATCHES------------------------------
                 log.print3("-T-T-T-T-T- Now Training for this subepoch... This may take a few minutes... -T-T-T-T-T-")
                 start_trainingForSubepoch_time = time.time()
                 # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
                 numberOfBatchesTraining = len(channsOfSegmentsForSubepPerPathwayTrain[0]) // cnn3d.batchSize["train"]
-                
                 trainOrValidateForSubepoch( log,
                                             sessionTf,
                                             "train",
@@ -332,7 +328,6 @@ def do_training(sessionTf,
             model_num_epochs_trained = trainer.get_num_epochs_trained_tfv().eval(session=sessionTf)
             
             del trainingAccuracyMonitorForEpoch; del validationAccuracyMonitorForEpoch;
-            #================== Everything for epoch has finished. =======================
             
             log.print3("SAVING: Epoch #"+str(epoch)+" finished. Saving CNN model.")
             filename_to_save_with = fileToSaveTrainedCnnModelTo + "." + datetimeNowAsStr()
@@ -343,11 +338,11 @@ def do_training(sessionTf,
             log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             
             
-            if performFullInferenceOnValidationImagesEveryFewEpochsBool and (model_num_epochs_trained != 0) \
-                    and (model_num_epochs_trained % everyThatManyEpochsComputeDiceOnTheFullValidationImages == 0):
+            if validate_on_whole_volumes_this_epoch:
                 log.print3("***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #"+str(epoch)+"...***")
                 
-                res_code = inferenceWholeVolumes(sessionTf,
+                res_code = inferenceWholeVolumes(
+                                sessionTf,
                                 cnn3d,
                                 log,
                                 "val",
@@ -380,13 +375,13 @@ def do_training(sessionTf,
         log.print3("")
         log.print3("ERROR: Caught exception in do_training(...): " + str(e))
         log.print3( traceback.format_exc() )
-        threadPool.terminate() # Will wait. A KeybInt will kill this (py3)
-        threadPool.join()
+        workerPool.terminate() # Will wait. A KeybInt will kill this (py3)
+        workerPool.join()
         return 1
     else:
         log.print3("Closing multiprocess pool.")
-        threadPool.close()
-        threadPool.join()
+        workerPool.close()
+        workerPool.join()
     
     # Save the final trained model.
     filename_to_save_with = fileToSaveTrainedCnnModelTo + ".final." + datetimeNowAsStr()
