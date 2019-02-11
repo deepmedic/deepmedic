@@ -8,6 +8,7 @@
 from __future__ import absolute_import, print_function, division
 
 import os
+import sys
 import time
 import numpy as np
 import math
@@ -141,7 +142,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                 lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisSubj # concat does not copy.
                 
             worker_pool.close()
-            
+            worker_pool.join()
             
             
         #I need to shuffle them, together imageParts and lesionParts!
@@ -157,18 +158,30 @@ def getSampledDataAndLabelsForSubepoch(log,
         channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channelsOfSegmentsForSubepochListPerPathway ]
         lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lblsForPredictedPartOfSegmentsForSubepochList, dtype="int32") # Could be int16 to save RAM?
     
-    except (Exception, KeyboardInterrupt, OSError) as e:
-        log.print3(id_str+"\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(...): "+str(e)+"\n")
+    except (Exception, KeyboardInterrupt) as e:
+        log.print3(id_str+"\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): "+str(e)+"\n")
         log.print3( traceback.format_exc() )
+        if worker_pool is not None:
+            worker_pool.terminate()
+            worker_pool.join() # Will wait. A KeybInt will kill this (py3)
         raise e
-    
+    except: # Catches everything, even a sys.exit(1) exception.
+        log.print3(id_str+"\n\n ERROR: Unexpected error in getSampledDataAndLabelsForSubepoch(). System info: ", sys.exc_info()[0])
+        if worker_pool is not None:
+            worker_pool.terminate()
+            worker_pool.join()
+        raise Exception("Unexpected error.")
+        
     return [channelsOfSegmentsForSubepochArrayPerPathway,
             lblsForPredictedPartOfSegmentsForSubepochArray]
+    
+    
     
 def init_sampling_proc():
     # This will make child-processes ignore the KeyboardInterupt (sigInt). Parent will handle it.
     # See: http://stackoverflow.com/questions/11312525/catch-ctrlc-sigint-and-exit-multiprocesses-gracefully-in-python/35134329#35134329 
     signal.signal(signal.SIGINT, signal.SIG_IGN) 
+
 
     
 def get_random_subjects_to_train_subep( total_number_of_subjects, 

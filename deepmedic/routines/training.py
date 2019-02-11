@@ -226,7 +226,8 @@ def do_training(sessionTf,
     sampling_job_submitted_train = False
     sampling_job_submitted_val = False
     # For parallel extraction of samples for next train/val while processing previous iteration.
-    worker_pool = ThreadPool(processes=1) # Or multiprocessing.Pool.Pool(...), same API.
+    if use_parallelism:
+        thread_pool = ThreadPool(processes=1) # Or multiprocessing.Pool(...), same API.
     
     try:
         model_num_epochs_trained = trainer.get_num_epochs_trained_tfv().eval(session=sessionTf)
@@ -259,13 +260,13 @@ def do_training(sessionTf,
                         labelsForCentralOfSegmentsForSubepVal] = getSampledDataAndLabelsForSubepoch( *args_for_sampling_val )
                     else : #It was done in parallel with the training of the previous epoch, just grab the results.
                         [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of worker_pool.join()
+                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get() # instead of thread_pool.join()
                         sampling_job_submitted_val = False
                     
                     #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
                     if use_parallelism:
                         log.print3(id_str+" THREADING: Before Validation in subepoch #"+str(subepoch)+", submitting sampling job for next [TRAINING].")
-                        parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
+                        parallelJobToGetDataForNextTraining = thread_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
                         sampling_job_submitted_train = True
                     
                     #------------------------------------DO VALIDATION--------------------------------
@@ -297,11 +298,11 @@ def do_training(sessionTf,
                 #------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
                 if use_parallelism and not val_on_whole_volumes_this_epoch and val_on_samples_during_train :
                     log.print3(id_str+" THREADING: Before Training in subepoch #"+str(subepoch)+", submitting sampling job for next [VALIDATION].")
-                    parallelJobToGetDataForNextValidation = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_val)
+                    parallelJobToGetDataForNextValidation = thread_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_val)
                     sampling_job_submitted_val = True
                 elif use_parallelism and not val_on_whole_volumes_this_epoch : # and not val_on_samples_during_train, extract training samples.
                     log.print3(id_str+" THREADING: Before Training in subepoch #"+str(subepoch)+", submitting sampling job for next [TRAINING].")
-                    parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
+                    parallelJobToGetDataForNextTraining = thread_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
                     sampling_job_submitted_train = True
                 
                 #-------------------------------START TRAINING IN BATCHES------------------------------
@@ -378,16 +379,18 @@ def do_training(sessionTf,
         log.print3("TIMING: Training process lasted: {0:.1f}".format(end_time_train-start_time_train)+" secs.")
         
     except (Exception, KeyboardInterrupt) as e:
-        log.print3("\n\n ERROR: Caught exception in do_training(...): " + str(e) + "\n")
+        log.print3("\n\n ERROR: Caught exception in do_training(): " + str(e) + "\n")
         log.print3( traceback.format_exc() )
-        log.print3("Terminating worker pool.")
-        worker_pool.terminate() # Will wait. A KeybInt will kill this (py3)
-        worker_pool.join()
+        if use_parallelism:
+            log.print3("Terminating worker pool.")
+            thread_pool.terminate()
+            thread_pool.join() # Will wait. A KeybInt will kill this (py3)
         return 1
     else:
-        log.print3("Closing worker pool.")
-        worker_pool.close()
-        worker_pool.join() # Probably not needed. get() does the job.
+        if use_parallelism:
+            log.print3("Closing worker pool.")
+            thread_pool.close()
+            thread_pool.join()
     
     # Save the final trained model.
     filename_to_save_with = fileToSaveTrainedCnnModelTo + ".final." + datetimeNowAsStr()
