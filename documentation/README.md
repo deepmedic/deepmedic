@@ -3,6 +3,11 @@ DeepMedic
 
 ### News
 
+11 Feb 2019 (v0.7.1):
+* Multiprocessing changed from pp to python's builtin module.
+* Updated default config with non normalized momentum.
+* Code for sampling partial cleanup.
+
 27 June 2018 (v0.7.0):
 * Back end changed to TensorFlow.
 * API/command line options changed slightly. Documentation updated accordingly.
@@ -91,7 +96,7 @@ After cloning it, all dependencies can be installed as described below.
 If you do not have sudo/root privileges on a system, we suggest you install using a virtual environment.
 From a *bash* shell, create a virtual environment in a folder that you wish:
 ```cshell
-virtualenv -p python2 FOLDER_FOR_ENVS/ve_tf_dmtf     # or python3 
+virtualenv -p python3 FOLDER_FOR_ENVS/ve_tf_dmtf     # or python2
 source FOLDER_FOR_ENVS/ve_tf_dmtf/bin/activate       # If using csh, source ve_tf_dmtf/bin/activate.csh
 ```
 Then continue with the steps below.
@@ -107,7 +112,7 @@ $ pip install --upgrade tensorflow-gpu               # or plain tensorflow, if y
 If the above fails, eg giving a `Could not find version that satisfies requirement tensorflow`, see the appropriate documentation for MacOS of TF in the above link.
 Something I've found working on Macs is installing TF with the following:
 ```
-pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py2-none-any.whl # adapt py2 to py3, or version of TF as required.
+pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py3-none-any.whl # adapt py3 to py2, or version of TF as required.
 ```
 
 **Install DeepMedic** and rest of its dependencies:
@@ -127,7 +132,7 @@ ublas.so** libraries, which need to be visible in the environment’s.
 Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example in a *bash* shell:
 
 ```cshell
-$ export CUDA_HOME=/path/to/cuda                   # If using cshell instead of bash: setenv CUDA_HOME /path/to/cuda   
+$ export CUDA_HOME=/path/to/cuda                   # If using cshell instead of bash: setenv CUDA_HOME /path/to/cuda
 $ export LD_LIBRARY_PATH=/path/to/cuda/lib64
 $ export PATH=/path/to/cuda/bin:$PATH
 ```
@@ -364,6 +369,7 @@ Common practice with neural networks is to take a network pre-trained on one tas
 - numberOfSubepochs: Number of subepochs to run per epoch
 - numOfCasesLoadedPerSubepoch: At each subepoch, the images from maximum that many cases are loaded to extract training samples. This is done to allow training on databases that may have hundreds or thousands of images, and loading them all for sample-extraction would be just too expensive.
 - numberTrainingSegmentsLoadedOnGpuPerSubep: At every subepoch, we extract in total this many segments, which are loaded on the GPU in order to perform the optimization steps. Number of optimization steps per subepoch is this number divided by the batch-size-training (see model-config). The more segments, the more GPU memory and computation required.
+- num_processes_sampling: Samples needed for next validation/train can be extracted in parallel while performing current train/validation on GPU. Specify number of parallel sampling processes.
 
 *Learning Rate Schedule:*
 
