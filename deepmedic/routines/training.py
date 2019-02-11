@@ -7,6 +7,7 @@
 
 from __future__ import absolute_import, print_function, division
 
+import os
 import sys
 import time
 from multiprocessing.pool import ThreadPool
@@ -141,7 +142,7 @@ def do_training(sessionTf,
                 
                 n_epochs, # Every epoch the CNN model is saved.
                 number_of_subepochs, # per epoch. Every subepoch Accuracy is reported
-                maxNumSubjectsLoadedPerSubepoch,  # Max num of cases loaded every subepoch for segments extraction.
+                maxNumSubjectsLoadedPerSubepoch,  # Max num of subjects loaded every subepoch for segments extraction.
                 imagePartsLoadedInGpuPerSubepoch,
                 imagePartsLoadedInGpuPerSubepochValidation,
                 num_parallel_proc_sampling, # -1: seq. 0: thread for sampling. >0: multiprocess sampling
@@ -175,7 +176,8 @@ def do_training(sessionTf,
                 run_input_checks
                 ):
     
-    start_training_time = time.time()
+    id_str = "[MAIN|PID:"+str(os.getpid())+"]"
+    start_time_train = time.time()
     
     # I cannot pass cnn3d to the sampling function, because the pp module used to reload theano. 
     # This created problems in the GPU when cnmem is used. Not sure this is needed with Tensorflow. Probably.
@@ -240,15 +242,15 @@ def do_training(sessionTf,
                 val_on_whole_volumes_this_epoch = True
                 
                 
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            log.print3("~~~~~~~~~~~~~~~~~~~~Starting new Epoch! Epoch #"+str(epoch)+"/"+str(n_epochs)+" ~~~~~~~~~~~~~~~~~~~~~~~~~")
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            start_epoch_time = time.time()
+            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            log.print3("~~~~~~~~~~~~~ Starting new Epoch! Epoch #"+str(epoch)+"/"+str(n_epochs)+" ~~~~~~~~~~~~~")
+            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            start_time_ep = time.time()
             
             for subepoch in range(number_of_subepochs):
-                log.print3("**************************************************************************************************")
-                log.print3("************* Starting new Subepoch: #"+str(subepoch)+"/"+str(number_of_subepochs)+" *************")
-                log.print3("**************************************************************************************************")
+                log.print3("***************************************************************************************")
+                log.print3("******* Starting new Subepoch: #"+str(subepoch)+"/"+str(number_of_subepochs)+" ********")
+                log.print3("***************************************************************************************")
                 
                 #-------------------------GET DATA FOR THIS SUBEPOCH's VALIDATION---------------------------------
                 if val_on_samples_during_train :
@@ -262,13 +264,13 @@ def do_training(sessionTf,
                     
                     #------------------------SUBMIT PARALLEL JOB TO GET TRAINING DATA FOR NEXT TRAINING-----------------
                     if use_parallelism:
-                        log.print3("[PARALLEL]: Before Validation in subepoch #" +str(subepoch) + ", the job for extracting Segments for next Training is submitted.")
+                        log.print3(id_str+" THREADING: Before Validation in subepoch #"+str(subepoch)+", submitting sampling job for next [TRAINING].")
                         parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
                         sampling_job_submitted_train = True
                     
                     #------------------------------------DO VALIDATION--------------------------------
                     log.print3("-V-V-V-V-V- Now Validating for this subepoch before commencing the training iterations... -V-V-V-V-V-")
-                    start_validationForSubepoch_time = time.time()
+                    start_time_val_subep = time.time()
                     # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
                     num_batches_val = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3d.batchSize["val"]
                     trainOrValidateForSubepoch( log,
@@ -280,9 +282,8 @@ def do_training(sessionTf,
                                                 acc_monitor_for_ep_val,
                                                 channsOfSegmentsForSubepPerPathwayVal,
                                                 labelsForCentralOfSegmentsForSubepVal)
-                    end_validationForSubepoch_time = time.time()
-                    log.print3("TIMING: Validating on the batches of this subepoch #"+str(subepoch)+" took time: "+\
-                               str(end_validationForSubepoch_time-start_validationForSubepoch_time)+"(s)")
+                    end_time_val_subep = time.time()
+                    log.print3("TIMING: Validation on batches of this subepoch #"+str(subepoch)+" lasted: {0:.1f}".format(end_time_val_subep-start_time_val_subep)+" secs.")
                 
                 #-------------------------GET DATA FOR THIS SUBEPOCH's TRAINING---------------------------------
                 if not sampling_job_submitted_train :
@@ -295,17 +296,17 @@ def do_training(sessionTf,
                 
                 #------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
                 if use_parallelism and not val_on_whole_volumes_this_epoch and val_on_samples_during_train :
-                    log.print3("[PARALLEL]: Before Training in subepoch #" +str(subepoch) + ", submitting the job for extracting Segments for the next Validation.")
+                    log.print3(id_str+" THREADING: Before Training in subepoch #"+str(subepoch)+", submitting sampling job for next [VALIDATION].")
                     parallelJobToGetDataForNextValidation = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_val)
                     sampling_job_submitted_val = True
                 elif use_parallelism and not val_on_whole_volumes_this_epoch : # and not val_on_samples_during_train, extract training samples.
-                    log.print3("[PARALLEL]: Before Training in subepoch #" +str(subepoch) + ", submitting the job for extracting Segments for the next Training.")
+                    log.print3(id_str+" THREADING: Before Training in subepoch #"+str(subepoch)+", submitting sampling job for next [TRAINING].")
                     parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
                     sampling_job_submitted_train = True
                 
                 #-------------------------------START TRAINING IN BATCHES------------------------------
                 log.print3("-T-T-T-T-T- Now Training for this subepoch... This may take a few minutes... -T-T-T-T-T-")
-                start_trainingForSubepoch_time = time.time()
+                start_time_train_subep = time.time()
                 # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
                 num_batches_train = len(channsOfSegmentsForSubepPerPathwayTrain[0]) // cnn3d.batchSize["train"]
                 trainOrValidateForSubepoch( log,
@@ -317,13 +318,12 @@ def do_training(sessionTf,
                                             acc_monitor_for_ep_train,
                                             channsOfSegmentsForSubepPerPathwayTrain,
                                             labelsForCentralOfSegmentsForSubepTrain)
-                end_trainingForSubepoch_time = time.time()
-                log.print3("TIMING: Training on the batches of this subepoch #"+str(subepoch)+" took time: "+\
-                           str(end_trainingForSubepoch_time-start_trainingForSubepoch_time)+"(s)")
+                end_time_train_subep = time.time()
+                log.print3("TIMING: Training on batches of this subepoch #"+str(subepoch)+" lasted: {0:.1f}".format(end_time_train_subep-start_time_train_subep)+" secs.")
                 
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" )
-            log.print3("~~~~~~~~~~~~~~~~~~ Epoch #" + str(epoch) + " finished. Reporting Accuracy over whole epoch. ~~~~~~~~~~~~~~~~~~" )
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" )
+            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            log.print3("~~~~~~ Epoch #" + str(epoch) + " finished. Reporting Accuracy over whole epoch. ~~~~~~~" )
+            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             
             if val_on_samples_during_train:
                 acc_monitor_for_ep_val.reportMeanAccyracyOfEpoch()
@@ -339,9 +339,9 @@ def do_training(sessionTf,
             filename_to_save_with = fileToSaveTrainedCnnModelTo + "." + datetimeNowAsStr()
             saver_all.save( sessionTf, filename_to_save_with+".model.ckpt", write_meta_graph=False )
             
-            end_epoch_time = time.time()
-            log.print3("TIMING: The whole Epoch #"+str(epoch)+" took time: "+str(end_epoch_time-start_epoch_time)+"(s)")
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            end_time_ep = time.time()
+            log.print3("TIMING: The whole Epoch #"+str(epoch)+" lasted: {0:.1f}".format(end_time_train-start_time_train)+" secs.")
+            log.print3("~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~")
             
             
             if val_on_whole_volumes_this_epoch:
@@ -374,20 +374,20 @@ def do_training(sessionTf,
                                 indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
                                 namesForSavingFms=namesForSavingFms
                                 )
-        end_training_time = time.time()
-        log.print3("TIMING: Training process took time: "+str(end_training_time-start_training_time)+"(s)")
+        end_time_train = time.time()
+        log.print3("TIMING: Training process lasted: {0:.1f}".format(end_time_train-start_time_train)+" secs.")
         
     except (Exception, KeyboardInterrupt) as e:
-        log.print3("")
-        log.print3("ERROR: Caught exception in do_training(...): " + str(e))
+        log.print3("\n\n ERROR: Caught exception in do_training(...): " + str(e) + "\n")
         log.print3( traceback.format_exc() )
+        log.print3("Terminating worker pool.")
         worker_pool.terminate() # Will wait. A KeybInt will kill this (py3)
         worker_pool.join()
         return 1
     else:
         log.print3("Closing worker pool.")
         worker_pool.close()
-        worker_pool.join()
+        worker_pool.join() # Probably not needed. get() does the job.
     
     # Save the final trained model.
     filename_to_save_with = fileToSaveTrainedCnnModelTo + ".final." + datetimeNowAsStr()

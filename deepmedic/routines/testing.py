@@ -12,7 +12,7 @@ import numpy as np
 import math
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
-from deepmedic.dataManagement.sampling import load_imgs_of_single_case
+from deepmedic.dataManagement.sampling import load_imgs_of_subject
 from deepmedic.dataManagement.sampling import getCoordsOfAllSegmentsOfAnImage
 from deepmedic.dataManagement.sampling import extractDataOfSegmentsUsingSampledSliceCoords
 from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, save4DImgWithAllFmsToNiiWithOriginalHdr
@@ -107,34 +107,34 @@ def inferenceWholeVolumes(  sessionTf,
         arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
-        ] = load_imgs_of_single_case(
-                                    log,
-                                    "test",
-                                    False, # run_input_checks.
-                                    image_i,
-                                    
-                                    listOfFilepathsToEachChannelOfEachPatient,
-                                    
-                                    providedGtLabelsBool,
-                                    listOfFilepathsToGtLabelsOfEachPatient,
-                                    num_classes = cnn3d.num_classes,
-                                    
-                                    providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
-                                    forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
-                                    
-                                    providedRoiMaskBool = providedRoiMaskForFastInfBool,
-                                    listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                                    
-                                    useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
-                                    usingSubsampledPathways = cnn3d.numSubsPaths > 0,
-                                    listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                                    
-                                    padInputImagesBool = padInputImagesBool,
-                                    cnnReceptiveField = recFieldCnn, # only used if padInputsBool
-                                    dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:], # only used if padInputsBool
-                                    
-                                    reflectImageWithHalfProb = [0,0,0]
-                                    )
+        ] = load_imgs_of_subject(
+                                log,
+                                "test",
+                                False, # run_input_checks.
+                                image_i,
+                                
+                                listOfFilepathsToEachChannelOfEachPatient,
+                                
+                                providedGtLabelsBool,
+                                listOfFilepathsToGtLabelsOfEachPatient,
+                                num_classes = cnn3d.num_classes,
+                                
+                                providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
+                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
+                                
+                                providedRoiMaskBool = providedRoiMaskForFastInfBool,
+                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                                
+                                useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
+                                usingSubsampledPathways = cnn3d.numSubsPaths > 0,
+                                listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                                
+                                padInputImagesBool = padInputImagesBool,
+                                cnnReceptiveField = recFieldCnn, # only used if padInputsBool
+                                dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:], # only used if padInputsBool
+                                
+                                reflectImageWithHalfProb = [0,0,0]
+                                )
         niiDimensions = list(imageChannels[0].shape)
         #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
         predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
