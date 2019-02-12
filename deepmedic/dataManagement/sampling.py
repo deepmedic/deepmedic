@@ -63,10 +63,10 @@ def getSampledDataAndLabelsForSubepoch(log,
     #        lblsForPredictedPartOfSegmentsForSubepochArray - Array of shape: [N_samples, R_out, C_out, Z_out)
     try: # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
         id_str = "[SAMPLER-TR|PID:"+str(os.getpid())+"]" if train_or_val == "train" else "[SAMPLER-VAL|PID:"+str(os.getpid())+"]"
-        start_time_sampling = time.clock()
+        start_time_sampling = time.time()
         training_or_validation_str = "Training" if train_or_val == "train" else "Validation"
         
-        log.print3(id_str+" :=:=:=:=:=:=: Starting to sample segments for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
+        log.print3(id_str+" :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
         
         total_number_of_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
         inds_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects = total_number_of_subjects,
@@ -87,7 +87,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                                                                                                                             percentOfSamplesPerCategoryToSample,
                                                                                                                             n_subjects_for_subep)
         
-        log.print3(id_str+" Will sample segments from [" + str(n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
+        log.print3(id_str+" Will sample from [" + str(n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
         
         worker_pool = None
         if num_parallel_proc > 0: # Parallelize sampling from each subject
@@ -150,10 +150,10 @@ def getSampledDataAndLabelsForSubepoch(log,
         lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleSegmentsOfThisSubepoch(channelsOfSegmentsForSubepochListPerPathway,
                                                                                         lblsForPredictedPartOfSegmentsForSubepochList )
         
-        end_time_sampling = time.clock()
-        log.print3(id_str+" TIMING: Sampling segments for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
+        end_time_sampling = time.time()
+        log.print3(id_str+" TIMING: Sampling for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
         
-        log.print3(id_str+" :=:=:=:=:=:=: Finished sampling segments for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
+        log.print3(id_str+" :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
         
         channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channelsOfSegmentsForSubepochListPerPathway ]
         lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lblsForPredictedPartOfSegmentsForSubepochList, dtype="int32") # Could be int16 to save RAM?
