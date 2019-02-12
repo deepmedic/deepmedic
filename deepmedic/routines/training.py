@@ -341,7 +341,7 @@ def do_training(sessionTf,
             saver_all.save( sessionTf, filename_to_save_with+".model.ckpt", write_meta_graph=False )
             
             end_time_ep = time.time()
-            log.print3("TIMING: The whole Epoch #"+str(epoch)+" lasted: {0:.1f}".format(end_time_train-start_time_train)+" secs.")
+            log.print3("TIMING: The whole Epoch #"+str(epoch)+" lasted: {0:.1f}".format(end_time_ep-start_time_ep)+" secs.")
             log.print3("~~~~~~~~~~~~~~~~~~~~ End of Training Epoch. Model was Saved. ~~~~~~~~~~~~~~~~~~~~~~~~~~")
             
             

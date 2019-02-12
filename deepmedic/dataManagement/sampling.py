@@ -367,7 +367,7 @@ def load_subj_and_get_samples(log,
 # roi_mask_filename and roiMinusLesion_mask_filename can be passed "no". In this case, the corresponding return result is nothing.
 # This is so because: the do_training() function only needs the roiMinusLesion_mask, whereas the do_testing() only needs the roi_mask.        
 def load_imgs_of_subject(log,
-                         job_i,
+                         job_i, # None in testing.
                          train_val_or_test,
                          run_input_checks,
                          subj_i,
@@ -390,12 +390,12 @@ def load_imgs_of_subject(log,
                          ):
     #listOfNiiFilepathNames: should be a list of lists. Each sublist corresponds to one certain subject.
     #...Each sublist should have as many elements(strings-filenamePaths) as numberOfChannels, point to the channels of this patient.
-    id_str = "[JOB:"+str(job_i+1)+"|PID:"+str(os.getpid())+"]"
+    id_str = "[JOB:"+str(job_i+1)+"|PID:"+str(os.getpid())+"] " if job_i is not None else "" # is None in testing.
     
     if subj_i >= len(listOfFilepathsToEachChannelOfEachPatient) :
         raise ValueError(id_str+" The argument 'subj_i' given is greater than the filenames given for the .nii folders!")
     
-    log.print3(id_str+" Loading subject with 1st channel at: "+str(listOfFilepathsToEachChannelOfEachPatient[subj_i][0]))
+    log.print3(id_str+"Loading subject with 1st channel at: "+str(listOfFilepathsToEachChannelOfEachPatient[subj_i][0]))
     
     numberOfNormalScaleChannels = len(listOfFilepathsToEachChannelOfEachPatient[0])
     

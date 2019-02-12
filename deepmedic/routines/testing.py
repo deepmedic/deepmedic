@@ -109,6 +109,7 @@ def inferenceWholeVolumes(  sessionTf,
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
         ] = load_imgs_of_subject(
                                 log,
+                                None,
                                 "test",
                                 False, # run_input_checks.
                                 image_i,
@@ -148,10 +149,9 @@ def inferenceWholeVolumes(  sessionTf,
                                                                         strideOfSegmentsPerDimInVoxels=strideOfImagePartsPerDimensionInVoxels,
                                                                         batch_size = batch_size,
                                                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
-                                                                        roiMask = roiMask
-                                                                        )
-        log.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
+                                                                        roiMask = roiMask )
         
+        log.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
         
         num_segments_for_case = len(sliceCoordsOfSegmentsInImage)
         log.print3("Total number of Segments to process:"+str(num_segments_for_case))
@@ -173,8 +173,7 @@ def inferenceWholeVolumes(  sessionTf,
                                                                                     sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
                                                                                     channelsOfImageNpArray=imageChannels,#chans,niiDims
                                                                                     channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
-                                                                                    recFieldCnn=recFieldCnn
-                                                                                    )
+                                                                                    recFieldCnn=recFieldCnn )
             end_extract_time = time.time()
             extractTimePerSubject += end_extract_time - start_extract_time
             
@@ -297,13 +296,13 @@ def inferenceWholeVolumes(  sessionTf,
                         indexOfTheLayerInTheReturnedListByTheBatchTraining += 1
                         
                 imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
-
+                
             #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
         
-        log.print3("TIMING: Segmentation of this subject: [Extracting:] "+ str(extractTimePerSubject) +\
-                                                            " [Loading:] " + str(loadingTimePerSubject) +\
-                                                            " [ForwardPass:] " + str(fwdPassTimePerSubject) +\
-                                                            " [Total:] " + str(extractTimePerSubject+loadingTimePerSubject+fwdPassTimePerSubject) + "(s)")
+        log.print3("TIMING: Segmentation of subject: [Extracting:] {0:.2f}".format(extractTimePerSubject) +\
+                                                    " [Loading:] {0:.2f}".format(loadingTimePerSubject) +\
+                                                    " [ForwardPass:] {0:.2f}".format(fwdPassTimePerSubject) +\
+                                                    " [Total:] {0:.2f}".format(extractTimePerSubject+loadingTimePerSubject+fwdPassTimePerSubject) + " secs.")
         
         # ================ SAVE PREDICTIONS =====================
         #== saving predicted segmentations ==
@@ -324,8 +323,8 @@ def inferenceWholeVolumes(  sessionTf,
                                             image_i,
                                             suffixToAdd,
                                             np.dtype(np.int16),
-                                            log
-                                            )
+                                            log )
+            
         #== saving probability maps ==
         for class_i in range(0, NUMBER_OF_CLASSES) :
             if (len(savePredictedSegmAndProbsDict["prob"]) >= class_i + 1) and (savePredictedSegmAndProbsDict["prob"][class_i] == True) : #save predicted probMap for class
@@ -340,8 +339,8 @@ def inferenceWholeVolumes(  sessionTf,
                                                 image_i,
                                                 suffixToAdd,
                                                 np.dtype(np.float32),
-                                                log
-                                                )
+                                                log )
+                
         #== saving feature maps ==
         if saveIndividualFmImagesForVisualisation :
             currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
@@ -363,8 +362,8 @@ def inferenceWholeVolumes(  sessionTf,
                                                                 pathway_i,
                                                                 layer_i,
                                                                 fmActualNumber,
-                                                                log
-                                                                )
+                                                                log )
+                                
                                 currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
         if saveMultidimensionalImageWithAllFms :
             multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms =  np.transpose(multidimensionalImageWithAllToBeVisualisedFmsArray, (1,2,3, 0) )
@@ -419,7 +418,7 @@ def inferenceWholeVolumes(  sessionTf,
         printExplanationsAboutDice(log)
         
     end_time = time.time()
-    log.print3("TIMING: "+validation_or_testing_str+" process took time: "+str(end_time-start_time)+"(s)")
+    log.print3("TIMING: "+validation_or_testing_str+" process lasted: {0:.2f}".format(end_time-start_time)+" secs.")
     
     log.print3("###########################################################################################################")
     log.print3("############################# Finished full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
