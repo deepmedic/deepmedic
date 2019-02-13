@@ -75,13 +75,14 @@ The system was initially developed for the segmentation of brain lesions in MRI 
 
 #### 1.1. Required Libraries
 
-The system is written in python. The following libraries are required:
-
-- [TensorFlow](https://www.tensorflow.org/): This is the Deep Learning library that the back end is implemented with.
+The system requires the following:
+- [Python](https://www.python.org/downloads/): Python 3 by default (works for python 2, but no future guarantees).
+- [TensorFlow](https://www.tensorflow.org/): The Deep Learning library for back end.
 - [NiBabel](http://nipy.org/nibabel/): The library used for loading NIFTI files.
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
-- [six](https://pypi.python.org/pypi/six) : Python compatibility library.
 
+Latest versions tested:  
+As of Feb 2019, testing of v0.7.1 was done using Python 3.5.2, Tensorflow 1.12.0, nibabel 2.3.3, numpy 1.16.1.  
 
 #### 1.2. Installation
 (The below are for unix systems, but similar steps should be sufficient for Windows.)
