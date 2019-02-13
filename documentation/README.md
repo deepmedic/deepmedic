@@ -5,6 +5,7 @@ DeepMedic
 
 11 Feb 2019 (v0.7.1):
 * Multiprocessing changed from pp to python's builtin module.
+* Default suggested python switched to python3.
 * Updated default config with non normalized momentum.
 * Code for sampling partial cleanup.
 
