@@ -32,6 +32,7 @@ TRAINING_PATT = "TRAINING:"
 CLASS_PREFIX_PATT = "Class-"
 MEANACC_SENTENCE = "mean accuracy of each subepoch:"
 SENS_SENTENCE = "mean sensitivity of each subepoch:"
+PREC_SENTENCE = "mean precision of each subepoch:"
 SPEC_SENTENCE = "mean specificity of each subepoch:"
 DSC_SAMPLES_SENTENCE = "mean Dice of each subepoch:"
 # Patterns for extracting basic metrics
@@ -164,23 +165,26 @@ def getFirstLineInLogWithCertainPattern(filePathToLog, pattern) :
     return foundLine # Returns None if not found.
 
 
-def getRegExprForParsingMetric(validation0orTraining1, basic0detailed1, class_i, intSpecifyingMetric01234) :
+def getRegExprForParsingMetric(validation0orTraining1, basic0detailed1, class_i, intSpecifyingMetric) :
+    # intSpecifyingMetric: an int in [0,1,2,3,4]
     validationOrTrainingString = VALIDATION_PATT if validation0orTraining1 == 0 else TRAINING_PATT
     if basic0detailed1 == 0 : # basic plotting
         classPrefixString = OVERALLCLASS_PATT
-        if intSpecifyingMetric01234 == 0 : #looking for mean accuracy
+        if intSpecifyingMetric == 0 : #looking for mean accuracy
             sentenceToLookFor = MEANACC_OVERALL_SENTENCE
-        elif intSpecifyingMetric01234 == 1 : #looking for cost
+        elif intSpecifyingMetric == 1 : #looking for cost
             sentenceToLookFor = COST_OVERALL_SENTENCE
     else : #detailed plotting
         classPrefixString = CLASS_PREFIX_PATT + str(class_i)
-        if intSpecifyingMetric01234 == 0 : #looking for mean accuracy
+        if intSpecifyingMetric == 0 : #looking for mean accuracy
             sentenceToLookFor = MEANACC_SENTENCE
-        elif intSpecifyingMetric01234 == 1 : #looking for pos accuracy
+        elif intSpecifyingMetric == 1 : #looking for pos accuracy
             sentenceToLookFor = SENS_SENTENCE
-        elif intSpecifyingMetric01234 == 2 : #looking for neg accuracy
+        elif intSpecifyingMetric == 2 : #looking for precision
+            sentenceToLookFor = PREC_SENTENCE
+        elif intSpecifyingMetric == 3 : #looking for neg accuracy
             sentenceToLookFor = SPEC_SENTENCE
-        elif intSpecifyingMetric01234 == 3 : #looking for dice on samples
+        elif intSpecifyingMetric == 4 : #looking for dice on samples
             sentenceToLookFor = DSC_SAMPLES_SENTENCE
     regExp1 = ".*" + validationOrTrainingString + ".*" + classPrefixString + ":.*" + sentenceToLookFor
     return (regExp1, sentenceToLookFor)
@@ -304,10 +308,12 @@ def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSube
     for val0orTrain1 in [0,1] :
         for classInt in classesFromThisLog :
             # mean acc, sens, spec, dsc samples, dsc full.
-            regExprForClassAllMetrics = [0,0,0,0]
-            sentencesForClassAllMetrics = [0,0,0,0]
-            for metric_i in xrange(len(regExprForClassAllMetrics)) :
-                (regExprForClassAllMetrics[metric_i], sentencesForClassAllMetrics[metric_i]) = getRegExprForParsingMetric(val0orTrain1, 1, classInt, metric_i)
+            regExprForClassAllMetrics = []
+            sentencesForClassAllMetrics = []
+            for metric_i in [0,1,2,4] : # Integers specify which metrics.
+                reg_expr, metric = getRegExprForParsingMetric(val0orTrain1, 1, classInt, metric_i)
+                regExprForClassAllMetrics.append(reg_expr)
+                sentencesForClassAllMetrics.append(metric) 
             regExprForEachClassAndMetric[val0orTrain1].append( regExprForClassAllMetrics )
             sentencesToLookForEachClassAndMetric[val0orTrain1].append( sentencesForClassAllMetrics )
             
@@ -466,8 +472,8 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
     colors = ["r","g","b","c","m","k"]
     linestyles = ['-', '--', ':', '_', '-.']
     
-    subplotTitles = [ ["Mean Accuracy", "Sensitivity", "Specificity", "DSC (samples)", "DSC (full-segm)"], # Validation
-                      ["Mean Accuracy", "Sensitivity", "Specificity", "DSC (samples)", "DSC (full-segm)"] # Training
+    subplotTitles = [ ["Mean Accuracy", "Sensitivity", "Precision", "DSC (samples)", "DSC (full-segm)"], # Validation
+                      ["Mean Accuracy", "Sensitivity", "Precision", "DSC (samples)", "DSC (full-segm)"] # Training
                     ]
     
     fontSizeSubplotTitles = 14; fontSizeXTickLabel = 12; fontSizeYTickLabel = 12; fontSizeXAxisLabel = 12; fontSizeYAxisLabel = 14; linewidthInPlots = 1.5;
