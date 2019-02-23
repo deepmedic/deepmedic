@@ -401,8 +401,6 @@ class Cnn3d(object):
                                                                          ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                                                                          indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                                                                          )
-        # Skip connections to end of pathway.
-        thisPathway.makeMultiscaleConnectionsForLayerType(convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes[thisPathwayType])
         
         [dimsOfOutputFrom1stPathwayTrain, dimsOfOutputFrom1stPathwayVal, dimsOfOutputFrom1stPathwayTest] = thisPathway.getShapeOfOutput()
         
@@ -453,8 +451,7 @@ class Cnn3d(object):
                                                                      ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                                                                      indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                                                                      )
-            # Skip connections to end of pathway.
-            thisPathway.makeMultiscaleConnectionsForLayerType(convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes[thisPathwayType])
+            
             
             # this creates essentially the "upsampling layer"
             thisPathway.upsampleOutputToNormalRes(upsamplingScheme="repeat",
@@ -473,7 +470,7 @@ class Cnn3d(object):
             inputToFirstFcLayerVal = tf.concat([inputToFirstFcLayerVal, outputNormResOfPathVal], axis=1) if path_i != 0 else outputNormResOfPathVal
             inputToFirstFcLayerTest = tf.concat([inputToFirstFcLayerTest, outputNormResOfPathTest], axis=1) if path_i != 0 else outputNormResOfPathTest
             numberOfFmsOfInputToFirstFcLayer += dimsOfOutputNormResOfPathTrain[1]
-            
+        
         #======================= Make the Fully Connected Layers =======================
         thisPathway = FcPathway()
         self.pathways.append(thisPathway)

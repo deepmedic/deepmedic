@@ -38,20 +38,21 @@ def repeatRcz5DimArrayByFactor(array5Dim, factor3Dim):
     #expandedRC = expandedR.repeat(factor3Dim[1], axis=3)
     #expandedRCZ = expandedRC.repeat(factor3Dim[2], axis=4)
     res = array5Dim
-    res_shape = tf.shape(array5Dim)
+    res_shape = tf.shape(array5Dim) # Dynamic. For batch and r,c,z dimensions. (unknown prior to runtime)
+    n_fms = array5Dim.get_shape()[1] # Static via get_shape(). Known. For reshape to return tensor with *known* shape[1].
+    # If tf.shape()[1] is used, reshape changes res.get_shape()[1] to (?).
+    
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1]*res_shape[2], 1, res_shape[3], res_shape[4]] ),
                                multiples=[1, 1, factor3Dim[0], 1, 1] ),
-                    shape=[res_shape[0], res_shape[1], res_shape[2]*factor3Dim[0], res_shape[3], res_shape[4]] )
-    
+                    shape=[res_shape[0], n_fms, res_shape[2]*factor3Dim[0], res_shape[3], res_shape[4]] )
     res_shape = tf.shape(res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2]*res_shape[3], 1, res_shape[4]] ),
                                multiples=[1, 1, 1, factor3Dim[1], 1] ),
-                    shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*factor3Dim[1], res_shape[4]] )
-    
+                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3]*factor3Dim[1], res_shape[4]] )
     res_shape = tf.shape(res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*res_shape[4], 1] ),
                                multiples=[1, 1, 1, 1, factor3Dim[2]] ),
-                    shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3], res_shape[4]*factor3Dim[2]] )
+                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3], res_shape[4]*factor3Dim[2]] )
     return res
     
 def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
@@ -75,6 +76,7 @@ def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
     
 def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
     # fms: a 5D tensor, [batch, fms, r, c, z]
+    # listOfNumberOfCentralVoxelsToGetPerDimension: list of 3 scalars or Tensorflow 1D tensor (eg from tf.shape(x)). [r, c, z]
     fmsShape = tf.shape(fms) #fms.shape works too.
     # if part is of even width, one voxel to the left is the centre.
     rCentreOfPartIndex = (fmsShape[2] - 1) // 2
@@ -83,67 +85,35 @@ def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
     cCentreOfPartIndex = (fmsShape[3] - 1) // 2
     cIndexToStartGettingCentralVoxels = cCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[1] - 1) // 2
     cIndexToStopGettingCentralVoxels = cIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[1]  # Excluding
-    
-    if len(listOfNumberOfCentralVoxelsToGetPerDimension) == 2:  # the input FMs are of 2 dimensions (for future use)
-        return fms[	:, :,
-                    rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
-                    cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels]
-    elif len(listOfNumberOfCentralVoxelsToGetPerDimension) == 3 :  # the input FMs are of 3 dimensions
-        zCentreOfPartIndex = (fmsShape[4] - 1) // 2
-        zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2] - 1) // 2
-        zIndexToStopGettingCentralVoxels = zIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[2]  # Excluding
-        return fms[	:, :,
-                    rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
-                    cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels,
-                    zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
-    else :  # wrong number of dimensions!
-        return -1
+    zCentreOfPartIndex = (fmsShape[4] - 1) // 2
+    zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2] - 1) // 2
+    zIndexToStopGettingCentralVoxels = zIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[2]  # Excluding
+    return fms[	:, :,
+                rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
+                cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels,
+                zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
+
         
-def makeResidualConnectionBetweenLayersAndReturnOutput( log,
-                                                        deeperLayerOutputImagesTrValTest,
-                                                        deeperLayerOutputImageShapesTrValTest,
-                                                        earlierLayerOutputImagesTrValTest,
-                                                        earlierLayerOutputImageShapesTrValTest) :
+def makeResidualConnection(log, deeperLOut, earlierLOut) :
     # Add the outputs of the two layers and return the output, as well as its dimensions.
-    # Result: The result should have exactly the same shape as the output of the Deeper layer. Both #FMs and Dimensions of FMs.
-    
-    (deeperLayerOutputImageTrain, deeperLayerOutputImageVal, deeperLayerOutputImageTest) = deeperLayerOutputImagesTrValTest
-    (deeperLayerOutputImageShapeTrain, deeperLayerOutputImageShapeVal, deeperLayerOutputImageShapeTest) = deeperLayerOutputImageShapesTrValTest
-    (earlierLayerOutputImageTrain, earlierLayerOutputImageVal, earlierLayerOutputImageTest) = earlierLayerOutputImagesTrValTest
-    (earlierLayerOutputImageShapeTrain, earlierLayerOutputImageShapeVal, earlierLayerOutputImageShapeTest) = earlierLayerOutputImageShapesTrValTest
-    # Note: deeperLayerOutputImageShapeTrain has dimensions: [batchSize, FMs, r, c, z]    
-    # The deeper FMs can be greater only when there is upsampling. But then, to do residuals, I would need to upsample the earlier FMs. Not implemented.
-    if np.any(np.asarray(deeperLayerOutputImageShapeTrain[2:]) > np.asarray(earlierLayerOutputImageShapeTrain[2:])) or \
-            np.any(np.asarray(deeperLayerOutputImageShapeVal[2:]) > np.asarray(earlierLayerOutputImageShapeVal[2:])) or \
-                np.any(np.asarray(deeperLayerOutputImageShapeTest[2:]) > np.asarray(earlierLayerOutputImageShapeTest[2:])) :
-        log.print3("ERROR: In function [makeResidualConnectionBetweenLayersAndReturnOutput] the RCZ-dimensions of a deeper layer FMs were found greater than the earlier layers. Not implemented functionality. Exiting!")
-        log.print3("\t (train) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTrain) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTrain) )
-        log.print3("\t (val) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeVal) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeVal) )
-        log.print3("\t (test) Dimensions of Deeper Layer=" + str(deeperLayerOutputImageShapeTest) + ". Dimensions of Earlier Layer=" + str(earlierLayerOutputImageShapeTest) )
-        exit(1)
-        
-    # get the part of the earlier layer that is of the same dimensions as the FMs of the deeper:
-    partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLayerOutputImageTrain, deeperLayerOutputImageShapeTrain[2:])
-    partOfEarlierFmsToAddVal = getMiddlePartOfFms(earlierLayerOutputImageVal, deeperLayerOutputImageShapeVal[2:])
-    partOfEarlierFmsToAddTest = getMiddlePartOfFms(earlierLayerOutputImageTest, deeperLayerOutputImageShapeTest[2:])
-    
+    # deeperLOut & earlierLOut: 5D tensors [batchsize, chans, x, y, z], outputs of deepest and earliest layer of the Res.Conn.
+    # Result: Shape of result should be exactly the same as the output of Deeper layer.
+    deeperLOutShape = tf.shape(deeperLOut)
+    earlierLOutShape = tf.shape(earlierLOut)
+    # Get part of the earlier layer that is of the same dimensions as the FMs of the deeper:
+    partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLOut, deeperLOutShape[2:])
     # Add the FMs, after taking care of zero padding if the deeper layer has more FMs.
-    numFMsDeeper = deeperLayerOutputImageShapeTrain[1]
-    numFMsEarlier = earlierLayerOutputImageShapeTrain[1]
-    if numFMsDeeper >= numFMsEarlier :
-        zeroFmsToConcatTrain = tf.zeros(shape=[deeperLayerOutputImageShapeTrain[0], numFMsDeeper-numFMsEarlier]+deeperLayerOutputImageShapeTrain[2:], dtype="float32")
-        outputOfResConnTrain = deeperLayerOutputImageTrain + tf.concat( [partOfEarlierFmsToAddTrain, zeroFmsToConcatTrain], axis=1)
-        zeroFmsToConcatVal = tf.zeros(shape=[deeperLayerOutputImageShapeVal[0], numFMsDeeper-numFMsEarlier]+deeperLayerOutputImageShapeVal[2:], dtype="float32")
-        outputOfResConnVal = deeperLayerOutputImageVal + tf.concat( [partOfEarlierFmsToAddVal, zeroFmsToConcatVal], axis=1)
-        zeroFmsToConcatTest = tf.zeros(shape=[deeperLayerOutputImageShapeTest[0], numFMsDeeper-numFMsEarlier]+deeperLayerOutputImageShapeTest[2:], dtype="float32")
-        outputOfResConnTest = deeperLayerOutputImageTest + tf.concat( [partOfEarlierFmsToAddTest, zeroFmsToConcatTest], axis=1)
+    if deeperLOut.get_shape()[1] >= earlierLOut.get_shape()[1] : # ifs not allowed via tensor (from tf.shape(...))
+        zeroFmsToConcatTrain = tf.zeros(shape=[deeperLOutShape[0],
+                                               deeperLOutShape[1] - earlierLOutShape[1],
+                                               deeperLOutShape[2], deeperLOutShape[3], deeperLOutShape[4]], dtype="float32")
+        outputOfResConnTrain = deeperLOut + tf.concat( [partOfEarlierFmsToAddTrain, zeroFmsToConcatTrain], axis=1)
+
     else : # Deeper FMs are fewer than earlier. This should not happen in most architectures. But oh well...
-        outputOfResConnTrain = deeperLayerOutputImageTrain + partOfEarlierFmsToAddTrain[:, :numFMsDeeper, :,:,:]
-        outputOfResConnVal = deeperLayerOutputImageVal + partOfEarlierFmsToAddVal[:, :numFMsDeeper, :,:,:]
-        outputOfResConnTest = deeperLayerOutputImageTest + partOfEarlierFmsToAddTest[:, :numFMsDeeper, :,:,:]
+        outputOfResConnTrain = deeperLOut + partOfEarlierFmsToAddTrain[:, :deeperLOutShape[1], :,:,:]
         
     # Dimensions of output are the same as those of the deeperLayer
-    return (outputOfResConnTrain, outputOfResConnVal, outputOfResConnTest)
+    return outputOfResConnTrain
     
     
 #################################################################
@@ -247,20 +217,12 @@ class Pathway(object):
                 inputToNextLayerTest = layer.output["test"]
             else : #make residual connection
                 log.print3("\t[Pathway_"+str(self.getStringType())+"]: making Residual Connection between output of [Layer_"+str(layer_i)+"] to input of previous layer.")
-                deeperLayerOutputImagesTrValTest = (layer.output["train"], layer.output["val"], layer.output["test"])
-                deeperLayerOutputImageShapesTrValTest = (layer.outputShape["train"], layer.outputShape["val"], layer.outputShape["test"])
                 assert layer_i > 0 # The very first layer (index 0), should never be provided for now. Cause I am connecting 2 layers back.
                 earlierLayer = self._layersInPathway[layer_i-1]
-                earlierLayerOutputImagesTrValTest = (earlierLayer.input["train"], earlierLayer.input["val"], earlierLayer.input["test"])
-                earlierLayerOutputImageShapesTrValTest = (earlierLayer.inputShape["train"], earlierLayer.inputShape["val"], earlierLayer.inputShape["test"])
                 
-                (inputToNextLayerTrain,
-                inputToNextLayerVal,
-                inputToNextLayerTest) = makeResidualConnectionBetweenLayersAndReturnOutput( log,
-															                                deeperLayerOutputImagesTrValTest,
-															                                deeperLayerOutputImageShapesTrValTest,
-															                                earlierLayerOutputImagesTrValTest,
-															                                earlierLayerOutputImageShapesTrValTest )
+                inputToNextLayerTrain = makeResidualConnection(log, layer.output["train"], earlierLayer.input["train"])
+                inputToNextLayerVal = makeResidualConnection(log, layer.output["val"], earlierLayer.input["val"])
+                inputToNextLayerTest = makeResidualConnection(log, layer.output["test"], earlierLayer.input["test"])
                 layer.outputAfterResidualConnIfAnyAtOutp["train"] = inputToNextLayerTrain
                 layer.outputAfterResidualConnIfAnyAtOutp["val"] = inputToNextLayerVal
                 layer.outputAfterResidualConnIfAnyAtOutp["test"] = inputToNextLayerTest
@@ -277,29 +239,6 @@ class Pathway(object):
         
         log.print3("[Pathway_" + str(self.getStringType()) + "] done.")
         
-    # Skip connections to end of pathway.
-    def makeMultiscaleConnectionsForLayerType(self, convLayersToConnectToFirstFcForMultiscaleFromThisLayerType) :
-    	
-        layersInThisPathway = self.getLayers()
-        
-        [outputOfPathwayTrain, outputOfPathwayVal, outputOfPathwayTest ] = self.getOutput()
-        [outputShapeTrain, outputShapeVal, outputShapeTest] = self.getShapeOfOutput()
-        numOfCentralVoxelsToGetTrain = outputShapeTrain[2:]; numOfCentralVoxelsToGetVal = outputShapeVal[2:]; numOfCentralVoxelsToGetTest = outputShapeTest[2:]
-        
-        for convLayer_i in convLayersToConnectToFirstFcForMultiscaleFromThisLayerType :
-            thisLayer = layersInThisPathway[convLayer_i]
-                    
-            middlePartOfFmsTrain = getMiddlePartOfFms(thisLayer.output["train"], numOfCentralVoxelsToGetTrain)
-            middlePartOfFmsVal = getMiddlePartOfFms(thisLayer.output["val"], numOfCentralVoxelsToGetVal)
-            middlePartOfFmsTest = getMiddlePartOfFms(thisLayer.output["test"], numOfCentralVoxelsToGetTest)
-            
-            outputOfPathwayTrain = tf.concat([outputOfPathwayTrain, middlePartOfFmsTrain], axis=1)
-            outputOfPathwayVal = tf.concat([outputOfPathwayVal, middlePartOfFmsVal], axis=1)
-            outputOfPathwayTest = tf.concat([outputOfPathwayTest, middlePartOfFmsTest], axis=1)
-            outputShapeTrain[1] += thisLayer.getNumberOfFeatureMaps(); outputShapeVal[1] += thisLayer.getNumberOfFeatureMaps(); outputShapeTest[1] += thisLayer.getNumberOfFeatureMaps(); 
-            
-        self._setOutputAttributes(outputOfPathwayTrain, outputOfPathwayVal, outputOfPathwayTest,
-                                outputShapeTrain, outputShapeVal, outputShapeTest)
         
     # The below should be updated, and calculated in here properly with private function and per layer.
     def calcRecFieldOfPathway(self, kernelDimsPerLayer) :
