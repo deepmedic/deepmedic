@@ -63,8 +63,6 @@ class Cnn3d(object):
         
         #=====================================
         self.recFieldCnn = ""
-                
-        self.batchSize = {"train": "", "val": "", "test": ""}
         
         # self.patchesToTrainPerImagePart = ""
         self.nkerns = ""  # number of feature maps.
@@ -303,11 +301,6 @@ class Cnn3d(object):
                         imagePartDimensionsValidation,
                         imagePartDimensionsTesting,
                         
-                        #=== Batch Sizes ===
-                        batch_size_train,
-                        batch_size_validation,
-                        batch_size_testing,
-                        
                         #=== Others ===
                         # Dropout
                         dropoutRatesForAllPathways,  # list of sublists, one for each pathway. Each either empty or full with the dropout rates of all the layers in the path.
@@ -338,8 +331,6 @@ class Cnn3d(object):
         self.indicesOfLowerRankLayersPerPathway = indicesOfLowerRankLayersPerPathway
         # pooling?
 
-        # == Batch Sizes ==
-        self.batchSize = {"train": batch_size_train, "val": batch_size_validation, "test": batch_size_testing}
         # == Others ==
         self.dropoutRatesForAllPathways = dropoutRatesForAllPathways
         

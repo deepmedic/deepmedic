@@ -28,6 +28,7 @@ def trainOrValidateForSubepoch( log,
                                 sessionTf,
                                 train_or_val,
                                 num_batches,
+                                batchsize,
                                 cnn3d,
                                 subepoch,
                                 acc_monitor_for_ep,
@@ -54,8 +55,8 @@ def trainOrValidateForSubepoch( log,
             ops_to_fetch = cnn3d.get_main_ops('train')
             list_of_ops = [ ops_to_fetch['cost'] ] + ops_to_fetch['list_rp_rn_tp_tn'] + [ ops_to_fetch['updates_grouped_op'] ]
             
-            index_to_data_for_batch_min = batch_i * cnn3d.batchSize["train"]
-            index_to_data_for_batch_max = (batch_i + 1) * cnn3d.batchSize["train"]
+            index_to_data_for_batch_min = batch_i * batchsize
+            index_to_data_for_batch_max = (batch_i + 1) * batchsize
             
             feeds = cnn3d.get_main_feeds('train')
             feeds_dict = { feeds['x'] : channsOfSegmentsForSubepPerPathway[0][ index_to_data_for_batch_min : index_to_data_for_batch_max ] }
@@ -77,8 +78,8 @@ def trainOrValidateForSubepoch( log,
             ops_to_fetch = cnn3d.get_main_ops('val')
             list_of_ops = ops_to_fetch['list_rp_rn_tp_tn']
             
-            index_to_data_for_batch_min = batch_i * cnn3d.batchSize["val"]
-            index_to_data_for_batch_max = (batch_i + 1) * cnn3d.batchSize["val"]
+            index_to_data_for_batch_min = batch_i * batchsize
+            index_to_data_for_batch_max = (batch_i + 1) * batchsize
             
             feeds = cnn3d.get_main_feeds('val')
             feeds_dict = { feeds['x'] : channsOfSegmentsForSubepPerPathway[0][ index_to_data_for_batch_min : index_to_data_for_batch_max ] }
@@ -150,6 +151,9 @@ def do_training(sessionTf,
                 #-------Sampling Type---------
                 samplingTypeInstanceTraining, # Instance of the deepmedic/samplingType.SamplingType class for training and validation
                 samplingTypeInstanceValidation,
+                batchsize_train,
+                batchsize_val_samples,
+                batchsize_val_whole,
                 
                 #-------Preprocessing-----------
                 padInputImagesBool,
@@ -282,11 +286,12 @@ def do_training(sessionTf,
                     log.print3("-V-V-V-V-V- Now Validating for this subepoch before commencing the training iterations... -V-V-V-V-V-")
                     start_time_val_subep = time.time()
                     # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
-                    num_batches_val = len(channsOfSegmentsForSubepPerPathwayVal[0]) // cnn3d.batchSize["val"]
+                    num_batches_val = len(channsOfSegmentsForSubepPerPathwayVal[0]) // batchsize_val_samples
                     trainOrValidateForSubepoch( log,
                                                 sessionTf,
                                                 "val",
                                                 num_batches_val,
+                                                batchsize_val_samples,
                                                 cnn3d,
                                                 subepoch,
                                                 acc_monitor_for_ep_val,
@@ -328,11 +333,12 @@ def do_training(sessionTf,
                 log.print3("-T-T-T-T-T- Now Training for this subepoch... This may take a few minutes... -T-T-T-T-T-")
                 start_time_train_subep = time.time()
                 # Compute num of batches from num of extracted samples, in case we did not extract as many as initially requested.
-                num_batches_train = len(channsOfSegmentsForSubepPerPathwayTrain[0]) // cnn3d.batchSize["train"]
+                num_batches_train = len(channsOfSegmentsForSubepPerPathwayTrain[0]) // batchsize_train
                 trainOrValidateForSubepoch( log,
                                             sessionTf,
                                             "train",
                                             num_batches_train,
+                                            batchsize_train,
                                             cnn3d,
                                             subepoch,
                                             acc_monitor_for_ep_train,
@@ -380,6 +386,8 @@ def do_training(sessionTf,
                                 listOfFilepathsToRoiMaskOfEachPatientValidation,
                                 namesForSavingSegmAndProbs = namesForSavingSegmAndProbs,
                                 suffixForSegmAndProbsDict = suffixForSegmAndProbsDict,
+                                # Hyper parameters
+                                batchsize = batchsize_val_whole,
                                 
                                 #----Preprocessing------
                                 padInputImagesBool=padInputImagesBool,

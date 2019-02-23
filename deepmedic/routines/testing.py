@@ -35,6 +35,8 @@ def inferenceWholeVolumes(  sessionTf,
                             listOfFilepathsToRoiMaskFastInfOfEachPatient,
                             namesForSavingSegmAndProbs,
                             suffixForSegmAndProbsDict,
+                            # Hyper parameters
+                            batchsize,
                             
                             #----Preprocessing------
                             padInputImagesBool,
@@ -63,7 +65,6 @@ def inferenceWholeVolumes(  sessionTf,
     NUMBER_OF_CLASSES = cnn3d.num_classes
     
     total_number_of_images = len(listOfFilepathsToEachChannelOfEachPatient)    
-    batch_size = cnn3d.batchSize["test"]
     
     #one dice score for whole + for each class)
     # A list of dimensions: total_number_of_images X NUMBER_OF_CLASSES
@@ -147,7 +148,7 @@ def inferenceWholeVolumes(  sessionTf,
         [sliceCoordsOfSegmentsInImage] = getCoordsOfAllSegmentsOfAnImage(log=log,
                                                                         dimsOfPrimarySegment=cnn3d.pathways[0].getShapeOfInput("test")[2:],
                                                                         strideOfSegmentsPerDimInVoxels=strideOfImagePartsPerDimensionInVoxels,
-                                                                        batch_size = batch_size,
+                                                                        batch_size = batchsize,
                                                                         channelsOfImageNpArray = imageChannels,#chans,niiDims
                                                                         roiMask = roiMask )
         
@@ -158,17 +159,17 @@ def inferenceWholeVolumes(  sessionTf,
         
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
-        num_batches = num_segments_for_case//batch_size
+        num_batches = num_segments_for_case//batchsize
         extractTimePerSubject = 0; loadingTimePerSubject = 0; fwdPassTimePerSubject = 0
         for batch_i in range(num_batches) :
             
             print_progress_step = max(1, num_batches//5)
             if batch_i == 0 or ((batch_i+1) % print_progress_step) == 0 or (batch_i+1) == num_batches :
-                log.print3("Processed "+str((batch_i+1)*batch_size)+"/"+str(num_segments_for_case)+" segments.")
+                log.print3("Processed "+str((batch_i+1)*batchsize)+"/"+str(num_segments_for_case)+" segments.")
                 
             # Extract the data for the segments of this batch. ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords() of training and use it here as well. )
             start_extract_time = time.time()
-            sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batch_size : (batch_i+1)*batch_size ]
+            sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batchsize : (batch_i+1)*batchsize ]
             [channsOfSegmentsPerPath] = extractDataOfSegmentsUsingSampledSliceCoords(cnn3d=cnn3d,
                                                                                     sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
                                                                                     channelsOfImageNpArray=imageChannels,#chans,niiDims
@@ -204,7 +205,7 @@ def inferenceWholeVolumes(  sessionTf,
             
             #~~~~~~~~~~~~~~~~CONSTRUCT THE PREDICTED PROBABILITY MAPS~~~~~~~~~~~~~~
             #From the results of this batch, create the prediction image by putting the predictions to the correct place in the image.
-            for imagePart_in_this_batch_i in range(batch_size) :
+            for imagePart_in_this_batch_i in range(batchsize) :
                 #Now put the label-cube in the new-label-segmentation-image, at the correct position. 
                 #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
                 sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedProbMap_i]
@@ -280,7 +281,7 @@ def inferenceWholeVolumes(  sessionTf,
                             centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = centralVoxelsOfAllFmsInLayer
                             
                         #----For every image part within this batch, reconstruct the corresponding part of the feature maps of the layer we are currently visualising in this loop.
-                        for imagePart_in_this_batch_i in range(batch_size) :
+                        for imagePart_in_this_batch_i in range(batchsize) :
                             #Now put the label-cube in the new-label-segmentation-image, at the correct position. 
                             #The very first label goes not in index 0,0,0 but half-patch further away! At the position of the central voxel of the top-left patch!
                             sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedFeatureMaps_i + imagePart_in_this_batch_i]
@@ -295,7 +296,7 @@ def inferenceWholeVolumes(  sessionTf,
                         
                         indexOfTheLayerInTheReturnedListByTheBatchTraining += 1
                         
-                imagePartOfConstructedFeatureMaps_i += batch_size #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
+                imagePartOfConstructedFeatureMaps_i += batchsize #all the image parts before this were reconstructed for all layers and feature maps. Next batch-iteration should start from this 
                 
             #~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
         

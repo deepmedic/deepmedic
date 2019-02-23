@@ -48,12 +48,6 @@ class ModelConfig(Config):
     SEG_DIM_VAL = "segmentsDimVal"
     SEG_DIM_INFER = "segmentsDimInference"
     
-    #==Batch Sizes===
-    #Required.
-    BATCH_SIZE_TR = "batchSizeTrain"
-    BATCH_SIZE_VAL = "batchSizeVal"
-    BATCH_SIZE_INFER = "batchSizeInfer"
-    
     #Dropout Rates:
     DROP_NORM = "dropoutRatesNormal"
     DROP_SUBS = "dropoutRatesSubsampled"

@@ -185,6 +185,7 @@ class TrainSessionParameters(object) :
         self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
         self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
+        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else 10
         self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 1
         
         #~~~~~~~ Learning Rate Schedule ~~~~~~~~
@@ -248,6 +249,7 @@ class TrainSessionParameters(object) :
         
         #~~~~~Validation on Samples~~~~~~~~
         self.segmentsLoadedOnGpuPerSubepochVal = cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] is not None else 3000
+        self.batchsize_val_samples = cfg[cfg.BATCHSIZE_VAL_SAMPL] if cfg[cfg.BATCHSIZE_VAL_SAMPL] is not None else 50
         
         #~~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~
         #ADVANCED OPTION ARE DISABLED IF useDefaultUniformValidationSampling = True!
@@ -280,7 +282,9 @@ class TrainSessionParameters(object) :
         self.num_epochs_between_val_on_whole_volumes = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
         if self.num_epochs_between_val_on_whole_volumes == 0 and self.val_on_whole_volumes :
             self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
-            
+        
+        self.batchsize_val_whole = cfg[cfg.BATCHSIZE_VAL_WHOLE] if cfg[cfg.BATCHSIZE_VAL_WHOLE] is not None else 10
+        
         #predictions
         self.saveSegmentationVal = cfg[cfg.SAVE_SEGM_VAL] if cfg[cfg.SAVE_SEGM_VAL] is not None else True
         self.saveProbMapsBoolPerClassVal = cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) else [True]*num_classes
@@ -432,6 +436,8 @@ class TrainSessionParameters(object) :
         logPrint("Region-Of-Interest Masks provided = " + str(self.providedRoiMasksTrain))
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
         
+        logPrint("Batch size (train) = " + str(self.batchsize_train))
+        
         logPrint("~~Advanced Sampling~~")
         logPrint("Using default sampling = " + str(self.useDefaultTrainingSamplingFromGtAndRoi) + ". NOTE: Adv.Sampl.Params are auto-set to perform default sampling if True.")
         logPrint("Type of Sampling = " + str(self.samplingTypeInstanceTrain.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceTrain.getIntSamplingType()) + ")")
@@ -476,6 +482,7 @@ class TrainSessionParameters(object) :
         
         logPrint("~~~~~~~Validation on Samples throughout Training~~~~~~~")
         logPrint("Number of Segments loaded on GPU per subepoch for Validation = " + str(self.segmentsLoadedOnGpuPerSubepochVal))
+        logPrint("Batch size (val on samples) = " + str(self.batchsize_val_samples))
         
         logPrint("~~Advanced Sampling~~")
         logPrint("Using default uniform sampling for validation = " + str(self.useDefaultUniformValidationSampling) + ". NOTE: Adv.Sampl.Params are auto-set to perform uniform-sampling if True.")
@@ -487,6 +494,7 @@ class TrainSessionParameters(object) :
         
         logPrint("~~~~~Validation with Full Inference on Validation Cases~~~~~")
         logPrint("Perform Full-Inference on Val. cases every that many epochs = " + str(self.num_epochs_between_val_on_whole_volumes))
+        logPrint("Batch size (val on whole volumes) = " + str(self.batchsize_val_whole))
         logPrint("~~Predictions (segmentations and prob maps on val. cases)~~")
         logPrint("Save Segmentations = " + str(self.saveSegmentationVal))
         logPrint("Save Probability Maps for each class = " + str(self.saveProbMapsBoolPerClassVal))
@@ -563,6 +571,9 @@ class TrainSessionParameters(object) :
                 #-------Sampling Type---------
                 self.samplingTypeInstanceTrain,
                 self.samplingTypeInstanceVal,
+                self.batchsize_train,
+                self.batchsize_val_samples,
+                self.batchsize_val_whole,
                 
                 #-------Preprocessing-----------
                 self.padInputImagesBool,
@@ -575,7 +586,7 @@ class TrainSessionParameters(object) :
                 self.subsampledChannelsFilepathsTrain,
                 self.subsampledChannelsFilepathsVal,
                 
-                # Validation
+                # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,
                 self.num_epochs_between_val_on_whole_volumes,
                 

@@ -50,6 +50,7 @@ class TestSessionParameters(object) :
         self.saveProbMapsBoolPerClass = cfg[cfg.SAVE_PROBMAPS_PER_CLASS] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS] != []) else [True]*num_classes
         self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         self.suffixForSegmAndProbsDict = cfg[cfg.SUFFIX_SEGM_PROB] if cfg[cfg.SUFFIX_SEGM_PROB] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
+        self.batchsize = cfg[cfg.BATCHSIZE] if cfg[cfg.BATCHSIZE] is not None else 10
         #features:
         self.saveIndividualFmImages = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
         self.saveMultidimensionalImageWithAllFms = cfg[cfg.SAVE_4DIM_FMS] if cfg[cfg.SAVE_4DIM_FMS] is not None else False
@@ -119,7 +120,8 @@ class TestSessionParameters(object) :
         logPrint("Filepaths of the ROI Masks provided per case = " + str(self.roiMasksFilepaths))
         if not self.providedRoiMasks :
             logPrint(">>> WARN: Inference will be performed on whole scan. Consider providing a ROI image for faster results, if possible!")
-            
+        logPrint("Batch size = " + str(self.batchsize))
+        
         logPrint("~~~~~~~~~~~~~~~~~~~OUTPUT~~~~~~~~~~~~~~~")
         logPrint("Path to the main output-folder = " + str(self.mainOutputAbsFolder))
         logPrint("Provided names to use to save results for each case = " + str(self.namesToSavePredictionsAndFeatures))
@@ -165,6 +167,8 @@ class TestSessionParameters(object) :
                 
                 self.filepathsToSavePredictionsForEachPatient,
                 self.suffixForSegmAndProbsDict,
+                # Hyper parameters
+                self.batchsize,
                 
                 #----Preprocessing------
                 self.padInputImagesBool,

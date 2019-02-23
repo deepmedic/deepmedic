@@ -35,6 +35,8 @@ class TestConfig(Config):
     SAVE_PROBMAPS_PER_CLASS = "saveProbMapsForEachClass" # Default True
     SUFFIX_SEGM_PROB = "suffixForSegmAndProbsDict"
     
+    BATCHSIZE = "batchsize"
+    
     #optionals, cause default is False.
     SAVE_INDIV_FMS = "saveIndividualFms"
     SAVE_4DIM_FMS = "saveAllFmsIn4DimImage"

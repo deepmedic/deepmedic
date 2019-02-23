@@ -39,6 +39,7 @@ class TrainConfig(Config):
     NUM_SUBEP = "numberOfSubepochs"
     NUM_CASES_LOADED_PERSUB = "numOfCasesLoadedPerSubepoch"
     NUM_TR_SEGMS_LOADED_PERSUB = "numberTrainingSegmentsLoadedOnGpuPerSubep"
+    BATCHSIZE_TR = "batchsize_train"
     NUM_OF_PROC_SAMPL = "num_processes_sampling"
     #~~~~~ Learning rate schedule ~~~~~
     LR_SCH_TYPE = "typeOfLearningRateSchedule"
@@ -63,12 +64,19 @@ class TrainConfig(Config):
     PERFORM_VAL_INFERENCE = "performFullInferenceOnValidationImagesEveryFewEpochs"
     CHANNELS_VAL = "channelsValidation"
     GT_LABELS_VAL = "gtLabelsValidation"
-    #For SAMPLES Validation:
-    NUM_VAL_SEGMS_LOADED_PERSUB = "numberValidationSegmentsLoadedOnGpuPerSubep"
-    #Optional
     ROI_MASKS_VAL = "roiMasksValidation"
-    #~~~~~~~~~Full Inference~~~~~~~~
+    NUM_VAL_SEGMS_LOADED_PERSUB = "numberValidationSegmentsLoadedOnGpuPerSubep" # For val on samples.
+    BATCHSIZE_VAL_SAMPL = "batchsize_val_samples"
+    
+    #~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~~
+    DEFAULT_VAL_SAMPLING = "useDefaultUniformValidationSampling"
+    TYPE_OF_SAMPLING_VAL = "typeOfSamplingForVal"
+    PROP_OF_SAMPLES_PER_CAT_VAL = "proportionOfSamplesToExtractPerCategoryVal"
+    WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = "weightedMapsForSamplingEachCategoryVal"
+    
+    #~~~~~~~~~ Validation by fully inferring whole validation cases ~~~~~~~~
     NUM_EPOCHS_BETWEEN_VAL_INF = "numberOfEpochsBetweenFullInferenceOnValImages"
+    BATCHSIZE_VAL_WHOLE = "batchsize_val_whole"
     NAMES_FOR_PRED_PER_CASE_VAL = "namesForPredictionsPerCaseVal"
     SAVE_SEGM_VAL = "saveSegmentationVal"
     SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
@@ -78,11 +86,6 @@ class TrainConfig(Config):
     INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal"
     INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathwayVal"
     INDICES_OF_FMS_TO_SAVE_FC_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathwayVal"
-    #~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~~
-    DEFAULT_VAL_SAMPLING = "useDefaultUniformValidationSampling"
-    TYPE_OF_SAMPLING_VAL = "typeOfSamplingForVal"
-    PROP_OF_SAMPLES_PER_CAT_VAL = "proportionOfSamplesToExtractPerCategoryVal"
-    WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = "weightedMapsForSamplingEachCategoryVal"
     
     #====OPTIMIZATION=====
     LRATE = "learningRate"

@@ -102,10 +102,6 @@ class ModelParameters(object) :
     errReqSegmDimTrain = errorRequireSegmentDimensionsTrain
     
     @staticmethod
-    def errorRequireBatchSizeTrain() :
-        print("ERROR: The parameter \"batchSizeTrain\" was not specified, although required. This parameter specifies how many training-samples (segments) to use to form a batch, on which a single training iteration is performed. The bigger the better, but larger batches add to the memory and computational burden. Depending on the segment-size, the batch size should be smaller (if big segment sizes are used) or larger (if small segment sizes are used). A number between 10 to 100 is suggested. Please specify in the format: batchSizeTrain = 10 (a number). Exiting!"); exit(1)
-    errReqBatchSizeTr = errorRequireBatchSizeTrain
-    @staticmethod
     def errorResLayer1(strPathwayType) :
         print("ERROR: The parameter \"layersWithResidualConn\" for the [", strPathwayType, "] pathway was specified to include the number 1, ie the 1st layer.")
         print("\t This is not an acceptable value, as a residual connection is made between the output of the specified layer and the input of the previous layer. There is no layer before the 1st!")
@@ -236,11 +232,7 @@ class ModelParameters(object) :
         for (tr0_val1_inf2, segmentDimensions) in [ (0,self.segmDimNormalTrain), (1,self.segmDimNormalVal), (2,self.segmDimNormalInfer) ] :
             if not checkRecFieldVsSegmSize(self.receptiveFieldNormal, segmentDimensions) :
                 self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, tr0_val1_inf2)
-                
-        #=== Batch Sizes ===
-        self.batchSizeTrain = cfg[cfg.BATCH_SIZE_TR] if cfg[cfg.BATCH_SIZE_TR] is not None else self.errReqBatchSizeTr()
-        self.batchSizeVal = cfg[cfg.BATCH_SIZE_VAL] if cfg[cfg.BATCH_SIZE_VAL] is not None else self.batchSizeTrain
-        self.batchSizeInfer = cfg[cfg.BATCH_SIZE_INFER] if cfg[cfg.BATCH_SIZE_INFER] is not None else self.batchSizeTrain
+
         
         #=== Dropout rates ===
         self.dropNormal = cfg[cfg.DROP_NORM] if cfg[cfg.DROP_NORM] is not None else []
@@ -347,11 +339,6 @@ class ModelParameters(object) :
         logPrint("Size of Segments for Validation = " + str(self.segmDimNormalVal))
         logPrint("Size of Segments for Testing = " + str(self.segmDimNormalInfer))
         
-        logPrint("~~Batch Sizes~~")
-        logPrint("Batch Size for Training = " + str(self.batchSizeTrain))
-        logPrint("Batch Size for Validation = " + str(self.batchSizeVal))
-        logPrint("Batch Size for Testing = " + str(self.batchSizeInfer))
-        
         logPrint("~~Dropout Rates~~")
         logPrint("Drop.R. for each layer in Normal Pathway = " + str(self.dropoutRatesForAllPathways[0]))
         logPrint("Drop.R. for each layer in Subsampled Pathway = " + str(self.dropoutRatesForAllPathways[1]))
@@ -408,11 +395,6 @@ class ModelParameters(object) :
                         self.segmDimNormalTrain,
                         self.segmDimNormalVal,
                         self.segmDimNormalInfer,
-                        
-                        #=== Batch Sizes ===
-                        self.batchSizeTrain,
-                        self.batchSizeVal,
-                        self.batchSizeInfer,
                         
                         #=== Others ====
                         #Dropout
