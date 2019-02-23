@@ -30,39 +30,37 @@ def cropRczOf5DimArrayToMatchOther(array5DimToCrop, dimensionsOf5DimArrayToMatch
                             :dimensionsOf5DimArrayToMatchInRcz[4]]
     return output
     
-def repeatRcz5DimArrayByFactor(array5Dim, array5dimToUpsampleShape, factor3Dim):
+def repeatRcz5DimArrayByFactor(array5Dim, factor3Dim):
     # array5Dim: [batch size, num of FMs, r, c, z]. Ala input/output of conv layers.
     # Repeat FM in the three last dimensions, to upsample back to the normal resolution space.
-    
+    # In numpy below: (but tf has no repeat, only tile, so, implementation is funny.
     #expandedR = array5Dim.repeat(factor3Dim[0], axis=2)
     #expandedRC = expandedR.repeat(factor3Dim[1], axis=3)
     #expandedRCZ = expandedRC.repeat(factor3Dim[2], axis=4)
-    
     res = array5Dim
-    res_shape = array5dimToUpsampleShape
-    
+    res_shape = tf.shape(array5Dim)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1]*res_shape[2], 1, res_shape[3], res_shape[4]] ),
                                multiples=[1, 1, factor3Dim[0], 1, 1] ),
                     shape=[res_shape[0], res_shape[1], res_shape[2]*factor3Dim[0], res_shape[3], res_shape[4]] )
-    res_shape[2] = res_shape[2]*factor3Dim[0]
+    
+    res_shape = tf.shape(res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2]*res_shape[3], 1, res_shape[4]] ),
                                multiples=[1, 1, 1, factor3Dim[1], 1] ),
                     shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*factor3Dim[1], res_shape[4]] )
-    res_shape[3] = res_shape[3]*factor3Dim[1]
+    
+    res_shape = tf.shape(res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*res_shape[4], 1] ),
                                multiples=[1, 1, 1, 1, factor3Dim[2]] ),
                     shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3], res_shape[4]*factor3Dim[2]] )
-    res_shape[4] = res_shape[4]*factor3Dim[2]
     return res
     
 def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
-                                        array5dimToUpsampleShape,
                                         upsamplingFactor,
                                         upsamplingScheme="repeat",
                                         dimensionsOf5DimArrayToMatchInRcz=None) :
     # array5dimToUpsample : [batch_size, numberOfFms, r, c, z].
     if upsamplingScheme == "repeat" :
-        upsampledOutput = repeatRcz5DimArrayByFactor(array5dimToUpsample, array5dimToUpsampleShape, upsamplingFactor)
+        upsampledOutput = repeatRcz5DimArrayByFactor(array5dimToUpsample, upsamplingFactor)
     else :
         print("ERROR: in upsampleRcz5DimArrayAndOptionalCrop(...). Not implemented type of upsampling! Exiting!"); exit(1)
         
@@ -378,17 +376,14 @@ class SubsampledPathway(Pathway):
         [outputShapeTrain, outputShapeVal, outputShapeTest] = self.getShapeOfOutput()
         
         outputNormResTrain = upsampleRcz5DimArrayAndOptionalCrop(outputTrain,
-                                                                 outputShapeTrain,
                                                                 self.subsFactor(),
                                                                 upsamplingScheme,
                                                                 shapeToMatchInRczTrain)
         outputNormResVal = upsampleRcz5DimArrayAndOptionalCrop(	outputVal,
-                                                                outputShapeVal,
                                                                 self.subsFactor(),
                                                                 upsamplingScheme,
                                                                 shapeToMatchInRczVal)
         outputNormResTest = upsampleRcz5DimArrayAndOptionalCrop(outputTest,
-                                                                outputShapeTest,
                                                                 self.subsFactor(),
                                                                 upsamplingScheme,
                                                                 shapeToMatchInRczTest)

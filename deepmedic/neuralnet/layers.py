@@ -12,7 +12,7 @@ import random
 import tensorflow as tf
 
 from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
-from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, applySoftmaxToFmAndReturnProbYandPredY
+from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, softmax
 
 try:
     from sys import maxint as MAX_INT
@@ -442,14 +442,13 @@ class SoftmaxLayer(TargetLayer):
         self.params = self.params + [self._b]
         
         # ============ Softmax ==============
-        #self.p_y_given_x_2d_train = ? Can I implement negativeLogLikelihood without this ?
-        ( self.p_y_given_x_train,
-        self.y_pred_train ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTrain, self.inputShape["train"], self._numberOfOutputClasses, softmaxTemperature)
-        ( self.p_y_given_x_val,
-        self.y_pred_val ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxVal, self.inputShape["val"], self._numberOfOutputClasses, softmaxTemperature)
-        ( self.p_y_given_x_test,
-        self.y_pred_test ) = applySoftmaxToFmAndReturnProbYandPredY( biasedInputToSoftmaxTest, self.inputShape["test"], self._numberOfOutputClasses, softmaxTemperature)
-        
+        self.p_y_given_x_train = softmax( biasedInputToSoftmaxTrain, softmaxTemperature)
+        self.y_pred_train = tf.argmax(self.p_y_given_x_train, axis=1)
+        self.p_y_given_x_val = softmax( biasedInputToSoftmaxVal, softmaxTemperature)
+        self.y_pred_val = tf.argmax(self.p_y_given_x_val, axis=1)
+        self.p_y_given_x_test = softmax( biasedInputToSoftmaxTest, softmaxTemperature)
+        self.y_pred_test = tf.argmax(self.p_y_given_x_test, axis=1)
+    
         self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShape["train"], self.inputShape["val"], self.inputShape["test"])
         
         layerConnected.setTargetBlock(self)
