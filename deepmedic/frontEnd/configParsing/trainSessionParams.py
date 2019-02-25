@@ -164,27 +164,28 @@ class TrainSessionParameters(object) :
         else :
             samplingTypeToUseTr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else DEFAULT_SAMPLING_TYPE_TR
             self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, samplingTypeToUseTr, num_classes)
-            if samplingTypeToUseTr in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] :
+            if samplingTypeToUseTr in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None :
                 self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] )
             else :
                 numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
                 self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
                 
             # This could be shortened.
-            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] :
+            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None :
                 #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
                 listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]]
             else :
                 listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = None
             self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain #If None, following bool will turn False.
             
-        self.providedWeightMapsToSampleForEachCategoryTraining = True if self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining else False 
+        self.providedWeightMapsToSampleForEachCategoryTraining = self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining is not None
         
         #~~~~~~~~ Training Cycle ~~~~~~~~~~~
         self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
         self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
         self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
+        self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 1
         
         #~~~~~~~ Learning Rate Schedule ~~~~~~~~
         
@@ -217,13 +218,13 @@ class TrainSessionParameters(object) :
             self.doIntAugm_shiftMuStd_multiMuStd = [False, 'plcholder', [], []]
             
         #===================VALIDATION========================
-        self.performValidationOnSamplesThroughoutTraining = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
-        if self.lr_sched_params['type'] == 'auto' and not self.performValidationOnSamplesThroughoutTraining :
+        self.val_on_samples_during_train = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
+        if self.lr_sched_params['type'] == 'auto' and not self.val_on_samples_during_train :
             self.errorAutoRequiresValSamples()
-        self.performFullInferenceOnValidationImagesEveryFewEpochs = cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
+        self.val_on_whole_volumes = cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
         
         #Input:
-        if self.performValidationOnSamplesThroughoutTraining or self.performFullInferenceOnValidationImagesEveryFewEpochs :
+        if self.val_on_samples_during_train or self.val_on_whole_volumes :
             if cfg[cfg.CHANNELS_VAL] :
                 listOfAListPerChannelWithFilepathsOfAllCasesVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS_VAL]]
                 #[[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
@@ -233,9 +234,9 @@ class TrainSessionParameters(object) :
                 
         else :
             self.channelsFilepathsVal = []
-        if self.performValidationOnSamplesThroughoutTraining :
+        if self.val_on_samples_during_train :
             self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
-        elif self.performFullInferenceOnValidationImagesEveryFewEpochs :
+        elif self.val_on_whole_volumes :
             self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else []
         else : # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
@@ -260,37 +261,38 @@ class TrainSessionParameters(object) :
         else :
             samplingTypeToUseVal = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else DEFAULT_SAMPLING_TYPE_VAL
             self.samplingTypeInstanceVal = samplingType.SamplingType( self.log, samplingTypeToUseVal, num_classes)
-            if samplingTypeToUseVal in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] :
+            if samplingTypeToUseVal in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] is not None:
                 self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] )
             else :
                 numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
                 self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
                 
             # TODO: Shorten this
-            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] :
+            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
                 #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
                 self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]]
             else :
                 self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = None
                 
-        self.providedWeightMapsToSampleForEachCategoryValidation = True if self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal else False 
+        self.providedWeightMapsToSampleForEachCategoryValidation = self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal is not None
         
         #~~~~~~Full inference on validation image~~~~~~
-        self.numberOfEpochsBetweenFullInferenceOnValImages = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
-        if self.numberOfEpochsBetweenFullInferenceOnValImages == 0 and self.performFullInferenceOnValidationImagesEveryFewEpochs :
+        self.num_epochs_between_val_on_whole_volumes = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
+        if self.num_epochs_between_val_on_whole_volumes == 0 and self.val_on_whole_volumes :
             self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
             
         #predictions
         self.saveSegmentationVal = cfg[cfg.SAVE_SEGM_VAL] if cfg[cfg.SAVE_SEGM_VAL] is not None else True
         self.saveProbMapsBoolPerClassVal = cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) else [True]*num_classes
         self.filepathsToSavePredictionsForEachPatientVal = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
+        self.suffixForSegmAndProbsDictVal = cfg[cfg.SUFFIX_SEGM_PROB_VAL] if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
         #features:
         self.saveIndividualFmImagesVal = cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
         self.saveMultidimensionalImageWithAllFmsVal = cfg[cfg.SAVE_4DIM_FMS_VAL] if cfg[cfg.SAVE_4DIM_FMS_VAL] is not None else False
         if self.saveIndividualFmImagesVal == True or self.saveMultidimensionalImageWithAllFmsVal == True:
-            indices_fms_per_pathtype_per_layer_to_save =   [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] +\
-                                                                    [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] +\
-                                                                    [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
+            indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] +\
+                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] +\
+                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
             self.indices_fms_per_pathtype_per_layer_to_save = [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save] #By default, save none.
         else:
             self.indices_fms_per_pathtype_per_layer_to_save = None
@@ -299,7 +301,7 @@ class TrainSessionParameters(object) :
         #Output:
         #Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient and filepathsToSaveFeaturesForEachPatient.
         self.namesToSavePredictionsAndFeaturesVal = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None #CAREFUL: Here we use a different parsing function!
-        if not self.namesToSavePredictionsAndFeaturesVal and self.performFullInferenceOnValidationImagesEveryFewEpochs and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
+        if not self.namesToSavePredictionsAndFeaturesVal and self.val_on_whole_volumes and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal) :
             self.errorRequireNamesOfPredictionsVal()
             
         #===================== OTHERS======================
@@ -316,8 +318,14 @@ class TrainSessionParameters(object) :
         self.subsampledChannelsFilepathsTrain = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
         self.subsampledChannelsFilepathsVal = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
         
-        # Reweight classes equally before [0], linearly decrease influence till [1], natural freq after.
-        self.weight_c_in_xentr_and_release_between_eps = [-1, -1] # Give one negative value to disable it
+        # Re-weight samples in the cost function *on a per-class basis*: Type of re-weighting and training schedule.
+        # E.g. to exclude a class, or counter class imbalance.
+        # "type": string/None, "prms": any/None, "schedule": [ min_epoch, max_epoch ]
+        # Type, prms combinations: "freq", None || "per_c", [0., 2., 1., ...] (as many as classes)
+        # "schedule": Constant before epoch [0], linear change towards equal weight (=1) until epoch [1], constant equal weights (=1) afterwards.
+        self.reweight_classes_in_cost = cfg[cfg.W_C_IN_COST] if cfg[cfg.W_C_IN_COST] is not None else {"type": None, "prms": None, "schedule": [0, self.numberOfEpochs]}
+        if self.reweight_classes_in_cost["type"] == "per_c":
+            assert len(self.reweight_classes_in_cost["prms"]) == num_classes
         
         self._makeFilepathsForPredictionsAndFeaturesVal( folderForPredictionsVal, folderForFeaturesVal )
         
@@ -375,19 +383,28 @@ class TrainSessionParameters(object) :
                 indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
         
-    def _makeFilepathsForPredictionsAndFeaturesVal(self,
-                                            absPathToFolderForPredictionsFromSession,
-                                            absPathToFolderForFeaturesFromSession
-                                            ) :
+    def _makeFilepathsForPredictionsAndFeaturesVal( self,
+                                                    absPathToFolderForPredictionsFromSession,
+                                                    absPathToFolderForFeaturesFromSession
+                                                    ) :
         self.filepathsToSavePredictionsForEachPatientVal = []
         self.filepathsToSaveFeaturesForEachPatientVal = []
-        if self.namesToSavePredictionsAndFeaturesVal is not None :
+        if self.namesToSavePredictionsAndFeaturesVal is not None : # standard behavior
             for case_i in range(self.numberOfCasesVal) :
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSavePredictionsForEachPatientVal.append( filepathForCasePrediction )
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeaturesVal[case_i]
                 self.filepathsToSaveFeaturesForEachPatientVal.append( filepathForCaseFeatures )
-                
+        else : # Names for predictions not given. Special handling...
+            if self.numberOfCasesVal > 1 : # Many cases, create corresponding namings for files.
+                for case_i in range(self.numberOfCasesVal) :
+                    self.filepathsToSavePredictionsForEachPatientVal.append( absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz" )
+                    self.filepathsToSaveFeaturesForEachPatientVal.append( absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz" )
+            else : # Only one case. Just give the output prediction folder, the io.py will save output accordingly.
+                self.filepathsToSavePredictionsForEachPatientVal.append( absPathToFolderForPredictionsFromSession )
+                self.filepathsToSaveFeaturesForEachPatientVal.append( absPathToFolderForPredictionsFromSession )
+    
+    
     def get_path_to_load_model_from(self):
         return self.savedModelFilepath
     
@@ -428,6 +445,7 @@ class TrainSessionParameters(object) :
         logPrint("Number of Subepochs per epoch = " + str(self.numberOfSubepochs))
         logPrint("Number of cases to load per Subepoch (for extracting the samples for this subepoch) = " + str(self.numOfCasesLoadedPerSubepoch))
         logPrint("Number of Segments loaded on GPU per subepoch for Training = " + str(self.segmentsLoadedOnGpuPerSubepochTrain) + ". NOTE: This number of segments divided by the batch-size defines the number of optimization-iterations that will be performed every subepoch!")
+        logPrint("Number of parallel processes for sampling = " + str(self.num_parallel_proc_sampling))
         
         logPrint("~~Learning Rate Schedule~~")
         logPrint("Type of schedule = " + str(self.lr_sched_params['type']))
@@ -448,8 +466,8 @@ class TrainSessionParameters(object) :
         logPrint("[Int. Augm.] (DEBUGGING:) full parameters [ doIntAugm, shift, mult] = " + str(self.doIntAugm_shiftMuStd_multiMuStd))
         
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
-        logPrint("Perform Validation on Samples throughout training? = " + str(self.performValidationOnSamplesThroughoutTraining))
-        logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.performFullInferenceOnValidationImagesEveryFewEpochs))
+        logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
+        logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
         logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " + str(self.channelsFilepathsVal))
         logPrint("Provided Ground-Truth for Validation = " + str(self.providedGtVal) + ". NOTE: Required for Val on samples. Not Req for Full-Inference, but DSC will be reported if provided.")
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
@@ -468,11 +486,12 @@ class TrainSessionParameters(object) :
         logPrint("Paths to weight-maps for sampling of each category = " + str(self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal))
         
         logPrint("~~~~~Validation with Full Inference on Validation Cases~~~~~")
-        logPrint("Perform Full-Inference on Val. cases every that many epochs = " + str(self.numberOfEpochsBetweenFullInferenceOnValImages))
+        logPrint("Perform Full-Inference on Val. cases every that many epochs = " + str(self.num_epochs_between_val_on_whole_volumes))
         logPrint("~~Predictions (segmentations and prob maps on val. cases)~~")
         logPrint("Save Segmentations = " + str(self.saveSegmentationVal))
         logPrint("Save Probability Maps for each class = " + str(self.saveProbMapsBoolPerClassVal))
         logPrint("Filepaths to save results per case = " + str(self.filepathsToSavePredictionsForEachPatientVal))
+        logPrint("Suffixes with which to save segmentations and probability maps = " + str(self.suffixForSegmAndProbsDictVal))
         logPrint("~~Feature Maps~~")
         logPrint("Save Feature Maps = " + str(self.saveIndividualFmImagesVal))
         logPrint("Save FMs in a 4D-image = " + str(self.saveMultidimensionalImageWithAllFmsVal))
@@ -489,9 +508,9 @@ class TrainSessionParameters(object) :
         logPrint("Momentum Value = " + str(self.momentumValue))
         logPrint("~~Costs~~")
         logPrint("Loss functions and their weights = " + str(self.losses_and_weights))
+        logPrint("Reweight samples in cost on a per-class basis = " + str(self.reweight_classes_in_cost))
         logPrint("L1 Regularization term = " + str(self.L1_reg_weight))
         logPrint("L2 Regularization term = " + str(self.L2_reg_weight))
-        
         logPrint("~~Freeze Weights of Certain Layers~~")
         logPrint("Indices of layers from each type of pathway that will be kept fixed (first layer is 0):")
         logPrint("Normal pathway's layers to freeze = "+ str(self.indicesOfLayersPerPathwayTypeToFreeze[0]))
@@ -511,10 +530,11 @@ class TrainSessionParameters(object) :
         args = [self.log,
                 self.filepath_to_save_models,
                 
-                self.performValidationOnSamplesThroughoutTraining,
-                [self.saveSegmentationVal, self.saveProbMapsBoolPerClassVal],
+                self.val_on_samples_during_train,
+                {"segm": self.saveSegmentationVal, "prob": self.saveProbMapsBoolPerClassVal},
                 
                 self.filepathsToSavePredictionsForEachPatientVal,
+                self.suffixForSegmAndProbsDictVal,
                 
                 self.channelsFilepathsTrain,
                 self.channelsFilepathsVal,
@@ -538,6 +558,7 @@ class TrainSessionParameters(object) :
                 self.numOfCasesLoadedPerSubepoch,
                 self.segmentsLoadedOnGpuPerSubepochTrain,
                 self.segmentsLoadedOnGpuPerSubepochVal,
+                self.num_parallel_proc_sampling,
                 
                 #-------Sampling Type---------
                 self.samplingTypeInstanceTrain,
@@ -555,8 +576,8 @@ class TrainSessionParameters(object) :
                 self.subsampledChannelsFilepathsVal,
                 
                 # Validation
-                self.performFullInferenceOnValidationImagesEveryFewEpochs, #Even if not providedGtForValidationBool, inference will be performed if this == True, to save the results, eg for visual.
-                self.numberOfEpochsBetweenFullInferenceOnValImages, # Should not be == 0, except if performFullInferenceOnValidationImagesEveryFewEpochsBool == False
+                self.val_on_whole_volumes,
+                self.num_epochs_between_val_on_whole_volumes,
                 
                 #--------For FM visualisation---------
                 self.saveIndividualFmImagesVal,
@@ -578,7 +599,7 @@ class TrainSessionParameters(object) :
                 self.L2_reg_weight,
                 # Cost Schedules
                 #Weighting Classes differently in the CNN's cost function during training:
-                self.weight_c_in_xentr_and_release_between_eps,
+                self.reweight_classes_in_cost
                 ]
         return args
     
@@ -599,6 +620,7 @@ class TrainSessionParameters(object) :
                 self.eRms
                 ]
         return args
+
 
 
 

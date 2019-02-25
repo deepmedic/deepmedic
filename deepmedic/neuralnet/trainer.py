@@ -33,7 +33,7 @@ class Trainer(object):
                     L1_reg_weight,
                     L2_reg_weight,
                     # Cost schedules
-                    weight_c_in_xentr_and_release_between_eps,
+                    reweight_classes_in_cost,
                     
                     network_to_train
                     ):
@@ -49,8 +49,7 @@ class Trainer(object):
         self._losses_and_weights = losses_and_weights  # "L", "D" or "J"
         self._total_cost = None # This is set-up by calling self.setup_costs(...)
         # Params for costs
-        self._weight_c_in_xentr_and_release_between_eps = weight_c_in_xentr_and_release_between_eps
-        self._setup_costs(log)
+        self._reweight_classes_in_cost = reweight_classes_in_cost
         
         
         ################# OPTIMIZER AND SCHEDULES ###############
@@ -95,6 +94,10 @@ class Trainer(object):
         self._op_assign_top_mean_val_acc_tfv = None
         self._op_assign_epoch_with_top_mean_val_acc_tvf = None
         self._op_assign_last_epoch_lr_lowered = None
+        
+        # Setup any parameters needed
+        self._setup_costs(log) # Needs to be run with initialized self._num_epochs_trained_tfv
+        
         
     ############## All the logic wrt cost / regularizers should be done here ##############
     def _setup_costs(self, log):
@@ -174,7 +177,6 @@ class Trainer(object):
                                                               rhoParamForRmsProp,
                                                               epsilonForRmsProp  )
         
-        
 
         
     def get_total_cost(self):
@@ -196,30 +198,47 @@ class Trainer(object):
     
     
     # ==== For cost schedules =====
-    def _compute_w_per_class_vector_for_xentr(self, num_classes, y_gt):
-        # To counter class imbalance. Return value is a function of epochs_trained_tfv
+    
+    def _compute_w_per_class_vector_for_xentr(self, num_classes, y_gt, eps = 1e-6):
+        # Re-weights samples in the cost function on a per-class basis.
+        # E.g. to exclude a class, or counter class imbalance.
         # From first to given epoch, start from weighting classes equally to natural frequency, decreasing weighting linearly.
-        TINY_FLOAT = 1e-6
-        if self._weight_c_in_xentr_and_release_between_eps[0] >= 0 and self._weight_c_in_xentr_and_release_between_eps[1] > 0:
-            assert self._weight_c_in_xentr_and_release_between_eps[0] < self._weight_c_in_xentr_and_release_between_eps[1]
-            labels_in_ygt = tf.cast( tf.reduce_prod(tf.shape(y_gt)), dtype="float32" )
-            labels_in_ygt_per_c = tf.bincount( arr = y_gt, minlength=num_classes, maxlength=num_classes, dtype="float32" ) # without the min/max, length of vector can change.
+        # Return value: a function of epochs_trained_tfv
+        
+        if self._reweight_classes_in_cost is None or self._reweight_classes_in_cost["type"] is None: # No re-weighting.
+            w_per_cl_vec = tf.ones( shape=[num_classes], dtype='float32' )
+            
+        else: # A type of reweighting has been specified
+            
+            if self._reweight_classes_in_cost["type"] == "freq":
+                # Frequency re-weighting
+                num_lbls_in_ygt = tf.cast( tf.reduce_prod(tf.shape(y_gt)), dtype="float32" )
+                num_lbls_in_ygt_per_c = tf.bincount( arr = y_gt, minlength=num_classes, maxlength=num_classes, dtype="float32" ) # without the min/max, length of vector can change.
+                y1 = (1./(num_lbls_in_ygt_per_c + eps)) * (num_lbls_in_ygt / num_classes)
+                
+            elif self._reweight_classes_in_cost["type"] == "per_c":
+                # self._reweight_classes_in_cost["prms"] should be a list, with one float per class
+                assert len(self._reweight_classes_in_cost["prms"]) == num_classes
+                y1 = tf.constant(self._reweight_classes_in_cost["prms"], dtype="float32")
+            
+            # Linear schedule:
+            lin_schedule_min_max_epoch = self._reweight_classes_in_cost["schedule"]
+            assert lin_schedule_min_max_epoch[0] < lin_schedule_min_max_epoch[1]
+            
             # yx - y1 = (x - x1) * (y2 - y1)/(x2 - x1)
-            # yx = the multiplier I currently want, y1 = the multiplier at the begining, y2 = the multiplier at the end
+            # yx = the multiplier I currently want, y1 = the multiplier at the beginning, y2 = the multiplier at the end
             # x = current epoch, x1 = epoch where linear decrease starts, x2 = epoch where linear decrease ends
-            y1 = (1./(labels_in_ygt_per_c+TINY_FLOAT)) * (labels_in_ygt / num_classes)
-            y2 = 1.
-            x1 = tf.cast(self._weight_c_in_xentr_and_release_between_eps[0], dtype="float32")
-            x2 = tf.cast(self._weight_c_in_xentr_and_release_between_eps[1], dtype="float32")
+            y2 = 1. # Where weight should be after end of schedule.
+            
+            x1 = tf.cast(lin_schedule_min_max_epoch[0], dtype="float32")
+            x2 = tf.cast(lin_schedule_min_max_epoch[1], dtype="float32")
             x = tf.cast(self._num_epochs_trained_tfv, dtype="float32")
-            # To handle the piecewise linear behavior of x being before x1 and after x2 giving the same y as if =x1 or =x2 :
+            # To handle the piecewise linear behaviour of x being before x1 and after x2 giving the same y as if =x1 or =x2 :
             x = tf.maximum(x1, x)
             x = tf.minimum(x, x2)
             yx = (x - x1) * (y2 - y1)/(x2 - x1) + y1
             w_per_cl_vec = yx
-        else : # Negative given. We are not reweighting.
-            w_per_cl_vec = tf.ones( shape=[num_classes], dtype='float32' )
-            
+
         return w_per_cl_vec
     
         

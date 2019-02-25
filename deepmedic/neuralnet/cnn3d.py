@@ -348,7 +348,7 @@ class Cnn3d(object):
         self.recFieldCnn = calcRecFieldFromKernDimListPerLayerWhenStrides1(kernelDimensions)
         
         #==============================
-        rng = np.random.RandomState(23455)
+        rng = np.random.RandomState(seed=None)
         
         ######################
         # BUILD ACTUAL MODEL #
@@ -387,6 +387,7 @@ class Cnn3d(object):
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
         thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
+                                                                         rng,
                                                                          inputToPathwayTrain,
                                                                          inputToPathwayVal,
                                                                          inputToPathwayTest,
@@ -439,6 +440,7 @@ class Cnn3d(object):
             inputToPathwayShapeTest = [self.batchSize["test"], numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayTest)
             
             thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
+                                                                     rng,
                                                                      inputToPathwayTrain,
                                                                      inputToPathwayVal,
                                                                      inputToPathwayTest,
@@ -517,6 +519,7 @@ class Cnn3d(object):
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
         thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
+                                                                         rng,
                                                                          inputToPathwayTrain,
                                                                          inputToPathwayVal,
                                                                          inputToPathwayTest,
@@ -537,7 +540,7 @@ class Cnn3d(object):
                                                                          
                                                                          indicesOfLowerRankLayersPerPathway[thisPathwayType],
                                                                          ranksOfLowerRankLayersForEachPathway[thisPathwayType],
-                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType],
+                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                                                                          )
         
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========

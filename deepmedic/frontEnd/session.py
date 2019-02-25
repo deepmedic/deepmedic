@@ -19,7 +19,7 @@ class Session(object):
         
         self._cfg = cfg
         self._sess_name = self._make_sess_name()
-        self._main_out_folder_abs = getAbsPathEvenIfRelativeIsGiven( cfg[cfg.FOLDER_OUTP], self.get_abs_path_to_cfg() )
+        self._main_out_folder_abs = None # Filled by make_output_folders(self)
         self._log_folder_abs = None
         self._log = None
         
@@ -30,11 +30,10 @@ class Session(object):
         sess_name = self._cfg[self._cfg.SESSION_NAME] if self._cfg[self._cfg.SESSION_NAME] is not None else "Session"
         return sess_name
     
+    # Override
     def make_output_folders(self):
-        print("Creating necessary folders for session...")
-        createMainOutputFolder( self._main_out_folder_abs )
-        self._log_folder_abs = self._main_out_folder_abs + "/logs/"
-        createLogsFolder( self._log_folder_abs )
+        # Overrides must set: self._main_out_folder_abs
+        raise NotImplementedError("Not implemented virtual function.")
     
     # Call only after calling make_output_folders()
     def setup_logger(self):

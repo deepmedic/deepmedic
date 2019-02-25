@@ -14,7 +14,7 @@ from deepmedic.frontEnd.configParsing.testSessionParams import TestSessionParame
 from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTestingSession, handle_exception_tf_restore
 
 from deepmedic.neuralnet.cnn3d import Cnn3d
-from deepmedic.routines.testing import performInferenceOnWholeVolumes
+from deepmedic.routines.testing import inferenceWholeVolumes
 
 import tensorflow as tf
 
@@ -31,6 +31,8 @@ class TestSession(Session):
         return sess_name
     
     def make_output_folders(self):
+        self._main_out_folder_abs = getAbsPathEvenIfRelativeIsGiven( self._cfg[self._cfg.FOLDER_OUTP],
+                                                                     self.get_abs_path_to_cfg() )
         [self._log_folder_abs,
          self._out_folder_preds,
          self._out_folder_fms] = makeFoldersNeededForTestingSession( self._main_out_folder_abs, self._sess_name )
@@ -121,7 +123,7 @@ class TestSession(Session):
             self._log.print3("=========== Testing with the CNN model ===============")
             self._log.print3("======================================================\n")
             
-            performInferenceOnWholeVolumes( *( [sessionTf, cnn3d] + self._params.get_args_for_testing() ) )
+            res_code = inferenceWholeVolumes( *( [sessionTf, cnn3d] + self._params.get_args_for_testing() ) )
         
         self._log.print3("")
         self._log.print3("======================================================")

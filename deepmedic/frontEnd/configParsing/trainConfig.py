@@ -39,6 +39,7 @@ class TrainConfig(Config):
     NUM_SUBEP = "numberOfSubepochs"
     NUM_CASES_LOADED_PERSUB = "numOfCasesLoadedPerSubepoch"
     NUM_TR_SEGMS_LOADED_PERSUB = "numberTrainingSegmentsLoadedOnGpuPerSubep"
+    NUM_OF_PROC_SAMPL = "num_processes_sampling"
     #~~~~~ Learning rate schedule ~~~~~
     LR_SCH_TYPE = "typeOfLearningRateSchedule"
     #Stable + Auto + Predefined.
@@ -71,6 +72,7 @@ class TrainConfig(Config):
     NAMES_FOR_PRED_PER_CASE_VAL = "namesForPredictionsPerCaseVal"
     SAVE_SEGM_VAL = "saveSegmentationVal"
     SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
+    SUFFIX_SEGM_PROB_VAL = "suffixForSegmAndProbsDictVal"
     SAVE_INDIV_FMS_VAL = "saveIndividualFmsVal"
     SAVE_4DIM_FMS_VAL = "saveAllFmsIn4DimImageVal"
     INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal"
@@ -97,6 +99,7 @@ class TrainConfig(Config):
     EPS_RMS = "epsilonRms"
     #Losses
     LOSSES_WEIGHTS = "losses_and_weights"
+    W_C_IN_COST = "reweight_classes_in_cost"
     #Regularization L1 and L2.
     L1_REG = "L1_reg"
     L2_REG = "L2_reg"

@@ -10,20 +10,19 @@ from __future__ import absolute_import, print_function, division
 import tensorflow as tf
 
 
-def x_entr( p_y_given_x_train, y_gt, weightPerClass ):
+def x_entr( p_y_given_x_train, y_gt, weightPerClass, eps=1e-6 ):
     # p_y_given_x_train : tensor5 [batchSize, classes, r, c, z]
     # y: T.itensor4('y'). Dimensions [batchSize, r, c, z]
     # weightPerClass is a vector with 1 element per class.
     
     #Weighting the cost of the different classes in the cost-function, in order to counter class imbalance.
-    e1 = 1e-6
-    log_p_y_given_x_train = tf.log( p_y_given_x_train + e1) #added a tiny so that it does not go to zero and I have problems with nan again...
+    log_p_y_given_x_train = tf.log( p_y_given_x_train + eps)
     
     weightPerClass5D = tf.reshape(weightPerClass, shape=[1, tf.shape(p_y_given_x_train)[1], 1, 1, 1])
     weighted_log_p_y_given_x_train = log_p_y_given_x_train * weightPerClass5D
     
     y_one_hot = tf.one_hot( indices=y_gt, depth=tf.shape(p_y_given_x_train)[1], axis=1, dtype="float32" )
-
+    
     num_samples = tf.cast( tf.reduce_prod( tf.shape(y_gt) ), "float32")
     
     return - (1./ num_samples) * tf.reduce_sum( weighted_log_p_y_given_x_train * y_one_hot )

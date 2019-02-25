@@ -35,6 +35,8 @@ class TrainSession(Session):
         return sess_name
     
     def make_output_folders(self):
+        self._main_out_folder_abs = getAbsPathEvenIfRelativeIsGiven( self._cfg[self._cfg.FOLDER_OUTP],
+                                                                     self.get_abs_path_to_cfg() )
         [self._log_folder_abs,
          self._out_folder_models,
          self._out_folder_preds,
@@ -155,12 +157,7 @@ class TrainSession(Session):
             self._log.print3("============== Training the CNN model =================")
             self._log.print3("=======================================================\n")
             
-            do_training( *( [sessionTf, saver_all, cnn3d, trainer] + self._params.get_args_for_train_routine() ) )
-            
-            # Save the trained model.
-            filename_to_save_with = self._params.filepath_to_save_models + ".final." + datetimeNowAsStr()
-            self._log.print3("Saving the final model at:" + str(filename_to_save_with))
-            saver_all.save( sessionTf, filename_to_save_with+".model.ckpt", write_meta_graph=False )
+            res_code = do_training( *( [sessionTf, saver_all, cnn3d, trainer] + self._params.get_args_for_train_routine() ) )
             
             
         self._log.print3("\n=======================================================")

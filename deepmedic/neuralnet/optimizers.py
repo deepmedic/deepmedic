@@ -107,11 +107,9 @@ class AdamOptimizer(Optimizer):
             self._means_of_grads.append( tf.Variable(param * 0., dtype="float32", name="means_of_grads") )
             self._vars_of_grads.append( tf.Variable(param * 0., dtype="float32", name="vars_of_grads") )
             
-    def get_update_ops_given_grads(self, cost, params) :
+    def get_update_ops_given_grads(self, grads) :
         # Epsilon on paper was 10**(-8).
         # Code is on par with version V8 of Kingma's paper.
-        grads = tf.gradients(cost, params)
-        
         updates = []
         
         i = self._i_adam
@@ -119,7 +117,7 @@ class AdamOptimizer(Optimizer):
         fix1 = 1. - (self._b1_adam)**i_t
         fix2 = 1. - (self._b2_adam)**i_t
         lr_t = self._learning_rate * (tf.sqrt(fix2) / fix1)
-        for param, grad, m, v in zip(params, grads, self._means_of_grads, self._vars_of_grads):
+        for param, grad, m, v in zip(self._params_to_opt, grads, self._means_of_grads, self._vars_of_grads):
             m_t = (self._b1_adam * m) + ((1. - self._b1_adam) * grad)
             v_t = (self._b2_adam * v) + ((1. - self._b2_adam) * tf.square(grad))  # Double check this with the paper.
             grad_t = m_t / (tf.sqrt(v_t) + self._eps)
@@ -197,7 +195,7 @@ Nesterov momentum:
 (4) v_t = mu * v_t-1 - lr * gradient_f(params_t-1 + mu * v_t-1)
 (5) params_t = params_t-1 + v_t
 
-alternate formulation for Nesterov momentum:
+alternative formulation for Nesterov momentum:
 (6) v_t = mu * v_t-1 - lr * gradient_f(params_t-1)
 (7) params_t = params_t-1 + mu * v_t - lr * gradient_f(params_t-1)
 (8) params_t = params_t-1 + mu**2 * v_t-1 - (1+mu) * lr * gradient_f(params_t-1)

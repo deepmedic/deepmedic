@@ -15,7 +15,9 @@ class Logger :
     def print3(self, string) :
         print(string)    
         f = open(self.loggerFileName,'a')
-        f.write(str(datetime.datetime.now())+" >> "+string+"\n")
+        now = datetime.datetime.now()
+        now_str = "{0}-{1}-{2} {3}:{4}:{5:.2f}".format(now.year, now.month, now.day, now.hour, now.minute, (now.second + now.microsecond/10**6))
+        f.write(now_str+": "+string+"\n")
         f.close()
         
     def __init__(self, filenameAndPathOfLoggerTxt="logs/defaultLogFile.txt") :
