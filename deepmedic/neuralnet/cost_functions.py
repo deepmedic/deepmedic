@@ -56,4 +56,21 @@ def dsc(p_y_given_x_train, y_gt, eps=1e-5):
     return cost
 
 
+def focal(p_y_given_x_train, y_gt, gama, weightPerClass):
+    # Focal loss is based on the computing of cross entropy
+    # Proposed in Lin T. Focal Loss for Dense Object Detection, ICCV 2017
+    # It is calculated as (1-p)^gama * log(p)
+    e1 = 1e-6
+    log_p_y_given_x_train = tf.log(p_y_given_x_train + e1)
+
+    focal_conduct = (1 - p_y_given_x_train)**gama
+
+    m_log_p_y_given_x_train = focal_conduct * log_p_y_given_x_train
+    weightPerClass5D = tf.reshape(weightPerClass, shape=[1, tf.shape(p_y_given_x_train)[1], 1, 1, 1])
+    weighted_log_p_y_given_x_train = m_log_p_y_given_x_train * weightPerClass5D
+    y_one_hot = tf.one_hot(indices=y_gt, depth=tf.shape(p_y_given_x_train)[1], axis=1, dtype="float32")
+    num_samples = tf.cast(tf.reduce_prod(tf.shape(y_gt)), "float32")
+    return - (1. / num_samples) * tf.reduce_sum(weighted_log_p_y_given_x_train * y_one_hot)
+
+
 

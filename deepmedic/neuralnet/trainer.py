@@ -119,6 +119,11 @@ class Trainer(object):
         if "dsc" in self._losses_and_weights and self._losses_and_weights["dsc"] is not None:
             log.print3("COST: Using dsc loss with weight: " +str(self._losses_and_weights["dsc"]))
             cost += self._losses_and_weights["dsc"] * cfs.dsc( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
+        if "focal" in self._losses_and_weights and self._losses_and_weights["focal"] is not None:
+            log.print3("COST: Using focal loss cross entropy with weight: " +str(self._losses_and_weights["focal"] ))
+            log.print3("COST: Using focal loss cross entropy with gama: " + str(self._losses_and_weights["focalgama"]))
+            w_per_cl_vec = self._compute_w_per_class_vector_for_xentr( self._net.num_classes, y_gt )
+            cost += self._losses_and_weights["focal"] * cfs.focal( self._net.finalTargetLayer.p_y_given_x_train, y_gt, self._losses_and_weights["focalgama"], w_per_cl_vec )
             
         cost_L1_reg = self._L1_reg_weight * self._net._get_L1_cost()
         cost_L2_reg = self._L2_reg_weight * self._net._get_L2_cost()        

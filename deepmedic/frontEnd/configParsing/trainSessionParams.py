@@ -372,8 +372,8 @@ class TrainSessionParameters(object) :
         # Three sublists, one per pathway type: Normal, Subsampled, FC. eg: [[0,1,2],[0,1,2],[]
         self.indicesOfLayersPerPathwayTypeToFreeze = [ indicesOfLayersToFreezeNorm, indicesOfLayersToFreezeSubs, indicesOfLayersToFreezeFc ]
         
-        self.losses_and_weights = cfg[cfg.LOSSES_WEIGHTS] if cfg[cfg.LOSSES_WEIGHTS] is not None else {"xentr": 1.0, "iou": None, "dsc": None}
-        assert True in [ self.losses_and_weights[k] is not None for k in ["xentr", "iou", "dsc"] ]
+        self.losses_and_weights = cfg[cfg.LOSSES_WEIGHTS] if cfg[cfg.LOSSES_WEIGHTS] is not None else {"xentr": 1.0, "iou": None, "dsc": None, "focal": None, "focalgama": 2.0}
+        assert True in [ self.losses_and_weights[k] is not None for k in ["xentr", "iou", "dsc", "focal"] ]
         """
         #NOTES: variables that have to do with number of pathways: 
                 self.indicesOfLayersPerPathwayTypeToFreeze (="all" always currently. Hardcoded)
