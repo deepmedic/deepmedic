@@ -12,7 +12,7 @@ import random
 import tensorflow as tf
 
 from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
-from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix, softmax
+from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
     from sys import maxint as MAX_INT
@@ -419,15 +419,16 @@ class SoftmaxLayer(TargetLayer):
         TargetLayer.__init__(self)
         self._numberOfOutputClasses = None
         #self._b = None # The only type of trainable parameter that a softmax layer has.
-        self._softmaxTemperature = None
+        self._temperature = None
         
     def makeLayer(  self,
                     rng,
                     layerConnected, # the basic layer, at the output of which to connect this softmax.
-                    softmaxTemperature = 1):
+                    t = 1):
+        # t: temperature. Scalar
         
         self._numberOfOutputClasses = layerConnected.getNumberOfFeatureMaps()
-        self._softmaxTemperature = softmaxTemperature
+        self._temperature = t
         
         self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"],
                                         layerConnected.outputShape["train"], layerConnected.outputShape["val"], layerConnected.outputShape["test"])
@@ -436,17 +437,17 @@ class SoftmaxLayer(TargetLayer):
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
         # and this self._bClassLayer that is added only to this final output before the softmax.
         (self._b,
-        biasedInputToSoftmaxTrain,
-        biasedInputToSoftmaxVal,
-        biasedInputToSoftmaxTest) = makeBiasParamsAndApplyToFms( self.input["train"], self.input["val"], self.input["test"], self._numberOfOutputClasses )
+        logits_train,
+        logits_val,
+        logits_test) = makeBiasParamsAndApplyToFms( self.input["train"], self.input["val"], self.input["test"], self._numberOfOutputClasses )
         self.params = self.params + [self._b]
         
         # ============ Softmax ==============
-        self.p_y_given_x_train = softmax( biasedInputToSoftmaxTrain, softmaxTemperature)
+        self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)
         self.y_pred_train = tf.argmax(self.p_y_given_x_train, axis=1)
-        self.p_y_given_x_val = softmax( biasedInputToSoftmaxVal, softmaxTemperature)
+        self.p_y_given_x_val = tf.nn.softmax(logits_val/t, axis=1)
         self.y_pred_val = tf.argmax(self.p_y_given_x_val, axis=1)
-        self.p_y_given_x_test = softmax( biasedInputToSoftmaxTest, softmaxTemperature)
+        self.p_y_given_x_test = tf.nn.softmax(logits_test/t, axis=1)
         self.y_pred_test = tf.argmax(self.p_y_given_x_test, axis=1)
     
         self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShape["train"], self.inputShape["val"], self.inputShape["test"])

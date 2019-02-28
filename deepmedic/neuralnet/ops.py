@@ -218,14 +218,6 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
     
     return (outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest)
 
-        
-def softmax(logits, t):
-    # inputToSoftmax: 5D tensor [batchSize, Classes, r, c, z]
-    # t: temperature. Scalar
-    # Returns: [batchSize, C, R, C, Z]
-    p_y_given_x = tf.exp(logits/t) / tf.reduce_sum(tf.exp(logits/t), axis=1, keepdims=True)
-    return p_y_given_x
-
 
 # Currently only used for pooling3d
 def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
