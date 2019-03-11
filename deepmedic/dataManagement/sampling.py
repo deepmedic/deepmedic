@@ -721,6 +721,31 @@ def random_flip(allChannelsOfPatientInNpArray, gtLabelsImage, flipProb=1., Allow
     return allChannelsOfPatientInNpArray, gtLabelsImage
 
 
+def random_histogram_distortion(allChannelsOfPatientInNpArray, numOfInpChannelsForPrimaryPath, doIntAugm_shiftMuStd_multiMuStd):
+    # Get parameters by how much to renormalize-augment mean and std.
+    muOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][0]
+    stdOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][1]
+    if stdOfGaussToAdd != 0:  # np.random.normal does not work for an std==0.
+        howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd,
+                                                      [numOfInpChannelsForPrimaryPath, 1, 1, 1])
+    else:
+        howMuchToAddForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1, 1, 1],
+                                             dtype="float32") * muOfGaussToAdd
+
+    muOfGaussToMultiply = doIntAugm_shiftMuStd_multiMuStd[2][0]
+    stdOfGaussToMultiply = doIntAugm_shiftMuStd_multiMuStd[2][1]
+    if stdOfGaussToMultiply != 0:
+        howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply,
+                                                           [numOfInpChannelsForPrimaryPath, 1, 1, 1])
+    else:
+        howMuchToMultiplyForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1, 1, 1],
+                                                  dtype="float32") * muOfGaussToMultiply
+
+    # Intensity augmentation of the segments.
+    allChannelsOfPatientInNpArray = (allChannelsOfPatientInNpArray + howMuchToAddForEachChannel) * howMuchToMultiplyForEachChannel
+
+    return allChannelsOfPatientInNpArray
+
 # I must merge this with function: extractDataOfSegmentsUsingSampledSliceCoords() that is used for Testing! Should be easy!
 # This is used in training/val only.
 def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
@@ -750,20 +775,8 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
         allChannelsOfPatientInNpArray, gtLabelsImage = \
             random_flip(allChannelsOfPatientInNpArray, gtLabelsImage, flipProb, AllowedAxesForFlipping)
 
-        #Get parameters by how much to renormalize-augment mean and std.
-        muOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][0]
-        stdOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][1]
-        if stdOfGaussToAdd != 0 : #np.random.normal does not work for an std==0.
-            howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd, [numOfInpChannelsForPrimaryPath, 1,1,1])
-        else :
-            howMuchToAddForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32")*muOfGaussToAdd
-        
-        muOfGaussToMultiply = doIntAugm_shiftMuStd_multiMuStd[2][0]
-        stdOfGaussToMultiply = doIntAugm_shiftMuStd_multiMuStd[2][1]
-        if stdOfGaussToMultiply != 0 :
-            howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply, [numOfInpChannelsForPrimaryPath, 1,1,1])
-        else :
-            howMuchToMultiplyForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32") * muOfGaussToMultiply
+        allChannelsOfPatientInNpArray = \
+            random_histogram_distortion(allChannelsOfPatientInNpArray, numOfInpChannelsForPrimaryPath, doIntAugm_shiftMuStd_multiMuStd)
     
     # Sampling
     for pathway in cnn3d.pathways[:1] : #Hack. The rest of this loop can work for the whole .pathways...
@@ -784,11 +797,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                                 leftBoundaryRcz[0] : rightBoundaryRcz[0] : subSamplingFactor[0],
                                                                 leftBoundaryRcz[1] : rightBoundaryRcz[1] : subSamplingFactor[1],
                                                                 leftBoundaryRcz[2] : rightBoundaryRcz[2] : subSamplingFactor[2]]
-        
-        # Intensity augmentation of the segments.
-        if train_or_val == "train" and doIntAugm_shiftMuStd_multiMuStd[0] == True :
-            channelsForThisImagePart = (channelsForThisImagePart + howMuchToAddForEachChannel) * howMuchToMultiplyForEachChannel
-        
+
         channelsForThisImagePartPerPathway.append(channelsForThisImagePart)
         
     # Extract the samples for secondary pathways. This whole for can go away, if I update above code to check to slices out of limits.
@@ -805,11 +814,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                                                         subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
                                                                                         subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput(train_or_val)[2:]
                                                                                         )
-        
-        # Intensity augmentation of the segments.
-        if train_or_val == "train" and doIntAugm_shiftMuStd_multiMuStd[0] == True:
-            channsForThisSubsampledPartAndPathway = (channsForThisSubsampledPartAndPathway + howMuchToAddForEachChannel) * howMuchToMultiplyForEachChannel
-        
+
         channelsForThisImagePartPerPathway.append(channsForThisSubsampledPartAndPathway)
         
     # Get ground truth labels for training.
