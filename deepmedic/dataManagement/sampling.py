@@ -16,9 +16,10 @@ import random
 import traceback
 import multiprocessing
 import signal
+import itertools
 
 from deepmedic.image.io import loadVolume
-from deepmedic.image.processing import reflectImageArrayIfNeeded, calculateTheZeroIntensityOf3dImage, padCnnInputs
+from deepmedic.image.processing import calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 
 # Order of calls:
@@ -398,19 +399,13 @@ def load_imgs_of_subject(log,
     log.print3(id_str+"Loading subject with 1st channel at: "+str(listOfFilepathsToEachChannelOfEachPatient[subj_i][0]))
     
     numberOfNormalScaleChannels = len(listOfFilepathsToEachChannelOfEachPatient[0])
-    
-    #reflect Image with 50% prob, for each axis:
-    reflectFlags = []
-    for reflectImageWithHalfProb_dimi in range(0, len(reflectImageWithHalfProb)) :
-        reflectFlags.append(reflectImageWithHalfProb[reflectImageWithHalfProb_dimi] * random.randint(0,1))
-    
+
     tupleOfPaddingPerAxesLeftRight = ((0,0), (0,0), (0,0)) #This will be given a proper value if padding is performed.
     
     if providedRoiMaskBool :
         fullFilenamePathOfRoiMask = listOfFilepathsToRoiMaskOfEachPatient[subj_i]
         roiMask = loadVolume(fullFilenamePathOfRoiMask)
         
-        roiMask = reflectImageArrayIfNeeded(reflectFlags, roiMask)
         [roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [roiMask, tupleOfPaddingPerAxesLeftRight]
     else :
         roiMask = "placeholderNothing"
@@ -425,7 +420,6 @@ def load_imgs_of_subject(log,
         if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
             channelData = loadVolume(fullFilenamePathOfChannel)
                 
-            channelData = reflectImageArrayIfNeeded(reflectFlags, channelData) #reflect if flag ==1 .
             [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             if not isinstance(allChannelsOfPatientInNpArray, (np.ndarray)) :
@@ -450,9 +444,7 @@ def load_imgs_of_subject(log,
             
         if run_input_checks:
             check_gt_vs_num_classes(log, imageGtLabels, num_classes)
-        
-        imageGtLabels = reflectImageArrayIfNeeded(reflectFlags, imageGtLabels) #reflect if flag ==1 .
-        
+
         [imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
@@ -465,7 +457,6 @@ def load_imgs_of_subject(log,
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
             
-            weightedMapForThisCatData = reflectImageArrayIfNeeded(reflectFlags, weightedMapForThisCatData)
             [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight]
             
             arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
@@ -484,7 +475,6 @@ def load_imgs_of_subject(log,
             fullFilenamePathOfChannel = listOfFilepathsToEachSubsampledChannelOfEachPatient[subj_i][channel_i]
             channelData = loadVolume(fullFilenamePathOfChannel)
             
-            channelData = reflectImageArrayIfNeeded(reflectFlags, channelData)
             [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData
@@ -699,6 +689,37 @@ def shuffleSegmentsOfThisSubepoch(  channelsOfSegmentsForSubepochListPerPathway,
     return [shuffledChannelsOfSegmentsForSubepochListPerPathway, shuffledLblsForPredictedPartOfSegmentsForSubepochList]
 
 
+def random_square_rotation(allChannelsOfPatientInNpArray, gtLabelsImage, rotationProb=1., AllowedPlanes=None):
+
+    if not np.random.choice((True, False), p=(rotationProb, 1-rotationProb)):
+        return allChannelsOfPatientInNpArray, gtLabelsImage
+
+    dim = len(gtLabelsImage.shape)
+    if AllowedPlanes is None:
+        AllowedPlanes = list(itertools.combinations(range(dim), r=2))
+    k = np.random.choice(dim, len(AllowedPlanes))
+    for i, axes in enumerate(AllowedPlanes):
+        allChannelsOfPatientInNpArray = np.rot90(allChannelsOfPatientInNpArray, k=k[i], axes=tuple(a + 1 for a in axes))
+        gtLabelsImage = np.rot90(gtLabelsImage, k=k[i], axes=axes)
+
+    return allChannelsOfPatientInNpArray, gtLabelsImage
+
+def random_flip(allChannelsOfPatientInNpArray, gtLabelsImage, flipProb=1., AllowedAxes=None):
+
+    if not np.random.choice((True, False), p=(flipProb, 1 - flipProb)):
+        return allChannelsOfPatientInNpArray, gtLabelsImage
+
+    dim = len(gtLabelsImage.shape)
+    if AllowedAxes is None:
+        AllowedAxes = dim
+    k = np.random.choice((False, True), AllowedAxes)
+    for axis, flip in enumerate(k):
+        if flip:
+            allChannelsOfPatientInNpArray = np.flip(allChannelsOfPatientInNpArray, axis=axis + 1)
+            gtLabelsImage = np.flip(gtLabelsImage, axis=axis)
+
+    return allChannelsOfPatientInNpArray, gtLabelsImage
+
 
 # I must merge this with function: extractDataOfSegmentsUsingSampledSliceCoords() that is used for Testing! Should be easy!
 # This is used in training/val only.
@@ -711,13 +732,24 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                         allSubsampledChannelsOfPatientInNpArray,
                                                         gtLabelsImage,
                                                         # Intensity Augmentation
-                                                        doIntAugm_shiftMuStd_multiMuStd
+                                                        doIntAugm_shiftMuStd_multiMuStd,
+                                                        # Rotation Augmentation
+                                                        rotationProb,
+                                                        AllowedPlanesForRotation,
+                                                        # Flipping Augmentation
+                                                        flipProb,
+                                                        AllowedAxesForFlipping
                                                         ) :
     channelsForThisImagePartPerPathway = []
     
     # Intensity augmentation
     if train_or_val == "train" and doIntAugm_shiftMuStd_multiMuStd[0] == True:
-        
+
+        allChannelsOfPatientInNpArray, gtLabelsImage = \
+            random_square_rotation(allChannelsOfPatientInNpArray, gtLabelsImage, rotationProb, AllowedPlanesForRotation)
+        allChannelsOfPatientInNpArray, gtLabelsImage = \
+            random_flip(allChannelsOfPatientInNpArray, gtLabelsImage, flipProb, AllowedAxesForFlipping)
+
         #Get parameters by how much to renormalize-augment mean and std.
         muOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][0]
         stdOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][1]
