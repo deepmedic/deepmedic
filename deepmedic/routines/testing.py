@@ -132,9 +132,7 @@ def inferenceWholeVolumes(  sessionTf,
                                 
                                 padInputImagesBool = padInputImagesBool,
                                 cnnReceptiveField = recFieldCnn, # only used if padInputsBool
-                                dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:], # only used if padInputsBool
-                                
-                                reflectImageWithHalfProb = [0,0,0]
+                                dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:] # only used if padInputsBool
                                 )
         niiDimensions = list(imageChannels[0].shape)
         #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
