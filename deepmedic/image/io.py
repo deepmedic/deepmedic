@@ -61,6 +61,8 @@ def saveImgToNiiWithOriginalHdr(imgToSave,
     filepathTarget = os.path.abspath(filepathTarget)
     if not filepathTarget.endswith(".nii.gz") :
         filepathTarget = filepathTarget + ".nii.gz"
+    if not os.path.exists(os.path.dirname(filepathTarget)):
+        os.makedirs(os.path.dirname(filepathTarget))
     nib.save(newLabelImg, filepathTarget)
     
     if log!=None :

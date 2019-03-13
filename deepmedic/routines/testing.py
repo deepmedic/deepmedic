@@ -14,7 +14,7 @@ import math
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.dataManagement.sampling import load_imgs_of_subject
 from deepmedic.dataManagement.sampling import getCoordsOfAllSegmentsOfAnImage
-from deepmedic.dataManagement.sampling import extractDataOfSegmentsUsingSampledSliceCoords
+from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, save4DImgWithAllFmsToNiiWithOriginalHdr
 from deepmedic.image.processing import unpadCnnOutputs
 
@@ -133,9 +133,7 @@ def inferenceWholeVolumes(  sessionTf,
                                 
                                 padInputImagesBool = padInputImagesBool,
                                 cnnReceptiveField = recFieldCnn, # only used if padInputsBool
-                                dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:], # only used if padInputsBool
-                                
-                                reflectImageWithHalfProb = [0,0,0]
+                                dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:] # only used if padInputsBool
                                 )
         niiDimensions = list(imageChannels[0].shape)
         #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
@@ -169,12 +167,13 @@ def inferenceWholeVolumes(  sessionTf,
                 
             # Extract the data for the segments of this batch. ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords() of training and use it here as well. )
             start_extract_time = time.time()
+            
             sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batchsize : (batch_i+1)*batchsize ]
-            [channsOfSegmentsPerPath] = extractDataOfSegmentsUsingSampledSliceCoords(cnn3d=cnn3d,
-                                                                                    sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
-                                                                                    channelsOfImageNpArray=imageChannels,#chans,niiDims
-                                                                                    channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
-                                                                                    recFieldCnn=recFieldCnn )
+            [channsOfSegmentsPerPath] = extractSegmentsGivenSliceCoords(cnn3d=cnn3d,
+                                                                        sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
+                                                                        channelsOfImageNpArray=imageChannels,
+                                                                        channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
+                                                                        recFieldCnn=recFieldCnn )
             end_extract_time = time.time()
             extractTimePerSubject += end_extract_time - start_extract_time
             

@@ -18,8 +18,9 @@ import multiprocessing
 import signal
 
 from deepmedic.image.io import loadVolume
-from deepmedic.image.processing import reflectImageArrayIfNeeded, calculateTheZeroIntensityOf3dImage, padCnnInputs
+from deepmedic.image.processing import calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
+from deepmedic.dataManagement.augmentation import augment_patch
 
 # Order of calls:
 # getSampledDataAndLabelsForSubepoch
@@ -28,7 +29,7 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 #    load_subj_and_get_samples
 #        load_imgs_of_subject
 #        sample_coords_of_segments
-#        extractDataOfASegmentFromImagesUsingSampledSliceCoords
+#        extractSegmentGivenSliceCoords
 #            getImagePartFromSubsampledImageForTraining
 #    shuffleSegmentsOfThisSubepoch
 
@@ -56,8 +57,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                                         listOfFilepathsToEachSubsampledChannelOfEachPatient,
                                         
                                         padInputImagesBool,
-                                        doIntAugm_shiftMuStd_multiMuStd,
-                                        reflectImageWithHalfProbDuringTraining
+                                        augm_params
                                         ):
     # Returns: channelsOfSegmentsForSubepochArrayPerPathway - List of arrays, one per pathway. Each array [N_samples, Channs, R,C,Z]
     #        lblsForPredictedPartOfSegmentsForSubepochArray - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -115,8 +115,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                                 listOfFilepathsToEachSubsampledChannelOfEachPatient,
                                 # Pre-processing:
                                 padInputImagesBool,
-                                doIntAugm_shiftMuStd_multiMuStd,
-                                reflectImageWithHalfProbDuringTraining,
+                                augm_params,
                                 
                                 n_subjects_for_subep,
                                 inds_of_subjects_for_subep,
@@ -255,8 +254,7 @@ def load_subj_and_get_samples(log,
                               listOfFilepathsToEachSubsampledChannelOfEachPatient,
                               # Pre-processing:
                               padInputImagesBool,
-                              doIntAugm_shiftMuStd_multiMuStd,
-                              reflectImageWithHalfProbDuringTraining,
+                              augm_params,
                               
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
@@ -272,7 +270,6 @@ def load_subj_and_get_samples(log,
     lblsOfPredictedPartOfSegmentsFromThisSubj = [] # Labels only for the central/predicted part of segments.
     
     dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput(train_or_val)[2:]
-    numOfInpChannelsForPrimaryPath = len(listOfFilepathsToEachChannelOfEachPatient[0])
     
     [allChannelsOfPatientInNpArray, # nparray(channels,dim0,dim1,dim2)
     gtLabelsImage,
@@ -299,8 +296,7 @@ def load_subj_and_get_samples(log,
                              # Preprocessing
                              padInputImagesBool=padInputImagesBool,
                              cnnReceptiveField=cnn3d.recFieldCnn, # only used if padInputsBool
-                             dimsOfPrimeSegmentRcz=dimsOfPrimeSegmentRcz, # only used if padInputsBool
-                             reflectImageWithHalfProb = reflectImageWithHalfProbDuringTraining )
+                             dimsOfPrimeSegmentRcz=dimsOfPrimeSegmentRcz) # only used if padInputsBool
     
     dimensionsOfImageChannel = allChannelsOfPatientInNpArray[0].shape
     finalWeightMapsToSampleFromPerCategoryForSubject = samplingTypeInstance.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
@@ -335,26 +331,21 @@ def load_subj_and_get_samples(log,
         for image_part_i in range(len(coords_of_samples[0][0])) :
             coordsOfCentralVoxelOfThisImPart = coords_of_samples[0][:,image_part_i]
             
-            [ channelsForThisImagePartPerPathway,
-            gtLabelsForTheCentralClassifiedPartOfThisImagePart # used to be gtLabelsForThisImagePart, before extracting only for the central voxels.
-            ] = extractDataOfASegmentFromImagesUsingSampledSliceCoords(
-                                                                    train_or_val,
-                                                                    
-                                                                    cnn3d,
-                                                                    
-                                                                    coordsOfCentralVoxelOfThisImPart,
-                                                                    numOfInpChannelsForPrimaryPath,
-                                                                    
-                                                                    allChannelsOfPatientInNpArray,
-                                                                    allSubsampledChannelsOfPatientInNpArray,
-                                                                    gtLabelsImage,
-                                                                    
-                                                                    # Intensity Augmentation
-                                                                    doIntAugm_shiftMuStd_multiMuStd
-                                                                    )
+            [channelsForSegmentPerPathway,
+            lblsOfPredictedPartOfSegment # used to be gtLabelsForThisImagePart, before extracting only for the central voxels.
+            ] = extractSegmentGivenSliceCoords(train_or_val,
+                                               cnn3d,
+                                               coordsOfCentralVoxelOfThisImPart,
+                                               allChannelsOfPatientInNpArray,
+                                               allSubsampledChannelsOfPatientInNpArray,
+                                               gtLabelsImage)
+            
+            # Augmentation of segments
+            channelsForSegmentPerPathway, lblsOfPredictedPartOfSegment = augment_patch(channelsForSegmentPerPathway, lblsOfPredictedPartOfSegment, augm_params)
+            
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                channelsOfSegmentsFromThisSubjPerPathway[pathway_i].append(channelsForThisImagePartPerPathway[pathway_i])
-            lblsOfPredictedPartOfSegmentsFromThisSubj.append(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
+                channelsOfSegmentsFromThisSubjPerPathway[pathway_i].append(channelsForSegmentPerPathway[pathway_i])
+            lblsOfPredictedPartOfSegmentsFromThisSubj.append(lblsOfPredictedPartOfSegment)
             
     # Done with case/subject. Segments have been sampled. Delete the volume arrays to release RAM. (THIS IS LIKELY REDUNDANT. FUNCTION EXITS.)
     del allChannelsOfPatientInNpArray; del gtLabelsImage; del roiMask
@@ -385,8 +376,7 @@ def load_imgs_of_subject(log,
                          # Preprocessing
                          padInputImagesBool,
                          cnnReceptiveField, # only used if padInputImagesBool
-                         dimsOfPrimeSegmentRcz,
-                         reflectImageWithHalfProb
+                         dimsOfPrimeSegmentRcz
                          ):
     #listOfNiiFilepathNames: should be a list of lists. Each sublist corresponds to one certain subject.
     #...Each sublist should have as many elements(strings-filenamePaths) as numberOfChannels, point to the channels of this patient.
@@ -398,19 +388,13 @@ def load_imgs_of_subject(log,
     log.print3(id_str+"Loading subject with 1st channel at: "+str(listOfFilepathsToEachChannelOfEachPatient[subj_i][0]))
     
     numberOfNormalScaleChannels = len(listOfFilepathsToEachChannelOfEachPatient[0])
-    
-    #reflect Image with 50% prob, for each axis:
-    reflectFlags = []
-    for reflectImageWithHalfProb_dimi in range(0, len(reflectImageWithHalfProb)) :
-        reflectFlags.append(reflectImageWithHalfProb[reflectImageWithHalfProb_dimi] * random.randint(0,1))
-    
+
     tupleOfPaddingPerAxesLeftRight = ((0,0), (0,0), (0,0)) #This will be given a proper value if padding is performed.
     
     if providedRoiMaskBool :
         fullFilenamePathOfRoiMask = listOfFilepathsToRoiMaskOfEachPatient[subj_i]
         roiMask = loadVolume(fullFilenamePathOfRoiMask)
         
-        roiMask = reflectImageArrayIfNeeded(reflectFlags, roiMask)
         [roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [roiMask, tupleOfPaddingPerAxesLeftRight]
     else :
         roiMask = "placeholderNothing"
@@ -425,7 +409,6 @@ def load_imgs_of_subject(log,
         if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
             channelData = loadVolume(fullFilenamePathOfChannel)
                 
-            channelData = reflectImageArrayIfNeeded(reflectFlags, channelData) #reflect if flag ==1 .
             [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             if not isinstance(allChannelsOfPatientInNpArray, (np.ndarray)) :
@@ -450,9 +433,7 @@ def load_imgs_of_subject(log,
             
         if run_input_checks:
             check_gt_vs_num_classes(log, imageGtLabels, num_classes)
-        
-        imageGtLabels = reflectImageArrayIfNeeded(reflectFlags, imageGtLabels) #reflect if flag ==1 .
-        
+
         [imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
@@ -465,7 +446,6 @@ def load_imgs_of_subject(log,
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
             
-            weightedMapForThisCatData = reflectImageArrayIfNeeded(reflectFlags, weightedMapForThisCatData)
             [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight]
             
             arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
@@ -484,7 +464,6 @@ def load_imgs_of_subject(log,
             fullFilenamePathOfChannel = listOfFilepathsToEachSubsampledChannelOfEachPatient[subj_i][channel_i]
             channelData = loadVolume(fullFilenamePathOfChannel)
             
-            channelData = reflectImageArrayIfNeeded(reflectFlags, channelData)
             [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData
@@ -613,11 +592,11 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
     """
     subsampledImageDimensions = subsampledImageChannels[0].shape
     
-    subsampledChannelsForThisImagePart = np.ones(   (len(subsampledImageChannels), 
-                                                    subsampledImagePartDimensions[0],
-                                                    subsampledImagePartDimensions[1],
-                                                    subsampledImagePartDimensions[2]), 
-                                                dtype = 'float32')
+    subsampledChannelsForThisImagePart = np.ones((len(subsampledImageChannels),
+                                                  subsampledImagePartDimensions[0],
+                                                  subsampledImagePartDimensions[1],
+                                                  subsampledImagePartDimensions[2]),
+                                                 dtype = 'float32')
     
     numberOfCentralVoxelsClassifiedForEachImagePart_rDim = dimsOfPrimarySegment[0] - recFieldCnn[0] + 1
     numberOfCentralVoxelsClassifiedForEachImagePart_cDim = dimsOfPrimarySegment[1] - recFieldCnn[1] + 1
@@ -699,39 +678,15 @@ def shuffleSegmentsOfThisSubepoch(  channelsOfSegmentsForSubepochListPerPathway,
     return [shuffledChannelsOfSegmentsForSubepochListPerPathway, shuffledLblsForPredictedPartOfSegmentsForSubepochList]
 
 
-
-# I must merge this with function: extractDataOfSegmentsUsingSampledSliceCoords() that is used for Testing! Should be easy!
+# I must merge this with function: extractSegmentsGivenSliceCoords() that is used for Testing! Should be easy!
 # This is used in training/val only.
-def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
-                                                        train_or_val,
-                                                        cnn3d,
-                                                        coordsOfCentralVoxelOfThisImPart,
-                                                        numOfInpChannelsForPrimaryPath,
-                                                        allChannelsOfPatientInNpArray,
-                                                        allSubsampledChannelsOfPatientInNpArray,
-                                                        gtLabelsImage,
-                                                        # Intensity Augmentation
-                                                        doIntAugm_shiftMuStd_multiMuStd
-                                                        ) :
-    channelsForThisImagePartPerPathway = []
-    
-    # Intensity augmentation
-    if train_or_val == "train" and doIntAugm_shiftMuStd_multiMuStd[0] == True:
-        
-        #Get parameters by how much to renormalize-augment mean and std.
-        muOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][0]
-        stdOfGaussToAdd = doIntAugm_shiftMuStd_multiMuStd[1][1]
-        if stdOfGaussToAdd != 0 : #np.random.normal does not work for an std==0.
-            howMuchToAddForEachChannel = np.random.normal(muOfGaussToAdd, stdOfGaussToAdd, [numOfInpChannelsForPrimaryPath, 1,1,1])
-        else :
-            howMuchToAddForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32")*muOfGaussToAdd
-        
-        muOfGaussToMultiply = doIntAugm_shiftMuStd_multiMuStd[2][0]
-        stdOfGaussToMultiply = doIntAugm_shiftMuStd_multiMuStd[2][1]
-        if stdOfGaussToMultiply != 0 :
-            howMuchToMultiplyForEachChannel = np.random.normal(muOfGaussToMultiply, stdOfGaussToMultiply, [numOfInpChannelsForPrimaryPath, 1,1,1])
-        else :
-            howMuchToMultiplyForEachChannel = np.ones([numOfInpChannelsForPrimaryPath, 1,1,1], dtype="float32") * muOfGaussToMultiply
+def extractSegmentGivenSliceCoords(train_or_val,
+                                   cnn3d,
+                                   coordsOfCentralVoxelOfThisImPart,
+                                   allChannelsOfPatientInNpArray,
+                                   allSubsampledChannelsOfPatientInNpArray,
+                                   gtLabelsImage) :
+    channelsForSegmentPerPathway = []
     
     # Sampling
     for pathway in cnn3d.pathways[:1] : #Hack. The rest of this loop can work for the whole .pathways...
@@ -748,16 +703,13 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
         rightBoundaryRcz = [leftBoundaryRcz[0] + subSamplingFactor[0]*pathwayInputShapeRcz[0],
                             leftBoundaryRcz[1] + subSamplingFactor[1]*pathwayInputShapeRcz[1],
                             leftBoundaryRcz[2] + subSamplingFactor[2]*pathwayInputShapeRcz[2]]
+        
         channelsForThisImagePart = allChannelsOfPatientInNpArray[:,
                                                                 leftBoundaryRcz[0] : rightBoundaryRcz[0] : subSamplingFactor[0],
                                                                 leftBoundaryRcz[1] : rightBoundaryRcz[1] : subSamplingFactor[1],
                                                                 leftBoundaryRcz[2] : rightBoundaryRcz[2] : subSamplingFactor[2]]
         
-        # Intensity augmentation of the segments.
-        if train_or_val == "train" and doIntAugm_shiftMuStd_multiMuStd[0] == True :
-            channelsForThisImagePart = (channelsForThisImagePart + howMuchToAddForEachChannel) * howMuchToMultiplyForEachChannel
-        
-        channelsForThisImagePartPerPathway.append(channelsForThisImagePart)
+        channelsForSegmentPerPathway.append(channelsForThisImagePart)
         
     # Extract the samples for secondary pathways. This whole for can go away, if I update above code to check to slices out of limits.
     for pathway_i in range(len(cnn3d.pathways)) : # Except Normal 1st, cause that was done already.
@@ -774,11 +726,7 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
                                                                                         subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput(train_or_val)[2:]
                                                                                         )
         
-        # Intensity augmentation of the segments.
-        if train_or_val == "train" and doIntAugm_shiftMuStd_multiMuStd[0] == True:
-            channsForThisSubsampledPartAndPathway = (channsForThisSubsampledPartAndPathway + howMuchToAddForEachChannel) * howMuchToMultiplyForEachChannel
-        
-        channelsForThisImagePartPerPathway.append(channsForThisSubsampledPartAndPathway)
+        channelsForSegmentPerPathway.append(channsForThisSubsampledPartAndPathway)
         
     # Get ground truth labels for training.
     numOfCentralVoxelsClassifRcz = cnn3d.finalTargetLayer_outputShape[train_or_val][2:]
@@ -788,14 +736,15 @@ def extractDataOfASegmentFromImagesUsingSampledSliceCoords(
     rightBoundaryRcz = [leftBoundaryRcz[0] + numOfCentralVoxelsClassifRcz[0],
                         leftBoundaryRcz[1] + numOfCentralVoxelsClassifRcz[1],
                         leftBoundaryRcz[2] + numOfCentralVoxelsClassifRcz[2]]
-    gtLabelsForTheCentralClassifiedPartOfThisImagePart = gtLabelsImage[ leftBoundaryRcz[0] : rightBoundaryRcz[0],
-                                                                        leftBoundaryRcz[1] : rightBoundaryRcz[1],
-                                                                        leftBoundaryRcz[2] : rightBoundaryRcz[2] ]
+    lblsOfPredictedPartOfSegment = gtLabelsImage[ leftBoundaryRcz[0] : rightBoundaryRcz[0],
+                                                  leftBoundaryRcz[1] : rightBoundaryRcz[1],
+                                                  leftBoundaryRcz[2] : rightBoundaryRcz[2] ]
     
     # Make COPIES of the segments, instead of having a VIEW (slice) of them. This is so that the the whole volume are afterwards released from RAM.
-    channelsForThisImagePartPerPathway = [ [ np.copy( channel ) for channel in path ] for path in channelsForThisImagePartPerPathway  ]
-    gtLabelsForTheCentralClassifiedPartOfThisImagePart = np.copy(gtLabelsForTheCentralClassifiedPartOfThisImagePart)
-    return [ channelsForThisImagePartPerPathway, gtLabelsForTheCentralClassifiedPartOfThisImagePart ]
+    channelsForSegmentPerPathway = [ np.array(pathw_channs, copy=True, dtype='float32') for pathw_channs in channelsForSegmentPerPathway  ]
+    lblsOfPredictedPartOfSegment = np.copy(lblsOfPredictedPartOfSegment)
+    
+    return [ channelsForSegmentPerPathway, lblsOfPredictedPartOfSegment ]
 
 
 
@@ -866,14 +815,13 @@ def getCoordsOfAllSegmentsOfAnImage(log,
 
 
 
-# I must merge this with function: extractDataOfASegmentFromImagesUsingSampledSliceCoords() that is used for Training/Validation! Should be easy!
+# I must merge this with function: extractSegmentGivenSliceCoords() that is used for Training/Validation! Should be easy!
 # This is used in testing only.
-def extractDataOfSegmentsUsingSampledSliceCoords(cnn3d,
-                                                sliceCoordsOfSegmentsToExtract,
-                                                channelsOfImageNpArray,#chans,niiDims
-                                                channelsOfSubsampledImageNpArray, #chans,niiDims
-                                                recFieldCnn
-                                                ) :
+def extractSegmentsGivenSliceCoords(cnn3d,
+                                    sliceCoordsOfSegmentsToExtract,
+                                    channelsOfImageNpArray,#chans,niiDims
+                                    channelsOfSubsampledImageNpArray, #chans,niiDims
+                                    recFieldCnn) :
     numberOfSegmentsToExtract = len(sliceCoordsOfSegmentsToExtract)
     channsForSegmentsPerPathToReturn = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ] # [pathway, image parts, channels, r, c, z]
     dimsOfPrimarySegment = cnn3d.pathways[0].getShapeOfInput("test")[2:] # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
