@@ -25,9 +25,6 @@ class TrainConfig(Config):
     GT_LABELS_TR = "gtLabelsTraining"
     ROI_MASKS_TR = "roiMasksTraining"
     
-    # DEPRECATED! parsed for backwards compatibility and providing a warning! Use advanced sampling options instead.
-    PERC_POS_SAMPLES_TR = "percentOfSamplesToExtractPositiveTrain"
-    
     #~~~~Advanced Sampling~~~~~
     DEFAULT_TR_SAMPLING = "useDefaultTrainingSamplingFromGtAndRoi"
     TYPE_OF_SAMPLING_TR = "typeOfSamplingForTraining"
@@ -53,10 +50,7 @@ class TrainConfig(Config):
     #Exponential
     EXPON_SCH = "paramsForExpSchedForLrAndMom"
     #~~~~ Data Augmentation~~~
-    REFL_AUGM_PER_AXIS = "reflectImagesPerAxis"
-    PERF_INT_AUGM_BOOL = "performIntAugm"
-    INT_AUGM_SHIF_MUSTD = "sampleIntAugmShiftWithMuAndStd"
-    INT_AUGM_MULT_MUSTD = "sampleIntAugmMultiWithMuAndStd"
+    AUGM_PARAMS_TR = "augm_params_tr"
     
     #============== VALIDATION ===================
     PERFORM_VAL_SAMPLES = "performValidationOnSamplesThroughoutTraining"
@@ -113,7 +107,13 @@ class TrainConfig(Config):
     PAD_INPUT = "padInputImagesBool"
     RUN_INP_CHECKS = "run_input_checks"
     
-
+    # ======== DEPRECATED, backwards compatibility =======
+    REFL_AUGM_PER_AXIS = "reflectImagesPerAxis"
+    PERF_INT_AUGM_BOOL = "performIntAugm"
+    INT_AUGM_SHIF_MUSTD = "sampleIntAugmShiftWithMuAndStd"
+    INT_AUGM_MULT_MUSTD = "sampleIntAugmMultiWithMuAndStd"
+    
+    
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)
         

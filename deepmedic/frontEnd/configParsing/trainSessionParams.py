@@ -99,18 +99,6 @@ class TrainSessionParameters(object) :
     @staticmethod
     def errorRequireMomNonNorm0Norm1() :
         print("ERROR: The parameter \"momNonNorm0orNormalized1\" must be given 0 or 1. Omit for default. Exiting!"); exit(1)
-        
-    # Deprecated :
-    @staticmethod
-    def errorDeprecatedPercPosTraining():
-        print("ERROR: Parameter \"percentOfSamplesToExtractPositiveTrain\" in the config file is now Deprecated! "+\
-              " Please remove this entry from the train-config file. If you do not want the default behaviour but "+\
-              "instead wish to specify the proportion of Foreground and Background samples yourself, please "+\
-              " activate the \"Advanced Sampling\" options (useDefaultTrainingSamplingFromGtAndRoi=False), "+\
-              " choose type-of-sampling Foreground/Background (typeOfSamplingForTraining = 0) and use the new "+\
-              "variable \"proportionOfSamplesToExtractPerCategoryTraining\" which replaces the functionality of the deprecated "+\
-              "(eg. proportionOfSamplesToExtractPerCategoryTraining = [0.3, 0.7]). Exiting."); exit(1) 
-    errDeprPercPosTr = errorDeprecatedPercPosTraining
     
     def __init__(self,
                 log,
@@ -150,8 +138,6 @@ class TrainSessionParameters(object) :
         self.providedRoiMasksTrain = True if cfg[cfg.ROI_MASKS_TR] else False
         self.roiMasksFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg) ) if self.providedRoiMasksTrain else []
         
-        if cfg[cfg.PERC_POS_SAMPLES_TR] is not None : #Deprecated. Issue error and ask for correction.
-            self.errDeprPercPosTr()
         #~~~~~~~~~Advanced Sampling~~~~~~~
         #ADVANCED CONFIG IS DISABLED HERE IF useDefaultSamplingFromGtAndRoi = True!
         self.useDefaultTrainingSamplingFromGtAndRoi = cfg[cfg.DEFAULT_TR_SAMPLING] if cfg[cfg.DEFAULT_TR_SAMPLING] is not None else True
@@ -208,15 +194,8 @@ class TrainSessionParameters(object) :
             self.errReqPredLrSch()
         
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
-        self.reflectImagesPerAxis = cfg[cfg.REFL_AUGM_PER_AXIS] if cfg[cfg.REFL_AUGM_PER_AXIS] else [False, False, False]
-        self.performIntAugm = cfg[cfg.PERF_INT_AUGM_BOOL] if cfg[cfg.PERF_INT_AUGM_BOOL] is not None else False
-        if self.performIntAugm :
-            self.sampleIntAugmShiftWithMuAndStd = cfg[cfg.INT_AUGM_SHIF_MUSTD] if cfg[cfg.INT_AUGM_SHIF_MUSTD] else [0.0 , 0.05]
-            self.sampleIntAugmMultiWithMuAndStd = cfg[cfg.INT_AUGM_MULT_MUSTD] if cfg[cfg.INT_AUGM_MULT_MUSTD] else [1.0 , 0.01]
-            self.doIntAugm_shiftMuStd_multiMuStd = [True, self.sampleIntAugmShiftWithMuAndStd, self.sampleIntAugmMultiWithMuAndStd]
-        else :
-            self.doIntAugm_shiftMuStd_multiMuStd = [False, 'plcholder', [], []]
-            
+        self.augm_params_tr = cfg[cfg.AUGM_PARAMS_TR] if cfg[cfg.AUGM_PARAMS_TR] is not None else {'hist_dist': None, 'reflect': None, 'rotate90': None}
+                        
         #===================VALIDATION========================
         self.val_on_samples_during_train = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
         if self.lr_sched_params['type'] == 'auto' and not self.val_on_samples_during_train :
@@ -374,6 +353,9 @@ class TrainSessionParameters(object) :
         
         self.losses_and_weights = cfg[cfg.LOSSES_WEIGHTS] if cfg[cfg.LOSSES_WEIGHTS] is not None else {"xentr": 1.0, "iou": None, "dsc": None}
         assert True in [ self.losses_and_weights[k] is not None for k in ["xentr", "iou", "dsc"] ]
+        
+        self._backwards_compat_with_deprecated_cfg(cfg)
+        
         """
         #NOTES: variables that have to do with number of pathways: 
                 self.indicesOfLayersPerPathwayTypeToFreeze (="all" always currently. Hardcoded)
@@ -383,6 +365,14 @@ class TrainSessionParameters(object) :
                 indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
         
+    def _backwards_compat_with_deprecated_cfg(self, cfg):
+        # Augmentation
+        if cfg[cfg.REFL_AUGM_PER_AXIS] is not None:
+            self.augm_params_tr['reflect'] = [ 0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS] ]
+        if cfg[cfg.PERF_INT_AUGM_BOOL] == True:
+            self.augm_params_tr['hist_dist'] = { 'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
+                                              'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]} }
+    
     def _makeFilepathsForPredictionsAndFeaturesVal( self,
                                                     absPathToFolderForPredictionsFromSession,
                                                     absPathToFolderForFeaturesFromSession
@@ -459,11 +449,9 @@ class TrainSessionParameters(object) :
         logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
         
         logPrint("~~Data Augmentation During Training~~")
-        logPrint("Reflect images per axis = " + str(self.reflectImagesPerAxis))
-        logPrint("Perform intensity-augmentation [I'= (I+shift)*mult] = " + str(self.performIntAugm))
-        logPrint("[Int. Augm.] Sample Shift from N(mu,std) = " + str(self.doIntAugm_shiftMuStd_multiMuStd[1]))
-        logPrint("[Int. Augm.] Sample Multi from N(mu,std) = " + str(self.doIntAugm_shiftMuStd_multiMuStd[2]))
-        logPrint("[Int. Augm.] (DEBUGGING:) full parameters [ doIntAugm, shift, mult] = " + str(self.doIntAugm_shiftMuStd_multiMuStd))
+        logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_params_tr['hist_dist']))
+        logPrint("Probabilities of reflecting each axis = " + str(self.augm_params_tr['reflect']))
+        logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_params_tr['rotate90']))
         
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
@@ -567,8 +555,7 @@ class TrainSessionParameters(object) :
                 #-------Preprocessing-----------
                 self.padInputImagesBool,
                 #-------Data Augmentation-------
-                self.doIntAugm_shiftMuStd_multiMuStd,
-                self.reflectImagesPerAxis,
+                self.augm_params_tr,
                 
                 self.useSameSubChannelsAsSingleScale,
                 

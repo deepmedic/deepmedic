@@ -154,8 +154,7 @@ def do_training(sessionTf,
                 #-------Preprocessing-----------
                 padInputImagesBool,
                 #-------Data Augmentation-------
-                doIntAugm_shiftMuStd_multiMuStd,
-                reflectImageWithHalfProbDuringTraining,
+                augm_params,
                 
                 useSameSubChannelsAsSingleScale,
                 
@@ -200,8 +199,7 @@ def do_training(sessionTf,
                                 useSameSubChannelsAsSingleScale,
                                 listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
                                 padInputImagesBool,
-                                doIntAugm_shiftMuStd_multiMuStd,
-                                reflectImageWithHalfProbDuringTraining )
+                                augm_params )
     args_for_sampling_val = (   log,
                                 "val",
                                 num_parallel_proc_sampling,
@@ -219,8 +217,7 @@ def do_training(sessionTf,
                                 useSameSubChannelsAsSingleScale,
                                 listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
                                 padInputImagesBool,
-                                [False,[],[]], #don't perform intensity-augmentation during validation.
-                                [0,0,0] ) #don't perform reflection-augmentation during validation.
+                                None ) # no augmentation in validation.
     
     sampling_job_submitted_train = False
     sampling_job_submitted_val = False
