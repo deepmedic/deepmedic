@@ -14,9 +14,11 @@ def augment_patch(channels, gt_lbls, params):
     # gt_lbls: np array of shape [x,y,z]
     # params: None or Dictionary, with params of each augmentation type. }
     if params is not None:
-        channels = random_histogram_distortion(channels, params['hist_dist'])        
+        channels = random_histogram_distortion(channels, params['hist_dist'])
+        channels = random_gamma_correction(channels, params['gamma_cor'])
         channels, gt_lbls = random_flip(channels, gt_lbls, params['reflect'])
         channels, gt_lbls = random_rotation_90(channels, gt_lbls, params['rotate90'])
+        
     return channels, gt_lbls
 
 def random_histogram_distortion(channels, params):
@@ -41,10 +43,23 @@ def random_histogram_distortion(channels, params):
     else:
         scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * params['scale']['mu']
     
-    # Intensity augmentation of the segments.
+    # Intensity augmentation
     for path_idx in range(len(channels)):
         channels[path_idx] = (channels[path_idx] + shift_per_chan) * scale_per_chan
         
+    return channels
+
+
+def random_gamma_correction(channels, gamma_std=0.05):
+    # Gamma correction: I' = I^gamma
+    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
+    if gamma_std is None or gamma_std == 0.:
+        return channels
+    
+    n_channs = channels[0].shape[0]
+    gamma = np.random.normal(1, gamma_std, [n_channs,1,1,1])
+    for path_idx in range(len(channels)):
+        channels[path_idx] = np.power(channels[path_idx], gamma)
     return channels
 
 

@@ -195,7 +195,7 @@ class TrainSessionParameters(object) :
             self.errReqPredLrSch()
         
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
-        self.augm_params_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
+        self.augm_params_tr = {'hist_dist': None, 'gamma_cor': None, 'reflect': None, 'rotate90': None}
         if cfg[cfg.AUGM_PARAMS_TR] is not None:
             for key in cfg[cfg.AUGM_PARAMS_TR]:
                 self.augm_params_tr[key] = cfg[cfg.AUGM_PARAMS_TR][key] # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
@@ -377,8 +377,8 @@ class TrainSessionParameters(object) :
         if cfg[cfg.REFL_AUGM_PER_AXIS] is not None:
             self.augm_params_tr['reflect'] = [ 0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS] ]
         if cfg[cfg.PERF_INT_AUGM_BOOL] == True:
-            self.augm_params_tr['hist_dist'] = { 'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
-                                              'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]} }
+            self.augm_params_tr['hist_dist'] = {'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
+                                                'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]} }
     
     def _makeFilepathsForPredictionsAndFeaturesVal( self,
                                                     absPathToFolderForPredictionsFromSession,
