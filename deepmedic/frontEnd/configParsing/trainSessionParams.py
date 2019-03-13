@@ -195,7 +195,7 @@ class TrainSessionParameters(object) :
             self.errReqPredLrSch()
         
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
-        self.augm_params_tr = {'hist_dist': None, 'gamma_cor': None, 'reflect': None, 'rotate90': None}
+        self.augm_params_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
         if cfg[cfg.AUGM_PARAMS_TR] is not None:
             for key in cfg[cfg.AUGM_PARAMS_TR]:
                 self.augm_params_tr[key] = cfg[cfg.AUGM_PARAMS_TR][key] # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
