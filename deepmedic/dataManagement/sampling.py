@@ -18,8 +18,8 @@ import multiprocessing
 import signal
 import collections
 
-from deepmedic.image.io import loadVolume
-from deepmedic.image.processing import calculateTheZeroIntensityOf3dImage, padCnnInputs
+from deepmedic.dataManagement.io import loadVolume
+from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.augmentation import augment_patch
 

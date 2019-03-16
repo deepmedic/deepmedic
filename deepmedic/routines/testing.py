@@ -15,8 +15,8 @@ from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.dataManagement.sampling import load_imgs_of_subject
 from deepmedic.dataManagement.sampling import getCoordsOfAllSegmentsOfAnImage
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
-from deepmedic.image.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, save4DImgWithAllFmsToNiiWithOriginalHdr
-from deepmedic.image.processing import unpadCnnOutputs
+from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, save4DImgWithAllFmsToNiiWithOriginalHdr
+from deepmedic.dataManagement.preprocessing import unpadCnnOutputs
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA

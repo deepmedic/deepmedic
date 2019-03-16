@@ -64,11 +64,4 @@ def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight) :
     return unpaddedArray1
 
     
-# Deprecated and currently unused.
-def getSuggestedStdForSubsampledImage(subsampleFactor) :
-    arraySubsampledFactor = np.asarray(subsampleFactor)
-    suggestedStdsForSubsampledChannels = arraySubsampledFactor/2.0
-    #if subsampledFactor == 1 for a certain axis (eg z axis), it means I am actually doing 2D processing. In this case, use std=0 on this axis, and I dont smooth at all. I do clean slice-by-slice.
-    suggestedStdsForSubsampledChannels = suggestedStdsForSubsampledChannels * (arraySubsampledFactor!=1)
-    return suggestedStdsForSubsampledChannels
 
