@@ -146,7 +146,9 @@ def getSampledDataAndLabelsForSubepoch(log,
                     except multiprocessing.TimeoutError as e:
                         log.print3(id_str+"\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" + str(job_i) + "].\n" +
                                    " WARN: MULTIPROC: Will resubmit job [" + str(job_i) + "].\n")
-
+                        if num_workers == 1:
+                            break # If this 1 worker got stuck, every job will wait timeout. Slow. Recreate pool.
+            
             except (Exception, KeyboardInterrupt) as e:
                 log.print3(id_str+"\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): "+str(e)+"\n")
                 log.print3( traceback.format_exc() )
@@ -279,7 +281,7 @@ def load_subj_and_get_samples(job_i,
     [allChannelsOfPatientInNpArray, # nparray(channels,dim0,dim1,dim2)
     gtLabelsImage,
     roiMask,
-    arrayWithWeightMapsWhereToSampleForEachCategory, #can be returned "placeholderNothing" if it's testing phase or not "provided weighted maps". In this case, I will sample from GT/ROI.
+    arrayWithWeightMapsWhereToSampleForEachCategory,
     allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
     tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
     ] = load_imgs_of_subject(log,
@@ -288,20 +290,20 @@ def load_subj_and_get_samples(job_i,
                              run_input_checks,
                              inds_of_subjects_for_subep[job_i],
                              paths_per_chan_per_subj,
-                             providedGtLabelsBool=True, # If this getTheArr function is called (training), gtLabels should already been provided.
-                             listOfFilepathsToGtLabelsOfEachPatient=paths_to_lbls_per_subj, 
-                             num_classes = cnn3d.num_classes,
-                             provided_weightmaps_per_sampl_cat = provided_weightmaps_per_sampl_cat, # If true, must provide all. Placeholder in testing.
-                             paths_to_wmaps_per_sampl_cat_per_subj = paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
-                             provided_mask = provided_mask,
-                             paths_to_masks_per_subj = paths_to_masks_per_subj,
-                             same_LRes_chans_as_HRes=same_LRes_chans_as_HRes,
-                             usingSubsampledPathways=cnn3d.numSubsPaths > 0,
-                             paths_to_LRes_chans_per_subj=paths_to_LRes_chans_per_subj,
+                             True, # providedGtLabelsBool. If this getTheArr function is called (training), gtLabels should already been provided.
+                             paths_to_lbls_per_subj, 
+                             cnn3d.num_classes,
+                             provided_weightmaps_per_sampl_cat, # If true, must provide all. Placeholder in testing.
+                             paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
+                             provided_mask,
+                             paths_to_masks_per_subj,
+                             same_LRes_chans_as_HRes,
+                             cnn3d.numSubsPaths > 0, # usingSubsampledPathways
+                             paths_to_LRes_chans_per_subj,
                              # Preprocessing
-                             pad_input_imgs=pad_input_imgs,
-                             cnnReceptiveField=cnn3d.recFieldCnn, # only used if padInputsBool
-                             dimsOfPrimeSegmentRcz=dimsOfPrimeSegmentRcz) # only used if padInputsBool
+                             pad_input_imgs,
+                             cnn3d.recFieldCnn, # used if pad_input_imgs
+                             dimsOfPrimeSegmentRcz) # used if pad_input_imgs
     
     dimensionsOfImageChannel = allChannelsOfPatientInNpArray[0].shape
     finalWeightMapsToSampleFromPerCategoryForSubject = sampling_type.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
@@ -312,7 +314,7 @@ def load_subj_and_get_samples(job_i,
                                                                                             provided_mask,
                                                                                             roiMask,
                                                                                             dimensionsOfImageChannel)
-    
+    str_samples_per_cat = " Got samples per category: "
     for cat_i in range( sampling_type.getNumberOfCategoriesToSample() ) :
         catString = sampling_type.getStringsPerCategoryToSample()[cat_i]
         numOfSegmsToExtractForThisCatFromThisSubject = n_to_sample_per_cat_per_subj[cat_i][job_i]
@@ -330,7 +332,7 @@ def load_subj_and_get_samples(job_i,
                                             dimsOfPrimeSegmentRcz,
                                             dimensionsOfImageChannel,
                                             finalWeightMapToSampleFromForThisCat)
-        log.print3(id_str+" For category [" + catString + "] wanted ["+str(numOfSegmsToExtractForThisCatFromThisSubject)+"] samples, got [" + str(len(coords_of_samples[0][0]))+"]")
+        str_samples_per_cat += "[" + catString + ": " + str(len(coords_of_samples[0][0])) + "/" + str(numOfSegmsToExtractForThisCatFromThisSubject) + "] "
         
         # Use the just sampled coordinates of slices to actually extract the segments (data) from the subject's images. 
         for image_part_i in range(len(coords_of_samples[0][0])) :
@@ -351,11 +353,8 @@ def load_subj_and_get_samples(job_i,
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
                 channelsOfSegmentsFromThisSubjPerPathway[pathway_i].append(channelsForSegmentPerPathway[pathway_i])
             lblsOfPredictedPartOfSegmentsFromThisSubj.append(lblsOfPredictedPartOfSegment)
-            
-    # Done with case/subject. Segments have been sampled. Delete the volume arrays to release RAM. (THIS IS LIKELY REDUNDANT. FUNCTION EXITS.)
-    del allChannelsOfPatientInNpArray; del gtLabelsImage; del roiMask
-    del arrayWithWeightMapsWhereToSampleForEachCategory; del allSubsampledChannelsOfPatientInNpArray; del tupleOfPaddingPerAxesLeftRight
     
+    log.print3(id_str + str_samples_per_cat)
     return (channelsOfSegmentsFromThisSubjPerPathway, lblsOfPredictedPartOfSegmentsFromThisSubj)
 
 
@@ -402,7 +401,7 @@ def load_imgs_of_subject(log,
         
         [roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [roiMask, tupleOfPaddingPerAxesLeftRight]
     else :
-        roiMask = "placeholderNothing"
+        roiMask = None
         
     #Load the channels of the patient.
     niiDimensions = None
@@ -441,7 +440,7 @@ def load_imgs_of_subject(log,
 
         [imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
     else : 
-        imageGtLabels = "placeholderNothing" #For validation and testing
+        imageGtLabels = None #For validation and testing
         
     if train_val_or_test != "test" and provided_weightmaps_per_sampl_cat==True : # in testing these weightedMaps are never provided, they are for training/validation only.
         numberOfSamplingCategories = len(paths_to_wmaps_per_sampl_cat_per_subj)
@@ -455,11 +454,11 @@ def load_imgs_of_subject(log,
             
             arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
     else :
-        arrayWithWeightMapsWhereToSampleForEachCategory = "placeholderNothing"
+        arrayWithWeightMapsWhereToSampleForEachCategory = None
         
     # The second CNN pathway...
     if not usingSubsampledPathways :
-        allSubsampledChannelsOfPatientInNpArray = "placeholderNothing"
+        allSubsampledChannelsOfPatientInNpArray = None
     elif same_LRes_chans_as_HRes : #Pass this in the configuration file, instead of a list of channel names, to use the same channels as the normal res.
         allSubsampledChannelsOfPatientInNpArray = allChannelsOfPatientInNpArray #np.asarray(allChannelsOfPatientInNpArray, dtype="float32") #Hope this works, to win time in loading. Without copying it did not work.
     else :
