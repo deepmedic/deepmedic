@@ -3,6 +3,11 @@ DeepMedic
 
 ### News
 
+16 Mar 2019 (v0.7.2):
+* Batch size now in trainConfig and testConfig, not model.
+* Improved handling of hunging parallel processes.
+* Modularized augmentation, for further extensions.
+
 11 Feb 2019 (v0.7.1):
 * Multiprocessing changed from pp to python's builtin module.
 * Default suggested python switched to python3.
