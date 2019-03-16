@@ -376,7 +376,9 @@ Common practice with neural networks is to take a network pre-trained on one tas
 - numberOfSubepochs: Number of subepochs to run per epoch
 - numOfCasesLoadedPerSubepoch: At each subepoch, the images from maximum that many cases are loaded to extract training samples. This is done to allow training on databases that may have hundreds or thousands of images, and loading them all for sample-extraction would be just too expensive.
 - numberTrainingSegmentsLoadedOnGpuPerSubep: At every subepoch, we extract in total this many segments, which are loaded on the GPU in order to perform the optimization steps. Number of optimization steps per subepoch is this number divided by the batch-size-training (see model-config). The more segments, the more GPU memory and computation required.
+- batchsize_train: Size of a training batch. The bigger, the more gpu-memory is required.
 - num_processes_sampling: Samples needed for next validation/train can be extracted in parallel while performing current train/validation on GPU. Specify number of parallel sampling processes.
+
 
 *Learning Rate Schedule:*
 

@@ -27,8 +27,11 @@ class TrainSessionParameters(object) :
     def errorRequireGtLabelsTraining():
         print("ERROR: Parameter \"gtLabelsTraining\" needed but not provided in config file. This parameter should provide the path to a file. That file should contain a list of paths, one for each case to train on. These paths should point to the .nii(.gz) files that contain the corresponding Ground-Truth labels for a case. Please provide it in the format: gtLabelsTraining = \"path-to-file\". The path should be given in quotes (a string, python-style). Exiting."); exit(1) 
     errReqGtTr = errorRequireGtLabelsTraining
-    
-    
+    @staticmethod
+    def errorRequireBatchsizeTrain():
+        print("ERROR: Please provide size of batch size in train-config. See parameter \'batchsize\'. Exiting."); exit(1) 
+    errReqBatchSizeTr = errorRequireBatchsizeTrain
+
     @staticmethod
     def errorRequireSamplMasksAreProbabMapsTrain() :
         print("ERROR: Parameter \"samplingMasksAreProbabMapsTrain\" needed but not provided in config file. This parameters is needed when parameter \"useDefaultTrainingSamplingFromGtAndRoi\" = False, in order to know whether the provided masks are probability maps or segmentation labels. Please provide parameter in the form: samplingMasksAreProbabMapsTrain = True/False. True if the masks given at \"masksForPos(Neg)SamplingTrain\" are probability maps (can be non-normalized, like weights), or False if they are binary segmentation masks. Exiting."); exit(1) 
@@ -167,11 +170,11 @@ class TrainSessionParameters(object) :
         self.providedWeightMapsToSampleForEachCategoryTraining = self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining is not None
         
         #~~~~~~~~ Training Cycle ~~~~~~~~~~~
+        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else errReqBatchSizeTr()
         self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
         self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
         self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
-        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else 10
         self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 0
         
         #~~~~~~~ Learning Rate Schedule ~~~~~~~~
