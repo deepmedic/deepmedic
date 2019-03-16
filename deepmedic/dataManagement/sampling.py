@@ -16,6 +16,7 @@ import random
 import traceback
 import multiprocessing
 import signal
+import collections
 
 from deepmedic.image.io import loadVolume
 from deepmedic.image.processing import calculateTheZeroIntensityOf3dImage, padCnnInputs
@@ -25,7 +26,7 @@ from deepmedic.dataManagement.augmentation import augment_patch
 # Order of calls:
 # getSampledDataAndLabelsForSubepoch
 #    get_random_subjects_to_train_subep
-#    getNumberOfSegmentsToExtractPerCategoryFromEachSubject
+#    getNumSegmentsPerCategoryPerSubject
 #    load_subj_and_get_samples
 #        load_imgs_of_subject
 #        sample_coords_of_segments
@@ -40,137 +41,139 @@ def getSampledDataAndLabelsForSubepoch(log,
                                         num_parallel_proc,
                                         run_input_checks,
                                         cnn3d,
-                                        maxNumSubjectsLoadedPerSubepoch,
-                                        numberOfImagePartsToLoadInGpuPerSubepoch,
-                                        samplingTypeInstance,
+                                        max_n_subjects_per_subep,
+                                        n_segments_per_subep,
+                                        sampling_type,
                                         
-                                        listOfFilepathsToEachChannelOfEachPatient,
-                                        listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
+                                        paths_per_chan_per_subj,
+                                        paths_to_lbls_per_subj,
                                         
-                                        providedRoiMaskBool,
-                                        listOfFilepathsToRoiMaskOfEachPatient,
+                                        provided_mask,
+                                        paths_to_masks_per_subj,
                                         
-                                        providedWeightMapsToSampleForEachCategory,
-                                        forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient,
+                                        provided_weightmaps_per_sampl_cat,
+                                        paths_to_wmaps_per_sampl_cat_per_subj,
                                         
-                                        useSameSubChannelsAsSingleScale,
-                                        listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                                        same_LRes_chans_as_HRes,
+                                        paths_to_LRes_chans_per_subj,
                                         
-                                        padInputImagesBool,
+                                        pad_input_imgs,
                                         augm_params
                                         ):
     # Returns: channelsOfSegmentsForSubepochArrayPerPathway - List of arrays, one per pathway. Each array [N_samples, Channs, R,C,Z]
     #        lblsForPredictedPartOfSegmentsForSubepochArray - Array of shape: [N_samples, R_out, C_out, Z_out)
-    try: # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
-        id_str = "[SAMPLER-TR|PID:"+str(os.getpid())+"]" if train_or_val == "train" else "[SAMPLER-VAL|PID:"+str(os.getpid())+"]"
-        start_time_sampling = time.time()
-        training_or_validation_str = "Training" if train_or_val == "train" else "Validation"
-        
-        log.print3(id_str+" :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
-        
-        total_number_of_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
-        inds_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects = total_number_of_subjects,
-                                                                            max_subjects_on_gpu_for_subepoch = maxNumSubjectsLoadedPerSubepoch,
-                                                                            get_max_subjects_for_gpu_even_if_total_less = False )
-        log.print3(id_str+" Out of [" + str(total_number_of_subjects) + "] subjects given for [" + training_or_validation_str + "], "+
-                   "we will sample from maximum [" + str(maxNumSubjectsLoadedPerSubepoch) + "] per subepoch.")
-        log.print3(id_str+" Shuffled indices of subjects that were randomly chosen: "+str(inds_of_subjects_for_subep))
-        
-        # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
-        channelsOfSegmentsForSubepochListPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
-        lblsForPredictedPartOfSegmentsForSubepochList = [] # Labels only for the central/predicted part of segments.
-        n_subjects_for_subep = len(inds_of_subjects_for_subep) #Can be different than maxNumSubjectsLoadedPerSubepoch, cause of available images number.
-        
-        # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
-        percentOfSamplesPerCategoryToSample = samplingTypeInstance.getPercentOfSamplesPerCategoryToSample()
-        arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = getNumberOfSegmentsToExtractPerCategoryFromEachSubject(numberOfImagePartsToLoadInGpuPerSubepoch,
-                                                                                                                            percentOfSamplesPerCategoryToSample,
-                                                                                                                            n_subjects_for_subep)
-        
-        log.print3(id_str+" Will sample from [" + str(n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
-        
-        worker_pool = None
-        if num_parallel_proc > 0: # Parallelize sampling from each subject
+    
+    id_str = "[SAMPLER-TR|PID:"+str(os.getpid())+"]" if train_or_val == "train" else "[SAMPLER-VAL|PID:"+str(os.getpid())+"]"
+    start_time_sampling = time.time()
+    training_or_validation_str = "Training" if train_or_val == "train" else "Validation"
+    
+    log.print3(id_str+" :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
+    
+    total_number_of_subjects = len(paths_per_chan_per_subj)
+    inds_of_subjects_for_subep = get_random_subjects_to_train_subep( total_number_of_subjects = total_number_of_subjects,
+                                                                     max_subjects_on_gpu_for_subepoch = max_n_subjects_per_subep,
+                                                                     get_max_subjects_for_gpu_even_if_total_less = False )
+    log.print3(id_str+" Out of [" + str(total_number_of_subjects) + "] subjects given for [" + training_or_validation_str + "], "+
+               "we will sample from maximum [" + str(max_n_subjects_per_subep) + "] per subepoch.")
+    log.print3(id_str+" Shuffled indices of subjects that were randomly chosen: "+str(inds_of_subjects_for_subep))
+    
+    # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
+    channelsOfSegmentsForSubepochListPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
+    lblsForPredictedPartOfSegmentsForSubepochList = [] # Labels only for the central/predicted part of segments.
+    n_subjects_for_subep = len(inds_of_subjects_for_subep) #Can be different than max_n_subjects_per_subep, cause of available images number.
+    
+    # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
+    percentOfSamplesPerCategoryToSample = sampling_type.getPercentOfSamplesPerCategoryToSample()
+    n_to_sample_per_cat_per_subj = getNumSegmentsPerCategoryPerSubject(n_segments_per_subep,
+                                                                       percentOfSamplesPerCategoryToSample,
+                                                                       n_subjects_for_subep)
+    
+    args_sampling_job = [log,
+                        train_or_val,
+                        run_input_checks,
+                        cnn3d,
+                        sampling_type,
+                        paths_per_chan_per_subj,
+                        paths_to_lbls_per_subj,
+                        provided_mask,
+                        paths_to_masks_per_subj,
+                        provided_weightmaps_per_sampl_cat,
+                        paths_to_wmaps_per_sampl_cat_per_subj,
+                        same_LRes_chans_as_HRes,
+                        paths_to_LRes_chans_per_subj,
+                        # Pre-processing:
+                        pad_input_imgs,
+                        augm_params,
+                        
+                        n_subjects_for_subep,
+                        inds_of_subjects_for_subep,
+                        n_to_sample_per_cat_per_subj ]
+    
+    log.print3(id_str+" Will sample from [" + str(n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
+    
+    jobs_inds_to_do = list(range(n_subjects_for_subep)) # One job per subject.
+    
+    if num_parallel_proc <= 0: # Sequentially
+        for job_i in jobs_inds_to_do :
+            (channelsOfSegmentsFromThisSubjPerPathway,
+            lblsOfPredictedPartOfSegmentsFromThisSubj) = load_subj_and_get_samples( *( [job_i]+args_sampling_job ) )
+            for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
+                channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channelsOfSegmentsFromThisSubjPerPathway[pathway_i] # concat does not copy.
+            lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisSubj # concat does not copy.
+
+    else: # Parallelize sampling from each subject
+        while len(jobs_inds_to_do) > 0: # While jobs remain.
+            jobs = collections.OrderedDict()
+            
+            log.print3(id_str+" ******* Spawning children processes to sample from [" + str(len(jobs_inds_to_do)) + "] subjects*******")
             log.print3(id_str+" MULTIPROC: Number of CPUs detected: " + str(multiprocessing.cpu_count()) + ". Requested to use max: [" + str(num_parallel_proc) + "]")
             num_workers = min(num_parallel_proc, multiprocessing.cpu_count())
             log.print3(id_str+" MULTIPROC: Spawning [" + str(num_workers) + "] processes to load data and sample.")
             worker_pool = multiprocessing.Pool(processes=num_workers, initializer=init_sampling_proc) 
-            jobs_list = []
-            
-        for job_i in range(n_subjects_for_subep) :
-            
-            args_sampling_job = (log,
-                                job_i,
-                                train_or_val,
-                                run_input_checks,
-                                cnn3d,
-                                samplingTypeInstance,
-                                listOfFilepathsToEachChannelOfEachPatient,
-                                listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
-                                providedRoiMaskBool,
-                                listOfFilepathsToRoiMaskOfEachPatient,
-                                providedWeightMapsToSampleForEachCategory,
-                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient,
-                                useSameSubChannelsAsSingleScale,
-                                listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                                # Pre-processing:
-                                padInputImagesBool,
-                                augm_params,
-                                
-                                n_subjects_for_subep,
-                                inds_of_subjects_for_subep,
-                                arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject )
-            
-            
-            if worker_pool is None : # Sequentially
-                (channelsOfSegmentsFromThisSubjPerPathway,
-                lblsOfPredictedPartOfSegmentsFromThisSubj) = load_subj_and_get_samples( *args_sampling_job )
-                for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                    channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channelsOfSegmentsFromThisSubjPerPathway[pathway_i] # concat does not copy.
-                lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisSubj # concat does not copy.
-            
-            else: # Submit parallel processes.
-                jobs_list.append( worker_pool.apply_async(load_subj_and_get_samples, args_sampling_job ) )
-            
-        if worker_pool is not None: # Parallelism
-            for job in jobs_list:
-                (channelsOfSegmentsFromThisSubjPerPathway,
-                lblsOfPredictedPartOfSegmentsFromThisSubj) = job.get()
-                for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                    channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channelsOfSegmentsFromThisSubjPerPathway[pathway_i] # concat does not copy.
-                lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisSubj # concat does not copy.
+
+            try: # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
+                for job_i in jobs_inds_to_do: # submit jobs
+                    jobs[job_i] = worker_pool.apply_async( load_subj_and_get_samples, ( [job_i]+args_sampling_job ) )
                 
-            worker_pool.close()
-            worker_pool.join()
-            
-            
-        #I need to shuffle them, together imageParts and lesionParts!
-        [channelsOfSegmentsForSubepochListPerPathway,
-        lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleSegmentsOfThisSubepoch(channelsOfSegmentsForSubepochListPerPathway,
-                                                                                        lblsForPredictedPartOfSegmentsForSubepochList )
-        
-        end_time_sampling = time.time()
-        log.print3(id_str+" TIMING: Sampling for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
-        
-        log.print3(id_str+" :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
-        
-        channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channelsOfSegmentsForSubepochListPerPathway ]
-        lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lblsForPredictedPartOfSegmentsForSubepochList, dtype="int32") # Could be int16 to save RAM?
+                for job_i in list(jobs_inds_to_do): # copy with list(...), so that this loops normally even if something is removed from list.
+                    try:
+                        (channelsOfSegmentsFromThisSubjPerPathway,
+                        lblsOfPredictedPartOfSegmentsFromThisSubj) = jobs[job_i].get(timeout=10) # timeout in case process for some reason never started (happens in py3)
+                        for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
+                            channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channelsOfSegmentsFromThisSubjPerPathway[pathway_i] # concat does not copy.
+                        lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisSubj # concat does not copy.
+                        jobs_inds_to_do.remove(job_i)
+                    except multiprocessing.TimeoutError as e:
+                        log.print3(id_str+"\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" + str(job_i) + "].\n" +
+                                   " WARN: MULTIPROC: Will resubmit job [" + str(job_i) + "].\n")
+
+            except (Exception, KeyboardInterrupt) as e:
+                log.print3(id_str+"\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): "+str(e)+"\n")
+                log.print3( traceback.format_exc() )
+                worker_pool.terminate()
+                worker_pool.join() # Will wait. A KeybInt will kill this (py3)
+                raise e
+            except: # Catches everything, even a sys.exit(1) exception.
+                log.print3(id_str+"\n\n ERROR: Unexpected error in getSampledDataAndLabelsForSubepoch(). System info: ", sys.exc_info()[0])
+                worker_pool.terminate()
+                worker_pool.join()
+                raise Exception("Unexpected error.")
+            else: # Nothing went wrong
+                worker_pool.terminate() # # Needed in case any processes are hunging. worker_pool.close() does not solve this.
+                worker_pool.join()
+               
+    # Got all samples for subepoch. Now shuffle them, together segments and their labels.
+    [channelsOfSegmentsForSubepochListPerPathway,
+    lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleSegmentsOfThisSubepoch(channelsOfSegmentsForSubepochListPerPathway,
+                                                                                    lblsForPredictedPartOfSegmentsForSubepochList )
+    end_time_sampling = time.time()
+    log.print3(id_str+" TIMING: Sampling for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
     
-    except (Exception, KeyboardInterrupt) as e:
-        log.print3(id_str+"\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): "+str(e)+"\n")
-        log.print3( traceback.format_exc() )
-        if worker_pool is not None:
-            worker_pool.terminate()
-            worker_pool.join() # Will wait. A KeybInt will kill this (py3)
-        raise e
-    except: # Catches everything, even a sys.exit(1) exception.
-        log.print3(id_str+"\n\n ERROR: Unexpected error in getSampledDataAndLabelsForSubepoch(). System info: ", sys.exc_info()[0])
-        if worker_pool is not None:
-            worker_pool.terminate()
-            worker_pool.join()
-        raise Exception("Unexpected error.")
-        
+    log.print3(id_str+" :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
+    
+    channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channelsOfSegmentsForSubepochListPerPathway ]
+    lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lblsForPredictedPartOfSegmentsForSubepochList, dtype="int32") # Could be int16 to save RAM?
+    
     return [channelsOfSegmentsForSubepochArrayPerPathway,
             lblsForPredictedPartOfSegmentsForSubepochArray]
     
@@ -207,63 +210,65 @@ def get_random_subjects_to_train_subep( total_number_of_subjects,
 
 
 
-def getNumberOfSegmentsToExtractPerCategoryFromEachSubject( numberOfImagePartsToLoadInGpuPerSubepoch,
+def getNumSegmentsPerCategoryPerSubject( n_segments_per_subep,
                                                             percentOfSamplesPerCategoryToSample, # list with a percentage for each type of category to sample
                                                             n_subjects_for_subep ) :
     numberOfSamplingCategories = len(percentOfSamplesPerCategoryToSample)
     # [numForCat1,..., numForCatN]
     arrayNumberOfSegmentsToExtractPerSamplingCategory = np.zeros( numberOfSamplingCategories, dtype="int32" )
     # [arrayForCat1,..., arrayForCatN] : arrayForCat1 = [ numbOfSegmsToExtrFromSubject1, ...,  numbOfSegmsToExtrFromSubjectK]
-    arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject = np.zeros( [ numberOfSamplingCategories, n_subjects_for_subep ] , dtype="int32" )
+    n_to_sample_per_cat_per_subj = np.zeros( [ numberOfSamplingCategories, n_subjects_for_subep ] , dtype="int32" )
     
     numberOfSamplesDistributedInTheCategories = 0
     for cat_i in range(numberOfSamplingCategories) :
-        numberOfSamplesFromThisCategoryPerSubepoch = int(numberOfImagePartsToLoadInGpuPerSubepoch*percentOfSamplesPerCategoryToSample[cat_i])
+        numberOfSamplesFromThisCategoryPerSubepoch = int(n_segments_per_subep*percentOfSamplesPerCategoryToSample[cat_i])
         arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += numberOfSamplesFromThisCategoryPerSubepoch
         numberOfSamplesDistributedInTheCategories += numberOfSamplesFromThisCategoryPerSubepoch
     # Distribute samples that were left from the rounding error of integer division.
-    numOfUndistributedSamples = numberOfImagePartsToLoadInGpuPerSubepoch - numberOfSamplesDistributedInTheCategories
+    numOfUndistributedSamples = n_segments_per_subep - numberOfSamplesDistributedInTheCategories
     indicesOfCategoriesToGiveUndistrSamples = np.random.choice(numberOfSamplingCategories, size=numOfUndistributedSamples, replace=True, p=percentOfSamplesPerCategoryToSample)
     for cat_i in indicesOfCategoriesToGiveUndistrSamples : # they will be as many as the undistributed samples
         arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += 1
         
     for cat_i in range(numberOfSamplingCategories) :
         numberOfSamplesFromThisCategoryPerSubepochPerImage = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] // n_subjects_for_subep
-        arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
+        n_to_sample_per_cat_per_subj[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
         numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] % n_subjects_for_subep
         for i_unevenSampleFromThisCat in range(numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly):
-            arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i, random.randint(0, n_subjects_for_subep-1)] += 1
+            n_to_sample_per_cat_per_subj[cat_i, random.randint(0, n_subjects_for_subep-1)] += 1
             
-    return arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject
+    return n_to_sample_per_cat_per_subj
     
     
     
-def load_subj_and_get_samples(log,
-                              job_i,
+def load_subj_and_get_samples(job_i,
+                              log,
                               train_or_val,
                               run_input_checks,
                               cnn3d,
-                              samplingTypeInstance,
-                              listOfFilepathsToEachChannelOfEachPatient,
-                              listOfFilepathsToGtLabelsOfEachPatientTrainOrVal,
-                              providedRoiMaskBool,
-                              listOfFilepathsToRoiMaskOfEachPatient,
-                              providedWeightMapsToSampleForEachCategory,
-                              forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient,
-                              useSameSubChannelsAsSingleScale,
-                              listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                              sampling_type,
+                              paths_per_chan_per_subj,
+                              paths_to_lbls_per_subj,
+                              provided_mask,
+                              paths_to_masks_per_subj,
+                              provided_weightmaps_per_sampl_cat,
+                              paths_to_wmaps_per_sampl_cat_per_subj,
+                              same_LRes_chans_as_HRes,
+                              paths_to_LRes_chans_per_subj,
                               # Pre-processing:
-                              padInputImagesBool,
+                              pad_input_imgs,
                               augm_params,
                               
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
-                              arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject
+                              n_to_sample_per_cat_per_subj
                               ):
+    # paths_per_chan_per_subj: [ [ for channel-0 [ one path per subj ] ], ..., [ for channel-n  [ one path per subj ] ] ]
+    # n_to_sample_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channelsOfSegmentsFromThisSubjPerPathway, lblsOfPredictedPartOfSegmentsFromThisSubj )
-    id_str = "[JOB:"+str(job_i+1)+"|PID:"+str(os.getpid())+"]"
+    id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"]"
     log.print3(id_str+" Load & sample from subject of index (in user's list): " + str(inds_of_subjects_for_subep[job_i]) +\
-               " (Job #" + str(job_i+1) + "/" +str(n_subjects_for_subep)+")")
+               " (Job #" + str(job_i) + "/" +str(n_subjects_for_subep)+")")
     
     # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
     channelsOfSegmentsFromThisSubjPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
@@ -282,35 +287,35 @@ def load_subj_and_get_samples(log,
                              train_or_val,
                              run_input_checks,
                              inds_of_subjects_for_subep[job_i],
-                             listOfFilepathsToEachChannelOfEachPatient,
+                             paths_per_chan_per_subj,
                              providedGtLabelsBool=True, # If this getTheArr function is called (training), gtLabels should already been provided.
-                             listOfFilepathsToGtLabelsOfEachPatient=listOfFilepathsToGtLabelsOfEachPatientTrainOrVal, 
+                             listOfFilepathsToGtLabelsOfEachPatient=paths_to_lbls_per_subj, 
                              num_classes = cnn3d.num_classes,
-                             providedWeightMapsToSampleForEachCategory = providedWeightMapsToSampleForEachCategory, # If true, must provide all. Placeholder in testing.
-                             forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
-                             providedRoiMaskBool = providedRoiMaskBool,
-                             listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskOfEachPatient,
-                             useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
+                             provided_weightmaps_per_sampl_cat = provided_weightmaps_per_sampl_cat, # If true, must provide all. Placeholder in testing.
+                             paths_to_wmaps_per_sampl_cat_per_subj = paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
+                             provided_mask = provided_mask,
+                             paths_to_masks_per_subj = paths_to_masks_per_subj,
+                             same_LRes_chans_as_HRes=same_LRes_chans_as_HRes,
                              usingSubsampledPathways=cnn3d.numSubsPaths > 0,
-                             listOfFilepathsToEachSubsampledChannelOfEachPatient=listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                             paths_to_LRes_chans_per_subj=paths_to_LRes_chans_per_subj,
                              # Preprocessing
-                             padInputImagesBool=padInputImagesBool,
+                             pad_input_imgs=pad_input_imgs,
                              cnnReceptiveField=cnn3d.recFieldCnn, # only used if padInputsBool
                              dimsOfPrimeSegmentRcz=dimsOfPrimeSegmentRcz) # only used if padInputsBool
     
     dimensionsOfImageChannel = allChannelsOfPatientInNpArray[0].shape
-    finalWeightMapsToSampleFromPerCategoryForSubject = samplingTypeInstance.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
-                                                                                            providedWeightMapsToSampleForEachCategory,
+    finalWeightMapsToSampleFromPerCategoryForSubject = sampling_type.logicDecidingAndGivingFinalSamplingMapsForEachCategory(
+                                                                                            provided_weightmaps_per_sampl_cat,
                                                                                             arrayWithWeightMapsWhereToSampleForEachCategory,
                                                                                             True, #providedGtLabelsBool. True both for train and val.
                                                                                             gtLabelsImage,
-                                                                                            providedRoiMaskBool,
+                                                                                            provided_mask,
                                                                                             roiMask,
                                                                                             dimensionsOfImageChannel)
     
-    for cat_i in range( samplingTypeInstance.getNumberOfCategoriesToSample() ) :
-        catString = samplingTypeInstance.getStringsPerCategoryToSample()[cat_i]
-        numOfSegmsToExtractForThisCatFromThisSubject = arrayNumberOfSegmentsToExtractPerSamplingCategoryAndSubject[cat_i][job_i]
+    for cat_i in range( sampling_type.getNumberOfCategoriesToSample() ) :
+        catString = sampling_type.getStringsPerCategoryToSample()[cat_i]
+        numOfSegmsToExtractForThisCatFromThisSubject = n_to_sample_per_cat_per_subj[cat_i][job_i]
         finalWeightMapToSampleFromForThisCat = finalWeightMapsToSampleFromPerCategoryForSubject[cat_i]
         
         # Check if the weight map is fully-zeros. In this case, don't call the sampling function, just continue.
@@ -362,40 +367,40 @@ def load_imgs_of_subject(log,
                          train_val_or_test,
                          run_input_checks,
                          subj_i,
-                         listOfFilepathsToEachChannelOfEachPatient,
+                         paths_per_chan_per_subj,
                          providedGtLabelsBool,
                          listOfFilepathsToGtLabelsOfEachPatient,
                          num_classes,
-                         providedWeightMapsToSampleForEachCategory, # If true, must provide all wmaps. Placeholder in testing.
-                         forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient, # Placeholder in testing.
-                         providedRoiMaskBool,
-                         listOfFilepathsToRoiMaskOfEachPatient,
-                         useSameSubChannelsAsSingleScale,
+                         provided_weightmaps_per_sampl_cat, # If true, must provide all wmaps. Placeholder in testing.
+                         paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
+                         provided_mask,
+                         paths_to_masks_per_subj,
+                         same_LRes_chans_as_HRes,
                          usingSubsampledPathways,
-                         listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                         paths_to_LRes_chans_per_subj,
                          # Preprocessing
-                         padInputImagesBool,
-                         cnnReceptiveField, # only used if padInputImagesBool
+                         pad_input_imgs,
+                         cnnReceptiveField, # only used if pad_input_imgs
                          dimsOfPrimeSegmentRcz
                          ):
     #listOfNiiFilepathNames: should be a list of lists. Each sublist corresponds to one certain subject.
     #...Each sublist should have as many elements(strings-filenamePaths) as numberOfChannels, point to the channels of this patient.
-    id_str = "[JOB:"+str(job_i+1)+"|PID:"+str(os.getpid())+"] " if job_i is not None else "" # is None in testing.
+    id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"] " if job_i is not None else "" # is None in testing.
     
-    if subj_i >= len(listOfFilepathsToEachChannelOfEachPatient) :
+    if subj_i >= len(paths_per_chan_per_subj) :
         raise ValueError(id_str+" The argument 'subj_i' given is greater than the filenames given for the .nii folders!")
     
-    log.print3(id_str+"Loading subject with 1st channel at: "+str(listOfFilepathsToEachChannelOfEachPatient[subj_i][0]))
+    log.print3(id_str+"Loading subject with 1st channel at: "+str(paths_per_chan_per_subj[subj_i][0]))
     
-    numberOfNormalScaleChannels = len(listOfFilepathsToEachChannelOfEachPatient[0])
+    numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
 
     tupleOfPaddingPerAxesLeftRight = ((0,0), (0,0), (0,0)) #This will be given a proper value if padding is performed.
     
-    if providedRoiMaskBool :
-        fullFilenamePathOfRoiMask = listOfFilepathsToRoiMaskOfEachPatient[subj_i]
+    if provided_mask :
+        fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
         roiMask = loadVolume(fullFilenamePathOfRoiMask)
         
-        [roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [roiMask, tupleOfPaddingPerAxesLeftRight]
+        [roiMask, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(roiMask, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [roiMask, tupleOfPaddingPerAxesLeftRight]
     else :
         roiMask = "placeholderNothing"
         
@@ -405,11 +410,11 @@ def load_imgs_of_subject(log,
     #The below has dimensions (channels, 2). Holds per channel: [value to add per voxel for mean norm, value to multiply for std renorm]
     howMuchToAddAndMultiplyForNormalizationAugmentationForEachChannel = np.ones( (numberOfNormalScaleChannels, 2), dtype="float32")
     for channel_i in range(numberOfNormalScaleChannels):
-        fullFilenamePathOfChannel = listOfFilepathsToEachChannelOfEachPatient[subj_i][channel_i]
+        fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
         if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
             channelData = loadVolume(fullFilenamePathOfChannel)
                 
-            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
+            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             if not isinstance(allChannelsOfPatientInNpArray, (np.ndarray)) :
                 #Initialize the array in which all the channels for the patient will be placed.
@@ -434,19 +439,19 @@ def load_imgs_of_subject(log,
         if run_input_checks:
             check_gt_vs_num_classes(log, imageGtLabels, num_classes)
 
-        [imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
+        [imageGtLabels, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(imageGtLabels, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [imageGtLabels, tupleOfPaddingPerAxesLeftRight]
     else : 
         imageGtLabels = "placeholderNothing" #For validation and testing
         
-    if train_val_or_test != "test" and providedWeightMapsToSampleForEachCategory==True : # in testing these weightedMaps are never provided, they are for training/validation only.
-        numberOfSamplingCategories = len(forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient)
+    if train_val_or_test != "test" and provided_weightmaps_per_sampl_cat==True : # in testing these weightedMaps are never provided, they are for training/validation only.
+        numberOfSamplingCategories = len(paths_to_wmaps_per_sampl_cat_per_subj)
         arrayWithWeightMapsWhereToSampleForEachCategory = np.zeros( [numberOfSamplingCategories] + list(allChannelsOfPatientInNpArray[0].shape), dtype="float32" ) 
         for cat_i in range( numberOfSamplingCategories ) :
-            filepathsToTheWeightMapsOfAllPatientsForThisCategory = forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient[cat_i]
+            filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
             
-            [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight]
+            [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [weightedMapForThisCatData, tupleOfPaddingPerAxesLeftRight]
             
             arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
     else :
@@ -455,16 +460,16 @@ def load_imgs_of_subject(log,
     # The second CNN pathway...
     if not usingSubsampledPathways :
         allSubsampledChannelsOfPatientInNpArray = "placeholderNothing"
-    elif useSameSubChannelsAsSingleScale : #Pass this in the configuration file, instead of a list of channel names, to use the same channels as the normal res.
+    elif same_LRes_chans_as_HRes : #Pass this in the configuration file, instead of a list of channel names, to use the same channels as the normal res.
         allSubsampledChannelsOfPatientInNpArray = allChannelsOfPatientInNpArray #np.asarray(allChannelsOfPatientInNpArray, dtype="float32") #Hope this works, to win time in loading. Without copying it did not work.
     else :
-        numberOfSubsampledScaleChannels = len(listOfFilepathsToEachSubsampledChannelOfEachPatient[0])
+        numberOfSubsampledScaleChannels = len(paths_to_LRes_chans_per_subj[0])
         allSubsampledChannelsOfPatientInNpArray = np.zeros( (numberOfSubsampledScaleChannels, niiDimensions[0], niiDimensions[1], niiDimensions[2]))
         for channel_i in range(numberOfSubsampledScaleChannels):
-            fullFilenamePathOfChannel = listOfFilepathsToEachSubsampledChannelOfEachPatient[subj_i][channel_i]
+            fullFilenamePathOfChannel = paths_to_LRes_chans_per_subj[subj_i][channel_i]
             channelData = loadVolume(fullFilenamePathOfChannel)
             
-            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if padInputImagesBool else [channelData, tupleOfPaddingPerAxesLeftRight]
+            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [channelData, tupleOfPaddingPerAxesLeftRight]
             
             allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData
             
@@ -491,7 +496,7 @@ def sample_coords_of_segments(  log,
     > sliceCoordsOfImagePartsSampled : 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
         Example: [ r-sliceCoordsOfImagePart, c-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
     """
-    id_str = "[JOB:"+str(job_i+1)+"|PID:"+str(os.getpid())+"]"
+    id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"]"
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called. Which is still fine.
     if np.sum(weightMapToSampleFrom>0) == 0 :

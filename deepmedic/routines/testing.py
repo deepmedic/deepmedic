@@ -109,32 +109,32 @@ def inferenceWholeVolumes(  sessionTf,
         allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
         ] = load_imgs_of_subject(
-                                log,
-                                None,
-                                "test",
-                                False, # run_input_checks.
-                                image_i,
-                                
-                                listOfFilepathsToEachChannelOfEachPatient,
-                                
-                                providedGtLabelsBool,
-                                listOfFilepathsToGtLabelsOfEachPatient,
-                                num_classes = cnn3d.num_classes,
-                                
-                                providedWeightMapsToSampleForEachCategory = False, # Says if weightMaps are provided. If true, must provide all. Placeholder in testing.
-                                forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatient = "placeholder", # Placeholder in testing.
-                                
-                                providedRoiMaskBool = providedRoiMaskForFastInfBool,
-                                listOfFilepathsToRoiMaskOfEachPatient = listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                                
-                                useSameSubChannelsAsSingleScale = useSameSubChannelsAsSingleScale,
-                                usingSubsampledPathways = cnn3d.numSubsPaths > 0,
-                                listOfFilepathsToEachSubsampledChannelOfEachPatient = listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                                
-                                padInputImagesBool = padInputImagesBool,
-                                cnnReceptiveField = recFieldCnn, # only used if padInputsBool
-                                dimsOfPrimeSegmentRcz = cnn3d.pathways[0].getShapeOfInput("test")[2:] # only used if padInputsBool
-                                )
+                    log,
+                    None,
+                    "test",
+                    False, # run_input_checks.
+                    image_i,
+                    
+                    listOfFilepathsToEachChannelOfEachPatient,
+                    
+                    providedGtLabelsBool,
+                    listOfFilepathsToGtLabelsOfEachPatient,
+                    cnn3d.num_classes,
+                    
+                    False, # providedWeightMapsToSampleForEachCategory
+                    None,
+                    
+                    providedRoiMaskForFastInfBool,
+                    listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                    
+                    useSameSubChannelsAsSingleScale,
+                    cnn3d.numSubsPaths > 0, # usingSubsampledPathways
+                    listOfFilepathsToEachSubsampledChannelOfEachPatient,
+                    
+                    padInputImagesBool,
+                    recFieldCnn, # only used if padInputsBool
+                    cnn3d.pathways[0].getShapeOfInput("test")[2:] # dimsOfPrimeSegmentRcz, for padding
+                    )
         niiDimensions = list(imageChannels[0].shape)
         #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
         predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
@@ -143,12 +143,12 @@ def inferenceWholeVolumes(  sessionTf,
             multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
             
         # Tile the image and get all slices of the segments that it fully breaks down to.
-        [sliceCoordsOfSegmentsInImage] = getCoordsOfAllSegmentsOfAnImage(log=log,
-                                                                        dimsOfPrimarySegment=cnn3d.pathways[0].getShapeOfInput("test")[2:],
-                                                                        strideOfSegmentsPerDimInVoxels=strideOfImagePartsPerDimensionInVoxels,
-                                                                        batch_size = batchsize,
-                                                                        channelsOfImageNpArray = imageChannels,#chans,niiDims
-                                                                        roiMask = roiMask )
+        [sliceCoordsOfSegmentsInImage] = getCoordsOfAllSegmentsOfAnImage(log,
+                                                    cnn3d.pathways[0].getShapeOfInput("test")[2:], # dimsOfPrimarySegment
+                                                    strideOfImagePartsPerDimensionInVoxels,
+                                                    batchsize,
+                                                    imageChannels,
+                                                    roiMask )
         
         log.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). This part takes a few mins per volume...")
         
@@ -169,11 +169,11 @@ def inferenceWholeVolumes(  sessionTf,
             start_extract_time = time.time()
             
             sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batchsize : (batch_i+1)*batchsize ]
-            [channsOfSegmentsPerPath] = extractSegmentsGivenSliceCoords(cnn3d=cnn3d,
-                                                                        sliceCoordsOfSegmentsToExtract=sliceCoordsOfSegmentsInBatch,
-                                                                        channelsOfImageNpArray=imageChannels,
-                                                                        channelsOfSubsampledImageNpArray=allSubsampledChannelsOfPatientInNpArray,
-                                                                        recFieldCnn=recFieldCnn )
+            [channsOfSegmentsPerPath] = extractSegmentsGivenSliceCoords(cnn3d,
+                                                                        sliceCoordsOfSegmentsInBatch,
+                                                                        imageChannels,
+                                                                        allSubsampledChannelsOfPatientInNpArray,
+                                                                        recFieldCnn )
             end_extract_time = time.time()
             extractTimePerSubject += end_extract_time - start_extract_time
             
