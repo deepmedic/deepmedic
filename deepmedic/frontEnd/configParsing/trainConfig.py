@@ -17,16 +17,15 @@ class TrainConfig(Config):
     #Optional but highly suggested.
     SESSION_NAME = "sessionName"
     #[REQUIRED]
-    FOLDER_OUTP = "folderForOutput" #MUST BE GIVEN
-    SAVED_MODEL = "cnnModelFilePath" #MUST BE GIVEN
+    FOLDER_OUTP = "folderForOutput"
+    SAVED_MODEL = "cnnModelFilePath"
     
     #=============TRAINING========================
-    CHANNELS_TR = "channelsTraining" #MUST BE GIVEN
+    CHANNELS_TR = "channelsTraining"
     GT_LABELS_TR = "gtLabelsTraining"
     ROI_MASKS_TR = "roiMasksTraining"
     
-    #~~~~Advanced Sampling~~~~~
-    DEFAULT_TR_SAMPLING = "useDefaultTrainingSamplingFromGtAndRoi"
+    #~~~~ Sampling (training) ~~~~~
     TYPE_OF_SAMPLING_TR = "typeOfSamplingForTraining"
     PROP_OF_SAMPLES_PER_CAT_TR = "proportionOfSamplesToExtractPerCategoryTraining"
     WEIGHT_MAPS_PER_CAT_FILEPATHS_TR = "weightedMapsForSamplingEachCategoryTrain"
@@ -38,6 +37,7 @@ class TrainConfig(Config):
     NUM_TR_SEGMS_LOADED_PERSUB = "numberTrainingSegmentsLoadedOnGpuPerSubep"
     BATCHSIZE_TR = "batchsize_train"
     NUM_OF_PROC_SAMPL = "num_processes_sampling"
+    
     #~~~~~ Learning rate schedule ~~~~~
     LR_SCH_TYPE = "typeOfLearningRateSchedule"
     #Stable + Auto + Predefined.
@@ -62,8 +62,7 @@ class TrainConfig(Config):
     NUM_VAL_SEGMS_LOADED_PERSUB = "numberValidationSegmentsLoadedOnGpuPerSubep" # For val on samples.
     BATCHSIZE_VAL_SAMPL = "batchsize_val_samples"
     
-    #~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~~
-    DEFAULT_VAL_SAMPLING = "useDefaultUniformValidationSampling"
+    #~~~~~~~~ Sampling (validation) ~~~~~~~~~~~~
     TYPE_OF_SAMPLING_VAL = "typeOfSamplingForVal"
     PROP_OF_SAMPLES_PER_CAT_VAL = "proportionOfSamplesToExtractPerCategoryVal"
     WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = "weightedMapsForSamplingEachCategoryVal"

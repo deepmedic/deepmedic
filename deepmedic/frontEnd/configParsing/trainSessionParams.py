@@ -33,20 +33,6 @@ class TrainSessionParameters(object) :
     errReqBatchSizeTr = errorRequireBatchsizeTrain
 
     @staticmethod
-    def errorRequireSamplMasksAreProbabMapsTrain() :
-        print("ERROR: Parameter \"samplingMasksAreProbabMapsTrain\" needed but not provided in config file. This parameters is needed when parameter \"useDefaultTrainingSamplingFromGtAndRoi\" = False, in order to know whether the provided masks are probability maps or segmentation labels. Please provide parameter in the form: samplingMasksAreProbabMapsTrain = True/False. True if the masks given at \"masksForPos(Neg)SamplingTrain\" are probability maps (can be non-normalized, like weights), or False if they are binary segmentation masks. Exiting."); exit(1) 
-    errReqMasksTypeTr = errorRequireSamplMasksAreProbabMapsTrain
-    @staticmethod
-    def warnDefaultPosSamplMasksTrain() :
-        print("WARN: Parameter \"weightedMapsForPosSamplingTrain\" was not provided in config file, even though advanced training options were triggered by setting \"useDefaultTrainingSamplingFromGtAndRoi\" = False. This parameter should point to a file that lists the paths (per case/patient) to weighted-maps that indicate where to perform the sampling of training samples. Can be provided in the format: weightedMapsForPosSamplingTrain = \"path-to-file\". The target file should have one entry per case (patient). Each of them should be pointing to .nii(.gz) files that indicate where to extract the positive samples. \n\tDEFAULT: In the case it is not provided (like now!) the corresponding samples are extracted uniformly from the whole volume!")
-        return None 
-    warnDefPosMasksTr = warnDefaultPosSamplMasksTrain
-    @staticmethod
-    def warnDefaultNegSamplMasksTrain() :
-        print("WARN: Parameter \"weightedMapsForNegSamplingTrain\" was not provided in config file, even though advanced training options were triggered by setting \"useDefaultTrainingSamplingFromGtAndRoi\" = False. This parameter should point to a file that lists the paths (per case/patient) to weighted-maps that indicate where to perform the sampling of training samples. Can be provided in the format: weightedMapsForNegSamplingTrain = \"path-to-file\". The target file should have one entry per case (patient). Each of them should be pointing to .nii(.gz) files that indicate where to extract the negative samples. \n\tDEFAULT: In the case it is not provided (like now!) the corresponding samples are extracted uniformly from the whole volume!")
-        return None
-    warnDefNegMasksTr = warnDefaultNegSamplMasksTrain
-    @staticmethod
     def errorRequirePredefinedLrSched() :
         print("ERROR: Parameter \"typeOfLearningRateSchedule\" was set to \"predefined\", but no predefined schedule was given. Please specify at which epochs to lower the Learning Rate, by providing the corresponding parameter in the format: predefinedSchedule = [epoch-for-1st-decrease, ..., epoch-for-last-decrease], where the epochs are specified by an integer > 0. Exiting."); exit(1)
     errReqPredLrSch = errorRequirePredefinedLrSched
@@ -70,25 +56,6 @@ class TrainSessionParameters(object) :
     @staticmethod
     def errorRequireNamesOfPredictionsVal() :
         print("ERROR: It was requested to perform full-inference on validation images by setting parameter \"performFullInferenceOnValidationImagesEveryFewEpochs\" to True and then save some of the results (segmentation maps, probability maps or feature maps), either manually or by default. For this, it is required to specify the path to a file, which should contain names to give to the results. Please specify the path to such a file in the format: namesForPredictionsPerCaseVal = \"./validation/validationNamesOfPredictionsSimple.cfg\" (python-style string). Exiting!"); exit(1)
-    @staticmethod
-    def errorRequirePercentOfPosSamplesVal():
-        print("ERROR: Advanced sampling was enabled by setting: useDefaultUniformValidationSampling = False. This requires providing the percentage of validation samples that should be extracted as positives (from the positive weight-map). Please specify a float between 0.0 and 1.0, eg in the format: percentOfSamplesToExtractPositiveVal = 0.5. Exiting!"); exit(1)
-    errReqPercPosTrVal = errorRequirePercentOfPosSamplesVal
-    @staticmethod
-    def warnDefaultPercentOfPosSamplesVal():
-        print("WARN: Advanced sampling was enabled by setting: useDefaultUniformValidationSampling = False. This requires providing the percentage of validation samples that should be extracted as positives (from the positive weight-map). Please specify a float between 0.0 and 1.0, eg in the format: percentOfSamplesToExtractPositiveVal = 0.5. \n\tDEFAULT: In the case not given (like now!) default value of 0.5 is used!")
-        return 0.5
-    warnDefPercPosTrVal = warnDefaultPercentOfPosSamplesVal
-    @staticmethod
-    def warnDefaultPosSamplMasksVal() :
-        print("WARN: Parameter \"weightedMapsForPosSamplingVal\" was not provided in config file, even though advanced validation-sampling options were triggered by setting \"useDefaultUniformValidationSampling\" = False. This parameter should point to a file that lists the paths (per case/patient) to weighted-maps that indicate where to perform the sampling of validation samples. Can be provided in the format: weightedMapsForPosSamplingVal = \"path-to-file\". The target file should have one entry per case (patient). Each of them should be pointing to .nii(.gz) files that indicate where to extract the positive samples. \n\tDEFAULT: In the case it is not provided (like now!) the corresponding samples are extracted uniformly from the whole volume!")
-        return None 
-    warnDefPosMasksVal = warnDefaultPosSamplMasksVal
-    @staticmethod
-    def warnDefaultNegSamplMasksVal() :
-        print("WARN: Parameter \"weightedMapsForNegSamplingVal\" was not provided in config file, even though advanced  validation-sampling options were triggered by setting \"useDefaultUniformValidationSampling\" = False. This parameter should point to a file that lists the paths (per case/patient) to weighted-maps that indicate where to perform the sampling of validation samples. Can be provided in the format: weightedMapsForNegSamplingVal = \"path-to-file\". The target file should have one entry per case (patient). Each of them should be pointing to .nii(.gz) files that indicate where to extract the negative samples. \n\tDEFAULT: In the case it is not provided (like now!) the corresponding samples are extracted uniformly from the whole volume!")
-        return None
-    warnDefNegMasksVal = warnDefaultNegSamplMasksVal
     
     @staticmethod
     def errorRequireOptimizer012() :
@@ -141,40 +108,26 @@ class TrainSessionParameters(object) :
         self.providedRoiMasksTrain = True if cfg[cfg.ROI_MASKS_TR] else False
         self.roiMasksFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg) ) if self.providedRoiMasksTrain else []
         
-        #~~~~~~~~~Advanced Sampling~~~~~~~
-        #ADVANCED CONFIG IS DISABLED HERE IF useDefaultSamplingFromGtAndRoi = True!
-        self.useDefaultTrainingSamplingFromGtAndRoi = cfg[cfg.DEFAULT_TR_SAMPLING] if cfg[cfg.DEFAULT_TR_SAMPLING] is not None else True
-        DEFAULT_SAMPLING_TYPE_TR = 0
-        if self.useDefaultTrainingSamplingFromGtAndRoi :
-            self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, DEFAULT_SAMPLING_TYPE_TR, num_classes )
+        samplingTypeToUseTr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
+        self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, samplingTypeToUseTr, num_classes)
+        if samplingTypeToUseTr in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None :
+            self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] )
+        else :
             numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
             self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
-            self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = None
-        else :
-            samplingTypeToUseTr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else DEFAULT_SAMPLING_TYPE_TR
-            self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, samplingTypeToUseTr, num_classes)
-            if samplingTypeToUseTr in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None :
-                self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] )
-            else :
-                numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
-                self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesTr]*numberOfCategoriesOfSamplesTr )
-                
-            # This could be shortened.
-            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None :
-                #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
-                listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]]
-            else :
-                listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain = None
-            self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining = listOfAListPerWeightMapCategoryWithFilepathsOfAllCasesTrain #If None, following bool will turn False.
             
-        self.providedWeightMapsToSampleForEachCategoryTraining = self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining is not None
+        self.paths_to_wmaps_per_sampl_cat_per_subj_train = None
+        if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None :
+            #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
+            self.paths_to_wmaps_per_sampl_cat_per_subj_train = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]]
+        self.providedWeightMapsToSampleForEachCategoryTraining = self.paths_to_wmaps_per_sampl_cat_per_subj_train is not None
         
         #~~~~~~~~ Training Cycle ~~~~~~~~~~~
-        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else errReqBatchSizeTr()
         self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
         self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
         self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
+        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else errReqBatchSizeTr()
         self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 0
         
         #~~~~~~~ Learning Rate Schedule ~~~~~~~~
@@ -236,32 +189,20 @@ class TrainSessionParameters(object) :
         self.segmentsLoadedOnGpuPerSubepochVal = cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] is not None else 3000
         self.batchsize_val_samples = cfg[cfg.BATCHSIZE_VAL_SAMPL] if cfg[cfg.BATCHSIZE_VAL_SAMPL] is not None else 50
         
-        #~~~~~~~~~Advanced Validation Sampling~~~~~~~~~~~
-        #ADVANCED OPTION ARE DISABLED IF useDefaultUniformValidationSampling = True!
-        self.useDefaultUniformValidationSampling = cfg[cfg.DEFAULT_VAL_SAMPLING] if cfg[cfg.DEFAULT_VAL_SAMPLING] is not None else True
-        DEFAULT_SAMPLING_TYPE_VAL = 1
-        if self.useDefaultUniformValidationSampling :
-            self.samplingTypeInstanceVal = samplingType.SamplingType( self.log, DEFAULT_SAMPLING_TYPE_VAL, num_classes )
+        #~~~~~~~~~ Sampling (Validation) ~~~~~~~~~~~
+        samplingTypeToUseVal = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else 1
+        self.samplingTypeInstanceVal = samplingType.SamplingType( self.log, samplingTypeToUseVal, num_classes)
+        if samplingTypeToUseVal in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] is not None:
+            self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] )
+        else :
             numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
             self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
-            self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = None
-        else :
-            samplingTypeToUseVal = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else DEFAULT_SAMPLING_TYPE_VAL
-            self.samplingTypeInstanceVal = samplingType.SamplingType( self.log, samplingTypeToUseVal, num_classes)
-            if samplingTypeToUseVal in [0,3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] is not None:
-                self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] )
-            else :
-                numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
-                self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample( [1.0/numberOfCategoriesOfSamplesVal]*numberOfCategoriesOfSamplesVal )
-                
-            # TODO: Shorten this
-            if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
-                #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
-                self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]]
-            else :
-                self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal = None
-                
-        self.providedWeightMapsToSampleForEachCategoryValidation = self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal is not None
+            
+        self.paths_to_wmaps_per_sampl_cat_per_subj_val = None
+        if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
+            #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
+            self.paths_to_wmaps_per_sampl_cat_per_subj_val = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]]
+        self.providedWeightMapsToSampleForEachCategoryValidation = self.paths_to_wmaps_per_sampl_cat_per_subj_val is not None
         
         #~~~~~~Full inference on validation image~~~~~~
         self.num_epochs_between_val_on_whole_volumes = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
@@ -428,25 +369,22 @@ class TrainSessionParameters(object) :
         logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
         logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
         
-        logPrint("~~Sampling~~")
+        logPrint("~~ Sampling (train) ~~")
         logPrint("Region-Of-Interest Masks provided = " + str(self.providedRoiMasksTrain))
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
         
-        logPrint("Batch size (train) = " + str(self.batchsize_train))
-        
-        logPrint("~~Advanced Sampling~~")
-        logPrint("Using default sampling = " + str(self.useDefaultTrainingSamplingFromGtAndRoi) + ". NOTE: Adv.Sampl.Params are auto-set to perform default sampling if True.")
         logPrint("Type of Sampling = " + str(self.samplingTypeInstanceTrain.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceTrain.getIntSamplingType()) + ")")
         logPrint("Sampling Categories = " + str(self.samplingTypeInstanceTrain.getStringsPerCategoryToSample()) )
         logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceTrain.getPercentOfSamplesPerCategoryToSample()))
         logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryTraining))
-        logPrint("Paths to weight-maps for sampling of each category = " + str(self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining))
+        logPrint("Paths to weight-Maps for sampling of each category = " + str(self.paths_to_wmaps_per_sampl_cat_per_subj_train))
         
         logPrint("~~Training Cycle~~")
         logPrint("Number of Epochs = " + str(self.numberOfEpochs))
         logPrint("Number of Subepochs per epoch = " + str(self.numberOfSubepochs))
         logPrint("Number of cases to load per Subepoch (for extracting the samples for this subepoch) = " + str(self.numOfCasesLoadedPerSubepoch))
         logPrint("Number of Segments loaded on GPU per subepoch for Training = " + str(self.segmentsLoadedOnGpuPerSubepochTrain) + ". NOTE: This number of segments divided by the batch-size defines the number of optimization-iterations that will be performed every subepoch!")
+        logPrint("Batch size (train) = " + str(self.batchsize_train))
         logPrint("Number of parallel processes for sampling = " + str(self.num_parallel_proc_sampling))
         
         logPrint("~~Learning Rate Schedule~~")
@@ -478,13 +416,12 @@ class TrainSessionParameters(object) :
         logPrint("Number of Segments loaded on GPU per subepoch for Validation = " + str(self.segmentsLoadedOnGpuPerSubepochVal))
         logPrint("Batch size (val on samples) = " + str(self.batchsize_val_samples))
         
-        logPrint("~~Advanced Sampling~~")
-        logPrint("Using default uniform sampling for validation = " + str(self.useDefaultUniformValidationSampling) + ". NOTE: Adv.Sampl.Params are auto-set to perform uniform-sampling if True.")
+        logPrint("~~ Sampling (val) ~~")
         logPrint("Type of Sampling = " + str(self.samplingTypeInstanceVal.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceVal.getIntSamplingType()) + ")")
         logPrint("Sampling Categories = " + str(self.samplingTypeInstanceVal.getStringsPerCategoryToSample()) )
         logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceVal.getPercentOfSamplesPerCategoryToSample()))
         logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryValidation))
-        logPrint("Paths to weight-maps for sampling of each category = " + str(self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal))
+        logPrint("Paths to weight-maps for sampling of each category = " + str(self.paths_to_wmaps_per_sampl_cat_per_subj_val))
         
         logPrint("~~~~~Validation with Full Inference on Validation Cases~~~~~")
         logPrint("Perform Full-Inference on Val. cases every that many epochs = " + str(self.num_epochs_between_val_on_whole_volumes))
@@ -546,14 +483,14 @@ class TrainSessionParameters(object) :
                 self.gtLabelsFilepathsVal,
                 
                 self.providedWeightMapsToSampleForEachCategoryTraining, #Always true, since either GT labels or advanced-mask-where-to-pos
-                self.forEachSamplingCategory_aListOfFilepathsToWeightMapsOfEachPatientTraining,
+                self.paths_to_wmaps_per_sampl_cat_per_subj_train,
                 self.providedWeightMapsToSampleForEachCategoryValidation, #If false, corresponding samples will be extracted uniformly from whole image.
-                self.perSamplingCat_aListOfFilepathsToWeightMapsOfEachCaseVal,
+                self.paths_to_wmaps_per_sampl_cat_per_subj_val,
                 
-                self.providedRoiMasksTrain, # also used for int-augm.
-                self.roiMasksFilepathsTrain,# also used for int-augm
-                self.providedRoiMasksVal, # also used for fast inf
-                self.roiMasksFilepathsVal, # also used for fast inf and also for uniform sampling of segs.
+                self.providedRoiMasksTrain,
+                self.roiMasksFilepathsTrain,
+                self.providedRoiMasksVal,
+                self.roiMasksFilepathsVal,
                 
                 self.numberOfEpochs,
                 self.numberOfSubepochs,
