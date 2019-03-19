@@ -160,11 +160,6 @@ def do_training(sessionTf,
                 #-------Data Augmentation-------
                 augm_params,
                 
-                useSameSubChannelsAsSingleScale,
-                
-                listOfFilepathsToEachSubsampledChannelOfEachPatientTraining, # deprecated, not supported
-                listOfFilepathsToEachSubsampledChannelOfEachPatientValidation, # deprecated, not supported
-                
                 # Validation
                 val_on_whole_volumes,
                 num_epochs_between_val_on_whole_volumes,
@@ -200,8 +195,6 @@ def do_training(sessionTf,
                                 listOfFilepathsToRoiMaskOfEachPatientTraining,
                                 providedWeightMapsToSampleForEachCategoryTraining,
                                 paths_to_wmaps_per_sampl_cat_per_subj_train,
-                                useSameSubChannelsAsSingleScale,
-                                listOfFilepathsToEachSubsampledChannelOfEachPatientTraining,
                                 padInputImagesBool,
                                 augm_params )
     args_for_sampling_val = (   log,
@@ -218,8 +211,6 @@ def do_training(sessionTf,
                                 listOfFilepathsToRoiMaskOfEachPatientValidation,
                                 providedWeightMapsToSampleForEachCategoryValidation,
                                 paths_to_wmaps_per_sampl_cat_per_subj_val,
-                                useSameSubChannelsAsSingleScale,
-                                listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
                                 padInputImagesBool,
                                 None ) # no augmentation in validation.
     
@@ -388,10 +379,6 @@ def do_training(sessionTf,
                                 
                                 #----Preprocessing------
                                 padInputImagesBool=padInputImagesBool,
-                                
-                                #for the cnn extension
-                                useSameSubChannelsAsSingleScale=useSameSubChannelsAsSingleScale,
-                                listOfFilepathsToEachSubsampledChannelOfEachPatient=listOfFilepathsToEachSubsampledChannelOfEachPatientValidation,
                                 
                                 #--------For FM visualisation---------
                                 saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,

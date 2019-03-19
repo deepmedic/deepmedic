@@ -54,9 +54,6 @@ def getSampledDataAndLabelsForSubepoch( log,
                                         provided_weightmaps_per_sampl_cat,
                                         paths_to_wmaps_per_sampl_cat_per_subj,
                                         
-                                        same_LRes_chans_as_HRes,
-                                        paths_to_LRes_chans_per_subj,
-                                        
                                         pad_input_imgs,
                                         augm_params
                                         ):
@@ -98,8 +95,6 @@ def getSampledDataAndLabelsForSubepoch( log,
                         paths_to_masks_per_subj,
                         provided_weightmaps_per_sampl_cat,
                         paths_to_wmaps_per_sampl_cat_per_subj,
-                        same_LRes_chans_as_HRes,
-                        paths_to_LRes_chans_per_subj,
                         # Pre-processing:
                         pad_input_imgs,
                         augm_params,
@@ -251,8 +246,6 @@ def load_subj_and_get_samples(job_i,
                               paths_to_masks_per_subj,
                               provided_weightmaps_per_sampl_cat,
                               paths_to_wmaps_per_sampl_cat_per_subj,
-                              same_LRes_chans_as_HRes,
-                              paths_to_LRes_chans_per_subj,
                               # Pre-processing:
                               pad_input_imgs,
                               augm_params,
@@ -278,7 +271,6 @@ def load_subj_and_get_samples(job_i,
     gtLabelsImage,
     roiMask,
     arrayWithWeightMapsWhereToSampleForEachCategory,
-    allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
     tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
     ] = load_imgs_of_subject(log,
                              job_i,
@@ -293,9 +285,6 @@ def load_subj_and_get_samples(job_i,
                              paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
                              provided_mask,
                              paths_to_masks_per_subj,
-                             same_LRes_chans_as_HRes,
-                             cnn3d.numSubsPaths > 0, # usingSubsampledPathways
-                             paths_to_LRes_chans_per_subj,
                              # Preprocessing
                              pad_input_imgs,
                              cnn3d.recFieldCnn, # used if pad_input_imgs
@@ -340,7 +329,6 @@ def load_subj_and_get_samples(job_i,
                                                cnn3d,
                                                coordsOfCentralVoxelOfThisImPart,
                                                allChannelsOfPatientInNpArray,
-                                               allSubsampledChannelsOfPatientInNpArray,
                                                gtLabelsImage)
             
             # Augmentation of segments
@@ -370,9 +358,6 @@ def load_imgs_of_subject(log,
                          paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
                          provided_mask,
                          paths_to_masks_per_subj,
-                         same_LRes_chans_as_HRes,
-                         usingSubsampledPathways,
-                         paths_to_LRes_chans_per_subj,
                          # Preprocessing
                          pad_input_imgs,
                          cnnReceptiveField, # only used if pad_input_imgs
@@ -451,25 +436,8 @@ def load_imgs_of_subject(log,
             arrayWithWeightMapsWhereToSampleForEachCategory[cat_i] = weightedMapForThisCatData
     else :
         arrayWithWeightMapsWhereToSampleForEachCategory = None
-        
-    # The second CNN pathway...
-    if not usingSubsampledPathways :
-        allSubsampledChannelsOfPatientInNpArray = None
-    elif same_LRes_chans_as_HRes : #Pass this in the configuration file, instead of a list of channel names, to use the same channels as the normal res.
-        allSubsampledChannelsOfPatientInNpArray = allChannelsOfPatientInNpArray #np.asarray(allChannelsOfPatientInNpArray, dtype="float32") #Hope this works, to win time in loading. Without copying it did not work.
-    else :
-        numberOfSubsampledScaleChannels = len(paths_to_LRes_chans_per_subj[0])
-        allSubsampledChannelsOfPatientInNpArray = np.zeros( (numberOfSubsampledScaleChannels, niiDimensions[0], niiDimensions[1], niiDimensions[2]))
-        for channel_i in range(numberOfSubsampledScaleChannels):
-            fullFilenamePathOfChannel = paths_to_LRes_chans_per_subj[subj_i][channel_i]
-            channelData = loadVolume(fullFilenamePathOfChannel)
-            
-            [channelData, tupleOfPaddingPerAxesLeftRight] = padCnnInputs(channelData, cnnReceptiveField, dimsOfPrimeSegmentRcz) if pad_input_imgs else [channelData, tupleOfPaddingPerAxesLeftRight]
-            
-            allSubsampledChannelsOfPatientInNpArray[channel_i] = channelData
-            
-                
-    return [allChannelsOfPatientInNpArray, imageGtLabels, roiMask, arrayWithWeightMapsWhereToSampleForEachCategory, allSubsampledChannelsOfPatientInNpArray, tupleOfPaddingPerAxesLeftRight]
+    
+    return [allChannelsOfPatientInNpArray, imageGtLabels, roiMask, arrayWithWeightMapsWhereToSampleForEachCategory, tupleOfPaddingPerAxesLeftRight]
 
 
 
@@ -684,10 +652,10 @@ def extractSegmentGivenSliceCoords(train_or_val,
                                    cnn3d,
                                    coordsOfCentralVoxelOfThisImPart,
                                    allChannelsOfPatientInNpArray,
-                                   allSubsampledChannelsOfPatientInNpArray,
                                    gtLabelsImage) :
-    channelsForSegmentPerPathway = []
+    # allChannelsOfPatientInNpArray: numpy array [ n_channels, x, y, z ]
     
+    channelsForSegmentPerPathway = []
     # Sampling
     for pathway in cnn3d.pathways[:1] : #Hack. The rest of this loop can work for the whole .pathways...
         # ... BUT the loop does not check what happens if boundaries are out of limits, to fill with zeros. This is done in getImagePartFromSubsampledImageForTraining().
@@ -720,7 +688,7 @@ def extractSegmentGivenSliceCoords(train_or_val,
         slicesCoordsOfSegmForPrimaryPathway = [ [leftBoundaryRcz[0], rightBoundaryRcz[0]-1], [leftBoundaryRcz[1], rightBoundaryRcz[1]-1], [leftBoundaryRcz[2], rightBoundaryRcz[2]-1] ] # rightmost  are placeholders here.
         channsForThisSubsampledPartAndPathway = getImagePartFromSubsampledImageForTraining(dimsOfPrimarySegment=dimsOfPrimarySegment,
                                                                                         recFieldCnn=cnn3d.recFieldCnn,
-                                                                                        subsampledImageChannels=allSubsampledChannelsOfPatientInNpArray,
+                                                                                        subsampledImageChannels=allChannelsOfPatientInNpArray,
                                                                                         image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
                                                                                         subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
                                                                                         subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput(train_or_val)[2:]
@@ -760,9 +728,10 @@ def getCoordsOfAllSegmentsOfAnImage(log,
                                     dimsOfPrimarySegment, # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
                                     strideOfSegmentsPerDimInVoxels,
                                     batch_size,
-                                    channelsOfImageNpArray,#chans,niiDims
+                                    channelsOfImageNpArray,
                                     roiMask
                                     ) :
+    # channelsOfImageNpArray: np array [n_channels, x, y, z]
     log.print3("Starting to (tile) extract Segments from the images of the subject for Segmentation...")
     
     sliceCoordsOfSegmentsToReturn = []
@@ -819,9 +788,9 @@ def getCoordsOfAllSegmentsOfAnImage(log,
 # This is used in testing only.
 def extractSegmentsGivenSliceCoords(cnn3d,
                                     sliceCoordsOfSegmentsToExtract,
-                                    channelsOfImageNpArray,#chans,niiDims
-                                    channelsOfSubsampledImageNpArray, #chans,niiDims
+                                    channelsOfImageNpArray,
                                     recFieldCnn) :
+    # channelsOfImageNpArray: numpy array [ n_channels, x, y, z ]
     numberOfSegmentsToExtract = len(sliceCoordsOfSegmentsToExtract)
     channsForSegmentsPerPathToReturn = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ] # [pathway, image parts, channels, r, c, z]
     dimsOfPrimarySegment = cnn3d.pathways[0].getShapeOfInput("test")[2:] # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
@@ -845,7 +814,7 @@ def extractSegmentsGivenSliceCoords(cnn3d,
             slicesCoordsOfSegmForPrimaryPathway = [ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ] #the right hand values are placeholders in this case.
             channsForThisSubsPathForThisSegm = getImagePartFromSubsampledImageForTraining(  dimsOfPrimarySegment=dimsOfPrimarySegment,
                                                                                             recFieldCnn=recFieldCnn,
-                                                                                            subsampledImageChannels=channelsOfSubsampledImageNpArray,
+                                                                                            subsampledImageChannels=channelsOfImageNpArray,
                                                                                             image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
                                                                                             subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
                                                                                             subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput("test")[2:]

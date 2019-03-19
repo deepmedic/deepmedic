@@ -244,9 +244,6 @@ class TrainSessionParameters(object) :
         self.run_input_checks = cfg[cfg.RUN_INP_CHECKS] if cfg[cfg.RUN_INP_CHECKS] is not None else True
         
         #HIDDENS, no config allowed for these at the moment:
-        self.useSameSubChannelsAsSingleScale = True
-        self.subsampledChannelsFilepathsTrain = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
-        self.subsampledChannelsFilepathsVal = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
         
         # Re-weight samples in the cost function *on a per-class basis*: Type of re-weighting and training schedule.
         # E.g. to exclude a class, or counter class imbalance.
@@ -310,9 +307,6 @@ class TrainSessionParameters(object) :
         """
         #NOTES: variables that have to do with number of pathways: 
                 self.indicesOfLayersPerPathwayTypeToFreeze (="all" always currently. Hardcoded)
-                self.useSameSubChannelsAsSingleScale, (always True currently)
-                self.subsampledChannelsFilepathsTrain,
-                self.subsampledChannelsFilepathsVal, (Deprecated. But I should support it in future, cause it works well for non-scale pathways)
                 indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
         
@@ -510,12 +504,7 @@ class TrainSessionParameters(object) :
                 self.padInputImagesBool,
                 #-------Data Augmentation-------
                 self.augm_params_tr,
-                
-                self.useSameSubChannelsAsSingleScale,
-                
-                self.subsampledChannelsFilepathsTrain,
-                self.subsampledChannelsFilepathsVal,
-                
+                 
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,
                 self.num_epochs_between_val_on_whole_volumes,

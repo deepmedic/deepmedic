@@ -70,9 +70,6 @@ class TestSessionParameters(object) :
         self.numberOfCases = len(self.channelsFilepaths)
         
         #HIDDENS, no config allowed for these at the moment:
-        self.useSameSubChannelsAsSingleScale = True
-        self.subsampledChannelsFilepaths = "placeholder" #List of Lists with filepaths per patient. Only used when above is False.
-        
         self._makeFilepathsForPredictionsAndFeatures( folderForPredictions, folderForFeatures )
         
     def _makeFilepathsForPredictionsAndFeatures(self,
@@ -172,10 +169,6 @@ class TestSessionParameters(object) :
                 
                 #----Preprocessing------
                 self.padInputImagesBool,
-                
-                #for extension
-                self.useSameSubChannelsAsSingleScale,
-                self.subsampledChannelsFilepaths,
                 
                 #--------For FM visualisation---------
                 self.saveIndividualFmImages,

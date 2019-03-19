@@ -41,9 +41,6 @@ def inferenceWholeVolumes(  sessionTf,
                             #----Preprocessing------
                             padInputImagesBool,
                             
-                            useSameSubChannelsAsSingleScale,
-                            listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                            
                             #--------For FM visualisation---------
                             saveIndividualFmImagesForVisualisation,
                             saveMultidimensionalImageWithAllFms,
@@ -102,11 +99,10 @@ def inferenceWholeVolumes(  sessionTf,
         
         #load the image channels in cpu
         
-        [imageChannels, #a nparray(channels,dim0,dim1,dim2)
+        [imageChannels,
         gtLabelsImage, #only for accurate/correct DICE1-2 calculation
         roiMask,
         arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
-        allSubsampledChannelsOfPatientInNpArray,  #a nparray(channels,dim0,dim1,dim2)
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
         ] = load_imgs_of_subject(
                     log,
@@ -114,28 +110,19 @@ def inferenceWholeVolumes(  sessionTf,
                     "test",
                     False, # run_input_checks.
                     image_i,
-                    
                     listOfFilepathsToEachChannelOfEachPatient,
-                    
                     providedGtLabelsBool,
                     listOfFilepathsToGtLabelsOfEachPatient,
                     cnn3d.num_classes,
-                    
                     False, # providedWeightMapsToSampleForEachCategory
                     None,
-                    
                     providedRoiMaskForFastInfBool,
                     listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                    
-                    useSameSubChannelsAsSingleScale,
-                    cnn3d.numSubsPaths > 0, # usingSubsampledPathways
-                    listOfFilepathsToEachSubsampledChannelOfEachPatient,
-                    
                     padInputImagesBool,
                     recFieldCnn, # only used if padInputsBool
                     cnn3d.pathways[0].getShapeOfInput("test")[2:] # dimsOfPrimeSegmentRcz, for padding
                     )
-        niiDimensions = list(imageChannels[0].shape)
+        niiDimensions = list(imageChannels.shape[1:])
         #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
         predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
         #create the big array that will hold all the fms (for feature extraction, to save as a big multi-dim image).
@@ -172,7 +159,6 @@ def inferenceWholeVolumes(  sessionTf,
             [channsOfSegmentsPerPath] = extractSegmentsGivenSliceCoords(cnn3d,
                                                                         sliceCoordsOfSegmentsInBatch,
                                                                         imageChannels,
-                                                                        allSubsampledChannelsOfPatientInNpArray,
                                                                         recFieldCnn )
             end_extract_time = time.time()
             extractTimePerSubject += end_extract_time - start_extract_time
