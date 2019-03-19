@@ -3,6 +3,9 @@ DeepMedic
 
 ### News
 
+19 Mar 2019 (v0.7.3):
+* Default sampling for training now done on a per-class basis. Better now that DM is applied for arbitrary tasks.
+
 16 Mar 2019 (v0.7.2):
 * Batch size now in trainConfig and testConfig, not model.
 * Improved handling of hunging parallel processes.
