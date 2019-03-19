@@ -143,9 +143,9 @@ def do_training(sessionTf,
                 
                 n_epochs, # Every epoch the CNN model is saved.
                 num_subepochs, # per epoch. Every subepoch Accuracy is reported
-                maxNumSubjectsLoadedPerSubepoch,  # Max num of subjects loaded every subepoch for segments extraction.
-                imagePartsLoadedInGpuPerSubepoch,
-                imagePartsLoadedInGpuPerSubepochValidation,
+                max_n_cases_per_subep_train,  # Max num of subjects loaded every subepoch for segments extraction.
+                n_samples_per_subep_train,
+                n_samples_per_subep_val,
                 num_parallel_proc_sampling, # -1: seq. 0: thread for sampling. >0: multiprocess sampling
                 
                 #-------Sampling Type---------
@@ -191,8 +191,8 @@ def do_training(sessionTf,
                                 num_parallel_proc_sampling,
                                 run_input_checks,
                                 cnn3dWrapper,
-                                maxNumSubjectsLoadedPerSubepoch,
-                                imagePartsLoadedInGpuPerSubepoch,
+                                max_n_cases_per_subep_train,
+                                n_samples_per_subep_train,
                                 samplingTypeInstanceTraining,
                                 listOfFilepathsToEachChannelOfEachPatientTraining,
                                 listOfFilepathsToGtLabelsOfEachPatientTraining,
@@ -209,8 +209,8 @@ def do_training(sessionTf,
                                 num_parallel_proc_sampling,
                                 run_input_checks,
                                 cnn3dWrapper,
-                                maxNumSubjectsLoadedPerSubepoch,
-                                imagePartsLoadedInGpuPerSubepochValidation,
+                                max_n_cases_per_subep_train,
+                                n_samples_per_subep_val,
                                 samplingTypeInstanceValidation,
                                 listOfFilepathsToEachChannelOfEachPatientValidation,
                                 listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,

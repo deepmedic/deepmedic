@@ -26,7 +26,7 @@ from deepmedic.dataManagement.augmentation import augment_patch
 # Order of calls:
 # getSampledDataAndLabelsForSubepoch
 #    get_random_subjects_to_train_subep
-#    getNumSegmentsPerCategoryPerSubject
+#    get_num_samples_per_cat_per_subj
 #    load_subj_and_get_samples
 #        load_imgs_of_subject
 #        sample_coords_of_segments
@@ -36,13 +36,13 @@ from deepmedic.dataManagement.augmentation import augment_patch
 
 # Main sampling process during training. Executed in parallel while training on a batch on GPU.
 # Called from training.do_training()
-def getSampledDataAndLabelsForSubepoch(log,
+def getSampledDataAndLabelsForSubepoch( log,
                                         train_or_val,
                                         num_parallel_proc,
                                         run_input_checks,
                                         cnn3d,
-                                        max_n_subjects_per_subep,
-                                        n_segments_per_subep,
+                                        max_n_cases_per_subep,
+                                        n_samples_per_subep,
                                         sampling_type,
                                         
                                         paths_per_chan_per_subj,
@@ -71,22 +71,21 @@ def getSampledDataAndLabelsForSubepoch(log,
     
     total_number_of_subjects = len(paths_per_chan_per_subj)
     inds_of_subjects_for_subep = get_random_subjects_to_train_subep( total_number_of_subjects = total_number_of_subjects,
-                                                                     max_subjects_on_gpu_for_subepoch = max_n_subjects_per_subep,
+                                                                     max_subjects_on_gpu_for_subepoch = max_n_cases_per_subep,
                                                                      get_max_subjects_for_gpu_even_if_total_less = False )
     log.print3(id_str+" Out of [" + str(total_number_of_subjects) + "] subjects given for [" + training_or_validation_str + "], "+
-               "we will sample from maximum [" + str(max_n_subjects_per_subep) + "] per subepoch.")
+               "we will sample from maximum [" + str(max_n_cases_per_subep) + "] per subepoch.")
     log.print3(id_str+" Shuffled indices of subjects that were randomly chosen: "+str(inds_of_subjects_for_subep))
     
     # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
     channelsOfSegmentsForSubepochListPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
     lblsForPredictedPartOfSegmentsForSubepochList = [] # Labels only for the central/predicted part of segments.
-    n_subjects_for_subep = len(inds_of_subjects_for_subep) #Can be different than max_n_subjects_per_subep, cause of available images number.
+    n_subjects_for_subep = len(inds_of_subjects_for_subep) #Can be different than max_n_cases_per_subep, cause of available images number.
     
     # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
-    percentOfSamplesPerCategoryToSample = sampling_type.getPercentOfSamplesPerCategoryToSample()
-    n_to_sample_per_cat_per_subj = getNumSegmentsPerCategoryPerSubject(n_segments_per_subep,
-                                                                       percentOfSamplesPerCategoryToSample,
-                                                                       n_subjects_for_subep)
+    n_samples_per_cat_per_subj = get_num_samples_per_cat_per_subj(n_samples_per_subep,
+                                                                  sampling_type.getPercentOfSamplesPerCategoryToSample(),
+                                                                  n_subjects_for_subep )
     
     args_sampling_job = [log,
                         train_or_val,
@@ -107,7 +106,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                         
                         n_subjects_for_subep,
                         inds_of_subjects_for_subep,
-                        n_to_sample_per_cat_per_subj ]
+                        n_samples_per_cat_per_subj ]
     
     log.print3(id_str+" Will sample from [" + str(n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
     
@@ -212,34 +211,31 @@ def get_random_subjects_to_train_subep( total_number_of_subjects,
 
 
 
-def getNumSegmentsPerCategoryPerSubject( n_segments_per_subep,
-                                                            percentOfSamplesPerCategoryToSample, # list with a percentage for each type of category to sample
-                                                            n_subjects_for_subep ) :
-    numberOfSamplingCategories = len(percentOfSamplesPerCategoryToSample)
-    # [numForCat1,..., numForCatN]
-    arrayNumberOfSegmentsToExtractPerSamplingCategory = np.zeros( numberOfSamplingCategories, dtype="int32" )
-    # [arrayForCat1,..., arrayForCatN] : arrayForCat1 = [ numbOfSegmsToExtrFromSubject1, ...,  numbOfSegmsToExtrFromSubjectK]
-    n_to_sample_per_cat_per_subj = np.zeros( [ numberOfSamplingCategories, n_subjects_for_subep ] , dtype="int32" )
+def get_num_samples_per_cat_per_subj(n_samples_per_subep,
+                                     perc_samples_per_cat,
+                                     n_subjects_for_subep ) :
+    # perc_samples_per_cat: list with a percentage for each type of category to sample.
     
-    numberOfSamplesDistributedInTheCategories = 0
-    for cat_i in range(numberOfSamplingCategories) :
-        numberOfSamplesFromThisCategoryPerSubepoch = int(n_segments_per_subep*percentOfSamplesPerCategoryToSample[cat_i])
-        arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += numberOfSamplesFromThisCategoryPerSubepoch
-        numberOfSamplesDistributedInTheCategories += numberOfSamplesFromThisCategoryPerSubepoch
-    # Distribute samples that were left from the rounding error of integer division.
-    numOfUndistributedSamples = n_segments_per_subep - numberOfSamplesDistributedInTheCategories
-    indicesOfCategoriesToGiveUndistrSamples = np.random.choice(numberOfSamplingCategories, size=numOfUndistributedSamples, replace=True, p=percentOfSamplesPerCategoryToSample)
-    for cat_i in indicesOfCategoriesToGiveUndistrSamples : # they will be as many as the undistributed samples
-        arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] += 1
-        
-    for cat_i in range(numberOfSamplingCategories) :
-        numberOfSamplesFromThisCategoryPerSubepochPerImage = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] // n_subjects_for_subep
-        n_to_sample_per_cat_per_subj[cat_i] += numberOfSamplesFromThisCategoryPerSubepochPerImage
-        numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly = arrayNumberOfSegmentsToExtractPerSamplingCategory[cat_i] % n_subjects_for_subep
-        for i_unevenSampleFromThisCat in range(numberOfSamplesFromThisCategoryPerSubepochLeftUnevenly):
-            n_to_sample_per_cat_per_subj[cat_i, random.randint(0, n_subjects_for_subep-1)] += 1
+    # First, distribute n_samples_per_subep to the categories:
+    n_sampl_categs = len(perc_samples_per_cat)
+    n_samples_per_cat = np.zeros( n_sampl_categs, dtype="int32" )
+    for cat_i in range(n_sampl_categs) :
+        n_samples_per_cat[cat_i] += int(n_samples_per_subep * perc_samples_per_cat[cat_i])
+    # Distribute samples that were left if perc dont exactly add to 1.
+    n_undistributed_samples = n_samples_per_subep - np.sum(n_samples_per_cat)
+    cats_to_distribute_samples = np.random.choice(n_sampl_categs, size=n_undistributed_samples, replace=True, p=perc_samples_per_cat)
+    for cat_i in cats_to_distribute_samples :
+        n_samples_per_cat[cat_i] += 1
+    
+    # Distribute samples of each cat to subjects.
+    n_samples_per_cat_per_subj = np.zeros( [ n_sampl_categs, n_subjects_for_subep ] , dtype="int32" )
+    for cat_i in range(n_sampl_categs) :
+        n_samples_per_cat_per_subj[cat_i] += n_samples_per_cat[cat_i] // n_subjects_for_subep
+        n_undistributed_samples_in_cat = n_samples_per_cat[cat_i] % n_subjects_for_subep
+        for idx in range(n_undistributed_samples_in_cat):
+            n_samples_per_cat_per_subj[cat_i, random.randint(0, n_subjects_for_subep - 1)] += 1
             
-    return n_to_sample_per_cat_per_subj
+    return n_samples_per_cat_per_subj
     
     
     
@@ -263,10 +259,10 @@ def load_subj_and_get_samples(job_i,
                               
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
-                              n_to_sample_per_cat_per_subj
+                              n_samples_per_cat_per_subj
                               ):
     # paths_per_chan_per_subj: [ [ for channel-0 [ one path per subj ] ], ..., [ for channel-n  [ one path per subj ] ] ]
-    # n_to_sample_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
+    # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channelsOfSegmentsFromThisSubjPerPathway, lblsOfPredictedPartOfSegmentsFromThisSubj )
     id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"]"
     log.print3(id_str+" Load & sample from subject of index (in user's list): " + str(inds_of_subjects_for_subep[job_i]) +\
@@ -317,7 +313,7 @@ def load_subj_and_get_samples(job_i,
     str_samples_per_cat = " Got samples per category: "
     for cat_i in range( sampling_type.getNumberOfCategoriesToSample() ) :
         catString = sampling_type.getStringsPerCategoryToSample()[cat_i]
-        numOfSegmsToExtractForThisCatFromThisSubject = n_to_sample_per_cat_per_subj[cat_i][job_i]
+        numOfSegmsToExtractForThisCatFromThisSubject = n_samples_per_cat_per_subj[cat_i][job_i]
         finalWeightMapToSampleFromForThisCat = finalWeightMapsToSampleFromPerCategoryForSubject[cat_i]
         
         # Check if the weight map is fully-zeros. In this case, don't call the sampling function, just continue.
@@ -443,9 +439,9 @@ def load_imgs_of_subject(log,
         imageGtLabels = None #For validation and testing
         
     if train_val_or_test != "test" and provided_weightmaps_per_sampl_cat==True : # in testing these weightedMaps are never provided, they are for training/validation only.
-        numberOfSamplingCategories = len(paths_to_wmaps_per_sampl_cat_per_subj)
-        arrayWithWeightMapsWhereToSampleForEachCategory = np.zeros( [numberOfSamplingCategories] + list(allChannelsOfPatientInNpArray[0].shape), dtype="float32" ) 
-        for cat_i in range( numberOfSamplingCategories ) :
+        n_sampl_categs = len(paths_to_wmaps_per_sampl_cat_per_subj)
+        arrayWithWeightMapsWhereToSampleForEachCategory = np.zeros( [n_sampl_categs] + list(allChannelsOfPatientInNpArray[0].shape), dtype="float32" ) 
+        for cat_i in range( n_sampl_categs ) :
             filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)

@@ -125,8 +125,8 @@ class TrainSessionParameters(object) :
         #~~~~~~~~ Training Cycle ~~~~~~~~~~~
         self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
         self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
-        self.numOfCasesLoadedPerSubepoch = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
-        self.segmentsLoadedOnGpuPerSubepochTrain = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
+        self.max_n_cases_per_subep_train = cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
+        self.n_samples_per_subep_train = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
         self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else errReqBatchSizeTr()
         self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 0
         
@@ -186,7 +186,7 @@ class TrainSessionParameters(object) :
         self.roiMasksFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_VAL], abs_path_to_cfg) ) if self.providedRoiMasksVal else []
         
         #~~~~~Validation on Samples~~~~~~~~
-        self.segmentsLoadedOnGpuPerSubepochVal = cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] is not None else 3000
+        self.n_samples_per_subep_val = cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] is not None else 3000
         self.batchsize_val_samples = cfg[cfg.BATCHSIZE_VAL_SAMPL] if cfg[cfg.BATCHSIZE_VAL_SAMPL] is not None else 50
         
         #~~~~~~~~~ Sampling (Validation) ~~~~~~~~~~~
@@ -382,8 +382,8 @@ class TrainSessionParameters(object) :
         logPrint("~~Training Cycle~~")
         logPrint("Number of Epochs = " + str(self.numberOfEpochs))
         logPrint("Number of Subepochs per epoch = " + str(self.numberOfSubepochs))
-        logPrint("Number of cases to load per Subepoch (for extracting the samples for this subepoch) = " + str(self.numOfCasesLoadedPerSubepoch))
-        logPrint("Number of Segments loaded on GPU per subepoch for Training = " + str(self.segmentsLoadedOnGpuPerSubepochTrain) + ". NOTE: This number of segments divided by the batch-size defines the number of optimization-iterations that will be performed every subepoch!")
+        logPrint("Number of cases to load per Subepoch (for extracting the samples for this subepoch) = " + str(self.max_n_cases_per_subep_train))
+        logPrint("Number of Segments loaded per subepoch for Training = " + str(self.n_samples_per_subep_train) + ". NOTE: This number of segments divided by the batch-size defines the number of optimization-iterations that will be performed every subepoch!")
         logPrint("Batch size (train) = " + str(self.batchsize_train))
         logPrint("Number of parallel processes for sampling = " + str(self.num_parallel_proc_sampling))
         
@@ -413,7 +413,7 @@ class TrainSessionParameters(object) :
         logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
         
         logPrint("~~~~~~~Validation on Samples throughout Training~~~~~~~")
-        logPrint("Number of Segments loaded on GPU per subepoch for Validation = " + str(self.segmentsLoadedOnGpuPerSubepochVal))
+        logPrint("Number of Segments loaded per subepoch for Validation = " + str(self.n_samples_per_subep_val))
         logPrint("Batch size (val on samples) = " + str(self.batchsize_val_samples))
         
         logPrint("~~ Sampling (val) ~~")
@@ -494,9 +494,9 @@ class TrainSessionParameters(object) :
                 
                 self.numberOfEpochs,
                 self.numberOfSubepochs,
-                self.numOfCasesLoadedPerSubepoch,
-                self.segmentsLoadedOnGpuPerSubepochTrain,
-                self.segmentsLoadedOnGpuPerSubepochVal,
+                self.max_n_cases_per_subep_train,
+                self.n_samples_per_subep_train,
+                self.n_samples_per_subep_val,
                 self.num_parallel_proc_sampling,
                 
                 #-------Sampling Type---------
