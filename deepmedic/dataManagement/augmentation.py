@@ -114,6 +114,6 @@ def random_gamma_correction(channels, gamma_std=0.05):
     gamma = np.random.normal(1, gamma_std, [n_channs,1,1,1])
     for path_idx in range(len(channels)):
         assert np.min(channels[path_idx]) >= 0.
-        channels[path_idx] = np.power(channels[path_idx], 1.5, dtype='float32')
+        channels[path_idx] = np.power(channels[path_idx], gamma, dtype='float32')
         
     return channels
