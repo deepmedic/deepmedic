@@ -489,9 +489,8 @@ def plotProgressDetailed(measuredMetricsFromAllExperiments, legendList, movingAv
     fig.canvas.set_window_title(os.path.basename(__file__))
     fig.suptitle(os.path.basename(__file__) + ": Moving Average over ["+ str(movingAverSubeps)+"] value. For each plotted experiment, Subepochs per Epoch: " + str(subepochsPerEpOfExpers) + ", Epochs between Full-Segmentations: " + str(epochsPerFullInferOfExpers), fontsize=8)#, fontweight='bold')
     
-    maxNumOfEpsDurationOfExps = 0 # The number of epochs that the longest experiment lasted.
-    
     for valOrTrain_i in xrange(0, len(measuredMetricsFromAllExperiments)) :
+        maxNumOfEpsDurationOfExps = 0  # The number of epochs that the longest experiment lasted. (GSG: if put outside the above for loop it screws-up x-axis in training plots /GSG)
         for valOrTrainExperiment_i in xrange(0, len(measuredMetricsFromAllExperiments[valOrTrain_i])) :
             valOrTrainExperiment = measuredMetricsFromAllExperiments[valOrTrain_i][valOrTrainExperiment_i]
             for meanPosNegDice1_i in xrange(0, len(valOrTrainExperiment)) :
