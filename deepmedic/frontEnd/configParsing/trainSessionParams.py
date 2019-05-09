@@ -105,8 +105,7 @@ class TrainSessionParameters(object) :
         
         #[Optionals]
         #~~~~~~~~~Sampling~~~~~~~
-        self.providedRoiMasksTrain = True if cfg[cfg.ROI_MASKS_TR] else False
-        self.roiMasksFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg) ) if self.providedRoiMasksTrain else []
+        self.roiMasksFilepathsTrain = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS_TR] is not None else None
         
         samplingTypeToUseTr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
         self.samplingTypeInstanceTrain = samplingType.SamplingType( self.log, samplingTypeToUseTr, num_classes)
@@ -120,7 +119,6 @@ class TrainSessionParameters(object) :
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None :
             #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_train = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]]
-        self.providedWeightMapsToSampleForEachCategoryTraining = self.paths_to_wmaps_per_sampl_cat_per_subj_train is not None
         
         #~~~~~~~~ Training Cycle ~~~~~~~~~~~
         self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
@@ -181,8 +179,7 @@ class TrainSessionParameters(object) :
             self.gtLabelsFilepathsVal = []
         
         #[Optionals]
-        self.providedRoiMasksVal = True if cfg[cfg.ROI_MASKS_VAL] is not None else False #For fast inf.
-        self.roiMasksFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_VAL], abs_path_to_cfg) ) if self.providedRoiMasksVal else []
+        self.roiMasksFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_VAL], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS_VAL] is not None else None #For fast inf.
         
         #~~~~~Validation on Samples~~~~~~~~
         self.n_samples_per_subep_val = cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_VAL_SEGMS_LOADED_PERSUB] is not None else 3000
@@ -201,7 +198,6 @@ class TrainSessionParameters(object) :
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
             #[[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_val = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg)) for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]]
-        self.providedWeightMapsToSampleForEachCategoryValidation = self.paths_to_wmaps_per_sampl_cat_per_subj_val is not None
         
         #~~~~~~Full inference on validation image~~~~~~
         self.num_epochs_between_val_on_whole_volumes = cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
@@ -363,13 +359,11 @@ class TrainSessionParameters(object) :
         logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
         
         logPrint("~~ Sampling (train) ~~")
-        logPrint("Region-Of-Interest Masks provided = " + str(self.providedRoiMasksTrain))
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
         
         logPrint("Type of Sampling = " + str(self.samplingTypeInstanceTrain.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceTrain.getIntSamplingType()) + ")")
         logPrint("Sampling Categories = " + str(self.samplingTypeInstanceTrain.getStringsPerCategoryToSample()) )
         logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceTrain.getPercentOfSamplesPerCategoryToSample()))
-        logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryTraining))
         logPrint("Paths to weight-Maps for sampling of each category = " + str(self.paths_to_wmaps_per_sampl_cat_per_subj_train))
         
         logPrint("~~Training Cycle~~")
@@ -401,7 +395,6 @@ class TrainSessionParameters(object) :
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
         logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " + str(self.channelsFilepathsVal))
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
-        logPrint("Provided ROI masks for Validation = " + str(self.providedRoiMasksVal) + ". NOTE: Validation-sampling and Full-Inference will be limited within this mask if provided. If not provided, Negative Validation samples will be extracted from whole volume, except if advanced-sampling is enabled, and the user provided separate weight-maps for sampling.")
         logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
         
         logPrint("~~~~~~~Validation on Samples throughout Training~~~~~~~")
@@ -412,7 +405,6 @@ class TrainSessionParameters(object) :
         logPrint("Type of Sampling = " + str(self.samplingTypeInstanceVal.getStringOfSamplingType()) + " ("+ str(self.samplingTypeInstanceVal.getIntSamplingType()) + ")")
         logPrint("Sampling Categories = " + str(self.samplingTypeInstanceVal.getStringsPerCategoryToSample()) )
         logPrint("Percent of Samples to extract per Sampling Category = " + str(self.samplingTypeInstanceVal.getPercentOfSamplesPerCategoryToSample()))
-        logPrint("Provided Weight-Maps, pointing where to focus sampling for each category (if False, samples will be extracted based on GT and ROI) = " + str(self.providedWeightMapsToSampleForEachCategoryValidation))
         logPrint("Paths to weight-maps for sampling of each category = " + str(self.paths_to_wmaps_per_sampl_cat_per_subj_val))
         
         logPrint("~~~~~Validation with Full Inference on Validation Cases~~~~~")
@@ -473,14 +465,10 @@ class TrainSessionParameters(object) :
                 self.gtLabelsFilepathsTrain,
                 self.gtLabelsFilepathsVal,
                 
-                self.providedWeightMapsToSampleForEachCategoryTraining, #Always true, since either GT labels or advanced-mask-where-to-pos
                 self.paths_to_wmaps_per_sampl_cat_per_subj_train,
-                self.providedWeightMapsToSampleForEachCategoryValidation, #If false, corresponding samples will be extracted uniformly from whole image.
                 self.paths_to_wmaps_per_sampl_cat_per_subj_val,
                 
-                self.providedRoiMasksTrain,
                 self.roiMasksFilepathsTrain,
-                self.providedRoiMasksVal,
                 self.roiMasksFilepathsVal,
                 
                 self.numberOfEpochs,
@@ -525,7 +513,7 @@ class TrainSessionParameters(object) :
                 self.L1_reg_weight,
                 self.L2_reg_weight,
                 # Cost Schedules
-                #Weighting Classes differently in the CNN's cost function during training:
+                # Weighting Classes differently in the CNN's cost function during training:
                 self.reweight_classes_in_cost
                 ]
         return args

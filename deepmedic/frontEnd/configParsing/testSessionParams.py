@@ -39,8 +39,7 @@ class TestSessionParameters(object) :
         listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
         self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
         self.gtLabelsFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS] is not None else None
-        self.providedRoiMasks = True if cfg[cfg.ROI_MASKS] is not None else False
-        self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if self.providedRoiMasks else None
+        self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS] is not None else None
         
         #Output:
         self.namesToSavePredictionsAndFeatures = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
@@ -109,10 +108,7 @@ class TestSessionParameters(object) :
         logPrint("Number of cases to perform inference on = " + str(self.numberOfCases))
         logPrint("Paths to the channels of each case = " + str(self.channelsFilepaths))
         logPrint("Paths to provided GT labels per case = " + str(self.gtLabelsFilepaths))
-        logPrint("User provided Region-Of-Interest Masks for faster inference = " + str(self.providedRoiMasks))
         logPrint("Filepaths of the ROI Masks provided per case = " + str(self.roiMasksFilepaths))
-        if not self.providedRoiMasks :
-            logPrint(">>> WARN: Inference will be performed on whole scan. Consider providing a ROI image for faster results, if possible!")
         logPrint("Batch size = " + str(self.batchsize))
         
         logPrint("~~~~~~~~~~~~~~~~~~~OUTPUT~~~~~~~~~~~~~~~")
@@ -152,18 +148,13 @@ class TestSessionParameters(object) :
                 
                 self.channelsFilepaths,
                 self.gtLabelsFilepaths,
-                
-                self.providedRoiMasks,
                 self.roiMasksFilepaths,
-                
                 self.filepathsToSavePredictionsForEachPatient,
                 self.suffixForSegmAndProbsDict,
                 # Hyper parameters
                 self.batchsize,
-                
                 #----Preprocessing------
                 self.padInputImagesBool,
-                
                 #--------For FM visualisation---------
                 self.saveIndividualFmImages,
                 self.saveMultidimensionalImageWithAllFms,

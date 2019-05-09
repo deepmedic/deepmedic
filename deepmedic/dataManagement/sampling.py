@@ -48,10 +48,8 @@ def getSampledDataAndLabelsForSubepoch( log,
                                         paths_per_chan_per_subj,
                                         paths_to_lbls_per_subj,
                                         
-                                        provided_mask,
                                         paths_to_masks_per_subj,
                                         
-                                        provided_weightmaps_per_sampl_cat,
                                         paths_to_wmaps_per_sampl_cat_per_subj,
                                         
                                         pad_input_imgs,
@@ -91,9 +89,7 @@ def getSampledDataAndLabelsForSubepoch( log,
                         sampling_type,
                         paths_per_chan_per_subj,
                         paths_to_lbls_per_subj,
-                        provided_mask,
                         paths_to_masks_per_subj,
-                        provided_weightmaps_per_sampl_cat,
                         paths_to_wmaps_per_sampl_cat_per_subj,
                         # Pre-processing:
                         pad_input_imgs,
@@ -242,9 +238,7 @@ def load_subj_and_get_samples(job_i,
                               sampling_type,
                               paths_per_chan_per_subj,
                               paths_to_lbls_per_subj,
-                              provided_mask,
                               paths_to_masks_per_subj,
-                              provided_weightmaps_per_sampl_cat,
                               paths_to_wmaps_per_sampl_cat_per_subj,
                               # Pre-processing:
                               pad_input_imgs,
@@ -279,11 +273,9 @@ def load_subj_and_get_samples(job_i,
                              inds_of_subjects_for_subep[job_i],
                              paths_per_chan_per_subj,
                              paths_to_lbls_per_subj, 
-                             cnn3d.num_classes,
-                             provided_weightmaps_per_sampl_cat, # If true, must provide all. Placeholder in testing.
                              paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
-                             provided_mask,
                              paths_to_masks_per_subj,
+                             cnn3d.num_classes,
                              # Preprocessing
                              pad_input_imgs,
                              cnn3d.recFieldCnn, # used if pad_input_imgs
@@ -291,10 +283,8 @@ def load_subj_and_get_samples(job_i,
     
     dims_of_scan = channels[0].shape
     sampling_maps_per_cat = sampling_type.logicDecidingSamplingMapsPerCategory(
-                                                provided_weightmaps_per_sampl_cat,
                                                 weightmaps_to_sample_per_cat,
                                                 gt_lbl_img,
-                                                provided_mask,
                                                 roi_mask,
                                                 dims_of_scan)
     str_samples_per_cat = " Got samples per category: "
@@ -350,11 +340,9 @@ def load_imgs_of_subject(log,
                          subj_i,
                          paths_per_chan_per_subj,
                          paths_to_lbls_per_subj,
-                         num_classes,
-                         provided_weightmaps_per_sampl_cat, # If true, must provide all wmaps. Placeholder in testing.
                          paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
-                         provided_mask,
                          paths_to_masks_per_subj,
+                         num_classes,
                          # Preprocessing
                          pad_input_imgs,
                          cnnReceptiveField, # only used if pad_input_imgs
@@ -373,7 +361,7 @@ def load_imgs_of_subject(log,
 
     pad_added_prepost_each_axis = ((0,0), (0,0), (0,0)) # Padding added before and after each axis.
     
-    if provided_mask :
+    if paths_to_masks_per_subj is not None :
         fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
         roi_mask = loadVolume(fullFilenamePathOfRoiMask)
         
@@ -419,7 +407,7 @@ def load_imgs_of_subject(log,
     else : 
         imageGtLabels = None #For validation and testing
         
-    if train_val_or_test != "test" and provided_weightmaps_per_sampl_cat==True : # in testing these weightedMaps are never provided, they are for training/validation only.
+    if train_val_or_test != "test" and paths_to_wmaps_per_sampl_cat_per_subj is not None : # May be provided only for training.
         n_sampl_categs = len(paths_to_wmaps_per_sampl_cat_per_subj)
         weightmaps_to_sample_per_cat = np.zeros( [n_sampl_categs] + list(channels[0].shape), dtype="float32" ) 
         for cat_i in range( n_sampl_categs ) :

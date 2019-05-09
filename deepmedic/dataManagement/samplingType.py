@@ -61,17 +61,12 @@ class SamplingType(object) :
     
     
     def logicDecidingSamplingMapsPerCategory(   self,
-                                                provided_weightmaps_per_sampl_cat,
                                                 weightmaps_to_sample_per_cat,
-                                                
                                                 gt_lbl_img,
-                                                
-                                                provided_mask,
                                                 roi_mask,
-                                                
                                                 dims_of_scan
                                                 ) :
-        # If weight-maps are provided, they should be provided for *every* class of the sampling-type.
+        # If weight-maps are provided (not None), they should be provided for *every* class of the sampling-type.
         
         # a) Check if weighted maps are given. In that case, use them.
         # b) If no weightMaps, and ROI/GT given, use them.
@@ -79,7 +74,7 @@ class SamplingType(object) :
         # Depending on the SamplingType, different behaviour as in how many categories.
         # dims_of_scan: [H, W, D]
         if self.samplingType == 0 : # fore/background
-            if provided_weightmaps_per_sampl_cat : #Both weight maps should be provided currently.
+            if weightmaps_to_sample_per_cat is not None : #Both weight maps should be provided currently.
                 numOfProvidedWeightMaps = len(weightmaps_to_sample_per_cat)
                 if numOfProvidedWeightMaps != self.getNumberOfCategoriesToSample() :
                     self.log.print3("ERROR: For SamplingType = Fore/Background(0), [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
@@ -88,7 +83,7 @@ class SamplingType(object) :
             elif gt_lbl_img is None:
                 self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], if weighted-maps are not provided, "+\
                                 "at least Ground Truth labels should be given to extract foreground! Exiting!"); exit(1)
-            elif provided_mask : # and provided GT
+            elif roi_mask is not None : # and provided GT
                 maskForForegroundSampling = ( (gt_lbl_img>0)*(roi_mask>0) ).astype(int)
                 maskForBackgroundSampling_roiMinusGtLabels = ( (maskForForegroundSampling==0)*(roi_mask>0) ).astype(int)
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ maskForForegroundSampling, maskForBackgroundSampling_roiMinusGtLabels ] #Foreground / Background (in sequence)
@@ -97,29 +92,29 @@ class SamplingType(object) :
                 maskForBackgroundSampling_roiMinusGtLabels = np.ones(dims_of_scan, dtype="int16") * (maskForForegroundSampling==0)
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ maskForForegroundSampling, maskForBackgroundSampling_roiMinusGtLabels ] #Foreground / Background (in sequence)
         elif self.samplingType == 1 : # uniform
-            if provided_weightmaps_per_sampl_cat :
+            if weightmaps_to_sample_per_cat is not None :
                 numOfProvidedWeightMaps = len(weightmaps_to_sample_per_cat)
                 if numOfProvidedWeightMaps != 1 :
                     self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
                                     "One was expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = weightmaps_to_sample_per_cat #Should be an array with dim1==1 already.
-            elif provided_mask :
+            elif roi_mask is not None :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ roi_mask ] #Be careful to not change either of the two arrays later or there'll be a problem.
             else :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ np.ones(dims_of_scan, dtype="int16") ]
         elif self.samplingType == 2 : # full image. SAME AS UNIFORM?
-            if provided_weightmaps_per_sampl_cat :
+            if weightmaps_to_sample_per_cat is not None :
                 numOfProvidedWeightMaps = len(weightmaps_to_sample_per_cat)
                 if numOfProvidedWeightMaps != 1 :
                     self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
                                     "One was expected! Exiting!"); exit(1)
                 finalWeightMapsToSampleFromPerCategoryForSubject = weightmaps_to_sample_per_cat #Should be an array with dim1==1 already.
-            elif provided_mask :
+            elif roi_mask is not None :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ roi_mask ] #Be careful to not change either of the two arrays later or there'll be a problem.
             else :
                 finalWeightMapsToSampleFromPerCategoryForSubject = [ np.ones(dims_of_scan, dtype="int16") ]
         elif self.samplingType == 3 : # Targeted per class.
-            if provided_weightmaps_per_sampl_cat :
+            if weightmaps_to_sample_per_cat is not None :
                 numOfProvidedWeightMaps = len(weightmaps_to_sample_per_cat)
                 if numOfProvidedWeightMaps != self.getNumberOfCategoriesToSample() :
                     self.log.print3("ERROR: For SamplingType=[" + self.stringOfSamplingType + "], [" + str(numOfProvidedWeightMaps) + "] weight maps were provided! "+\
@@ -127,7 +122,7 @@ class SamplingType(object) :
                 finalWeightMapsToSampleFromPerCategoryForSubject = weightmaps_to_sample_per_cat #Should have as many entries as classes (incl backgr).
             elif gt_lbl_img is None:
                 self.log.print3("ERROR: For SamplingType=TargettedPerClass(3), either weightMaps for each class or GT labels should be given! Exiting!"); exit(1)
-            elif provided_mask : # and provided GT
+            elif roi_mask is not None : # and provided GT
                 finalWeightMapsToSampleFromPerCategoryForSubject = []
                 for cat_i in range( self.getNumberOfCategoriesToSample() ) : # Should be the same number as the number of actual classes, including background.
                     finalWeightMapsToSampleFromPerCategoryForSubject.append( ( (gt_lbl_img==cat_i)*(roi_mask>0) ).astype(int) )
