@@ -88,6 +88,7 @@ The system requires the following:
 - [TensorFlow](https://www.tensorflow.org/): The Deep Learning library for back end.
 - [NiBabel](http://nipy.org/nibabel/): The library used for loading NIFTI files.
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
+- [scipy](http://www.scipy.org/) : Scientific packages. Used for image operations e.g. augmentation.
 
 Latest versions tested:  
 As of Feb 2019, testing of v0.7.1 was done using Python 3.5.2, Tensorflow 1.12.0, nibabel 2.3.3, numpy 1.16.1.  
