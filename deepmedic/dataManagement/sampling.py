@@ -32,7 +32,7 @@ from deepmedic.dataManagement.augmentation import augment_patch
 #        sample_coords_of_segments
 #        extractSegmentGivenSliceCoords
 #            getImagePartFromSubsampledImageForTraining
-#    shuffleSegmentsOfThisSubepoch
+#    shuffleSegments
 
 # Main sampling process during training. Executed in parallel while training on a batch on GPU.
 # Called from training.do_training()
@@ -75,8 +75,8 @@ def getSampledDataAndLabelsForSubepoch( log,
     log.print3(id_str+" Shuffled indices of subjects that were randomly chosen: "+str(inds_of_subjects_for_subep))
     
     # List, with [numberOfPathwaysThatTakeInput] sublists. Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
-    channelsOfSegmentsForSubepochListPerPathway = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
-    lblsForPredictedPartOfSegmentsForSubepochList = [] # Labels only for the central/predicted part of segments.
+    channs_of_samples_per_path_for_subep = [ [] for i in range(cnn3d.getNumPathwaysThatRequireInput()) ]
+    lbls_predicted_part_of_samples_for_subep = [] # Labels only for the central/predicted part of segments.
     n_subjects_for_subep = len(inds_of_subjects_for_subep) #Can be different than max_n_cases_per_subep, cause of available images number.
     
     # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
@@ -112,8 +112,8 @@ def getSampledDataAndLabelsForSubepoch( log,
             (channs_of_samples_from_job_per_path,
             lbls_predicted_part_of_samples_from_job) = load_subj_and_get_samples( *( [job_i]+args_sampling_job ) )
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channs_of_samples_from_job_per_path[pathway_i] # concat does not copy.
-            lblsForPredictedPartOfSegmentsForSubepochList += lbls_predicted_part_of_samples_from_job # concat does not copy.
+                channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i] # concat does not copy.
+            lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job # concat does not copy.
 
     else: # Parallelize sampling from each subject
         while len(jobs_inds_to_do) > 0: # While jobs remain.
@@ -134,8 +134,8 @@ def getSampledDataAndLabelsForSubepoch( log,
                         (channs_of_samples_from_job_per_path,
                         lbls_predicted_part_of_samples_from_job) = jobs[job_i].get(timeout=10) # timeout in case process for some reason never started (happens in py3)
                         for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
-                            channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channs_of_samples_from_job_per_path[pathway_i] # concat does not copy.
-                        lblsForPredictedPartOfSegmentsForSubepochList += lbls_predicted_part_of_samples_from_job # concat does not copy.
+                            channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i] # concat does not copy.
+                        lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job # concat does not copy.
                         jobs_inds_to_do.remove(job_i)
                     except multiprocessing.TimeoutError as e:
                         log.print3(id_str+"\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" + str(job_i) + "].\n" +
@@ -159,16 +159,16 @@ def getSampledDataAndLabelsForSubepoch( log,
                 worker_pool.join()
                
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
-    [channelsOfSegmentsForSubepochListPerPathway,
-    lblsForPredictedPartOfSegmentsForSubepochList ] = shuffleSegmentsOfThisSubepoch(channelsOfSegmentsForSubepochListPerPathway,
-                                                                                    lblsForPredictedPartOfSegmentsForSubepochList )
+    [channs_of_samples_per_path_for_subep,
+    lbls_predicted_part_of_samples_for_subep ] = shuffleSegments(channs_of_samples_per_path_for_subep,
+                                                                      lbls_predicted_part_of_samples_for_subep )
     end_time_sampling = time.time()
     log.print3(id_str+" TIMING: Sampling for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
     
     log.print3(id_str+" :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
     
-    channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channelsOfSegmentsForSubepochListPerPathway ]
-    lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lblsForPredictedPartOfSegmentsForSubepochList, dtype="int32") # Could be int16 to save RAM?
+    channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channs_of_samples_per_path_for_subep ]
+    lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lbls_predicted_part_of_samples_for_subep, dtype="int32") # Could be int16 to save RAM?
     
     return [channelsOfSegmentsForSubepochArrayPerPathway,
             lblsForPredictedPartOfSegmentsForSubepochArray]
@@ -278,7 +278,6 @@ def load_subj_and_get_samples(job_i,
                              run_input_checks,
                              inds_of_subjects_for_subep[job_i],
                              paths_per_chan_per_subj,
-                             True, # providedGtLabelsBool. If this getTheArr function is called (training), gtLabels should already been provided.
                              paths_to_lbls_per_subj, 
                              cnn3d.num_classes,
                              provided_weightmaps_per_sampl_cat, # If true, must provide all. Placeholder in testing.
@@ -350,8 +349,7 @@ def load_imgs_of_subject(log,
                          run_input_checks,
                          subj_i,
                          paths_per_chan_per_subj,
-                         providedGtLabelsBool,
-                         listOfFilepathsToGtLabelsOfEachPatient,
+                         paths_to_lbls_per_subj,
                          num_classes,
                          provided_weightmaps_per_sampl_cat, # If true, must provide all wmaps. Placeholder in testing.
                          paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in testing.
@@ -406,8 +404,8 @@ def load_imgs_of_subject(log,
             
         
     #Load the class labels.
-    if providedGtLabelsBool : #For training (exact target labels) or validation on samples labels.
-        fullFilenamePathOfGtLabels = listOfFilepathsToGtLabelsOfEachPatient[subj_i]
+    if paths_to_lbls_per_subj is not None :
+        fullFilenamePathOfGtLabels = paths_to_lbls_per_subj[subj_i]
         imageGtLabels = loadVolume(fullFilenamePathOfGtLabels)
         
         if imageGtLabels.dtype.kind not in ['i','u']:
@@ -628,20 +626,20 @@ def getImagePartFromSubsampledImageForTraining( dimsOfPrimarySegment,
 
 
 
-def shuffleSegmentsOfThisSubepoch(  channelsOfSegmentsForSubepochListPerPathway,
-                                    lblsForPredictedPartOfSegmentsForSubepochList ) :
-    numOfPathwayWithInput = len(channelsOfSegmentsForSubepochListPerPathway)
-    inputToZip = [ sublistForPathway for sublistForPathway in channelsOfSegmentsForSubepochListPerPathway ]
-    inputToZip += [ lblsForPredictedPartOfSegmentsForSubepochList ]
+def shuffleSegments(  channs_of_samples_per_path, lbls_predicted_part_of_samples ) :
     
-    combined = list(zip(*inputToZip)) #list() for python3 compatibility, as range cannot get assignment in shuffle()
+    n_paths_taking_inp = len(channs_of_samples_per_path)
+    inp_to_zip = [ sublist_for_path for sublist_for_path in channs_of_samples_per_path ]
+    inp_to_zip += [ lbls_predicted_part_of_samples ]
+    
+    combined = list(zip(*inp_to_zip)) #list() for python3 compatibility, as range cannot get assignment in shuffle()
     random.shuffle(combined)
-    shuffledInputListsToZip = list(zip(*combined))
+    sublists_with_shuffled_samples = list(zip(*combined))
     
-    shuffledChannelsOfSegmentsForSubepochListPerPathway = [ sublistForPathway for sublistForPathway in shuffledInputListsToZip[:numOfPathwayWithInput] ]
-    shuffledLblsForPredictedPartOfSegmentsForSubepochList = shuffledInputListsToZip[numOfPathwayWithInput]
+    shuffled_channs_of_samples_per_path = [ sublist_for_path for sublist_for_path in sublists_with_shuffled_samples[:n_paths_taking_inp] ]
+    shuffled_lbls_predicted_part_of_samples = sublists_with_shuffled_samples[n_paths_taking_inp]
     
-    return [shuffledChannelsOfSegmentsForSubepochListPerPathway, shuffledLblsForPredictedPartOfSegmentsForSubepochList]
+    return [shuffled_channs_of_samples_per_path, shuffled_lbls_predicted_part_of_samples]
 
 
 # I must merge this with function: extractSegmentsGivenSliceCoords() that is used for Testing! Should be easy!

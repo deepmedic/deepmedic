@@ -179,7 +179,6 @@ class TrainSessionParameters(object) :
             self.gtLabelsFilepathsVal = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS_VAL] is not None else []
         else : # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
-        self.providedGtVal = True if self.gtLabelsFilepathsVal is not None else False
         
         #[Optionals]
         self.providedRoiMasksVal = True if cfg[cfg.ROI_MASKS_VAL] is not None else False #For fast inf.
@@ -401,7 +400,6 @@ class TrainSessionParameters(object) :
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
         logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " + str(self.channelsFilepathsVal))
-        logPrint("Provided Ground-Truth for Validation = " + str(self.providedGtVal) + ". NOTE: Required for Val on samples. Not Req for Full-Inference, but DSC will be reported if provided.")
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
         logPrint("Provided ROI masks for Validation = " + str(self.providedRoiMasksVal) + ". NOTE: Validation-sampling and Full-Inference will be limited within this mask if provided. If not provided, Negative Validation samples will be extracted from whole volume, except if advanced-sampling is enabled, and the user provided separate weight-maps for sampling.")
         logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
@@ -473,7 +471,6 @@ class TrainSessionParameters(object) :
                 self.channelsFilepathsVal,
                 
                 self.gtLabelsFilepathsTrain,
-                self.providedGtVal,
                 self.gtLabelsFilepathsVal,
                 
                 self.providedWeightMapsToSampleForEachCategoryTraining, #Always true, since either GT labels or advanced-mask-where-to-pos

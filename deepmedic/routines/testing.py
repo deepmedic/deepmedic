@@ -29,7 +29,6 @@ def inferenceWholeVolumes(  sessionTf,
                             val_or_test,
                             savePredictedSegmAndProbsDict,
                             listOfFilepathsToEachChannelOfEachPatient,
-                            providedGtLabelsBool, #boolean. DSC calculation will be performed if this is provided.
                             listOfFilepathsToGtLabelsOfEachPatient,
                             providedRoiMaskForFastInfBool,
                             listOfFilepathsToRoiMaskFastInfOfEachPatient,
@@ -111,7 +110,6 @@ def inferenceWholeVolumes(  sessionTf,
                     False, # run_input_checks.
                     image_i,
                     listOfFilepathsToEachChannelOfEachPatient,
-                    providedGtLabelsBool,
                     listOfFilepathsToGtLabelsOfEachPatient,
                     cnn3d.num_classes,
                     False, # providedWeightMapsToSampleForEachCategory
@@ -364,7 +362,7 @@ def inferenceWholeVolumes(  sessionTf,
         #================= FINISHED SAVING RESULTS ====================
         
         #================= EVALUATE DSC FOR EACH SUBJECT ========================
-        if providedGtLabelsBool : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
+        if listOfFilepathsToGtLabelsOfEachPatient is not None : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
             log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) + " ++++++++++++++++++++++++++")
             #Unpad whatever needed.
             unpaddedGtLabelsImage = gtLabelsImage if not padInputImagesBool else unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
@@ -394,7 +392,7 @@ def inferenceWholeVolumes(  sessionTf,
             printExplanationsAboutDice(log)
             
     #================= Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. ====================
-    if providedGtLabelsBool and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
+    if listOfFilepathsToGtLabelsOfEachPatient is not None and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
         log.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
         log.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
         meanDiceCoeffs1 = getMeanPerColOf2dListExclNA(diceCoeffs1, NA_PATTERN)
