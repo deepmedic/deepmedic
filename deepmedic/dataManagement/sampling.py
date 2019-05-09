@@ -161,17 +161,17 @@ def getSampledDataAndLabelsForSubepoch( log,
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
     [channs_of_samples_per_path_for_subep,
     lbls_predicted_part_of_samples_for_subep ] = shuffleSegments(channs_of_samples_per_path_for_subep,
-                                                                      lbls_predicted_part_of_samples_for_subep )
+                                                                 lbls_predicted_part_of_samples_for_subep )
     end_time_sampling = time.time()
     log.print3(id_str+" TIMING: Sampling for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
     
     log.print3(id_str+" :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
     
-    channelsOfSegmentsForSubepochArrayPerPathway = [ np.asarray(imPartsForPathwayi, dtype="float32") for imPartsForPathwayi in channs_of_samples_per_path_for_subep ]
-    lblsForPredictedPartOfSegmentsForSubepochArray = np.asarray(lbls_predicted_part_of_samples_for_subep, dtype="int32") # Could be int16 to save RAM?
+    channs_of_samples_arr_per_path = [ np.asarray(channs_of_samples_for_path, dtype="float32") for channs_of_samples_for_path in channs_of_samples_per_path_for_subep ]
+    lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples_for_subep, dtype="int32") # Could be int16 to save RAM?
     
-    return [channelsOfSegmentsForSubepochArrayPerPathway,
-            lblsForPredictedPartOfSegmentsForSubepochArray]
+    return [channs_of_samples_arr_per_path,
+            lbls_predicted_part_of_samples_arr]
     
     
     
