@@ -243,18 +243,18 @@ def do_training(sessionTf,
                 if val_on_samples_during_train :
                     if worker_pool is None: # Sequential processing.
                         log.print3(id_str+" NO MULTIPROC: Sampling for subepoch #"+str(subepoch)+" [VALIDATION] will be done by main thread.")
-                        [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = getSampledDataAndLabelsForSubepoch( *args_for_sampling_val )
+                        (channsOfSegmentsForSubepPerPathwayVal,
+                        labelsForCentralOfSegmentsForSubepVal) = getSampledDataAndLabelsForSubepoch( *args_for_sampling_val )
                     elif sampling_job_submitted_val : #It was done in parallel with the training of the previous epoch, just grab results.
-                        [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get()
+                        (channsOfSegmentsForSubepPerPathwayVal,
+                        labelsForCentralOfSegmentsForSubepVal) = parallelJobToGetDataForNextValidation.get()
                         sampling_job_submitted_val = False
                     else : # Not previously submitted in case of first epoch or after a full-volumes validation.
                         assert subepoch == 0
                         log.print3(id_str+" MULTIPROC: Before Validation in subepoch #"+str(subepoch)+", submitting sampling job for next [VALIDATION].")
                         parallelJobToGetDataForNextValidation = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_val)
-                        [channsOfSegmentsForSubepPerPathwayVal,
-                        labelsForCentralOfSegmentsForSubepVal] = parallelJobToGetDataForNextValidation.get()
+                        (channsOfSegmentsForSubepPerPathwayVal,
+                        labelsForCentralOfSegmentsForSubepVal) = parallelJobToGetDataForNextValidation.get()
                         sampling_job_submitted_val = False
 
                     
@@ -285,18 +285,18 @@ def do_training(sessionTf,
                 #-------------------------GET DATA FOR THIS SUBEPOCH's TRAINING---------------------------------
                 if worker_pool is None: # Sequential processing.
                     log.print3(id_str+" NO MULTIPROC: Sampling for subepoch #"+str(subepoch)+" [TRAINING] will be done by main thread.")
-                    [channsOfSegmentsForSubepPerPathwayTrain,
-                    labelsForCentralOfSegmentsForSubepTrain] = getSampledDataAndLabelsForSubepoch( *args_for_sampling_train )
+                    (channsOfSegmentsForSubepPerPathwayTrain,
+                    labelsForCentralOfSegmentsForSubepTrain) = getSampledDataAndLabelsForSubepoch( *args_for_sampling_train )
                 elif sampling_job_submitted_train: # Sampling job should have been done in parallel with previous train/val. Just grab results.
-                    [channsOfSegmentsForSubepPerPathwayTrain,
-                    labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining.get()
+                    (channsOfSegmentsForSubepPerPathwayTrain,
+                    labelsForCentralOfSegmentsForSubepTrain) = parallelJobToGetDataForNextTraining.get()
                     sampling_job_submitted_train = False
                 else:  # Not previously submitted in case of first epoch or after a full-volumes validation.
                     assert subepoch == 0
                     log.print3(id_str+" MULTIPROC: Before Training in subepoch #"+str(subepoch)+", submitting sampling job for next [TRAINING].")
                     parallelJobToGetDataForNextTraining = worker_pool.apply_async(getSampledDataAndLabelsForSubepoch, args_for_sampling_train)
-                    [channsOfSegmentsForSubepPerPathwayTrain,
-                    labelsForCentralOfSegmentsForSubepTrain] = parallelJobToGetDataForNextTraining.get()
+                    (channsOfSegmentsForSubepPerPathwayTrain,
+                    labelsForCentralOfSegmentsForSubepTrain) = parallelJobToGetDataForNextTraining.get()
                     sampling_job_submitted_train = False
 
                         

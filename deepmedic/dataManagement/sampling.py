@@ -156,8 +156,8 @@ def getSampledDataAndLabelsForSubepoch( log,
                
         
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
-    [channs_of_samples_per_path_for_subep,
-    lbls_predicted_part_of_samples_for_subep ] = shuffleSegments(channs_of_samples_per_path_for_subep,
+    (channs_of_samples_per_path_for_subep,
+    lbls_predicted_part_of_samples_for_subep) = shuffleSegments(channs_of_samples_per_path_for_subep,
                                                                  lbls_predicted_part_of_samples_for_subep )
     end_time_sampling = time.time()
     log.print3(id_str+" TIMING: Sampling for next [" + training_or_validation_str + "] lasted: {0:.1f}".format(end_time_sampling-start_time_sampling)+" secs.")
@@ -169,8 +169,7 @@ def getSampledDataAndLabelsForSubepoch( log,
 
     lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples_for_subep, dtype="int32") # Could be int16 to save RAM?
     
-    return [channs_of_samples_arr_per_path,
-            lbls_predicted_part_of_samples_arr]
+    return (channs_of_samples_arr_per_path, lbls_predicted_part_of_samples_arr)
     
     
     
@@ -284,7 +283,7 @@ def load_subj_and_get_samples(job_i,
                              pad_input_imgs,
                              cnn3d.recFieldCnn, # used if pad_input_imgs
                              dims_highres_segment) # used if pad_input_imgs.
-    
+    """
     # Augment at image level:
     time_augm_0 = time.time()
     (channels,
@@ -297,7 +296,7 @@ def load_subj_and_get_samples(job_i,
                                                            augm_img_prms)
     time_augm_1 = time.time()
     log.print3(id_str+" Time spent augmenting at image level: " + str(time_augm_1-time_augm_0) )
-    
+    """
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
     sampling_maps_per_cat = sampling_type.logicDecidingSamplingMapsPerCategory(
@@ -386,7 +385,7 @@ def load_imgs_of_subject(log,
         fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
         roi_mask = loadVolume(fullFilenamePathOfRoiMask)
         
-        [roi_mask, pad_added_prepost_each_axis] = padCnnInputs(roi_mask, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [roi_mask, pad_added_prepost_each_axis]
+        (roi_mask, pad_added_prepost_each_axis) = padCnnInputs(roi_mask, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [roi_mask, pad_added_prepost_each_axis]
     else :
         roi_mask = None
         
@@ -399,7 +398,7 @@ def load_imgs_of_subject(log,
         if fullFilenamePathOfChannel != "-" : #normal case, filepath was given.
             channelData = loadVolume(fullFilenamePathOfChannel)
                 
-            [channelData, pad_added_prepost_each_axis] = padCnnInputs(channelData, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [channelData, pad_added_prepost_each_axis]
+            (channelData, pad_added_prepost_each_axis) = padCnnInputs(channelData, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [channelData, pad_added_prepost_each_axis]
             
             if channels is None :
                 #Initialize the array in which all the channels for the patient will be placed.
@@ -424,7 +423,7 @@ def load_imgs_of_subject(log,
         if run_input_checks:
             check_gt_vs_num_classes(log, imageGtLabels, num_classes)
 
-        [imageGtLabels, pad_added_prepost_each_axis] = padCnnInputs(imageGtLabels, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [imageGtLabels, pad_added_prepost_each_axis]
+        (imageGtLabels, pad_added_prepost_each_axis) = padCnnInputs(imageGtLabels, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [imageGtLabels, pad_added_prepost_each_axis]
     else : 
         imageGtLabels = None #For validation and testing
         
@@ -436,13 +435,13 @@ def load_imgs_of_subject(log,
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
             
-            [weightedMapForThisCatData, pad_added_prepost_each_axis] = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [weightedMapForThisCatData, pad_added_prepost_each_axis]
+            (weightedMapForThisCatData, pad_added_prepost_each_axis) = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [weightedMapForThisCatData, pad_added_prepost_each_axis]
             
             weightmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
     else :
         weightmaps_to_sample_per_cat = None
     
-    return [channels, imageGtLabels, roi_mask, weightmaps_to_sample_per_cat, pad_added_prepost_each_axis]
+    return (channels, imageGtLabels, roi_mask, weightmaps_to_sample_per_cat, pad_added_prepost_each_axis)
 
 
 
@@ -648,7 +647,7 @@ def shuffleSegments(  channs_of_samples_per_path, lbls_predicted_part_of_samples
     shuffled_channs_of_samples_per_path = [ sublist_for_path for sublist_for_path in sublists_with_shuffled_samples[:n_paths_taking_inp] ]
     shuffled_lbls_predicted_part_of_samples = sublists_with_shuffled_samples[n_paths_taking_inp]
     
-    return [shuffled_channs_of_samples_per_path, shuffled_lbls_predicted_part_of_samples]
+    return (shuffled_channs_of_samples_per_path, shuffled_lbls_predicted_part_of_samples)
 
 
 # I must merge this with function: extractSegmentsGivenSliceCoords() that is used for Testing! Should be easy!
@@ -718,7 +717,7 @@ def extractSegmentGivenSliceCoords(train_or_val,
     channs_of_sample_per_path = [ np.array(pathw_channs, copy=True, dtype='float32') for pathw_channs in channs_of_sample_per_path  ]
     lbls_predicted_part_of_sample = np.copy(lbls_predicted_part_of_sample)
     
-    return [ channs_of_sample_per_path, lbls_predicted_part_of_sample ]
+    return (channs_of_sample_per_path, lbls_predicted_part_of_sample)
 
 
 
@@ -768,8 +767,8 @@ def getCoordsOfAllSegmentsOfAnImage(log,
                 if isinstance(roi_mask, (np.ndarray)) : #In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
                     if not np.any(roi_mask[rLowBoundary:rFarBoundary,
                                             cLowBoundary:cFarBoundary,
-                                            zLowBoundary:zFarBoundary
-                                            ]) : #all of it is out of the brain so skip it.
+                                            zLowBoundary:zFarBoundary]
+                                  ) : #all of it is out of the brain so skip it.
                         continue
                     
                 sliceCoordsOfSegmentsToReturn.append([ [rLowBoundary, rFarBoundary-1], [cLowBoundary, cFarBoundary-1], [zLowBoundary, zFarBoundary-1] ])
@@ -786,7 +785,7 @@ def getCoordsOfAllSegmentsOfAnImage(log,
     log.print3("Finished (tiling) extracting Segments from the images of the subject for Segmentation.")
     
     # sliceCoordsOfSegmentsToReturn: list with 3 dimensions. numberOfSegments x 3(rcz) x 2 (lower and upper limit of the segment, INCLUSIVE both sides)
-    return [sliceCoordsOfSegmentsToReturn]
+    return sliceCoordsOfSegmentsToReturn
 
 
 
@@ -827,7 +826,7 @@ def extractSegmentsGivenSliceCoords(cnn3d,
                                                                                             )
             channsForSegmentsPerPathToReturn[pathway_i].append(channsForThisSubsPathForThisSegm)
             
-    return [channsForSegmentsPerPathToReturn]
+    return channsForSegmentsPerPathToReturn
 
 
 

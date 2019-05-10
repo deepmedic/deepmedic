@@ -97,12 +97,12 @@ def inferenceWholeVolumes(  sessionTf,
         
         #load the image channels in cpu
         
-        [imageChannels,
+        (imageChannels,
         gtLabelsImage, #only for accurate/correct DICE1-2 calculation
         roiMask,
         arrayWithWeightMapsWhereToSampleForEachCategory, #only used in training. Placeholder here.
         tupleOfPaddingPerAxesLeftRight #( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
-        ] = load_imgs_of_subject(
+        ) = load_imgs_of_subject(
                     log,
                     None,
                     "test",
@@ -125,7 +125,7 @@ def inferenceWholeVolumes(  sessionTf,
             multidimensionalImageWithAllToBeVisualisedFmsArray =  np.zeros([totalNumberOfFMsToProcess] + niiDimensions, dtype = "float32")
             
         # Tile the image and get all slices of the segments that it fully breaks down to.
-        [sliceCoordsOfSegmentsInImage] = getCoordsOfAllSegmentsOfAnImage(log,
+        sliceCoordsOfSegmentsInImage = getCoordsOfAllSegmentsOfAnImage(log,
                                                     cnn3d.pathways[0].getShapeOfInput("test")[2:], # dimsOfPrimarySegment
                                                     strideOfImagePartsPerDimensionInVoxels,
                                                     batchsize,
@@ -151,10 +151,10 @@ def inferenceWholeVolumes(  sessionTf,
             start_extract_time = time.time()
             
             sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[ batch_i*batchsize : (batch_i+1)*batchsize ]
-            [channsOfSegmentsPerPath] = extractSegmentsGivenSliceCoords(cnn3d,
-                                                                        sliceCoordsOfSegmentsInBatch,
-                                                                        imageChannels,
-                                                                        recFieldCnn )
+            channsOfSegmentsPerPath = extractSegmentsGivenSliceCoords(cnn3d,
+                                                                      sliceCoordsOfSegmentsInBatch,
+                                                                      imageChannels,
+                                                                      recFieldCnn )
             end_extract_time = time.time()
             extractTimePerSubject += end_extract_time - start_extract_time
             
