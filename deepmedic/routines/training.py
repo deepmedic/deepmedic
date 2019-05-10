@@ -370,13 +370,13 @@ def do_training(sessionTf,
                                 batchsize = batchsize_val_whole,
                                 
                                 #----Preprocessing------
-                                pad_input_imgs=pad_input_imgs,
+                                pad_input_imgs = pad_input_imgs,
                                 
                                 #--------For FM visualisation---------
-                                saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
-                                saveMultidimensionalImageWithAllFms=saveMultidimensionalImageWithAllFms,
-                                indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                                namesForSavingFms=namesForSavingFms
+                                saveIndividualFmImagesForVisualisation = saveIndividualFmImagesForVisualisation,
+                                saveMultidimensionalImageWithAllFms = saveMultidimensionalImageWithAllFms,
+                                indicesOfFmsToVisualisePerPathwayTypeAndPerLayer = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                                namesForSavingFms = namesForSavingFms
                                 )
         end_time_train = time.time()
         log.print3("TIMING: Training process lasted: {0:.1f}".format(end_time_train-start_time_train)+" secs.")

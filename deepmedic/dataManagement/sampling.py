@@ -154,6 +154,7 @@ def getSampledDataAndLabelsForSubepoch( log,
                 worker_pool.terminate() # # Needed in case any processes are hunging. worker_pool.close() does not solve this.
                 worker_pool.join()
                
+        
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
     [channs_of_samples_per_path_for_subep,
     lbls_predicted_part_of_samples_for_subep ] = shuffleSegments(channs_of_samples_per_path_for_subep,
@@ -164,6 +165,8 @@ def getSampledDataAndLabelsForSubepoch( log,
     log.print3(id_str+" :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
     
     channs_of_samples_arr_per_path = [ np.asarray(channs_of_samples_for_path, dtype="float32") for channs_of_samples_for_path in channs_of_samples_per_path_for_subep ]
+    
+
     lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples_for_subep, dtype="int32") # Could be int16 to save RAM?
     
     return [channs_of_samples_arr_per_path,
@@ -293,7 +296,7 @@ def load_subj_and_get_samples(job_i,
                                                            weightmaps_to_sample_per_cat,
                                                            augm_img_prms)
     time_augm_1 = time.time()
-    log.print3(id_str+" Time spent augmenting at image level: ", time_augm_1 - time_augm_0 )
+    log.print3(id_str+" Time spent augmenting at image level: " + str(time_augm_1-time_augm_0) )
     
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
@@ -326,24 +329,24 @@ def load_subj_and_get_samples(job_i,
         for image_part_i in range(len(coords_of_samples[0][0])) :
             coord_center = coords_of_samples[0][:,image_part_i]
             
-            [channs_of_sample_per_path,
+            (channs_of_sample_per_path,
             lbls_predicted_part_of_sample # used to be gtLabelsForThisImagePart, before extracting only for the central voxels.
-            ] = extractSegmentGivenSliceCoords(train_or_val,
+            ) = extractSegmentGivenSliceCoords(train_or_val,
                                                cnn3d,
                                                coord_center,
                                                channels,
                                                gt_lbl_img)
             
             # Augmentation of segments
-            channs_of_sample_per_path,
-            lbls_predicted_part_of_sample = augment_patch(channs_of_sample_per_path,
-                                                          lbls_predicted_part_of_sample,
-                                                          augm_patch_prms)
+            (channs_of_sample_per_path,
+            lbls_predicted_part_of_sample) = augment_patch(channs_of_sample_per_path,
+                                                           lbls_predicted_part_of_sample,
+                                                           augm_patch_prms)
             
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
                 channs_of_samples_per_path[pathway_i].append( channs_of_sample_per_path[pathway_i] )
             lbls_predicted_part_of_samples.append( lbls_predicted_part_of_sample )
-    
+        
     log.print3(id_str + str_samples_per_cat)
     return (channs_of_samples_per_path, lbls_predicted_part_of_samples)
 

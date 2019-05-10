@@ -62,7 +62,7 @@ class TestSessionParameters(object) :
         self.filepathsToSaveFeaturesForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Preprocessing
-        self.padInputImagesBool = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
+        self.pad_input_imgs = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         
         #Others useful internally or for reporting:
         self.numberOfCases = len(self.channelsFilepaths)
@@ -132,8 +132,8 @@ class TestSessionParameters(object) :
         logPrint("Save Feature Maps at = " + str(self.filepathsToSaveFeaturesForEachPatient))
         
         logPrint("~~~~~~~ Parameters for Preprocessing ~~~~~~")
-        logPrint("Pad Input Images = " + str(self.padInputImagesBool))
-        if not self.padInputImagesBool :
+        logPrint("Pad Input Images = " + str(self.pad_input_imgs))
+        if not self.pad_input_imgs :
             logPrint(">>> WARN: Inference near the borders of the image might be incomplete if not padded! Although some speed is gained if not padded. Task-specific, your choice.")
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -154,7 +154,7 @@ class TestSessionParameters(object) :
                 # Hyper parameters
                 self.batchsize,
                 #----Preprocessing------
-                self.padInputImagesBool,
+                self.pad_input_imgs,
                 #--------For FM visualisation---------
                 self.saveIndividualFmImages,
                 self.saveMultidimensionalImageWithAllFms,
