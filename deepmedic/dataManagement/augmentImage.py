@@ -7,8 +7,10 @@
 
 from __future__ import absolute_import, print_function, division
 
+import collections
 import numpy as np
 import scipy.ndimage
+
 
 # Main function to call:
 def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
@@ -32,11 +34,7 @@ def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
 class AugmenterParams(object):
     # Parent class, for parameters of augmenters.
     def __init__(self):
-        self._prms = {}
-        
-    def __init__(self, prms):
-        self.__init__()
-        self.set_from_dict(prms)
+        self._prms = collections.OrderedDict()
         
     def __str__(self):
         return str(self._prms)
@@ -51,32 +49,33 @@ class AugmenterParams(object):
     def set_from_dict(self, prms):
         for key in prms.keys():
             self._prms[key] = prms[key]
+        return self # So that you can chain it with a call of constructor.
             
             
 def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     if prms is None:
         return channels, gt_lbls, roi_mask, wmaps_l
     
-    augm = AugmenterAffineDeformation( prob=prms['prob'],
-                                       max_rot_x=prms['max_rot_x'],
-                                       max_rot_y=prms['max_rot_y'],
-                                       max_rot_z=prms['max_rot_z'],
-                                       max_scaling=prms['max_scaling'],
-                                       seed=prms['seed'] )
+    augm = AugmenterAffineDeformation(prob = prms['prob'],
+                                      max_rot_x = prms['max_rot_x'],
+                                      max_rot_y = prms['max_rot_y'],
+                                      max_rot_z = prms['max_rot_z'],
+                                      max_scaling = prms['max_scaling'],
+                                      seed = prms['seed'])
     transf_mtx = augm.roll_dice_and_get_random_transformation()
     assert transf_mtx is not None
     
-    channels  = augm(transf_mtx = transf_mtx,
-                     images_l = channels,
+    channels  = augm(images_l = channels,
+                     transf_mtx = transf_mtx,
                      interp_orders = prms['interp_order_imgs'],
                      boundary_modes = prms['boundary_mode'])
     (gt_lbls,
-    roi_mask) = augm(transf_mtx = transf_mtx,
-                     images_l = [gt_lbls, roi_mask],
+    roi_mask) = augm(images_l = [gt_lbls, roi_mask],
+                     transf_mtx = transf_mtx,
                      interp_orders = [prms['interp_order_lbls'], prms['interp_order_roi']],
                      boundary_modes = prms['boundary_mode'])
-    wmaps_l   = augm(transf_mtx = transf_mtx,
-                     images_l = wmaps_per_cat,
+    wmaps_l   = augm(images_l = wmaps_l,
+                     transf_mtx = transf_mtx,
                      interp_orders = prms['interp_order_wmaps'],
                      boundary_modes = prms['boundary_mode'])
 
@@ -85,22 +84,21 @@ def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
 
 class AugmenterAffineDeformationParams(AugmenterParams):
     def __init__(self):
-        self._prms = { # For init.
-                       'prob': 0.5,
-                       'max_rot_x': 10.0,
-                       'max_rot_y': 10.0,
-                       'max_rot_z': 10.0,
-                       'max_scaling': .1,
-                       'seed': 64,
-                       # For calls.
-                       'interp_order_imgs': 1,
-                       'interp_order_lbls': 0,
-                       'interp_order_roi': 0,
-                       'interp_order_wmaps': 1,
-                       'boundary_mode': 'nearest',
-                       'cval': 0. }
-
-
+        self._prms = collections.OrderedDict([ ('prob', 0.5),
+                                               ('max_rot_x', 10.0),
+                                               ('max_rot_y', 10.0),
+                                               ('max_rot_z', 10.0),
+                                               ('max_scaling', .1),
+                                               ('seed', 64),
+                                               # For calls.
+                                               ('interp_order_imgs', 1),
+                                               ('interp_order_lbls', 0),
+                                               ('interp_order_roi', 0),
+                                               ('interp_order_wmaps', 1),
+                                               ('boundary_mode', 'nearest'),
+                                               ('cval', 0.) ])
+    def __str__(self):
+        return str(self._prms)
 
 class AugmenterAffineDeformation(object):
     def __init__(self, prob, max_rot_x, max_rot_y, max_rot_z, max_scaling, seed=64):
@@ -164,22 +162,23 @@ class AugmenterAffineDeformation(object):
                                                     cval=cval )
         return new_image
     
-    def __call__(self, transf_mtx, images_l, interp_orders, boundary_modes, cval=None):
+    def __call__(self, images_l, transf_mtx, interp_orders, boundary_modes, cval=0.):
+        # images_l : List of images, or an array where first dimension is over images (eg channels).
+        #            An image (element of the var) can be None, and it will be returned unchanged.
+        #            If images_l is None, then returns None.
         # transf_mtx: Given (from get_random_transformation), -1, or None.
         #             If -1, no augmentation/transformation will be done.
         #             If None, new random will be made.
-        # images_l : List of images, or an array, where first dimension is over images (eg channels).
-        #            An image (element of the var) can be None, and it will be returned unchanged.
         # intrp_orders : Int or List of integers. Orders of bsplines for interpolation, one per image in images_l.
         #                Suggested: 3 for images. 1 is like linear. 0 for masks/labels, like NN.
         # boundary_mode = String or list of strings. 'constant', 'min', 'nearest', 'mirror...
-        # cval: single float value. Value given to boundaries if mode is constant.
-
+        # cval: single float value. Value given to boundaries if mode is 'constant'.
+        if images_l is None:
+            return None
         if transf_mtx is None: # Get random transformation.
             transf_mtx = self.roll_dice_and_get_random_transformation()
-        if transf_mtx == -1: # Do not augment
+        if not isinstance(transf_mtx, np.ndarray) and transf_mtx == -1: # Do not augment
             return images_l
-        
         # If scalars/string was given, change it to list of scalars/strings, per image.
         if isinstance(interp_orders, int):
             interp_orders = [interp_orders] * len(images_l)
@@ -187,18 +186,16 @@ class AugmenterAffineDeformation(object):
             boundary_modes = [boundary_modes] * len(images_l)
         
         # Deform images.
-        new_images_l = []
-        for image, interp_order, boundary_mode in zip(images_l, interp_orders, boundary_modes):
-            if image is None:
-                new_images_l.append(image)
+        for img_i, int_order, b_mode in zip(range(len(images_l)), interp_orders, boundary_modes):
+            if images_l[img_i] is None:
+                pass # Dont do anything. Let it be None.
             else:
-                new_images_l.append( self._apply_transformation(image,
-                                                                transf_mtx,
-                                                                interp_order,
-                                                                boundary_mode,
-                                                                cval)
-                                    )
-        return new_images_l
+                images_l[img_i] = self._apply_transformation(images_l[img_i],
+                                                             transf_mtx,
+                                                             int_order,
+                                                             b_mode,
+                                                             cval)
+        return images_l
 
 
 

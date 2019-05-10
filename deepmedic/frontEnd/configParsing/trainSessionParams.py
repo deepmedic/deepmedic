@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt
 from deepmedic.dataManagement import samplingType
-
+from deepmedic.dataManagement.augmentImage import AugmenterAffineDeformationParams
 
 class TrainSessionParameters(object) :
     
@@ -150,7 +150,20 @@ class TrainSessionParameters(object) :
         
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
         # Image level
-        self.augm_img_prms_tr = {'affine': None} # If var is given None, no augm at all. 
+        self.augm_img_prms_tr = {'affine': None} # If var is None, no augm at all.
+        if True: #cfg[cfg.AUGM_PARAMS_IMG_TR] is not None:
+            self.augm_img_prms_tr['affine'] = AugmenterAffineDeformationParams().set_from_dict(
+                                                    {'prob': 0.5,
+                                                     'max_rot_x': 10.0,
+                                                     'max_rot_y': 10.0,
+                                                     'max_rot_z': 10.0,
+                                                     'max_scaling': .1,
+                                                     'seed': None,
+                                                     'interp_order_imgs': 3,
+                                                     'interp_order_lbls': 0,
+                                                     'interp_order_roi': 0,
+                                                     'interp_order_wmaps': 1})
+            
         # Patch/Segment level
         self.augm_patch_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
         if cfg[cfg.AUGM_PARAMS_TR] is not None:
@@ -389,6 +402,9 @@ class TrainSessionParameters(object) :
         logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
         
         logPrint("~~Data Augmentation During Training~~")
+        logPrint("Image level augmentation:")
+        logPrint("Parameters for image level augmentation: " + str(self.augm_img_prms_tr))
+        logPrint("Patch level augmentation:")
         logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_patch_prms_tr['hist_dist']))
         logPrint("Probabilities of reflecting each axis = " + str(self.augm_patch_prms_tr['reflect']))
         logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_patch_prms_tr['rotate90']))

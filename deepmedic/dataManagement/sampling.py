@@ -294,8 +294,7 @@ def load_subj_and_get_samples(job_i,
                                                            roi_mask,
                                                            weightmaps_to_sample_per_cat,
                                                            augm_img_prms)
-    time_augm_1 = time.time()
-    log.print3(id_str+" Time spent augmenting at image level: " + str(time_augm_1-time_augm_0) )
+    time_augm_img = time.time()-time_augm_0
     
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
@@ -346,7 +345,7 @@ def load_subj_and_get_samples(job_i,
                 channs_of_samples_per_path[pathway_i].append( channs_of_sample_per_path[pathway_i] )
             lbls_predicted_part_of_samples.append( lbls_predicted_part_of_sample )
         
-    log.print3(id_str + str_samples_per_cat)
+    log.print3(id_str + str_samples_per_cat + ". Seconds augmenting [Image: {0:.1f}".format(time_augm_img)+"]")
     return (channs_of_samples_per_path, lbls_predicted_part_of_samples)
 
 
@@ -370,12 +369,12 @@ def load_imgs_of_subject(log,
                          ):
     # paths_per_chan_per_subj: List of lists. One sublist per case. Each should contain...
     # ... as many elements(strings-filenamePaths) as numberOfChannels, pointing to (nii) channels of this case.
-    id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"] " if job_i is not None else "" # is None in testing.
+    id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"]" if job_i is not None else "" # is None in testing.
     
     if subj_i >= len(paths_per_chan_per_subj) :
         raise ValueError(id_str+" The argument 'subj_i' given is greater than the filenames given for the .nii folders!")
     
-    log.print3(id_str+"Loading subject with 1st channel at: "+str(paths_per_chan_per_subj[subj_i][0]))
+    log.print3(id_str+" Loading subject with 1st channel at: "+str(paths_per_chan_per_subj[subj_i][0]))
     
     numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
 
