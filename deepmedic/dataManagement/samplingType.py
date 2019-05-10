@@ -34,13 +34,13 @@ class SamplingType(object) :
             self.log.print3("ERROR: In class [SamplingType], the list percentageOfSamplesPerCategoryOfSampling had [" + str(len(percentageOfSamplesPerCategoryOfSampling)) + "] elements. In this case of [" + self.stringOfSamplingType + "], it should have [" + str(self.getNumberOfCategoriesToSample()) + "]! Exiting!"); exit(1)
             
         if self.samplingType == 0 :
-            self.percentOfSamplesPerCategoryToSample = self.normalizePercentages(percentageOfSamplesPerCategoryOfSampling)
+            self.percentPerCategoryToSample = self.normalizePercentages(percentageOfSamplesPerCategoryOfSampling)
         elif self.samplingType == 1 :
-            self.percentOfSamplesPerCategoryToSample = [1.0]
+            self.percentPerCategoryToSample = [1.0]
         elif self.samplingType == 2 :
-            self.percentOfSamplesPerCategoryToSample = [1.0]
+            self.percentPerCategoryToSample = [1.0]
         elif self.samplingType == 3 :
-            self.percentOfSamplesPerCategoryToSample = self.normalizePercentages(percentageOfSamplesPerCategoryOfSampling)
+            self.percentPerCategoryToSample = self.normalizePercentages(percentageOfSamplesPerCategoryOfSampling)
         else :
             self.log.print3("ERROR: in [SamplingType]. self.samplingType was invalid. Should be [0,1,2,3]. Exiting!"); exit(1)
             
@@ -54,8 +54,8 @@ class SamplingType(object) :
         return self.stringOfSamplingType
     def getStringsPerCategoryToSample(self) :
         return self.arrayWithStringPerCategoryToSample
-    def getPercentOfSamplesPerCategoryToSample(self) :
-        return self.percentOfSamplesPerCategoryToSample
+    def getPercentPerCategoryToSample(self) :
+        return self.percentPerCategoryToSample
     def getNumberOfCategoriesToSample(self) :
         return len(self.arrayWithStringPerCategoryToSample)
     

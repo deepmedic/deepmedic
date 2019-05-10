@@ -151,9 +151,10 @@ def do_training(sessionTf,
                 batchsize_val_whole,
                 
                 #-------Preprocessing-----------
-                padInputImagesBool,
+                pad_input_imgs,
                 #-------Data Augmentation-------
-                augm_params,
+                augm_img_prms,
+                augm_patch_prms,
                 
                 # Validation
                 val_on_whole_volumes,
@@ -188,8 +189,9 @@ def do_training(sessionTf,
                                 listOfFilepathsToGtLabelsOfEachPatientTraining,
                                 listOfFilepathsToRoiMaskOfEachPatientTraining,
                                 paths_to_wmaps_per_sampl_cat_per_subj_train,
-                                padInputImagesBool,
-                                augm_params )
+                                pad_input_imgs,
+                                augm_img_prms,
+                                augm_patch_prms )
     args_for_sampling_val = (   log,
                                 "val",
                                 num_parallel_proc_sampling,
@@ -202,8 +204,9 @@ def do_training(sessionTf,
                                 listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
                                 listOfFilepathsToRoiMaskOfEachPatientValidation,
                                 paths_to_wmaps_per_sampl_cat_per_subj_val,
-                                padInputImagesBool,
-                                None ) # no augmentation in validation.
+                                pad_input_imgs,
+                                None, # no augmentation in val.
+                                None ) # no augmentation in val.
     
     sampling_job_submitted_train = False
     sampling_job_submitted_val = False
@@ -367,7 +370,7 @@ def do_training(sessionTf,
                                 batchsize = batchsize_val_whole,
                                 
                                 #----Preprocessing------
-                                padInputImagesBool=padInputImagesBool,
+                                pad_input_imgs=pad_input_imgs,
                                 
                                 #--------For FM visualisation---------
                                 saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,

@@ -149,10 +149,13 @@ class TrainSessionParameters(object) :
             self.errReqPredLrSch()
         
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
-        self.augm_params_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
+        # Image level
+        self.augm_img_prms_tr = {'affine': None} # If var is given None, no augm at all. 
+        # Patch/Segment level
+        self.augm_patch_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
         if cfg[cfg.AUGM_PARAMS_TR] is not None:
             for key in cfg[cfg.AUGM_PARAMS_TR]:
-                self.augm_params_tr[key] = cfg[cfg.AUGM_PARAMS_TR][key] # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
+                self.augm_patch_prms_tr[key] = cfg[cfg.AUGM_PARAMS_TR][key] # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
         
         #===================VALIDATION========================
         self.val_on_samples_during_train = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
@@ -231,7 +234,7 @@ class TrainSessionParameters(object) :
             
         #===================== OTHERS======================
         #Preprocessing
-        self.padInputImagesBool = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
+        self.pad_input_imgs = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         
         #Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
@@ -308,9 +311,9 @@ class TrainSessionParameters(object) :
     def _backwards_compat_with_deprecated_cfg(self, cfg):
         # Augmentation
         if cfg[cfg.REFL_AUGM_PER_AXIS] is not None:
-            self.augm_params_tr['reflect'] = [ 0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS] ]
+            self.augm_patch_prms_tr['reflect'] = [ 0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS] ]
         if cfg[cfg.PERF_INT_AUGM_BOOL] == True:
-            self.augm_params_tr['hist_dist'] = {'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
+            self.augm_patch_prms_tr['hist_dist'] = {'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
                                                 'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]} }
     
     def _makeFilepathsForPredictionsAndFeaturesVal( self,
@@ -386,9 +389,9 @@ class TrainSessionParameters(object) :
         logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
         
         logPrint("~~Data Augmentation During Training~~")
-        logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_params_tr['hist_dist']))
-        logPrint("Probabilities of reflecting each axis = " + str(self.augm_params_tr['reflect']))
-        logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_params_tr['rotate90']))
+        logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_patch_prms_tr['hist_dist']))
+        logPrint("Probabilities of reflecting each axis = " + str(self.augm_patch_prms_tr['reflect']))
+        logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_patch_prms_tr['rotate90']))
         
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
@@ -443,7 +446,7 @@ class TrainSessionParameters(object) :
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
-        logPrint("Pad Input Images = " + str(self.padInputImagesBool))
+        logPrint("Pad Input Images = " + str(self.pad_input_imgs))
         
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -486,9 +489,10 @@ class TrainSessionParameters(object) :
                 self.batchsize_val_whole,
                 
                 #-------Preprocessing-----------
-                self.padInputImagesBool,
+                self.pad_input_imgs,
                 #-------Data Augmentation-------
-                self.augm_params_tr,
+                self.augm_img_prms_tr,
+                self.augm_patch_prms_tr,
                  
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,

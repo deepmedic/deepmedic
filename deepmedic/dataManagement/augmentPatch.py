@@ -9,38 +9,38 @@ from __future__ import absolute_import, print_function, division
 
 import numpy as np
 
-def augment_patch(channels, gt_lbls, params):
+def augment_patch(channels, gt_lbls, prms):
     # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
     # gt_lbls: np array of shape [x,y,z]
-    # params: None or Dictionary, with params of each augmentation type. }
-    if params is not None:
-        channels = random_histogram_distortion(channels, params['hist_dist'])
-        channels, gt_lbls = random_flip(channels, gt_lbls, params['reflect'])
-        channels, gt_lbls = random_rotation_90(channels, gt_lbls, params['rotate90'])
+    # prms: None or Dictionary, with parameters of each augmentation type. }
+    if prms is not None:
+        channels = random_histogram_distortion(channels, prms['hist_dist'])
+        channels, gt_lbls = random_flip(channels, gt_lbls, prms['reflect'])
+        channels, gt_lbls = random_rotation_90(channels, gt_lbls, prms['rotate90'])
         
     return channels, gt_lbls
 
-def random_histogram_distortion(channels, params):
+def random_histogram_distortion(channels, prms):
     # Shift and scale the histogram of each channel.
     # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # params: { 'shift': {'mu': 0.0, 'std':0.}, 'scale':{'mu': 1.0, 'std': '0.'} }
-    if params is None:
+    # prms: { 'shift': {'mu': 0.0, 'std':0.}, 'scale':{'mu': 1.0, 'std': '0.'} }
+    if prms is None:
         return channels
     
     n_channs = channels[0].shape[0]
-    if params['shift'] is None:
+    if prms['shift'] is None:
         shift_per_chan = 0.
-    elif params['shift']['std'] != 0: # np.random.normal does not work for an std==0.
-        shift_per_chan = np.random.normal( params['shift']['mu'], params['shift']['std'], [n_channs, 1, 1, 1])
+    elif prms['shift']['std'] != 0: # np.random.normal does not work for an std==0.
+        shift_per_chan = np.random.normal( prms['shift']['mu'], prms['shift']['std'], [n_channs, 1, 1, 1])
     else:
-        shift_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * params['shift']['mu']
+        shift_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * prms['shift']['mu']
     
-    if params['scale'] is None:
+    if prms['scale'] is None:
         scale_per_chan = 1.
-    elif params['scale']['std'] != 0:
-        scale_per_chan = np.random.normal(params['scale']['mu'], params['scale']['std'], [n_channs, 1, 1, 1])
+    elif prms['scale']['std'] != 0:
+        scale_per_chan = np.random.normal(prms['scale']['mu'], prms['scale']['std'], [n_channs, 1, 1, 1])
     else:
-        scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * params['scale']['mu']
+        scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * prms['scale']['mu']
     
     # Intensity augmentation
     for path_idx in range(len(channels)):
@@ -101,19 +101,3 @@ def random_rotation_90(channels, gt_lbls, probs_rot_90=None):
         
     return channels, gt_lbls
 
-
-# DON'T use on patches. Only on images. Cause I ll need to find min and max intensities, to move to range [0,1]
-def random_gamma_correction(channels, gamma_std=0.05):
-    # Gamma correction: I' = I^gamma
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # IMPORTANT: Does not work if intensities go to negatives.
-    if gamma_std is None or gamma_std == 0.:
-        return channels
-    
-    n_channs = channels[0].shape[0]
-    gamma = np.random.normal(1, gamma_std, [n_channs,1,1,1])
-    for path_idx in range(len(channels)):
-        assert np.min(channels[path_idx]) >= 0.
-        channels[path_idx] = np.power(channels[path_idx], 1.5, dtype='float32')
-        
-    return channels
