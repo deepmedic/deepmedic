@@ -29,6 +29,30 @@ def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
     return channels, gt_lbls, roi_mask, wmaps_per_cat
 
 
+class AugmenterParams(object):
+    # Parent class, for parameters of augmenters.
+    def __init__(self):
+        self._prms = {}
+        
+    def __init__(self, prms):
+        self.__init__()
+        self.set_from_dict(prms)
+        
+    def __str__(self):
+        return str(self._prms)
+    
+    def __getitem__(self, key): # overriding the [] operator.
+        # key: string.
+        return self._prms[key] if key in self._prms else None
+    
+    def __setitem__(self, key, item): # For instance[key] = item assignment
+        self._prms[key] = item
+        
+    def set_from_dict(self, prms):
+        for key in prms.keys():
+            self._prms[key] = prms[key]
+            
+            
 def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     augm = AugmenterAffineDeformation( prob=prms['prob'],
                                        max_rot_x=prms['max_rot_x'],
@@ -55,6 +79,7 @@ def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
 
     return channels, gt_lbls, roi_mask, wmaps_l
 
+
 class AugmenterAffineDeformationParams(AugmenterParams):
     def __init__(self):
         self._prms = { # For init.
@@ -71,6 +96,7 @@ class AugmenterAffineDeformationParams(AugmenterParams):
                        'interp_order_wmaps': 1,
                        'boundary_mode': 'nearest',
                        'cval': 0. }
+
 
 
 class AugmenterAffineDeformation(object):
@@ -170,32 +196,6 @@ class AugmenterAffineDeformation(object):
                                                                 cval)
                                     )
         return new_images_l
-
-
-class AugmenterParams(object):
-    # Parent class, for parameters of augmenters.
-    def __init__(self):
-        self._prms = {}
-        
-    def __init__(self, prms):
-        self.__init__()
-        self.set_from_dict(prms)
-        
-    def __str__(self):
-        return str(self._prms)
-    
-    def __getitem__(self, key): # overriding the [] operator.
-        # key: string.
-        return self._prms[key] if key in self._prms else None
-    
-    def __setitem__(self, key, item): # For instance[key] = item assignment
-        self._prms[key] = item
-        
-    def set_from_dict(self, prms):
-        for key in prms.keys():
-            self._prms[key] = prms[key]
-
-
 
 
 
