@@ -18,14 +18,14 @@ def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
     # wmaps_per_cat: List of np.arrays (floats or ints), weightmaps for sampling. Can be None.
     # prms: None (for no augmentation) or Dictionary with parameters of each augmentation type. }
     if prms is not None:
-        channels,
+        (channels,
         gt_lbls,
         roi_mask,
-        wmaps_per_cat = random_affine_deformation(channels,
-                                                  gt_lbls,
-                                                  roi_mask,
-                                                  wmaps_per_cat,
-                                                  prms['affine'])
+        wmaps_per_cat) = random_affine_deformation( channels,
+                                                    gt_lbls,
+                                                    roi_mask,
+                                                    wmaps_per_cat,
+                                                    prms['affine'] )
     return channels, gt_lbls, roi_mask, wmaps_per_cat
 
 
@@ -54,6 +54,9 @@ class AugmenterParams(object):
             
             
 def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
+    if prms is None:
+        return channels, gt_lbls, roi_mask, wmaps_l
+    
     augm = AugmenterAffineDeformation( prob=prms['prob'],
                                        max_rot_x=prms['max_rot_x'],
                                        max_rot_y=prms['max_rot_y'],

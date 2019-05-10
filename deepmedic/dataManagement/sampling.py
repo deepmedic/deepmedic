@@ -283,7 +283,7 @@ def load_subj_and_get_samples(job_i,
                              pad_input_imgs,
                              cnn3d.recFieldCnn, # used if pad_input_imgs
                              dims_highres_segment) # used if pad_input_imgs.
-    """
+    
     # Augment at image level:
     time_augm_0 = time.time()
     (channels,
@@ -296,7 +296,7 @@ def load_subj_and_get_samples(job_i,
                                                            augm_img_prms)
     time_augm_1 = time.time()
     log.print3(id_str+" Time spent augmenting at image level: " + str(time_augm_1-time_augm_0) )
-    """
+    
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
     sampling_maps_per_cat = sampling_type.logicDecidingSamplingMapsPerCategory(
