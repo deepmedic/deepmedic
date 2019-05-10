@@ -403,7 +403,9 @@ class TrainSessionParameters(object) :
         
         logPrint("~~Data Augmentation During Training~~")
         logPrint("Image level augmentation:")
-        logPrint("Parameters for image level augmentation: " + str(self.augm_img_prms_tr))
+        logPrint("Parameters for image-level augmentation: " + str(self.augm_img_prms_tr))
+        if self.augm_img_prms_tr is not None:
+            logPrint("\t affine: " + str(self.augm_img_prms_tr['affine']))
         logPrint("Patch level augmentation:")
         logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_patch_prms_tr['hist_dist']))
         logPrint("Probabilities of reflecting each axis = " + str(self.augm_patch_prms_tr['reflect']))
