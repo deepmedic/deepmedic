@@ -56,12 +56,10 @@ def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     if prms is None:
         return channels, gt_lbls, roi_mask, wmaps_l
     
-    augm = AugmenterAffineDeformation(prob = prms['prob'],
-                                      max_rot_x = prms['max_rot_x'],
-                                      max_rot_y = prms['max_rot_y'],
-                                      max_rot_z = prms['max_rot_z'],
-                                      max_scaling = prms['max_scaling'],
-                                      seed = prms['seed'])
+    augm = AugmenterAffine(prob = prms['prob'],
+                           max_rot_xyz = prms['max_rot_xyz'],
+                           max_scaling = prms['max_scaling'],
+                           seed = prms['seed'])
     transf_mtx = augm.roll_dice_and_get_random_transformation()
     assert transf_mtx is not None
     
@@ -82,14 +80,12 @@ def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     return channels, gt_lbls, roi_mask, wmaps_l
 
 
-class AugmenterAffineDeformationParams(AugmenterParams):
+class AugmenterAffineParams(AugmenterParams):
     def __init__(self):
         self._prms = collections.OrderedDict([ ('prob', 0.5),
-                                               ('max_rot_x', 10.0),
-                                               ('max_rot_y', 10.0),
-                                               ('max_rot_z', 10.0),
+                                               ('max_rot_xyz', (10., 10., 10.)),
                                                ('max_scaling', .1),
-                                               ('seed', 64),
+                                               ('seed', None),
                                                # For calls.
                                                ('interp_order_imgs', 1),
                                                ('interp_order_lbls', 0),
@@ -100,12 +96,10 @@ class AugmenterAffineDeformationParams(AugmenterParams):
     def __str__(self):
         return str(self._prms)
 
-class AugmenterAffineDeformation(object):
-    def __init__(self, prob, max_rot_x, max_rot_y, max_rot_z, max_scaling, seed=64):
+class AugmenterAffine(object):
+    def __init__(self, prob, max_rot_xyz, max_scaling, seed=None):
         self.prob = prob # Probability of applying the transformation.
-        self.max_rot_x = max_rot_x
-        self.max_rot_y = max_rot_y
-        self.max_rot_z = max_rot_z
+        self.max_rot_xyz = max_rot_xyz
         self.max_scaling = max_scaling
         self.rng = np.random.RandomState(seed)
 
@@ -116,17 +110,17 @@ class AugmenterAffineDeformation(object):
             return self._get_random_transformation() #transformation for augmentation
         
     def _get_random_transformation(self):
-        theta_x = self.rng.uniform(-self.max_rot_x, self.max_rot_x) * np.pi / 180.
+        theta_x = self.rng.uniform(-self.max_rot_xyz[0], self.max_rot_xyz[0]) * np.pi / 180.
         rot_x = np.array([ [np.cos(theta_x), -np.sin(theta_x), 0.],
                            [np.sin(theta_x), np.cos(theta_x), 0.],
                            [0., 0., 1.]])
         
-        theta_y = self.rng.uniform(-self.max_rot_y, self.max_rot_y) * np.pi / 180.
+        theta_y = self.rng.uniform(-self.max_rot_xyz[1], self.max_rot_xyz[1]) * np.pi / 180.
         rot_y = np.array([ [np.cos(theta_y), 0., np.sin(theta_y)],
                            [0., 1., 0.],
                            [-np.sin(theta_y), 0., np.cos(theta_y)]])
         
-        theta_z = self.rng.uniform(-self.max_rot_z, self.max_rot_z) * np.pi / 180.
+        theta_z = self.rng.uniform(-self.max_rot_xyz[2], self.max_rot_xyz[2]) * np.pi / 180.
         rot_z = np.array([ [1., 0., 0.],
                            [0., np.cos(theta_z), -np.sin(theta_z)],
                            [0., np.sin(theta_z), np.cos(theta_z)]])

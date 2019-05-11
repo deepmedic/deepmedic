@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 import numpy as np
 
-def augment_patch(channels, gt_lbls, prms):
+def augment_sample(channels, gt_lbls, prms):
     # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
     # gt_lbls: np array of shape [x,y,z]
     # prms: None or Dictionary, with parameters of each augmentation type. }

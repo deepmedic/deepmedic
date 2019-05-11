@@ -154,7 +154,7 @@ def do_training(sessionTf,
                 pad_input_imgs,
                 #-------Data Augmentation-------
                 augm_img_prms,
-                augm_patch_prms,
+                augm_sample_prms,
                 
                 # Validation
                 val_on_whole_volumes,
@@ -191,7 +191,7 @@ def do_training(sessionTf,
                                 paths_to_wmaps_per_sampl_cat_per_subj_train,
                                 pad_input_imgs,
                                 augm_img_prms,
-                                augm_patch_prms )
+                                augm_sample_prms )
     args_for_sampling_val = (   log,
                                 "val",
                                 num_parallel_proc_sampling,

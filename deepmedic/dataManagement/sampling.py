@@ -21,7 +21,7 @@ import collections
 from deepmedic.dataManagement.io import loadVolume
 from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
-from deepmedic.dataManagement.augmentPatch import augment_patch
+from deepmedic.dataManagement.augmentSample import augment_sample
 from deepmedic.dataManagement.augmentImage import augment_images_of_case
 # Order of calls:
 # getSampledDataAndLabelsForSubepoch
@@ -52,7 +52,7 @@ def getSampledDataAndLabelsForSubepoch( log,
                                         # Preprocessing & Augmentation
                                         pad_input_imgs,
                                         augm_img_prms,
-                                        augm_patch_prms
+                                        augm_sample_prms
                                         ):
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -93,7 +93,7 @@ def getSampledDataAndLabelsForSubepoch( log,
                         # Pre-processing:
                         pad_input_imgs,
                         augm_img_prms,
-                        augm_patch_prms,
+                        augm_sample_prms,
                         
                         n_subjects_for_subep,
                         inds_of_subjects_for_subep,
@@ -245,7 +245,7 @@ def load_subj_and_get_samples(job_i,
                               # Pre-processing:
                               pad_input_imgs,
                               augm_img_prms,
-                              augm_patch_prms,
+                              augm_sample_prms,
                               
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
@@ -337,9 +337,9 @@ def load_subj_and_get_samples(job_i,
             
             # Augmentation of segments
             (channs_of_sample_per_path,
-            lbls_predicted_part_of_sample) = augment_patch(channs_of_sample_per_path,
-                                                           lbls_predicted_part_of_sample,
-                                                           augm_patch_prms)
+            lbls_predicted_part_of_sample) = augment_sample(channs_of_sample_per_path,
+                                                            lbls_predicted_part_of_sample,
+                                                            augm_sample_prms)
             
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
                 channs_of_samples_per_path[pathway_i].append( channs_of_sample_per_path[pathway_i] )

@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt
 from deepmedic.dataManagement import samplingType
-from deepmedic.dataManagement.augmentImage import AugmenterAffineDeformationParams
+from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
 
 class TrainSessionParameters(object) :
     
@@ -151,24 +151,14 @@ class TrainSessionParameters(object) :
         #~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
         # Image level
         self.augm_img_prms_tr = {'affine': None} # If var is None, no augm at all.
-        if True: #cfg[cfg.AUGM_PARAMS_IMG_TR] is not None:
-            self.augm_img_prms_tr['affine'] = AugmenterAffineDeformationParams().set_from_dict(
-                                                    {'prob': 0.5,
-                                                     'max_rot_x': 10.0,
-                                                     'max_rot_y': 10.0,
-                                                     'max_rot_z': 10.0,
-                                                     'max_scaling': .1,
-                                                     'seed': None,
-                                                     'interp_order_imgs': 3,
-                                                     'interp_order_lbls': 0,
-                                                     'interp_order_roi': 0,
-                                                     'interp_order_wmaps': 1})
+        if cfg[cfg.AUGM_IMG_PRMS_TR] is not None:
+            self.augm_img_prms_tr['affine'] = AugmenterAffineParams().set_from_dict(cfg[cfg.AUGM_IMG_PRMS_TR])
             
         # Patch/Segment level
-        self.augm_patch_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
-        if cfg[cfg.AUGM_PARAMS_TR] is not None:
-            for key in cfg[cfg.AUGM_PARAMS_TR]:
-                self.augm_patch_prms_tr[key] = cfg[cfg.AUGM_PARAMS_TR][key] # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
+        self.augm_sample_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
+        if cfg[cfg.AUGM_SAMPLE_PRMS_TR] is not None:
+            for key in cfg[cfg.AUGM_SAMPLE_PRMS_TR]:
+                self.augm_sample_prms_tr[key] = cfg[cfg.AUGM_SAMPLE_PRMS_TR][key] # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
         
         #===================VALIDATION========================
         self.val_on_samples_during_train = cfg[cfg.PERFORM_VAL_SAMPLES] if cfg[cfg.PERFORM_VAL_SAMPLES] is not None else False
@@ -324,10 +314,12 @@ class TrainSessionParameters(object) :
     def _backwards_compat_with_deprecated_cfg(self, cfg):
         # Augmentation
         if cfg[cfg.REFL_AUGM_PER_AXIS] is not None:
-            self.augm_patch_prms_tr['reflect'] = [ 0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS] ]
+            self.augm_sample_prms_tr['reflect'] = [ 0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS] ]
         if cfg[cfg.PERF_INT_AUGM_BOOL] == True:
-            self.augm_patch_prms_tr['hist_dist'] = {'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
+            self.augm_sample_prms_tr['hist_dist'] = {'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
                                                 'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]} }
+        if cfg[cfg.OLD_AUGM_SAMPLE_PRMS_TR] is not None:
+            logPrint("ERROR: In training's config, variable \'augm_params_tr\' is deprecated. Replace it with \'augm_sample_prms_tr\'.")
     
     def _makeFilepathsForPredictionsAndFeaturesVal( self,
                                                     absPathToFolderForPredictionsFromSession,
@@ -407,9 +399,9 @@ class TrainSessionParameters(object) :
         if self.augm_img_prms_tr is not None:
             logPrint("\t affine: " + str(self.augm_img_prms_tr['affine']))
         logPrint("Patch level augmentation:")
-        logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_patch_prms_tr['hist_dist']))
-        logPrint("Probabilities of reflecting each axis = " + str(self.augm_patch_prms_tr['reflect']))
-        logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_patch_prms_tr['rotate90']))
+        logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_sample_prms_tr['hist_dist']))
+        logPrint("Probabilities of reflecting each axis = " + str(self.augm_sample_prms_tr['reflect']))
+        logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_sample_prms_tr['rotate90']))
         
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
@@ -510,7 +502,7 @@ class TrainSessionParameters(object) :
                 self.pad_input_imgs,
                 #-------Data Augmentation-------
                 self.augm_img_prms_tr,
-                self.augm_patch_prms_tr,
+                self.augm_sample_prms_tr,
                  
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,
