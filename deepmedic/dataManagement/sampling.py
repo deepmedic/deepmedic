@@ -132,7 +132,7 @@ def getSampledDataAndLabelsForSubepoch( log,
                 for job_i in list(jobs_inds_to_do): # copy with list(...), so that this loops normally even if something is removed from list.
                     try:
                         (channelsOfSegmentsFromThisSubjPerPathway,
-                        lblsOfPredictedPartOfSegmentsFromThisSubj) = jobs[job_i].get(timeout=10) # timeout in case process for some reason never started (happens in py3)
+                        lblsOfPredictedPartOfSegmentsFromThisSubj) = jobs[job_i].get(timeout=20) # timeout in case process for some reason never started (happens in py3)
                         for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()) :
                             channelsOfSegmentsForSubepochListPerPathway[pathway_i] += channelsOfSegmentsFromThisSubjPerPathway[pathway_i] # concat does not copy.
                         lblsForPredictedPartOfSegmentsForSubepochList += lblsOfPredictedPartOfSegmentsFromThisSubj # concat does not copy.
