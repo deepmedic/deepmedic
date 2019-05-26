@@ -26,7 +26,7 @@ from deepmedic.dataManagement.augmentImage import augment_images_of_case
 # Order of calls:
 # getSampledDataAndLabelsForSubepoch
 #    get_random_subjects_to_train_subep
-#    get_num_samples_per_cat_per_subj
+#    get_n_samples_per_subj_in_subep
 #    load_subj_and_get_samples
 #        load_imgs_of_subject
 #        sample_coords_of_segments
@@ -76,10 +76,8 @@ def getSampledDataAndLabelsForSubepoch( log,
     lbls_predicted_part_of_samples_for_subep = [] # Labels only for the central/predicted part of segments.
     n_subjects_for_subep = len(inds_of_subjects_for_subep) #Can be different than max_n_cases_per_subep, cause of available images number.
     
-    # This is to separate each sampling category (fore/background, uniform, full-image, weighted-classes)
-    n_samples_per_cat_per_subj = get_num_samples_per_cat_per_subj(n_samples_per_subep,
-                                                                  sampling_type.getPercentPerCategoryToSample(),
-                                                                  n_subjects_for_subep )
+    # Get how many samples I should get from each subject.
+    n_samples_per_subj = get_n_samples_per_subj_in_subep( n_samples_per_subep, n_subjects_for_subep )
     
     args_sampling_job = [log,
                         train_or_val,
@@ -97,7 +95,7 @@ def getSampledDataAndLabelsForSubepoch( log,
                         
                         n_subjects_for_subep,
                         inds_of_subjects_for_subep,
-                        n_samples_per_cat_per_subj ]
+                        n_samples_per_subj ]
     
     log.print3(id_str+" Will sample from [" + str(n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
     
@@ -203,34 +201,15 @@ def get_random_subjects_to_train_subep( total_number_of_subjects,
     return random_order_chosen_subjects
 
 
-
-def get_num_samples_per_cat_per_subj(n_samples_per_subep,
-                                     perc_samples_per_cat,
-                                     n_subjects_for_subep ) :
-    # perc_samples_per_cat: list with a percentage for each type of category to sample.
-    
-    # First, distribute n_samples_per_subep to the categories:
-    n_sampl_categs = len(perc_samples_per_cat)
-    n_samples_per_cat = np.zeros( n_sampl_categs, dtype="int32" )
-    for cat_i in range(n_sampl_categs) :
-        n_samples_per_cat[cat_i] += int(n_samples_per_subep * perc_samples_per_cat[cat_i])
-    # Distribute samples that were left if perc dont exactly add to 1.
-    n_undistributed_samples = n_samples_per_subep - np.sum(n_samples_per_cat)
-    cats_to_distribute_samples = np.random.choice(n_sampl_categs, size=n_undistributed_samples, replace=True, p=perc_samples_per_cat)
-    for cat_i in cats_to_distribute_samples :
-        n_samples_per_cat[cat_i] += 1
-    
+def get_n_samples_per_subj_in_subep(n_samples, n_subjects):
     # Distribute samples of each cat to subjects.
-    n_samples_per_cat_per_subj = np.zeros( [ n_sampl_categs, n_subjects_for_subep ] , dtype="int32" )
-    for cat_i in range(n_sampl_categs) :
-        n_samples_per_cat_per_subj[cat_i] += n_samples_per_cat[cat_i] // n_subjects_for_subep
-        n_undistributed_samples_in_cat = n_samples_per_cat[cat_i] % n_subjects_for_subep
-        for idx in range(n_undistributed_samples_in_cat):
-            n_samples_per_cat_per_subj[cat_i, random.randint(0, n_subjects_for_subep - 1)] += 1
-            
-    return n_samples_per_cat_per_subj
-    
-    
+    n_samples_per_subj = np.ones([n_subjects] , dtype="int32") * (n_samples // n_subjects)
+    n_undistributed_samples = n_samples % n_subjects
+    # Distribute samples that were left by inexact division.
+    for idx in range(n_undistributed_samples):
+        n_samples_per_subj[random.randint(0, n_subjects - 1)] += 1
+    return n_samples_per_subj
+
     
 def load_subj_and_get_samples(job_i,
                               log,
@@ -249,7 +228,7 @@ def load_subj_and_get_samples(job_i,
                               
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
-                              n_samples_per_cat_per_subj
+                              n_samples_per_subj
                               ):
     # paths_per_chan_per_subj: [ [ for channel-0 [ one path per subj ] ], ..., [ for channel-n  [ one path per subj ] ] ]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
@@ -303,16 +282,19 @@ def load_subj_and_get_samples(job_i,
                                                 gt_lbl_img,
                                                 roi_mask,
                                                 dims_of_scan)
+    
+    # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
+    (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_i], sampling_maps_per_cat)
+    
     str_samples_per_cat = " Got samples per category: "
     for cat_i in range( sampling_type.getNumberOfCategoriesToSample() ) :
         cat_string = sampling_type.getStringsPerCategoryToSample()[cat_i]
-        n_samples_for_cat = n_samples_per_cat_per_subj[cat_i][job_i]
+        n_samples_for_cat = n_samples_per_cat[cat_i]
         sampling_map = sampling_maps_per_cat[cat_i]
-        
-        # Check if the weight map is fully-zeros. In this case, don't call the sampling function, just continue.
-        # Note that this way, the data loaded on GPU will not be as much as I initially wanted. Thus calculate number-of-batches from this actual number of extracted segments.
-        if np.sum(sampling_map>0) == 0 :
-            log.print3(id_str+" WARN: Sampling mask/map was found just zeros! No [" + cat_string + "] samples for this subject!")
+        # Check if the class is valid for sampling. Invalid if eg there is no such class in the subject's manual segmentation.
+        if not valid_cats[cat_i] :
+            log.print3(id_str+" WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string + "] samples from this subject!")
+            assert n_samples_for_cat == 0
             continue
         
         coords_of_samples = sample_coords_of_segments(log,
@@ -433,6 +415,7 @@ def load_imgs_of_subject(log,
             filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
+            assert np.all(weightedMapForThisCatData >= 0)
             
             (weightedMapForThisCatData, pad_added_prepost_each_axis) = padCnnInputs(weightedMapForThisCatData, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [weightedMapForThisCatData, pad_added_prepost_each_axis]
             
@@ -465,7 +448,7 @@ def sample_coords_of_segments(  log,
     id_str = "[JOB:"+str(job_i)+"|PID:"+str(os.getpid())+"]"
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called. Which is still fine.
-    if np.sum(weightMapToSampleFrom>0) == 0 :
+    if np.sum(weightMapToSampleFrom) == 0 :
         log.print3(id_str+" WARN: The sampling mask/map was found just zeros! No image parts were sampled for this subject!")
         return [ [[],[],[]], [[],[],[]] ]
     
