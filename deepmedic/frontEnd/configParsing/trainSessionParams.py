@@ -152,7 +152,7 @@ class TrainSessionParameters(object) :
         # Image level
         self.augm_img_prms_tr = {'affine': None} # If var is None, no augm at all.
         if cfg[cfg.AUGM_IMG_PRMS_TR] is not None:
-            self.augm_img_prms_tr['affine'] = AugmenterAffineParams().set_from_dict(cfg[cfg.AUGM_IMG_PRMS_TR]['affine'])
+            self.augm_img_prms_tr['affine'] = AugmenterAffineParams(cfg[cfg.AUGM_IMG_PRMS_TR]['affine'])
             
         # Patch/Segment level
         self.augm_sample_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}

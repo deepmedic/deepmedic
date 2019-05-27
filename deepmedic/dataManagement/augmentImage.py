@@ -33,9 +33,11 @@ def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
 
 class AugmenterParams(object):
     # Parent class, for parameters of augmenters.
-    def __init__(self):
+    def __init__(self, prms):
+        # prms: dictionary
         self._prms = collections.OrderedDict()
-        
+        self._set_from_dict(prms)
+    
     def __str__(self):
         return str(self._prms)
     
@@ -45,13 +47,13 @@ class AugmenterParams(object):
     
     def __setitem__(self, key, item): # For instance[key] = item assignment
         self._prms[key] = item
-        
-    def set_from_dict(self, prms):
-        for key in prms.keys():
-            self._prms[key] = prms[key]
-        return self # So that you can chain it with a call of constructor.
-            
-            
+
+    def _set_from_dict(self, prms):
+        if prms is not None:
+            for key in prms.keys():
+                self._prms[key] = prms[key]
+
+
 def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     if prms is None:
         return channels, gt_lbls, roi_mask, wmaps_l
@@ -81,7 +83,8 @@ def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
 
 
 class AugmenterAffineParams(AugmenterParams):
-    def __init__(self):
+    def __init__(self, prms):
+        # Default values.
         self._prms = collections.OrderedDict([ ('prob', 0.5),
                                                ('max_rot_xyz', (10., 10., 10.)),
                                                ('max_scaling', .1),
@@ -93,6 +96,9 @@ class AugmenterAffineParams(AugmenterParams):
                                                ('interp_order_wmaps', 1),
                                                ('boundary_mode', 'nearest'),
                                                ('cval', 0.) ])
+        # Overwrite defaults with given.
+        self._set_from_dict(prms)
+    
     def __str__(self):
         return str(self._prms)
 
