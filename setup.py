@@ -17,7 +17,7 @@ setup(
     license = "BSD",
     keywords = "CNN convolutional neural network brain lesion segmentation",
     url = "https://github.com/Kamnitsask/deepmedic",
-    download_url = 'https://github.com/Kamnitsask/deepmedic/tarball/0.7.1',
+    download_url = 'https://github.com/Kamnitsask/deepmedic/tarball/0.7.4',
     packages=find_packages(),
     scripts = ['deepMedicRun'],
     long_description=read('README.md'),

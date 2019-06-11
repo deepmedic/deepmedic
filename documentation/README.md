@@ -3,9 +3,10 @@ DeepMedic
 
 ### News
 
-May 2019 (v0.7.4):
-* Added augmentation via affine transforms (rotation & scaling).
-* Code refactoring in sampling.
+11 June 2019 (v0.7.4):
+* Added augmentation via affine transforms, rotation & scaling. Off by default (slows down training).
+* Redistribute samples of non-existent class & code refactoring in sampling.
+* Added a wider DM model config, seems to work better in a few studies.
 
 19 Mar 2019 (v0.7.3):
 * Default sampling for training now done on a per-class basis. Better now that DM is applied for arbitrary tasks.

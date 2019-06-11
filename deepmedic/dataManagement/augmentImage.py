@@ -31,29 +31,6 @@ def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
     return channels, gt_lbls, roi_mask, wmaps_per_cat
 
 
-class AugmenterParams(object):
-    # Parent class, for parameters of augmenters.
-    def __init__(self, prms):
-        # prms: dictionary
-        self._prms = collections.OrderedDict()
-        self._set_from_dict(prms)
-    
-    def __str__(self):
-        return str(self._prms)
-    
-    def __getitem__(self, key): # overriding the [] operator.
-        # key: string.
-        return self._prms[key] if key in self._prms else None
-    
-    def __setitem__(self, key, item): # For instance[key] = item assignment
-        self._prms[key] = item
-
-    def _set_from_dict(self, prms):
-        if prms is not None:
-            for key in prms.keys():
-                self._prms[key] = prms[key]
-
-
 def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     if prms is None:
         return channels, gt_lbls, roi_mask, wmaps_l
@@ -82,11 +59,35 @@ def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
     return channels, gt_lbls, roi_mask, wmaps_l
 
 
+
+class AugmenterParams(object):
+    # Parent class, for parameters of augmenters.
+    def __init__(self, prms):
+        # prms: dictionary
+        self._prms = collections.OrderedDict()
+        self._set_from_dict(prms)
+    
+    def __str__(self):
+        return str(self._prms)
+    
+    def __getitem__(self, key): # overriding the [] operator.
+        # key: string.
+        return self._prms[key] if key in self._prms else None
+    
+    def __setitem__(self, key, item): # For instance[key] = item assignment
+        self._prms[key] = item
+
+    def _set_from_dict(self, prms):
+        if prms is not None:
+            for key in prms.keys():
+                self._prms[key] = prms[key]
+                
+                
 class AugmenterAffineParams(AugmenterParams):
     def __init__(self, prms):
         # Default values.
-        self._prms = collections.OrderedDict([ ('prob', 0.5),
-                                               ('max_rot_xyz', (10., 10., 10.)),
+        self._prms = collections.OrderedDict([ ('prob', 0.0),
+                                               ('max_rot_xyz', (45., 45., 45.)),
                                                ('max_scaling', .1),
                                                ('seed', None),
                                                # For calls.
@@ -101,6 +102,7 @@ class AugmenterAffineParams(AugmenterParams):
     
     def __str__(self):
         return str(self._prms)
+
 
 class AugmenterAffine(object):
     def __init__(self, prob, max_rot_xyz, max_scaling, seed=None):
@@ -140,11 +142,13 @@ class AugmenterAffine(object):
         
         return transformation_mtx
 
-    def _apply_transformation(self, image, transf_mtx, interp_order=3., boundary_mode='nearest', cval=0.):
+    def _apply_transformation(self, image, transf_mtx, interp_order=2., boundary_mode='nearest', cval=0.):
         # image should be 3 dimensional (Height, Width, Depth). Not multi-channel.
-        # interp_order: Integer. 3 for images, 0 for nearest neighbour on masks (GT & brainmasks)
+        # interp_order: Integer. 1,2,3 for images, 0 for nearest neighbour on masks (GT & brainmasks)
         # boundary_mode = 'constant', 'min', 'nearest', 'mirror...
         # cval: float. value given to boundaries if mode is constant.
+        assert interp_order in [0,1,2,3]
+        
         mode = boundary_mode
         if mode == 'min':
             cval = np.min(image)
