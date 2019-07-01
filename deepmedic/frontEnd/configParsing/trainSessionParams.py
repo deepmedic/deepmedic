@@ -319,7 +319,7 @@ class TrainSessionParameters(object) :
             self.augm_sample_prms_tr['hist_dist'] = {'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
                                                 'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]} }
         if cfg[cfg.OLD_AUGM_SAMPLE_PRMS_TR] is not None:
-            logPrint("ERROR: In training's config, variable \'augm_params_tr\' is deprecated. Replace it with \'augm_sample_prms_tr\'.")
+            self.log.print3("ERROR: In training's config, variable \'augm_params_tr\' is deprecated. Replace it with \'augm_sample_prms_tr\'.")
     
     def _makeFilepathsForPredictionsAndFeaturesVal( self,
                                                     absPathToFolderForPredictionsFromSession,
