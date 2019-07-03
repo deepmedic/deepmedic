@@ -254,7 +254,7 @@ class Trainer(object):
             x2 = final_it_for_sch - first_it_for_sch
             x = tf.maximum( tf.constant(0, dtype="float32"), curr_it - first_it_for_sch )
             x = tf.minimum( x, x2 )
-            y_min = self._init_lr_tfv
+            y_min = self._init_mom_tfv
             y_max = self._lr_sched_params['expon']['mom_to_reach_at_last_ep']
             
             curr_mom = (x - x_min)/(x2-x_min)  * (y_max - y_min) + y_max
