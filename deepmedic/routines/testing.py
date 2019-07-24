@@ -404,7 +404,13 @@ def inferenceWholeVolumes(  sessionTf,
     log.print3("###########################################################################################################")
     log.print3("############################# Finished full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
     log.print3("###########################################################################################################")
-    return 0
+
+    metrics_dict_list = []
+    for i in range(len(meanDiceCoeffs1)):
+        metrics_dict_list.append({'mean_dice1': meanDiceCoeffs1[i],
+                                  'mean_dice2': meanDiceCoeffs2[i],
+                                  'mean_dice3': meanDiceCoeffs3[i]})
+    return metrics_dict_list
 
 
 def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels) :
