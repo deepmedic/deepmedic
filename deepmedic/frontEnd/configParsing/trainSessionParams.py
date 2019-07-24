@@ -449,6 +449,9 @@ class TrainSessionParameters(object):
                 self.filepathsToSavePredictionsForEachPatientVal.append(absPathToFolderForPredictionsFromSession)
                 self.filepathsToSaveFeaturesForEachPatientVal.append(absPathToFolderForPredictionsFromSession)
 
+    def get_path_to_load_model_from(self):
+        return self.savedModelFilepath
+
     def get_tensorboard_bool(self):
         return self.tensorboardLog
 
