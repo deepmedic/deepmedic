@@ -186,7 +186,7 @@ def do_training(sessionTf,
                 run_input_checks,
 
                 # ------- loggers -------
-                tensorboard_loggers={'train': None, 'val': None, 'val_whole': None}
+                tensorboard_loggers=None
                 ):
     id_str = "[MAIN|PID:" + str(os.getpid()) + "]"
     start_time_train = time.time()
@@ -243,13 +243,15 @@ def do_training(sessionTf,
                                                    model_num_epochs_trained,
                                                    cnn3d.num_classes,
                                                    num_subepochs,
-                                                   tensorboard_logger=tensorboard_loggers['train'])
+                                                   tensorboard_logger=tensorboard_loggers['train']
+                                                   if tensorboard_loggers is not None else None)
             acc_monitor_for_ep_val = None if not val_on_samples_during_train else \
                 AccuracyOfEpochMonitorSegmentation(log, 1,
                                                    model_num_epochs_trained,
                                                    cnn3d.num_classes,
                                                    num_subepochs,
-                                                   tensorboard_logger=tensorboard_loggers['val'])
+                                                   tensorboard_logger=tensorboard_loggers['val']
+                                                   if tensorboard_loggers is not None else None)
 
             val_on_whole_volumes_after_ep = False
             if val_on_whole_volumes and (model_num_epochs_trained + 1) % num_epochs_between_val_on_whole_volumes == 0:
@@ -312,8 +314,7 @@ def do_training(sessionTf,
                                                subepoch,
                                                acc_monitor_for_ep_val,
                                                channsOfSegmentsForSubepPerPathwayVal,
-                                               labelsForCentralOfSegmentsForSubepVal,
-                                               tensorboard_logger=tensorboard_loggers['val'])
+                                               labelsForCentralOfSegmentsForSubepVal)
                     end_time_val_subep = time.time()
                     log.print3(
                         "TIMING: Validation on batches of this subepoch #" + str(subepoch) + " lasted: {0:.1f}".format(
@@ -369,8 +370,7 @@ def do_training(sessionTf,
                                            subepoch,
                                            acc_monitor_for_ep_train,
                                            channsOfSegmentsForSubepPerPathwayTrain,
-                                           labelsForCentralOfSegmentsForSubepTrain,
-                                           tensorboard_logger=tensorboard_loggers['train'])
+                                           labelsForCentralOfSegmentsForSubepTrain)
                 end_time_train_subep = time.time()
                 log.print3("TIMING: Training on batches of this subepoch #" + str(subepoch) + " lasted: {0:.1f}".format(
                     end_time_train_subep - start_time_train_subep) + " secs.")
@@ -413,7 +413,8 @@ def do_training(sessionTf,
                                                        model_num_epochs_trained,
                                                        None,
                                                        num_subepochs,
-                                                       tensorboard_logger=tensorboard_loggers['val_whole'])
+                                                       tensorboard_logger=tensorboard_loggers['val_whole']
+                                                       if tensorboard_loggers is not None else None)
 
                 metrics_dict_list = inferenceWholeVolumes(
                     sessionTf,
