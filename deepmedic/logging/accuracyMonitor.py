@@ -116,12 +116,13 @@ class AccuracyOfEpochMonitorSegmentation(object):
         self.numberOfSubepochsForWhichUpdated += 1
 
     def log_to_tensorboard(self, metrics_dict, class_string, step_num):
-        for metric, value in metrics_dict.items():
-            if value == 'N/A':
-                value = np.nan
-            self.tensorboard_logger.add_summary(tf.Summary(value=[tf.Summary.Value(tag=metric + '_' + class_string,
-                                                                                   simple_value=value)]),
-                                                global_step=step_num)
+        if self.tensorboard_logger is not None:
+            for metric, value in metrics_dict.items():
+                if value == 'N/A':
+                    value = np.nan
+                self.tensorboard_logger.add_summary(tf.Summary(value=[tf.Summary.Value(tag=metric + '_' + class_string,
+                                                                                       simple_value=value)]),
+                                                    global_step=step_num)
 
     def reportAccuracyForLastSubepoch(self):
         trainOrValString = "TRAINING" if self.training0orValidation1 == 0 else "VALIDATION"
@@ -135,21 +136,22 @@ class AccuracyOfEpochMonitorSegmentation(object):
         if self.training0orValidation1 == 0:  # During training, also report the mean value of the Cost Function:
             self.log.print3(logStr + ", Overall:\t mean cost:      \t" + strFl5fNA(self.meanCostOfEachSubep[currSubep], self.NA_PATTERN))
 
-            self.log.print3('---------------- LOGGING TO TENSORBOARD ----------------')
-            self.log.print3('Logging ' + trainOrValString + ' metrics')
-            self.log.print3('Epoch: ' + str(self.epoch) +
-                            ' | Subepoch ' + str(currSubep) + '/' + str(self.numberOfSubepochsPerEpoch - 1))
-            step_num = currSubep + (self.epoch * (self.numberOfSubepochsPerEpoch))
-            self.log.print3('Step number: ' + str(step_num))
+            if self.tensorboard_logger is not None:
+                self.log.print3('---------------- LOGGING TO TENSORBOARD ----------------')
+                self.log.print3('Logging ' + trainOrValString + ' metrics')
+                self.log.print3('Epoch: ' + str(self.epoch) +
+                                ' | Subepoch ' + str(currSubep) + '/' + str(self.numberOfSubepochsPerEpoch - 1))
+                step_num = currSubep + (self.epoch * (self.numberOfSubepochsPerEpoch))
+                self.log.print3('Step number: ' + str(step_num))
 
-            # create metrics dictionary
-            metrics_dict = {'mean_acc': self.meanEmpiricalAccuracyOfEachSubep[currSubep],
-                            'mean_cost': self.meanCostOfEachSubep[currSubep]}
-            class_string = 'Class-all'
-            self.log_to_tensorboard(metrics_dict, class_string, step_num)
+                # create metrics dictionary
+                metrics_dict = {'mean_acc': self.meanEmpiricalAccuracyOfEachSubep[currSubep],
+                                'mean_cost': self.meanCostOfEachSubep[currSubep]}
+                class_string = 'Class-all'
+                self.log_to_tensorboard(metrics_dict, class_string, step_num)
 
-            self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
-            self.log.print3('----------------========================----------------')
+                self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
+                self.log.print3('----------------========================----------------')
             
         # Report accuracy over subepoch for each class_i:
         for class_i in range(self.numberOfClasses) :
