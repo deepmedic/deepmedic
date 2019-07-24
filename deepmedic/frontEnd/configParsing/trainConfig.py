@@ -19,7 +19,8 @@ class TrainConfig(Config):
     #[REQUIRED]
     FOLDER_OUTP = "folderForOutput"
     SAVED_MODEL = "cnnModelFilePath"
-    
+    TENSORBOARD_LOG = "tensorboardLog"
+
     #=============TRAINING========================
     CHANNELS_TR = "channelsTraining"
     GT_LABELS_TR = "gtLabelsTraining"
