@@ -43,7 +43,33 @@ class TrainSession(Session):
          self._out_folder_preds,
          self._out_folder_fms] = makeFoldersNeededForTrainingSession(self._main_out_folder_abs, self._sess_name)
 
-    def _print_vars_in_collection(self, collection, coll_name="no_name"):
+    def create_tensorboard_loggers(self, logger_types, tf_graph, create_log=False):
+        tensorboard_loggers = {}
+
+        self._log.print3("----------- Creating Tensorboard Loggers -----------")
+
+        for logger_type in logger_types:
+            if create_log:
+                tensorboard_loggers[logger_type] = \
+                    tf.compat.v1.summary.FileWriter(os.path.join(self._main_out_folder_abs,
+                                                                 "tensorboard",
+                                                                 self._sess_name,
+                                                                 logger_type),
+                                                    tf_graph)
+            else:
+                tensorboard_loggers[logger_type] = None
+
+        if create_log:
+            self._log.print3("Loggers created successfully")
+        else:
+            self._log.print3("Config flag to log to tensorboard not present.")
+            self._log.print3("Skipping...")
+
+        self._log.print3("-----------=============================-----------")
+
+        return tensorboard_loggers
+
+    def print_vars_in_collection(self, collection, coll_name="no_name"):
         self._log.print3("")
         self._log.print3("==== Printing variables of collection [" + str(coll_name) + "] ====")
         for entry in collection:
@@ -93,39 +119,9 @@ class TrainSession(Session):
                 trainer = Trainer(*(self._params.get_args_for_trainer() + [cnn3d]))
                 trainer.create_optimizer(*self._params.get_args_for_optimizer())  # Trainer and net connect here.
 
-                self._log.print3("----------- Creating Tensorboard Loggers -----------")
-                if self._params.get_tensorboard_bool():
-                    # create tensorboard loggers
-                    tensorboard_logger_train = \
-                        tf.compat.v1.summary.FileWriter(os.path.join(self._main_out_folder_abs,
-                                                                     "tensorboard",
-                                                                     self._sess_name,
-                                                                     'train'),
-                                                        graphTf)
-
-                    tensorboard_logger_val = \
-                        tf.compat.v1.summary.FileWriter(os.path.join(self._main_out_folder_abs,
-                                                                     "tensorboard",
-                                                                     self._sess_name,
-                                                                     'val'),
-                                                        graphTf)
-
-                    tensorboard_logger_val_whole = \
-                        tf.compat.v1.summary.FileWriter(os.path.join(self._main_out_folder_abs,
-                                                                     "tensorboard",
-                                                                     self._sess_name,
-                                                                     'val_whole'),
-                                                        graphTf)
-                    self._log.print3("Loggers created successfully")
-                else:
-                    tensorboard_logger_train = None
-                    tensorboard_logger_val = None
-                    tensorboard_logger_val_whole = None
-                    self._log.print3("Config flag to log to tensorboard not present.")
-                    self._log.print3("Skipping...")
-
-                self._log.print3("-----------=============================-----------")
-
+                tensorboard_loggers = self.create_tensorboard_loggers(['train', 'val', 'val_whole'],
+                                                                      graphTf,
+                                                                      create_log=self._params.get_tensorboard_bool())
 
             # The below should not create any new tf.variables.
             self._log.print3("=========== Compiling the Training Function ===========")
@@ -199,11 +195,8 @@ class TrainSession(Session):
             self._log.print3("============== Training the CNN model =================")
             self._log.print3("=======================================================\n")
 
-            do_training(*([sessionTf, saver_all, cnn3d, trainer]
-                          + self._params.get_args_for_train_routine()),
-                        tensorboard_logger_train=tensorboard_logger_train,
-                        tensorboard_logger_val=tensorboard_logger_val,
-                        tensorboard_logger_val_whole=tensorboard_logger_val_whole)
+            do_training(*([sessionTf, saver_all, cnn3d, trainer] + self._params.get_args_for_train_routine()),
+                        tensorboard_loggers=tensorboard_loggers)
 
         self._log.print3("\n=======================================================")
         self._log.print3("=========== Training session finished =================")
