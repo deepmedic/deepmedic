@@ -7,7 +7,6 @@
 
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import tensorflow as tf
 
 from deepmedic.logging.utils import strFl4fNA, strFl5fNA, strListFl4fNA, strListFl5fNA, getMeanOfListExclNA
 
@@ -81,10 +80,10 @@ class AccuracyOfEpochMonitorSegmentation(object):
         
         listWithPerClassMeanAccSensSpecDscInSubep = [] # Classes x 4 . 4=Mean Acc, sens, spec, dsc.
         for class_i in range(self.numberOfClasses) :
-            numOfRealPosInSubep = perClassRpRnTpTnInSubep[class_i,0]
-            numOfRealNegInSubep = perClassRpRnTpTnInSubep[class_i,1]
-            numOfTruePosInSubep = perClassRpRnTpTnInSubep[class_i,2]
-            numOfTrueNegInSubep = perClassRpRnTpTnInSubep[class_i,3]
+            numOfRealPosInSubep = perClassRpRnTpTnInSubep[class_i, 0]
+            numOfRealNegInSubep = perClassRpRnTpTnInSubep[class_i, 1]
+            numOfTruePosInSubep = perClassRpRnTpTnInSubep[class_i, 2]
+            numOfTrueNegInSubep = perClassRpRnTpTnInSubep[class_i, 3]
             
             numOfFalsePosInSubep = numOfRealNegInSubep - numOfTrueNegInSubep
             
@@ -115,15 +114,6 @@ class AccuracyOfEpochMonitorSegmentation(object):
         
         # Done!
         self.numberOfSubepochsForWhichUpdated += 1
-
-    def log_to_tensorboard(self, metrics_dict, class_string, step_num):
-        if self.tensorboard_logger is not None:
-            for metric, value in metrics_dict.items():
-                if value == self.NA_PATTERN:
-                    value = np.nan
-                self.tensorboard_logger.add_summary(tf.Summary(value=[tf.Summary.Value(tag=metric + '_' + class_string,
-                                                                                       simple_value=value)]),
-                                                    global_step=step_num)
 
     def log_acc_subep_to_txt(self):
         trainOrValString = "TRAINING" if self.training0orValidation1 == 0 else "VALIDATION"
@@ -168,11 +158,14 @@ class AccuracyOfEpochMonitorSegmentation(object):
             self.log.print3(logStrClass+"\t mean specificity:\t" + strFl4fNA(meanAccOnNegOfSubep, self.NA_PATTERN)+"\t=> TrueNeg/RealNeg = "+str(numOfTnInSubep)+"/"+str(numOfRnInSubep))
             self.log.print3(logStrClass+"\t mean Dice:       \t" + strFl4fNA(meanDiceOfSubep, self.NA_PATTERN))
 
-    def log_acc_subep_to_tensorboard(self):
+    def log_to_tensorboard(self, metrics_dict, class_string, step_num):
+        if self.tensorboard_logger is not None:
+            for metric, value in metrics_dict.items():
+                if value == self.NA_PATTERN:
+                    value = np.nan
+                self.tensorboard_logger.add_summary(value, metric + '_' + class_string, step_num)
 
-        # check if user included tensorboard logging in the config
-        if self.tensorboard_logger is None:
-            return
+    def log_acc_subep_to_tensorboard(self):
 
         trainOrValString = "TRAINING" if self.training0orValidation1 == 0 else "VALIDATION"
         currSubep = self.numberOfSubepochsForWhichUpdated - 1
@@ -183,6 +176,12 @@ class AccuracyOfEpochMonitorSegmentation(object):
                         ' | Subepoch ' + str(currSubep) + '/' + str(self.numberOfSubepochsPerEpoch - 1))
         step_num = currSubep + (self.epoch * (self.numberOfSubepochsPerEpoch))
         self.log.print3('Step number: ' + str(step_num))
+
+        # check if user included tensorboard logging in the config
+        if self.tensorboard_logger is None:
+            self.log.print3('Tensorboard logging not activated. Skipping...')
+            self.log.print3('======================================================')
+            return
 
         # During training, also report the mean value of the Cost Function:
         if self.training0orValidation1 == 0 and self.tensorboard_logger is not None:
@@ -294,5 +293,3 @@ class AccuracyOfEpochMonitorSegmentation(object):
             
         self.log.print3( ">>>>>>>>>>>>>>>>>>>>>>>>> End Of Accuracy Report at the end of Epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
         self.log.print3( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
-        
-        
