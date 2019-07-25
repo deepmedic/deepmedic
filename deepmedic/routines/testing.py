@@ -23,6 +23,42 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
+def find_num_fm(cnn3d_pathways, fm_idxs):
+    fm_num = 0
+    for pathway in cnn3d_pathways:
+        fm_idxs_pathway = fm_idxs[pathway.pType()]
+        if fm_idxs_pathway:
+            for layer_i in range(len(pathway.getLayers())):
+                fm_idxs_layer_pathway = fm_idxs_pathway[layer_i]
+                if fm_idxs_layer_pathway:
+                    # If the user specifies to grab more feature maps than exist (eg 9999),
+                    # correct it, replacing it with the number of FMs in the layer.
+                    fm_this_layer_num = pathway.getLayer(layer_i).getNumberOfFeatureMaps()
+                    fm_idxs_layer_pathway[1] = min(fm_idxs_layer_pathway[1], fm_this_layer_num)
+                    fm_num += fm_idxs_layer_pathway[1] - fm_idxs_layer_pathway[0]
+    return fm_num
+
+
+def construct_prob_maps(num_classes, nii_dims, batch_size, slice_coords, half_rec_field, stride, prediction_test_batch):
+    img_part_idx = 0
+    prob_maps_per_class = np.zeros([num_classes] + nii_dims, dtype="float32")
+
+    for image_part in range(batch_size):
+        # Now put the label-cube in the new-label-segmentation-image, at the correct position.
+        # The very first label goes not in index 0,0,0 but half-patch further away!
+        # At the position of the central voxel of the top-left patch!
+        slice_coords_segment = slice_coords[img_part_idx]
+        top_left = [slice_coords_segment[0][0], slice_coords_segment[1][0], slice_coords_segment[2][0]]
+        prob_maps_per_class[:,
+                            top_left[0] + half_rec_field[0]: top_left[0] + half_rec_field[0] + stride[0],
+                            top_left[1] + half_rec_field[1]: top_left[1] + half_rec_field[1] + stride[1],
+                            top_left[2] + half_rec_field[2]: top_left[2] + half_rec_field[2] + stride[2]
+                            ] = prediction_test_batch[image_part]
+        img_part_idx += 1
+
+    return prob_maps_per_class
+
+
 # Main routine for testing.
 def inferenceWholeVolumes(sessionTf,
                           cnn3d,
@@ -67,11 +103,12 @@ def inferenceWholeVolumes(sessionTf,
     total_number_of_images = len(listOfFilepathsToEachChannelOfEachPatient)
 
     # one dice score for whole + for each class)
+    # Dice1 - AllpredictedLes/AllLesions
+    # Dice2 - predictedInsideRoiMask/AllLesions
+    # Dice3 - predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
     # A list of dimensions: total_number_of_images X NUMBER_OF_CLASSES
-    diceCoeffs1 = [[-1] * NUMBER_OF_CLASSES for i in range(total_number_of_images)]  # AllpredictedLes/AllLesions
-    diceCoeffs2 = [[-1] * NUMBER_OF_CLASSES for i in range(total_number_of_images)]  # predictedInsideRoiMask/AllLesions
-    diceCoeffs3 = [[-1] * NUMBER_OF_CLASSES for i in
-                   range(total_number_of_images)]  # predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
+    # init dice scores
+    diceCoeffs1 = diceCoeffs2 = diceCoeffs3 = [[-1] * NUMBER_OF_CLASSES for i in range(total_number_of_images)]
 
     recFieldCnn = cnn3d.recFieldCnn
 
@@ -88,22 +125,7 @@ def inferenceWholeVolumes(sessionTf,
     # If not [], the list should contain one entry per layer of the pathway, even if just [].
     # The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
     if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
-        totalNumberOfFMsToProcess = 0
-        for pathway in cnn3d.pathways:
-            indicesOfFmsToVisualisePerLayerOfCertainPathway = indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[
-                pathway.pType()]
-            if indicesOfFmsToVisualisePerLayerOfCertainPathway != []:
-                for layer_i in range(len(pathway.getLayers())):
-                    indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = \
-                        indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-                    if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway != []:
-                        # If the user specifies to grab more feature maps than exist (eg 9999),
-                        # correct it, replacing it with the number of FMs in the layer.
-                        numberOfFeatureMapsInThisLayer = pathway.getLayer(layer_i).getNumberOfFeatureMaps()
-                        indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] = min(
-                            indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1], numberOfFeatureMapsInThisLayer)
-                        totalNumberOfFMsToProcess += indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1] - \
-                                                     indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0]
+        totalNumberOfFMsToProcess = find_num_fm(cnn3d.pathways, indicesOfFmsToVisualisePerPathwayTypeAndPerLayer)
 
     for image_i in range(total_number_of_images):
         log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -115,8 +137,8 @@ def inferenceWholeVolumes(sessionTf,
          gtLabelsImage,  # only for accurate/correct DICE1-2 calculation
          roiMask,
          arrayWithWeightMapsWhereToSampleForEachCategory,  # only used in training. Placeholder here.
-         tupleOfPaddingPerAxesLeftRight
-         # ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)). All 0s when no padding.
+         tupleOfPaddingPerAxesLeftRight  # ((padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
+         # ^ All 0s when no padding.
          ) = load_imgs_of_subject(
             log,
             None,
@@ -132,6 +154,7 @@ def inferenceWholeVolumes(sessionTf,
             recFieldCnn,  # only used if padInputsBool
             cnn3d.pathways[0].getShapeOfInput("test")[2:]  # dimsOfPrimeSegmentRcz, for padding
         )
+
         niiDimensions = list(imageChannels.shape[1:])
         # The predicted probability-maps for the whole volume, one per class.
         # Will be constructed by stitching together the predictions from each segment.
@@ -160,8 +183,8 @@ def inferenceWholeVolumes(sessionTf,
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
         num_batches = num_segments_for_case // batchsize
-        extractTimePerSubject = 0;
-        loadingTimePerSubject = 0;
+        extractTimePerSubject = 0
+        loadingTimePerSubject = 0
         fwdPassTimePerSubject = 0
         for batch_i in range(num_batches):
 
@@ -217,26 +240,13 @@ def inferenceWholeVolumes(sessionTf,
             # ~~~~~~~~~~~~~~~~CONSTRUCT THE PREDICTED PROBABILITY MAPS~~~~~~~~~~~~~~
             # From the results of this batch, create the prediction image by putting the predictions to the correct
             # place in the image.
-            for imagePart_in_this_batch_i in range(batchsize):
-                # Now put the label-cube in the new-label-segmentation-image, at the correct position.
-                # The very first label goes not in index 0,0,0 but half-patch further away!
-                # At the position of the central voxel of the top-left patch!
-                sliceCoordsOfThisSegment = sliceCoordsOfSegmentsInImage[imagePartOfConstructedProbMap_i]
-                coordsOfTopLeftVoxelForThisPart = [sliceCoordsOfThisSegment[0][0], sliceCoordsOfThisSegment[1][0],
-                                                   sliceCoordsOfThisSegment[2][0]]
-                predProbMapsPerClass[
-                :,
-                coordsOfTopLeftVoxelForThisPart[0] + rczHalfRecFieldCnn[0]: coordsOfTopLeftVoxelForThisPart[0] +
-                                                                            rczHalfRecFieldCnn[0] +
-                                                                            strideOfImagePartsPerDimensionInVoxels[0],
-                coordsOfTopLeftVoxelForThisPart[1] + rczHalfRecFieldCnn[1]: coordsOfTopLeftVoxelForThisPart[1] +
-                                                                            rczHalfRecFieldCnn[1] +
-                                                                            strideOfImagePartsPerDimensionInVoxels[1],
-                coordsOfTopLeftVoxelForThisPart[2] + rczHalfRecFieldCnn[2]: coordsOfTopLeftVoxelForThisPart[2] +
-                                                                            rczHalfRecFieldCnn[2] +
-                                                                            strideOfImagePartsPerDimensionInVoxels[2],
-                ] = predictionForATestBatch[imagePart_in_this_batch_i]
-                imagePartOfConstructedProbMap_i += 1
+            predProbMapsPerClass = construct_prob_maps(NUMBER_OF_CLASSES,
+                                                       niiDimensions,
+                                                       batchsize,
+                                                       sliceCoordsOfSegmentsInImage,
+                                                       rczHalfRecFieldCnn,
+                                                       strideOfImagePartsPerDimensionInVoxels,
+                                                       predictionForATestBatch)
             # ~~~~~~~~~~~~~FINISHED CONSTRUCTING THE PREDICTED PROBABILITY MAPS~~~~~~~
 
             # ~~~~~~~~~~~~~~CONSTRUCT THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~~~~~~~~
@@ -583,8 +593,9 @@ def inferenceWholeVolumes(sessionTf,
 
     log.print3(
         "###########################################################################################################")
-    log.print3("############################# Finished full Segmentation of " + str(
-        validation_or_testing_str) + " subjects ##########################")
+    log.print3("############################# Finished full Segmentation of " +
+               str(validation_or_testing_str) +
+               " subjects ##########################")
     log.print3(
         "###########################################################################################################")
 
