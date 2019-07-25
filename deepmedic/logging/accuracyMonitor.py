@@ -185,7 +185,7 @@ class AccuracyOfEpochMonitorSegmentation(object):
 
         # During training, also report the mean value of the Cost Function:
         if self.training0orValidation1 == 0 and self.tensorboard_logger is not None:
-            self.log.print3('    -- Logging average metrics for all classes --    ')
+            self.log.print3('--- Logging average metrics for all classes ---')
 
             # create metrics dictionary
             metrics_dict = {'mean_acc': self.meanEmpiricalAccuracyOfEachSubep[currSubep],
@@ -194,10 +194,9 @@ class AccuracyOfEpochMonitorSegmentation(object):
             self.log_to_tensorboard(metrics_dict, class_string, step_num)
 
             self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
-            self.log.print3('                     ------')
 
         # Report accuracy over subepoch for each class_i:
-        self.log.print3('        -- Logging per class metrics --        ')
+        self.log.print3('--- Logging per class metrics ---')
         for class_i in range(self.numberOfClasses):
             classString = "Class-" + str(class_i)
 
