@@ -18,9 +18,9 @@ class Logger:
         now = datetime.datetime.now()
         now_str = "{0}-{1}-{2} {3}:{4}:{5:.2f}".format(now.year, now.month, now.day, now.hour, now.minute,
                                                        (now.second + now.microsecond/10**6))
-        f.write(now_str+": "+string+"\n")
+        f.write(now_str + ": " + string + "\n")
         f.close()
         
-    def __init__(self, log_txt_path="logs/defaultLogFile.txt"):
-        self.loggerFileName = log_txt_path
+    def __init__(self, log_path="logs/defaultLogFile.txt"):
+        self.loggerFileName = log_path
         self.print3("=============================== logger created =======================================")
