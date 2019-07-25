@@ -9,18 +9,18 @@ from __future__ import absolute_import, print_function, division
 import datetime
 
 
-class Logger :
+class Logger:
     loggerFileName = None
     
-    def print3(self, string) :
+    def print3(self, string):
         print(string)    
-        f = open(self.loggerFileName,'a')
+        f = open(self.loggerFileName, 'a')
         now = datetime.datetime.now()
-        now_str = "{0}-{1}-{2} {3}:{4}:{5:.2f}".format(now.year, now.month, now.day, now.hour, now.minute, (now.second + now.microsecond/10**6))
+        now_str = "{0}-{1}-{2} {3}:{4}:{5:.2f}".format(now.year, now.month, now.day, now.hour, now.minute,
+                                                       (now.second + now.microsecond/10**6))
         f.write(now_str+": "+string+"\n")
         f.close()
         
-    def __init__(self, filenameAndPathOfLoggerTxt="logs/defaultLogFile.txt") :
-        self.loggerFileName = filenameAndPathOfLoggerTxt
+    def __init__(self, log_txt_path="logs/defaultLogFile.txt"):
+        self.loggerFileName = log_txt_path
         self.print3("=============================== logger created =======================================")
-        
