@@ -229,6 +229,20 @@ def print_progress_step(log, num_batches, batch_i, batch_size, num_segments_for_
             "Processed " + str((batch_i + 1) * batch_size) + "/" + str(num_segments_for_case) + " segments.")
 
 
+def load_feed_dict(feeds, channels_segments_per_path, loading_time):
+    start_loading_time = time.time()
+
+    feeds_dict = {feeds['x']: np.asarray(channels_segments_per_path[0], dtype='float32')}
+    for path_i in range(len(channels_segments_per_path[1:])):
+        feeds_dict.update(
+            {feeds['x_sub_' + str(path_i)]: np.asarray(channels_segments_per_path[1 + path_i], dtype='float32')})
+
+    end_loading_time = time.time()
+    loading_time += end_loading_time - start_loading_time
+
+    return feeds_dict, loading_time
+
+
 # Main routine for testing.
 def inferenceWholeVolumes(sessionTf,
                           cnn3d,
@@ -380,14 +394,8 @@ def inferenceWholeVolumes(sessionTf,
             list_of_ops = [ops_to_fetch['pred_probs']] + ops_to_fetch['list_of_fms_per_layer']
 
             # No loading of data in bulk as in training, cause here it's only 1 batch per iteration.
-            start_loading_time = time.time()
-            feeds = cnn3d.get_main_feeds('test')
-            feeds_dict = {feeds['x']: np.asarray(channsOfSegmentsPerPath[0], dtype='float32')}
-            for path_i in range(len(channsOfSegmentsPerPath[1:])):
-                feeds_dict.update(
-                    {feeds['x_sub_' + str(path_i)]: np.asarray(channsOfSegmentsPerPath[1 + path_i], dtype='float32')})
-            end_loading_time = time.time()
-            loadingTimePerSubject += end_loading_time - start_loading_time
+            (feeds_dict, loadingTimePerSubject) = load_feed_dict(cnn3d.get_main_feeds('test'),
+                                                                 channsOfSegmentsPerPath, loadingTimePerSubject)
 
             start_testing_time = time.time()
             # Forward pass
