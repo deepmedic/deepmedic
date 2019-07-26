@@ -23,16 +23,15 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
-def calculateDiceCoefficient(predictedBinaryLabels, groundTruthBinaryLabels):
-    unionCorrectlyPredicted = predictedBinaryLabels * groundTruthBinaryLabels
-    numberOfTruePositives = np.sum(unionCorrectlyPredicted)
-    numberOfGtPositives = np.sum(groundTruthBinaryLabels)
-    diceCoeff = (2.0 * numberOfTruePositives) / (
-            np.sum(predictedBinaryLabels) + numberOfGtPositives) if numberOfGtPositives != 0 else -1
-    return diceCoeff
+def calculate_dice(pred_labels, gt_labels):
+    union_correct = pred_labels * gt_labels
+    tp_num = np.sum(union_correct)
+    gt_pos_num = np.sum(gt_labels)
+    dice = (2.0 * tp_num) / (np.sum(pred_labels) + gt_pos_num) if gt_pos_num != 0 else -1
+    return dice
 
 
-def printExplanationsAboutDice(log):
+def print_dice_explanations(log):
     log.print3(
         "EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground,"
         " i.e all labels merged, except the background label=0. Useful for multi-class problems.")
@@ -359,6 +358,100 @@ def save_fms_multidim(multidim_fm_array, pad_input_imgs,
         log)
 
 
+def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, unpadded_pred_seg,
+                  pad_input_imgs, axes_padding_left_right, unpadded_roi_mask,
+                  num_classes, na_pattern, log, image_i, validation_or_testing_str):
+
+    log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) +
+               " ++++++++++++++++++++++++++")
+    # Unpad whatever needed.
+    unpadded_gt_labels = gt_labels if not pad_input_imgs else unpadCnnOutputs(gt_labels, axes_padding_left_right)
+
+    # calculate DSC per class.
+    for class_i in range(0, num_classes):
+        if class_i == 0:  # do the eval for WHOLE FOREGROUND segmentation (all classes merged except background)
+            # Merge every class except the background (assumed to be label == 0 )
+            pred_seg_binary_i = unpadded_pred_seg > 0
+            gt_labels_binary_i = unpadded_gt_labels > 0
+        else:
+            pred_seg_binary_i = unpadded_pred_seg == class_i
+            gt_labels_binary_i = unpadded_gt_labels == class_i
+
+        pred_seg_binary_i_in_roi = pred_seg_binary_i * unpadded_roi_mask
+
+        # Calculate the 3 Dices.
+        # Dice1 = Allpredicted/allLesions,
+        # Dice2 = PredictedWithinRoiMask / AllLesions ,
+        # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask.
+
+        # Dice1 = Allpredicted/allLesions
+        dice_1 = calculate_dice(pred_seg_binary_i, gt_labels_binary_i)
+        dices_1[image_i][class_i] = dice_1 if dice_1 != -1 else na_pattern
+
+        # Dice2 = PredictedWithinRoiMask / AllLesions
+        dice_2 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i)
+        dices_2[image_i][class_i] = dice_2 if dice_2 != -1 else na_pattern
+
+        # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask
+        dice_3 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i * unpadded_roi_mask)
+        dices_3[image_i][class_i] = dice_3 if dice_3 != -1 else na_pattern
+
+    log.print3("ACCURACY: (" + str(validation_or_testing_str) +
+               ") The Per-Class DICE Coefficients for subject with index #" + str(image_i) +
+               " equal: DICE1=" + strListFl4fNA(dices_1[image_i], na_pattern) +
+               " DICE2=" + strListFl4fNA(dices_2[image_i], na_pattern) +
+               " DICE3=" + strListFl4fNA(dices_3[image_i], na_pattern))
+
+    print_dice_explanations(log)
+
+    return dices_1, dices_2, dices_3
+
+
+def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, validation_or_testing_str):
+    log.print3(
+        "+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
+    log.print3(
+        "+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
+
+    mean_dice_1 = getMeanPerColOf2dListExclNA(dices_1, na_pattern)
+    mean_dice_2 = getMeanPerColOf2dListExclNA(dices_2, na_pattern)
+    mean_dice_3 = getMeanPerColOf2dListExclNA(dices_3, na_pattern)
+
+    log.print3("ACCURACY: (" + str(validation_or_testing_str) +
+               ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" +
+               strListFl4fNA(mean_dice_1, na_pattern) +
+               " DICE2=" + strListFl4fNA(mean_dice_2, na_pattern) +
+               " DICE3=" + strListFl4fNA(mean_dice_3, na_pattern))
+
+    print_dice_explanations(log)
+
+    return mean_dice_1, mean_dice_2, mean_dice_3
+
+def print_line(log):
+    log.print3(
+        "###########################################################################################################")
+
+
+def print_finish(log, validation_or_testing_str, duration):
+    log.print3(
+        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(duration) + " secs.")
+    print_line(log)
+    log.print3("############################# Finished full Segmentation of " +
+               str(validation_or_testing_str) +
+               " subjects ##########################")
+    print_line(log)
+
+
+def dsc_to_dict(dices_1, dices_2, dices_3):
+    metrics_dict_list = []
+    for i in range(len(dices_1)):
+        metrics_dict_list.append({'mean_dice1': dices_1[i],
+                                  'mean_dice2': dices_2[i],
+                                  'mean_dice3': dices_3[i]})
+
+    return metrics_dict_list
+
+
 # Main routine for testing.
 def inferenceWholeVolumes(sessionTf,
                           cnn3d,
@@ -387,12 +480,10 @@ def inferenceWholeVolumes(sessionTf,
     #       ... Excluding the highest index.
 
     validation_or_testing_str = "Validation" if val_or_test == "val" else "Testing"
-    log.print3(
-        "###########################################################################################################")
+    print_line(log)
     log.print3("############################# Starting full Segmentation of " +
                str(validation_or_testing_str) + " subjects ##########################")
-    log.print3(
-        "###########################################################################################################")
+    print_line(log)
 
     start_time = time.time()
 
@@ -594,78 +685,22 @@ def inferenceWholeVolumes(sessionTf,
 
         # ================= EVALUATE DSC FOR EACH SUBJECT ========================
         if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided for DSC calculation. Do calculation
-            log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) +
-                       " ++++++++++++++++++++++++++")
-            # Unpad whatever needed.
-            unpaddedGtLabelsImage = gtLabelsImage if not pad_input_imgs else \
-                unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
-            # calculate DSC per class.
-            for class_i in range(0, NUMBER_OF_CLASSES):
-                if class_i == 0:  # do the eval for WHOLE FOREGROUND segmentation (all classes merged except background)
-                    # Merge every class except the background (assumed to be label == 0 )
-                    binaryPredSegmClassI = unpaddedPredSegmentation > 0
-                    binaryGtLabelClassI = unpaddedGtLabelsImage > 0
-                else:
-                    binaryPredSegmClassI = unpaddedPredSegmentation == class_i
-                    binaryGtLabelClassI = unpaddedGtLabelsImage == class_i
-
-                binaryPredSegmClassIWithinRoi = binaryPredSegmClassI * unpaddedRoiMaskIfGivenElse1
-
-                # Calculate the 3 Dices.
-                # Dice1 = Allpredicted/allLesions,
-                # Dice2 = PredictedWithinRoiMask / AllLesions ,
-                # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask.
-
-                # Dice1 = Allpredicted/allLesions
-                diceCoeff1 = calculateDiceCoefficient(binaryPredSegmClassI, binaryGtLabelClassI)
-                diceCoeffs1[image_i][class_i] = diceCoeff1 if diceCoeff1 != -1 else NA_PATTERN
-                # Dice2 = PredictedWithinRoiMask / AllLesions
-                diceCoeff2 = calculateDiceCoefficient(binaryPredSegmClassIWithinRoi, binaryGtLabelClassI)
-                diceCoeffs2[image_i][class_i] = diceCoeff2 if diceCoeff2 != -1 else NA_PATTERN
-                # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask
-                diceCoeff3 = calculateDiceCoefficient(binaryPredSegmClassIWithinRoi,
-                                                      binaryGtLabelClassI * unpaddedRoiMaskIfGivenElse1)
-                diceCoeffs3[image_i][class_i] = diceCoeff3 if diceCoeff3 != -1 else NA_PATTERN
-
-            log.print3("ACCURACY: (" + str(validation_or_testing_str) +
-                       ") The Per-Class DICE Coefficients for subject with index #" + str(image_i) +
-                       " equal: DICE1=" + strListFl4fNA(diceCoeffs1[image_i], NA_PATTERN) +
-                       " DICE2=" + strListFl4fNA(diceCoeffs2[image_i], NA_PATTERN) +
-                       " DICE3=" + strListFl4fNA(diceCoeffs3[image_i], NA_PATTERN))
-
-            printExplanationsAboutDice(log)
+            (diceCoeffs1, diceCoeffs2, diceCoeffs3) = calculate_dsc(diceCoeffs1, diceCoeffs2, diceCoeffs3,
+                                                                    gtLabelsImage, unpaddedPredSegmentation,
+                                                                    pad_input_imgs, tupleOfPaddingPerAxesLeftRight,
+                                                                    unpaddedRoiMaskIfGivenElse1, NUMBER_OF_CLASSES,
+                                                                    NA_PATTERN, log, image_i, validation_or_testing_str)
 
     # = Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. =
     if listOfFilepathsToGtLabelsOfEachPatient is not None and total_number_of_images > 0:  # GT was given. Calculate
-        log.print3(
-            "+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
-        log.print3(
-            "+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
-        meanDiceCoeffs1 = getMeanPerColOf2dListExclNA(diceCoeffs1, NA_PATTERN)
-        meanDiceCoeffs2 = getMeanPerColOf2dListExclNA(diceCoeffs2, NA_PATTERN)
-        meanDiceCoeffs3 = getMeanPerColOf2dListExclNA(diceCoeffs3, NA_PATTERN)
-        log.print3("ACCURACY: (" + str(validation_or_testing_str) +
-                   ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" +
-                   strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) +
-                   " DICE2=" + strListFl4fNA(meanDiceCoeffs2, NA_PATTERN) +
-                   " DICE3=" + strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
-        printExplanationsAboutDice(log)
+        (meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3) = calculate_mean_dsc(log,
+                                                                                 diceCoeffs1, diceCoeffs2, diceCoeffs3,
+                                                                                 NA_PATTERN, validation_or_testing_str)
 
     end_time = time.time()
-    log.print3(
-        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(end_time - start_time) + " secs.")
 
-    log.print3(
-        "###########################################################################################################")
-    log.print3("############################# Finished full Segmentation of " +
-               str(validation_or_testing_str) +
-               " subjects ##########################")
-    log.print3(
-        "###########################################################################################################")
+    print_finish(log, validation_or_testing_str, end_time - start_time)
 
-    metrics_dict_list = []
-    for i in range(len(meanDiceCoeffs1)):
-        metrics_dict_list.append({'mean_dice1': meanDiceCoeffs1[i],
-                                  'mean_dice2': meanDiceCoeffs2[i],
-                                  'mean_dice3': meanDiceCoeffs3[i]})
+    metrics_dict_list = dsc_to_dict(meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3)
+
     return metrics_dict_list
