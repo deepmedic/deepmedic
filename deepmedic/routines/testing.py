@@ -427,6 +427,35 @@ def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, validation_or
 
     return mean_dice_1, mean_dice_2, mean_dice_3
 
+
+def print_start_log(log, validation_or_testing_str):
+    print_line(log)
+    log.print3("############################# Starting full Segmentation of " +
+               str(validation_or_testing_str) + " subjects ##########################")
+    print_line(log)
+
+
+def print_seg_i_log(log, image_i):
+    log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #" + str(image_i) + " ~~~~~~~~~~~~~~~~~~~~")
+
+
+def print_seg_log(log, num_segments_for_case):
+    log.print3(
+        "Starting to segment each image-part by calling the cnn.cnnTestModel(i). "
+        "This part takes a few mins per volume...")
+
+    log.print3("Total number of Segments to process:" + str(num_segments_for_case))
+
+
+def print_time_log(log, extract_time, loading_time, fwd_pass_time):
+    log.print3("TIMING: Segmentation of subject: [Extracting:] {0:.2f}".format(extract_time) +
+               " [Loading:] {0:.2f}".format(loading_time) +
+               " [ForwardPass:] {0:.2f}".format(fwd_pass_time) +
+               " [Total:] {0:.2f}".format(
+                   extract_time + loading_time + fwd_pass_time) + " secs.")
+
+
 def print_line(log):
     log.print3(
         "###########################################################################################################")
@@ -480,10 +509,8 @@ def inferenceWholeVolumes(sessionTf,
     #       ... Excluding the highest index.
 
     validation_or_testing_str = "Validation" if val_or_test == "val" else "Testing"
-    print_line(log)
-    log.print3("############################# Starting full Segmentation of " +
-               str(validation_or_testing_str) + " subjects ##########################")
-    print_line(log)
+
+    print_start_log(log, validation_or_testing_str)
 
     start_time = time.time()
 
@@ -521,11 +548,10 @@ def inferenceWholeVolumes(sessionTf,
         totalNumberOfFMsToProcess = find_num_fm(cnn3d.pathways, indicesOfFmsToVisualisePerPathwayTypeAndPerLayer)
 
     for image_i in range(total_number_of_images):
-        log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #" + str(image_i) + " ~~~~~~~~~~~~~~~~~~~~")
+
+        print_seg_i_log(log, image_i)
 
         # load the image channels in cpu
-
         (imageChannels,
          gtLabelsImage,  # only for accurate/correct DICE1-2 calculation
          roiMask,
@@ -566,12 +592,8 @@ def inferenceWholeVolumes(sessionTf,
                                                                        imageChannels,
                                                                        roiMask)
 
-        log.print3(
-            "Starting to segment each image-part by calling the cnn.cnnTestModel(i). "
-            "This part takes a few mins per volume...")
-
         num_segments_for_case = len(sliceCoordsOfSegmentsInImage)
-        log.print3("Total number of Segments to process:" + str(num_segments_for_case))
+        print_seg_log(log, num_segments_for_case)
 
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
@@ -646,11 +668,7 @@ def inferenceWholeVolumes(sessionTf,
 
             # ~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
 
-        log.print3("TIMING: Segmentation of subject: [Extracting:] {0:.2f}".format(extractTimePerSubject) +
-                   " [Loading:] {0:.2f}".format(loadingTimePerSubject) +
-                   " [ForwardPass:] {0:.2f}".format(fwdPassTimePerSubject) +
-                   " [Total:] {0:.2f}".format(
-                       extractTimePerSubject + loadingTimePerSubject + fwdPassTimePerSubject) + " secs.")
+        print_time_log(log, extractTimePerSubject, loadingTimePerSubject, fwdPassTimePerSubject)
 
         # ================ SAVE PREDICTIONS =====================
         # == saving predicted segmentations ==
@@ -696,11 +714,12 @@ def inferenceWholeVolumes(sessionTf,
         (meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3) = calculate_mean_dsc(log,
                                                                                  diceCoeffs1, diceCoeffs2, diceCoeffs3,
                                                                                  NA_PATTERN, validation_or_testing_str)
+        metrics_dict_list = dsc_to_dict(meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3)
+    else:
+        metrics_dict_list = {}
 
     end_time = time.time()
 
     print_finish(log, validation_or_testing_str, end_time - start_time)
-
-    metrics_dict_list = dsc_to_dict(meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3)
 
     return metrics_dict_list
