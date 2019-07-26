@@ -221,6 +221,14 @@ def construct_fms(fms_to_extract_img, img_part_idx, cnn3d_pathways, fm_idxs, fms
     return img_part_idx, fms_to_extract_img
 
 
+def print_progress_step(log, num_batches, batch_i, batch_size, num_segments_for_case):
+    progress_step = max(1, num_batches // 5)
+
+    if batch_i == 0 or ((batch_i + 1) % progress_step) == 0 or (batch_i + 1) == num_batches:
+        log.print3(
+            "Processed " + str((batch_i + 1) * batch_size) + "/" + str(num_segments_for_case) + " segments.")
+
+
 # Main routine for testing.
 def inferenceWholeVolumes(sessionTf,
                           cnn3d,
@@ -351,10 +359,7 @@ def inferenceWholeVolumes(sessionTf,
         fwdPassTimePerSubject = 0
         for batch_i in range(num_batches):
 
-            print_progress_step = max(1, num_batches // 5)
-            if batch_i == 0 or ((batch_i + 1) % print_progress_step) == 0 or (batch_i + 1) == num_batches:
-                log.print3(
-                    "Processed " + str((batch_i + 1) * batchsize) + "/" + str(num_segments_for_case) + " segments.")
+            print_progress_step(log, num_batches, batch_i, batchsize, num_segments_for_case)
 
             # Extract the data for the segments of this batch.
             # ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords()
