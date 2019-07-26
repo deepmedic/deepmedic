@@ -243,18 +243,56 @@ def load_feed_dict(feeds, channels_segments_per_path, loading_time):
     return feeds_dict, loading_time
 
 
-def forward_pass(feeds_dict, list_of_ops, fwd_pass_time):
+def forward_pass(session, list_of_ops, feeds_dict, fwd_pass_time):
     start_testing_time = time.time()
 
     # Forward pass
     # featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = \
     #     cnn3d.cnnTestAndVisualiseAllFmsFunction( *input_args_to_net )
-    fms_and_pred_probs = sessionTf.run(fetches=list_of_ops, feed_dict=feeds_dict)
+    fms_and_pred_probs = session.run(fetches=list_of_ops, feed_dict=feeds_dict)
 
     end_testing_time = time.time()
     fwd_pass_time += end_testing_time - start_testing_time
 
     return fms_and_pred_probs, fwd_pass_time
+
+
+def get_unpadded_pred_seg(predProbMapsPerClass, pad_input_imgs, tupleOfPaddingPerAxesLeftRight):
+    predSegmentation = np.argmax(predProbMapsPerClass, axis=0)  # The segmentation.
+    unpaddedPredSegmentation = predSegmentation if not pad_input_imgs else \
+        unpadCnnOutputs(predSegmentation, tupleOfPaddingPerAxesLeftRight)
+
+    return unpaddedPredSegmentation
+
+
+def get_unpadded_roi_mask(roiMask, pad_input_imgs, tupleOfPaddingPerAxesLeftRight):
+    # Multiply with the below to zero-out anything outside the RoiMask if given.
+    # Provided that RoiMask is binary [0,1].
+    unpaddedRoiMaskIfGivenElse1 = 1
+    if isinstance(roiMask, (np.ndarray)):  # If roiMask was given:
+        unpaddedRoiMaskIfGivenElse1 = roiMask if not pad_input_imgs else \
+            unpadCnnOutputs(roiMask, tupleOfPaddingPerAxesLeftRight)
+
+    return unpaddedRoiMaskIfGivenElse1
+
+
+def save_pred_seg(unpaddedPredSegmentation, unpaddedRoiMaskIfGivenElse1, savePredictedSegmAndProbsDict,
+                  suffixForSegmAndProbsDict, namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient,
+                  image_i, log):
+
+    if savePredictedSegmAndProbsDict["segm"] == True:  # save predicted segmentation
+        suffixToAdd = suffixForSegmAndProbsDict["segm"]
+        # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
+        # eg RAS transformation
+        unpaddedPredSegmentationWithinRoi = unpaddedPredSegmentation * unpaddedRoiMaskIfGivenElse1
+        savePredImgToNiiWithOriginalHdr(unpaddedPredSegmentationWithinRoi,
+                                        namesForSavingSegmAndProbs,
+                                        listOfFilepathsToEachChannelOfEachPatient,
+                                        image_i,
+                                        suffixToAdd,
+                                        np.dtype(np.int16),
+                                        log)
+
 
 # Main routine for testing.
 def inferenceWholeVolumes(sessionTf,
@@ -412,8 +450,8 @@ def inferenceWholeVolumes(sessionTf,
                                                                  channsOfSegmentsPerPath, loadingTimePerSubject)
 
             # Forward pass
-            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = forward_pass(feeds_dict, list_of_ops,
-                                                                                              fwdPassTimePerSubject)
+            (featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch, fwdPassTimePerSubject) = \
+                forward_pass(sessionTf, list_of_ops, feeds_dict, fwdPassTimePerSubject)
 
             predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[0]
 
@@ -460,29 +498,13 @@ def inferenceWholeVolumes(sessionTf,
 
         # ================ SAVE PREDICTIONS =====================
         # == saving predicted segmentations ==
-        predSegmentation = np.argmax(predProbMapsPerClass, axis=0)  # The segmentation.
-        unpaddedPredSegmentation = predSegmentation if not pad_input_imgs else \
-            unpadCnnOutputs(predSegmentation, tupleOfPaddingPerAxesLeftRight)
+        unpaddedPredSegmentation = get_unpadded_pred_seg(predProbMapsPerClass,
+                                                         pad_input_imgs, tupleOfPaddingPerAxesLeftRight)
+        unpaddedRoiMaskIfGivenElse1 = get_unpadded_roi_mask(roiMask, pad_input_imgs, tupleOfPaddingPerAxesLeftRight)
 
-        # Multiply with the below to zero-out anything outside the RoiMask if given.
-        # Provided that RoiMask is binary [0,1].
-        unpaddedRoiMaskIfGivenElse1 = 1
-        if isinstance(roiMask, (np.ndarray)):  # If roiMask was given:
-            unpaddedRoiMaskIfGivenElse1 = roiMask if not pad_input_imgs else \
-                unpadCnnOutputs(roiMask, tupleOfPaddingPerAxesLeftRight)
-
-        if savePredictedSegmAndProbsDict["segm"] == True:  # save predicted segmentation
-            suffixToAdd = suffixForSegmAndProbsDict["segm"]
-            # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
-            # eg RAS transformation
-            unpaddedPredSegmentationWithinRoi = unpaddedPredSegmentation * unpaddedRoiMaskIfGivenElse1
-            savePredImgToNiiWithOriginalHdr(unpaddedPredSegmentationWithinRoi,
-                                            namesForSavingSegmAndProbs,
-                                            listOfFilepathsToEachChannelOfEachPatient,
-                                            image_i,
-                                            suffixToAdd,
-                                            np.dtype(np.int16),
-                                            log)
+        save_pred_seg(unpaddedPredSegmentation, unpaddedRoiMaskIfGivenElse1, savePredictedSegmAndProbsDict,
+                      suffixForSegmAndProbsDict, namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient,
+                      image_i, log)
 
         # == saving probability maps ==
         for class_i in range(0, NUMBER_OF_CLASSES):
