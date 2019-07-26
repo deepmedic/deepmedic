@@ -243,6 +243,19 @@ def load_feed_dict(feeds, channels_segments_per_path, loading_time):
     return feeds_dict, loading_time
 
 
+def forward_pass(feeds_dict, list_of_ops, fwd_pass_time):
+    start_testing_time = time.time()
+
+    # Forward pass
+    # featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = \
+    #     cnn3d.cnnTestAndVisualiseAllFmsFunction( *input_args_to_net )
+    fms_and_pred_probs = sessionTf.run(fetches=list_of_ops, feed_dict=feeds_dict)
+
+    end_testing_time = time.time()
+    fwd_pass_time += end_testing_time - start_testing_time
+
+    return fms_and_pred_probs, fwd_pass_time
+
 # Main routine for testing.
 def inferenceWholeVolumes(sessionTf,
                           cnn3d,
@@ -342,8 +355,9 @@ def inferenceWholeVolumes(sessionTf,
         )
 
         niiDimensions = list(imageChannels.shape[1:])
-        #The predicted probability-maps for the whole volume, one per class. Will be constructed by stitching together the predictions from each segment.
-        predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype = "float32")
+        # The predicted probability-maps for the whole volume, one per class.
+        # Will be constructed by stitching together the predictions from each segment.
+        predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype="float32")
         # create the big array that will hold all the fms (for feature extraction, to save as a big multi-dim image).
         if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
             multidimensionalImageWithAllToBeVisualisedFmsArray = np.zeros([totalNumberOfFMsToProcess] + niiDimensions,
@@ -397,14 +411,9 @@ def inferenceWholeVolumes(sessionTf,
             (feeds_dict, loadingTimePerSubject) = load_feed_dict(cnn3d.get_main_feeds('test'),
                                                                  channsOfSegmentsPerPath, loadingTimePerSubject)
 
-            start_testing_time = time.time()
             # Forward pass
-            # featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = \
-            #     cnn3d.cnnTestAndVisualiseAllFmsFunction( *input_args_to_net )
-            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = sessionTf.run(fetches=list_of_ops,
-                                                                                               feed_dict=feeds_dict)
-            end_testing_time = time.time()
-            fwdPassTimePerSubject += end_testing_time - start_testing_time
+            featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = forward_pass(feeds_dict, list_of_ops,
+                                                                                              fwdPassTimePerSubject)
 
             predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[0]
 
