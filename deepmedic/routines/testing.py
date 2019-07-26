@@ -167,22 +167,21 @@ def construct_fms(fms_to_extract_img, img_part_idx, cnn3d_pathways, fm_idxs, fms
             # because it works in the subsampled space.
             # I need to repeat it, to bring it to the dimensions of the normal-voxel-space.
             if pathway.pType() == pt.SUBS:
-                expandedOutputOfFmsR = np.repeat(central_voxels_all_fms, pathway.subsFactor()[0],
-                                                 axis=2)
-                expandedOutputOfFmsRC = np.repeat(expandedOutputOfFmsR, pathway.subsFactor()[1], axis=3)
-                expandedOutputOfFmsRCZ = np.repeat(expandedOutputOfFmsRC, pathway.subsFactor()[2], axis=4)
+                expanded_output_r = np.repeat(central_voxels_all_fms, pathway.subsFactor()[0], axis=2)
+                expanded_output_rc = np.repeat(expanded_output_r, pathway.subsFactor()[1], axis=3)
+                expanded_output_rcz = np.repeat(expanded_output_rc, pathway.subsFactor()[2], axis=4)
                 # The below is a trick to get correct number of voxels even when subsampling factor is
                 # even or not exact divisor of the number of central voxels.
                 # ...This trick is coupled with the ceil() when getting the
                 # numberOfCentralVoxelsToGetInDirectionR above.
-                centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = expandedOutputOfFmsRCZ[:,
+                central_voxels_all_fms_batch = expanded_output_rcz[:,
                                                                    :,
                                                                    0:num_central_voxels[0],
                                                                    0:num_central_voxels[1],
                                                                    0:num_central_voxels[2]
                                                                    ]
             else:
-                centralVoxelsOfAllFmsToBeVisualisedForWholeBatch = central_voxels_all_fms
+                central_voxels_all_fms_batch = central_voxels_all_fms
 
             # ----For every image part within this batch, reconstruct the corresponding part of the feature
             # maps of the layer we are currently visualising in this loop.
@@ -193,8 +192,8 @@ def construct_fms(fms_to_extract_img, img_part_idx, cnn3d_pathways, fm_idxs, fms
                 slice_coords_seg = slice_coords[
                     img_part_idx + img_part_batch_idx]
                 coords_top_left_voxel = [slice_coords_seg[0][0],
-                                                   slice_coords_seg[1][0],
-                                                   slice_coords_seg[2][0]]
+                                         slice_coords_seg[1][0],
+                                         slice_coords_seg[2][0]]
 
                 # I put the central-predicted-voxels of all FMs to the corresponding,
                 # newly created images all at once.
@@ -209,7 +208,7 @@ def construct_fms(fms_to_extract_img, img_part_idx, cnn3d_pathways, fm_idxs, fms
                                   coords_top_left_voxel[2] + half_rec_field[2]:
                                   coords_top_left_voxel[2] + half_rec_field[2] + stride[2]
 
-                                  ] = centralVoxelsOfAllFmsToBeVisualisedForWholeBatch[img_part_batch_idx]
+                                  ] = central_voxels_all_fms_batch[img_part_batch_idx]
 
             idx_curr = fms_to_fill_high_idx
 
