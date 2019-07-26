@@ -103,7 +103,6 @@ def calculate_num_central_voxels_dir(num_central_voxels, pathway):
 
 def construct_fms(fms_to_extract_img, img_part_idx, cnn3d_pathways, fm_idxs, fms_sorted, num_central_voxels,
                   half_rec_field, stride, slice_coords, batch_size):
-    fms_layer = None
     # idx_curr is the index in the
     # multidimensional array that holds all the to-be-visualised-fms. It is the one that corresponds to
     # the next to-be-visualised layer_idx.
@@ -257,115 +256,105 @@ def forward_pass(session, list_of_ops, feeds_dict, fwd_pass_time):
     return fms_and_pred_probs, fwd_pass_time
 
 
-def get_unpadded_pred_seg(predProbMapsPerClass, pad_input_imgs, tupleOfPaddingPerAxesLeftRight):
-    predSegmentation = np.argmax(predProbMapsPerClass, axis=0)  # The segmentation.
-    unpaddedPredSegmentation = predSegmentation if not pad_input_imgs else \
-        unpadCnnOutputs(predSegmentation, tupleOfPaddingPerAxesLeftRight)
+def get_unpadded_pred_seg(prob_maps_per_class, pad_input_imgs, axes_padding_left_right):
+    pred_seg = np.argmax(prob_maps_per_class, axis=0)  # The segmentation.
+    unpadded_pred_seg = pred_seg if not pad_input_imgs else \
+        unpadCnnOutputs(pred_seg, axes_padding_left_right)
 
-    return unpaddedPredSegmentation
+    return unpadded_pred_seg
 
 
-def get_unpadded_roi_mask(roiMask, pad_input_imgs, tupleOfPaddingPerAxesLeftRight):
+def get_unpadded_roi_mask(roi_mask, pad_input_imgs, axes_padding_left_right):
     # Multiply with the below to zero-out anything outside the RoiMask if given.
     # Provided that RoiMask is binary [0,1].
-    unpaddedRoiMaskIfGivenElse1 = 1
-    if isinstance(roiMask, (np.ndarray)):  # If roiMask was given:
-        unpaddedRoiMaskIfGivenElse1 = roiMask if not pad_input_imgs else \
-            unpadCnnOutputs(roiMask, tupleOfPaddingPerAxesLeftRight)
+    unpadded_roi_mask = 1
+    if isinstance(roi_mask, np.ndarray):  # If roiMask was given:
+        unpadded_roi_mask = roi_mask if not pad_input_imgs else \
+            unpadCnnOutputs(roi_mask, axes_padding_left_right)
 
-    return unpaddedRoiMaskIfGivenElse1
+    return unpadded_roi_mask
 
 
-def save_pred_seg(unpaddedPredSegmentation, unpaddedRoiMaskIfGivenElse1, savePredictedSegmAndProbsDict,
-                  suffixForSegmAndProbsDict, namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient,
+def save_pred_seg(unpadded_pred_seg, unpadded_roi_mask, save_pred_seg_bool, suffix_seg, seg_names, filepaths,
                   image_i, log):
 
-    if savePredictedSegmAndProbsDict["segm"] == True:  # save predicted segmentation
-        suffixToAdd = suffixForSegmAndProbsDict["segm"]
+    if save_pred_seg_bool:  # save predicted segmentation
         # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
         # eg RAS transformation
-        unpaddedPredSegmentationWithinRoi = unpaddedPredSegmentation * unpaddedRoiMaskIfGivenElse1
-        savePredImgToNiiWithOriginalHdr(unpaddedPredSegmentationWithinRoi,
-                                        namesForSavingSegmAndProbs,
-                                        listOfFilepathsToEachChannelOfEachPatient,
+        unpadded_pred_seg_in_roi = unpadded_pred_seg * unpadded_roi_mask
+        savePredImgToNiiWithOriginalHdr(unpadded_pred_seg_in_roi,
+                                        seg_names,
+                                        filepaths,
                                         image_i,
-                                        suffixToAdd,
+                                        suffix_seg,
                                         np.dtype(np.int16),
                                         log)
 
 
-def save_prob_maps(NUMBER_OF_CLASSES, savePredictedSegmAndProbsDict, suffixForSegmAndProbsDict, predProbMapsPerClass,
-                   pad_input_imgs, tupleOfPaddingPerAxesLeftRight, unpaddedRoiMaskIfGivenElse1,
-                   namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, image_i, log):
+def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
+                   pad_input_imgs, axes_padding_left_right, unpadded_roi_mask,
+                   prob_names, filepaths, image_i, log):
 
-    for class_i in range(0, NUMBER_OF_CLASSES):
-        if (len(savePredictedSegmAndProbsDict["prob"]) >= class_i + 1) and (
-                savePredictedSegmAndProbsDict["prob"][class_i] == True):  # save predicted probMap for class
-            suffixToAdd = suffixForSegmAndProbsDict["prob"] + str(class_i)
+    for class_i in range(0, num_classes):
+        if (len(save_prob_maps_bool) >= class_i + 1) and (save_prob_maps_bool[class_i]):  # save per class probMap
+            suffix = suffix_prob_map + str(class_i)
             # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
             # eg RAS transformation.
-            predProbMapClassI = predProbMapsPerClass[class_i, :, :, :]
-            unpaddedPredProbMapClassI = predProbMapClassI if not pad_input_imgs else unpadCnnOutputs(
-                predProbMapClassI, tupleOfPaddingPerAxesLeftRight)
-            unpaddedPredProbMapClassIWithinRoi = unpaddedPredProbMapClassI * unpaddedRoiMaskIfGivenElse1
-            savePredImgToNiiWithOriginalHdr(unpaddedPredProbMapClassIWithinRoi,
-                                            namesForSavingSegmAndProbs,
-                                            listOfFilepathsToEachChannelOfEachPatient,
+            prob_map_i = prob_maps[class_i, :, :, :]
+            unpadded_prob_map_i = prob_map_i if not pad_input_imgs \
+                else unpadCnnOutputs(prob_map_i, axes_padding_left_right)
+            unpadded_prob_map_i_in_roi = unpadded_prob_map_i * unpadded_roi_mask
+            savePredImgToNiiWithOriginalHdr(unpadded_prob_map_i_in_roi,
+                                            prob_names,
+                                            filepaths,
                                             image_i,
-                                            suffixToAdd,
+                                            suffix,
                                             np.dtype(np.float32),
                                             log)
 
 
-def save_fms_individual(cnn3d_pathways, indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                        multidimensionalImageWithAllToBeVisualisedFmsArray, pad_input_imgs,
-                        tupleOfPaddingPerAxesLeftRight, namesForSavingFms, listOfFilepathsToEachChannelOfEachPatient,
+def save_fms_individual(cnn3d_pathways, fm_idxs,
+                        multidim_fm_array, pad_input_imgs,
+                        axes_padding_left_right, fms_names, filepaths,
                         image_i, log):
-    currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray = 0
+    idx_curr = 0
     for pathway_i in range(len(cnn3d_pathways)):
         pathway = cnn3d_pathways[pathway_i]
-        indicesOfFmsToVisualisePerLayerOfCertainPathway = \
-            indicesOfFmsToVisualisePerPathwayTypeAndPerLayer[pathway.pType()]
-        if indicesOfFmsToVisualisePerLayerOfCertainPathway != []:
+        fms_idx_pathway = fm_idxs[pathway.pType()]
+        if fms_idx_pathway:
             for layer_i in range(len(pathway.getLayers())):
-                indicesOfFmsToVisualiseForCertainLayerOfCertainPathway = \
-                    indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
-                if indicesOfFmsToVisualiseForCertainLayerOfCertainPathway != []:
+                fms_idx_layer_pathway = fms_idx_pathway[layer_i]
+                if fms_idx_layer_pathway:
                     # If the user specifies to grab more feature maps than exist (eg 9999), correct it,
                     # replacing it with the number of FMs in the layer.
-                    for fmActualNumber in range(indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[0],
-                                                indicesOfFmsToVisualiseForCertainLayerOfCertainPathway[1]):
-                        fmToSave = multidimensionalImageWithAllToBeVisualisedFmsArray[
-                            currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray]
-                        unpaddedFmToSave = fmToSave if not pad_input_imgs else \
-                            unpadCnnOutputs(fmToSave, tupleOfPaddingPerAxesLeftRight)
+                    for fmActualNumber in range(fms_idx_layer_pathway[0], fms_idx_layer_pathway[1]):
+                        fm_to_save = multidim_fm_array[idx_curr]
+                        unpadded_fm_to_save = fm_to_save if not pad_input_imgs else \
+                            unpadCnnOutputs(fm_to_save, axes_padding_left_right)
 
-                        saveFmImgToNiiWithOriginalHdr(unpaddedFmToSave,
-                                                      namesForSavingFms,
-                                                      listOfFilepathsToEachChannelOfEachPatient,
+                        saveFmImgToNiiWithOriginalHdr(unpadded_fm_to_save,
+                                                      fms_names,
+                                                      filepaths,
                                                       image_i,
                                                       pathway_i,
                                                       layer_i,
                                                       fmActualNumber,
                                                       log)
 
-                        currentIndexInTheMultidimensionalImageWithAllToBeVisualisedFmsArray += 1
+                        idx_curr += 1
 
 
-def save_fms_multidim(multidimensionalImageWithAllToBeVisualisedFmsArray, pad_input_imgs,
-                      tupleOfPaddingPerAxesLeftRight, namesForSavingFms, listOfFilepathsToEachChannelOfEachPatient,
+def save_fms_multidim(multidim_fm_array, pad_input_imgs,
+                      axes_padding_left_right, fms_names, filepaths,
                       image_i, log):
-    multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms = np.transpose(
-        multidimensionalImageWithAllToBeVisualisedFmsArray, (1, 2, 3, 0))
-    unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms = \
-        multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms if not pad_input_imgs else \
-            unpadCnnOutputs(multidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
-                            tupleOfPaddingPerAxesLeftRight)
+    multidim_fm_array_4dim = np.transpose(multidim_fm_array, (1, 2, 3, 0))
+    unpadded_multidim_fm_array_4dim = multidim_fm_array_4dim if not pad_input_imgs else \
+        unpadCnnOutputs(multidim_fm_array_4dim, axes_padding_left_right)
     # Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
     save4DImgWithAllFmsToNiiWithOriginalHdr(
-        unpaddedMultidimensionalImageWithAllToBeVisualisedFmsArrayWith4thDimAsFms,
-        namesForSavingFms,
-        listOfFilepathsToEachChannelOfEachPatient,
+        unpadded_multidim_fm_array_4dim,
+        fms_names,
+        filepaths,
         image_i,
         log)
 
@@ -578,15 +567,15 @@ def inferenceWholeVolumes(sessionTf,
                                                          pad_input_imgs, tupleOfPaddingPerAxesLeftRight)
         unpaddedRoiMaskIfGivenElse1 = get_unpadded_roi_mask(roiMask, pad_input_imgs, tupleOfPaddingPerAxesLeftRight)
 
-        save_pred_seg(unpaddedPredSegmentation, unpaddedRoiMaskIfGivenElse1, savePredictedSegmAndProbsDict,
-                      suffixForSegmAndProbsDict, namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient,
-                      image_i, log)
+        save_pred_seg(unpaddedPredSegmentation, unpaddedRoiMaskIfGivenElse1,
+                      savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
+                      namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, image_i, log)
 
         # == saving probability maps ==
-        save_prob_maps(NUMBER_OF_CLASSES, savePredictedSegmAndProbsDict, suffixForSegmAndProbsDict,
-                       predProbMapsPerClass,
-                       pad_input_imgs, tupleOfPaddingPerAxesLeftRight, unpaddedRoiMaskIfGivenElse1,
-                       namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, image_i, log)
+        save_prob_maps(NUMBER_OF_CLASSES, savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
+                       predProbMapsPerClass, pad_input_imgs, tupleOfPaddingPerAxesLeftRight,
+                       unpaddedRoiMaskIfGivenElse1, namesForSavingSegmAndProbs,
+                       listOfFilepathsToEachChannelOfEachPatient, image_i, log)
 
         # == saving feature maps ==
         if saveIndividualFmImagesForVisualisation:
@@ -605,8 +594,8 @@ def inferenceWholeVolumes(sessionTf,
 
         # ================= EVALUATE DSC FOR EACH SUBJECT ========================
         if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided for DSC calculation. Do calculation
-            log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(
-                image_i) + " ++++++++++++++++++++++++++")
+            log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) +
+                       " ++++++++++++++++++++++++++")
             # Unpad whatever needed.
             unpaddedGtLabelsImage = gtLabelsImage if not pad_input_imgs else \
                 unpadCnnOutputs(gtLabelsImage, tupleOfPaddingPerAxesLeftRight)
