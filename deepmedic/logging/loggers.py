@@ -9,7 +9,10 @@ from __future__ import absolute_import, print_function, division
 import datetime
 
 
-def get_pattern_string(pattern='#', width=80):
+def get_pattern_string(pattern='#', width=80) -> str:
+    if width == 0:
+        return ''
+
     string = pattern * (width // len(pattern))
     leftover = width % len(pattern)
 
@@ -35,6 +38,14 @@ class Logger:
         self.print3(get_pattern_string(pattern=pattern, width=line_width))
 
     def print_block(self, text, pattern='#', line_width=80, block=True, margin=5):
+        """
+        Prints a block of text with a character pattern surrounding it.
+        :str text: the text to be written
+        :str pattern: the character pattern to surround the text with (default '#')
+        :int line_width: the total width of the line to be written (default 80)
+        :bool block: whether to add a line of pattern only below and above the text block (default True)
+        :int margin: the length of the margin (default 5)
+        """
 
         if block:
             self.print_pattern_line(pattern, line_width)
