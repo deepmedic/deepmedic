@@ -87,7 +87,7 @@ class Logger:
                     # add whitespace
                     string += ' ' * (text_width - text_len + 1)
                     # add right margin
-                    string += get_pattern_string(pattern, width=margin)
+                    string += get_pattern_string(pattern, width=line_width)[-margin:]
 
                     self.print3(string)
 
@@ -100,7 +100,7 @@ class Logger:
             right_space = text_width - left_space - len(text)
             string = get_pattern_string(pattern=pattern, width=margin+left_space)
             string += ' ' + text + ' '
-            string += get_pattern_string(pattern=pattern, width=margin+right_space)
+            string += get_pattern_string(pattern=pattern, width=line_width)[-(margin+right_space):]
 
             self.print3(string)
 
