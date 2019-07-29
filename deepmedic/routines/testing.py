@@ -428,47 +428,12 @@ def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, validation_or
     return mean_dice_1, mean_dice_2, mean_dice_3
 
 
-def print_start_log(log, validation_or_testing_str):
-    print_line(log)
-    log.print3("############################# Starting full Segmentation of " +
-               str(validation_or_testing_str) + " subjects ##########################")
-    print_line(log)
-
-
-def print_seg_i_log(log, image_i):
-    log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #" + str(image_i) + " ~~~~~~~~~~~~~~~~~~~~")
-
-
-def print_seg_log(log, num_segments_for_case):
-    log.print3(
-        "Starting to segment each image-part by calling the cnn.cnnTestModel(i). "
-        "This part takes a few mins per volume...")
-
-    log.print3("Total number of Segments to process:" + str(num_segments_for_case))
-
-
 def print_time_log(log, extract_time, loading_time, fwd_pass_time):
     log.print3("TIMING: Segmentation of subject: [Extracting:] {0:.2f}".format(extract_time) +
                " [Loading:] {0:.2f}".format(loading_time) +
                " [ForwardPass:] {0:.2f}".format(fwd_pass_time) +
                " [Total:] {0:.2f}".format(
                    extract_time + loading_time + fwd_pass_time) + " secs.")
-
-
-def print_line(log):
-    log.print3(
-        "###########################################################################################################")
-
-
-def print_finish(log, validation_or_testing_str, duration):
-    log.print3(
-        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(duration) + " secs.")
-    print_line(log)
-    log.print3("############################# Finished full Segmentation of " +
-               str(validation_or_testing_str) +
-               " subjects ##########################")
-    print_line(log)
 
 
 def dsc_to_dict(dices_1, dices_2, dices_3):
@@ -510,7 +475,12 @@ def inferenceWholeVolumes(sessionTf,
 
     validation_or_testing_str = "Validation" if val_or_test == "val" else "Testing"
 
-    print_start_log(log, validation_or_testing_str)
+    log.print3(
+        "###########################################################################################################")
+    log.print3("############################# Starting full Segmentation of " +
+               str(validation_or_testing_str) + " subjects ##########################")
+    log.print3(
+        "###########################################################################################################")
 
     start_time = time.time()
 
@@ -549,7 +519,8 @@ def inferenceWholeVolumes(sessionTf,
 
     for image_i in range(total_number_of_images):
 
-        print_seg_i_log(log, image_i)
+        log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #" + str(image_i) + " ~~~~~~~~~~~~~~~~~~~~")
 
         # load the image channels in cpu
         (imageChannels,
@@ -593,7 +564,11 @@ def inferenceWholeVolumes(sessionTf,
                                                                        roiMask)
 
         num_segments_for_case = len(sliceCoordsOfSegmentsInImage)
-        print_seg_log(log, num_segments_for_case)
+        log.print3(
+            "Starting to segment each image-part by calling the cnn.cnnTestModel(i). "
+            "This part takes a few mins per volume...")
+
+        log.print3("Total number of Segments to process:" + str(num_segments_for_case))
 
         imagePartOfConstructedProbMap_i = 0
         imagePartOfConstructedFeatureMaps_i = 0
@@ -720,6 +695,14 @@ def inferenceWholeVolumes(sessionTf,
 
     end_time = time.time()
 
-    print_finish(log, validation_or_testing_str, end_time - start_time)
+    log.print3(
+        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(duration) + " secs.")
+    log.print3(
+        "###########################################################################################################")
+    log.print3("############################# Finished full Segmentation of " +
+               str(validation_or_testing_str) +
+               " subjects ##########################")
+    log.print3(
+        "###########################################################################################################")
 
     return metrics_dict_list
