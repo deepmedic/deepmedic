@@ -696,7 +696,7 @@ def inferenceWholeVolumes(sessionTf,
     end_time = time.time()
 
     log.print3(
-        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(duration) + " secs.")
+        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(end_time - start_time) + " secs.")
     log.print3(
         "###########################################################################################################")
     log.print3("############################# Finished full Segmentation of " +
