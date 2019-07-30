@@ -792,11 +792,11 @@ def extractSegmentGivenSliceCoords(train_or_val,
 
     # Make COPIES of the segments, instead of having a VIEW (slice) of them.
     # This is so that the the whole volume are afterwards released from RAM.
-    channs_of_sample_per_path = [np.array(pathw_channs, copy=True, dtype='float32') for pathw_channs in
-                                 channs_of_sample_per_path]
+    channs_of_sample_per_path = \
+        [np.array(pathw_channs, copy=True, dtype='float32') for pathw_channs in channs_of_sample_per_path]
     lbls_predicted_part_of_sample = np.copy(lbls_predicted_part_of_sample)
 
-    return (channs_of_sample_per_path, lbls_predicted_part_of_sample)
+    return channs_of_sample_per_path, lbls_predicted_part_of_sample
 
 
 # ###########################################################
@@ -893,11 +893,11 @@ def extractSegmentsGivenSliceCoords(cnn3d,
     dimsOfPrimarySegment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
 
     for segment_i in range(numberOfSegmentsToExtract):
-        rLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][0];
+        rLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][0]
         rFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][1]
-        cLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][1][0];
+        cLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][1][0]
         cFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][1][1]
-        zLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][2][0];
+        zLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][2][0]
         zFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][2][1]
         # segment for primary pathway
         channsForPrimaryPathForThisSegm = channelsOfImageNpArray[:,
