@@ -118,7 +118,8 @@ class TrainSession(Session):
         # self._print_vars_in_collection(collection_vars_net, "net")
         # self._print_vars_in_collection(collection_vars_trainer, "trainer")
         
-        with tf.Session( graph=graphTf, config=tf.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
+        # ZY added allow_soft_placement = True to solve the error when assign a single GPU for computation when multiple are available.
+        with tf.Session( graph=graphTf, config=tf.ConfigProto(allow_soft_placement = True,log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
             # Load or initialize parameters
             file_to_load_params_from = self._params.get_path_to_load_model_from()
             if file_to_load_params_from is not None: # Load params
