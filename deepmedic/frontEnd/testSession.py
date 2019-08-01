@@ -99,7 +99,8 @@ class TestSession(Session):
             # Create the saver
             saver_all = tf.train.Saver() # saver_net would suffice
             
-        with tf.Session( graph=graphTf, config=tf.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
+        #ZY added allow_soft_placement = True to avoid the error when assign a single GPU (multiple GPUs are available).
+        with tf.Session( graph=graphTf, config=tf.ConfigProto(allow_soft_placement = True,log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
             file_to_load_params_from = self._params.get_path_to_load_model_from()
             if file_to_load_params_from is not None: # Load params
                 self._log.print3("=========== Loading parameters from specified saved model ===============")
