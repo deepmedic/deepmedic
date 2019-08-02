@@ -197,7 +197,7 @@ class TrainSession(Session):
             self._log.print3("=======================================================\n")
 
             do_training(*([sessionTf, saver_all, cnn3d, trainer] + self._params.get_args_for_train_routine()),
-                        tensorboard_loggers=tensorboard_loggers)
+                        tensorboard_loggers=tensorboard_loggers, norm_params=self._params.get_norm_params())
 
         self._log.print3("\n=======================================================")
         self._log.print3("=========== Training session finished =================")

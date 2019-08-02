@@ -39,8 +39,11 @@ class TrainConfig(Config):
     NUM_OF_PROC_SAMPL = "num_processes_sampling"
 
     # ~~~~~ Preprocessing ~~~~~~~~
-    PREPROC = 'preprocessing'
-    INT_NORM = 'intensityNormalisation'
+    NORM = 'norm'
+    INT_NORM = 'intensity_norm'
+    CO_PERCENT = "cutoff_percent"
+    CO_STD = "cutoff_std"
+    CO_MEAN = "cutoff_mean"
     
     # ~~~~~ Learning rate schedule ~~~~~
     LR_SCH_TYPE = "typeOfLearningRateSchedule"

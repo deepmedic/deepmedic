@@ -324,6 +324,19 @@ class TrainSessionParameters(object):
         # Preprocessing
         self.pad_input_imgs = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
 
+        # Normalisation
+        self.norm = cfg[cfg.NORM]
+        if self.norm:
+            self.norm_params = {'int_norm': cfg[cfg.INT_NORM],
+                                'cutoff_percent': cfg[cfg.CO_PERCENT],
+                                'cutoff_std': cfg[cfg.CO_STD],
+                                'cutoff_mean': cfg[cfg.CO_MEAN]}
+        else:
+            self.norm_params = {'int_norm': False,
+                                'cutoff_percent': None,
+                                'cutoff_std': None,
+                                'cutoff_mean': False}
+
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
         self.numberOfCasesVal = len(self.channelsFilepathsVal)
@@ -455,6 +468,9 @@ class TrainSessionParameters(object):
     def get_tensorboard_bool(self):
         return self.tensorboardLog
 
+    def get_norm_params(self):
+        return self.norm_params
+
     def print_params(self):
         logPrint = self.log.print3
         logPrint("")
@@ -585,6 +601,14 @@ class TrainSessionParameters(object):
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
         logPrint("Pad Input Images = " + str(self.pad_input_imgs))
+        logPrint("~~Normalization~~")
+        logPrint("Normalisation = " + str(bool(self.norm)))
+        if self.norm:
+            logPrint("Intensity Normalization = " + str(bool(self.norm_params['int_norm'])))
+            if self.norm_params['int_norm']:
+                logPrint("Cutoff percentile = " + str(self.norm_params['cutoff_percent']))
+                logPrint("Cutoff standard deviation = " + str(self.norm_params['cutoff_std']))
+                logPrint("Cutoff whole image mean = " + str(self.norm_params['cutoff_mean']))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")

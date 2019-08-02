@@ -23,6 +23,7 @@ from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3d
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.augmentSample import augment_sample
 from deepmedic.dataManagement.augmentImage import augment_images_of_case
+from deepmedic.dataManagement.preprocessing import normalize_images, init_norm_params
 
 
 # Order of calls:
@@ -55,7 +56,9 @@ def getSampledDataAndLabelsForSubepoch(log,
                                        # Preprocessing & Augmentation
                                        pad_input_imgs,
                                        augm_img_prms,
-                                       augm_sample_prms
+                                       augm_sample_prms,
+                                       # Normalisation,
+                                       norm_params=None
                                        ):
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -89,6 +92,10 @@ def getSampledDataAndLabelsForSubepoch(log,
     # Get how many samples I should get from each subject.
     n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
 
+    # Get normalization parameters dictionary
+    if norm_params is None:
+        norm_params = init_norm_params()
+
     args_sampling_job = [log,
                          train_or_val,
                          run_input_checks,
@@ -105,10 +112,12 @@ def getSampledDataAndLabelsForSubepoch(log,
 
                          n_subjects_for_subep,
                          inds_of_subjects_for_subep,
-                         n_samples_per_subj]
+                         n_samples_per_subj,
+                         # Normalization
+                         norm_params]
 
-    log.print3(id_str + " Will sample from [" + str(
-        n_subjects_for_subep) + "] subjects for next " + training_or_validation_str + "...")
+    log.print3(id_str + " Will sample from [" + str(n_subjects_for_subep) +
+               "] subjects for next " + training_or_validation_str + "...")
 
     jobs_inds_to_do = list(range(n_subjects_for_subep))  # One job per subject.
 
@@ -253,8 +262,8 @@ def load_subj_and_get_samples(job_i,
 
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
-                              n_samples_per_subj
-                              ):
+                              n_samples_per_subj,
+                              norm_params):
     # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channs_of_samples_per_path, lbls_predicted_part_of_samples )
@@ -289,6 +298,9 @@ def load_subj_and_get_samples(job_i,
                               pad_input_imgs,
                               cnn3d.recFieldCnn,  # used if pad_input_imgs
                               dims_highres_segment)  # used if pad_input_imgs.
+
+    if norm_params['int_norm']:
+        channels = normalize_images(log, channels, roi_mask, norm_params=norm_params)
 
     # Augment at image level:
     time_augm_0 = time.time()
@@ -901,10 +913,10 @@ def extractSegmentsGivenSliceCoords(cnn3d,
         zFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][2][1]
         # segment for primary pathway
         channsForPrimaryPathForThisSegm = channelsOfImageNpArray[:,
-                                          rLowBoundary:rFarBoundary + 1,
-                                          cLowBoundary:cFarBoundary + 1,
-                                          zLowBoundary:zFarBoundary + 1
-                                          ]
+                                                                 rLowBoundary:rFarBoundary + 1,
+                                                                 cLowBoundary:cFarBoundary + 1,
+                                                                 zLowBoundary:zFarBoundary + 1
+                                                                 ]
         channsForSegmentsPerPathToReturn[0].append(channsForPrimaryPathForThisSegm)
 
         # Subsampled pathways
@@ -912,9 +924,9 @@ def extractSegmentsGivenSliceCoords(cnn3d,
             if cnn3d.pathways[pathway_i].pType() == pt.FC or cnn3d.pathways[pathway_i].pType() == pt.NORM:
                 continue
             # the right hand values are placeholders in this case.
-            slicesCoordsOfSegmForPrimaryPathway = [[rLowBoundary, rFarBoundary - 1], [cLowBoundary, cFarBoundary - 1],
-                                                   [zLowBoundary,
-                                                    zFarBoundary - 1]]
+            slicesCoordsOfSegmForPrimaryPathway = [[rLowBoundary, rFarBoundary - 1],
+                                                   [cLowBoundary, cFarBoundary - 1],
+                                                   [zLowBoundary, zFarBoundary - 1]]
             channsForThisSubsPathForThisSegm = getImagePartFromSubsampledImageForTraining(
                 dimsOfPrimarySegment=dimsOfPrimarySegment,
                 recFieldCnn=recFieldCnn,
