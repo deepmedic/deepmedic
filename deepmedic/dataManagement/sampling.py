@@ -300,7 +300,7 @@ def load_subj_and_get_samples(job_i,
                               dims_highres_segment)  # used if pad_input_imgs.
 
     if norm_params['int_norm']:
-        channels = normalize_images(log, channels, roi_mask, norm_params=norm_params)
+        channels = normalize_images(log, channels, roi_mask, norm_params=norm_params, id_str=id_str)
 
     # Augment at image level:
     time_augm_0 = time.time()
