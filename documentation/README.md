@@ -1,7 +1,7 @@
 DeepMedic
 =====================================
 
-### N e w s
+### News
 
 11 June 2019 (v0.7.4):
 * Added augmentation via affine transforms, rotation & scaling. Off by default (slows down training).
