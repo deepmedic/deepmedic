@@ -75,7 +75,6 @@ class UiConfig(object):
         widget = QtWidgets.QCheckBox(self.scrollAreaWidgetContents)
         widget.setText("")
         widget.setObjectName(name + '_checkbox')
-        print(name + ': ' + str(check))
         if check:
             widget.setChecked(True)
         return widget
