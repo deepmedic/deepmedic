@@ -104,7 +104,7 @@ class ConfigElem(object):
         self.idx = idx
         self.widget_type = widget_type
         self.info = info
-        self.advanced=advanced
+        self.advanced = advanced
 
     def __get__(self, instance, owner):
         return self.name

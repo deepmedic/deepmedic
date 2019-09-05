@@ -25,7 +25,7 @@ class TestConfig(Config):
     FOLDER_OUTP = config_data.add_elem("folderForOutput", elem_type='String', required=True,
                                        description="Output Folder",
                                        info="The main folder that the output will be placed.")
-    SAVED_MODEL = config_data.add_elem("cnnModelFilePath",
+    SAVED_MODEL = config_data.add_elem("cnnModelFilePath", elem_type='String',
                                        description="Saved Model Checkpoint",
                                        info="Path to a saved model, to load parameters from in the beginning of the "
                                             "session. If one is also specified using the command line, the latter will"
@@ -38,16 +38,16 @@ class TestConfig(Config):
                                          "image (eg multi-modal MRI). The entries should be paths to files. "
                                          "Those files should be listing the paths to the corresponding channels "
                                          "for each test-case. (see example files).")
-    NAMES_FOR_PRED_PER_CASE = config_data.add_elem("namesForPredictionsPerCase", required=True,
+    NAMES_FOR_PRED_PER_CASE = config_data.add_elem("namesForPredictionsPerCase", elem_type='String', required=True,
                                                    description="Names of Predictions per Case",
                                                    info="The path to a file, which should list names to give to "
                                                         "the results for each testing case. (see example file).")
-    ROI_MASKS = config_data.add_elem("roiMasks", description="RoI Masks",
+    ROI_MASKS = config_data.add_elem("roiMasks", elem_type='String', description="RoI Masks",
                                      info="The path to a file, which should list paths to the Region-Of-Interest "
                                           "masks for each testing case.\n"
                                           "If ROI masks are provided, inference will only be performed within them "
                                           "(faster). If not specified, inference will be performed on whole volume.")
-    GT_LABELS = config_data.add_elem("gtLabels", description="Ground Truth Labels",
+    GT_LABELS = config_data.add_elem("gtLabels", elem_type='String', description="Ground Truth Labels",
                                      info="The path to a file which should list paths to the Ground Truth labels of "
                                           "each testing case. If provided, DSC metrics will be reported")
     BATCHSIZE = config_data.add_elem("batchsize", description="Batch Size", info="Batch Size.", default=10)
@@ -70,7 +70,7 @@ class TestConfig(Config):
 
     config_data.set_curr_section('fms', "Feature Maps")
 
-    SAVE_INDIV_FMS = config_data.add_elem("saveIndividualFms", elem_type='Bool', default=False,
+    SAVE_INDIV_FMS = config_data.add_elem("saveIndividualFms", elem_type='Bool', default=True,
                                           description="Save Individual Feature Maps",
                                           info="Specify whether to save the feature maps in separate files.")
     SAVE_4DIM_FMS = config_data.add_elem("saveAllFmsIn4DimImage", elem_type='Bool', default=False,

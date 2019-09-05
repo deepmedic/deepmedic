@@ -17,21 +17,22 @@ class TrainConfig(Config):
     config_data.set_curr_section('session', "Session Parameters")
     
     # Optional but highly suggested.
-    SESSION_NAME = config_data.add_elem("sessionName")
+    SESSION_NAME = config_data.add_elem("sessionName", elem_type='String')
     # [REQUIRED]
-    FOLDER_OUTP = config_data.add_elem("folderForOutput")
-    SAVED_MODEL = config_data.add_elem("cnnModelFilePath")
-    TENSORBOARD_LOG = config_data.add_elem("tensorboardLogtensorboardLog")
+    FOLDER_OUTP = config_data.add_elem("folderForOutput", elem_type='String', required=True)
+    SAVED_MODEL = config_data.add_elem("cnnModelFilePath", elem_type='String', required=True)
+    TENSORBOARD_LOG = config_data.add_elem("tensorboardLogtensorboardLog", required=True)
 
     # =============TRAINING========================
     config_data.set_curr_section('input', "Input")
 
-    CHANNELS_TR = config_data.add_elem("channelsTraining")
-    GT_LABELS_TR = config_data.add_elem("gtLabelsTraining")
-    ROI_MASKS_TR = config_data.add_elem("roiMasksTraining")
+    CHANNELS_TR = config_data.add_elem("channelsTraining", required=True)
+    GT_LABELS_TR = config_data.add_elem("gtLabelsTraining", elem_type='String', required=True)
     
     # ~~~~ Sampling (training) ~~~~~
     config_data.set_curr_section('sampling_train', "Sampling (Training)")
+
+    ROI_MASKS_TR = config_data.add_elem("roiMasksTraining", elem_type='String')
 
     TYPE_OF_SAMPLING_TR = config_data.add_elem("typeOfSamplingForTraining")
     PROP_OF_SAMPLES_PER_CAT_TR = config_data.add_elem("proportionOfSamplesToExtractPerCategoryTraining")
@@ -80,13 +81,15 @@ class TrainConfig(Config):
     # ============== VALIDATION ===================
     config_data.set_curr_section('val', "Validation")
 
-    PERFORM_VAL_SAMPLES = config_data.add_elem("performValidationOnSamplesThroughoutTraining")
-    PERFORM_VAL_INFERENCE = config_data.add_elem("performFullInferenceOnValidationImagesEveryFewEpochs")
+    PERFORM_VAL_SAMPLES = config_data.add_elem("performValidationOnSamplesThroughoutTraining",
+                                               elem_type='Bool', default=True)
+    PERFORM_VAL_INFERENCE = config_data.add_elem("performFullInferenceOnValidationImagesEveryFewEpochs",
+                                                 elem_type='Bool', default=True)
     CHANNELS_VAL = config_data.add_elem("channelsValidation")
     GT_LABELS_VAL = config_data.add_elem("gtLabelsValidation")
     ROI_MASKS_VAL = config_data.add_elem("roiMasksValidation")
     NUM_VAL_SEGMS_LOADED_PERSUB = config_data.add_elem("numberValidationSegmentsLoadedOnGpuPerSubep")  # For val on samples.
-    BATCHSIZE_VAL_SAMPL = config_data.add_elem("batchsize_val_samples")
+    BATCHSIZE_VAL_SAMPL = config_data.add_elem("batchsize_val_samples", required=True)
     
     # ~~~~~~~~ Sampling (validation) ~~~~~~~~~~~~
     config_data.set_curr_section('sampling_val', "Sampling (Validation)")
@@ -101,7 +104,7 @@ class TrainConfig(Config):
     NUM_EPOCHS_BETWEEN_VAL_INF = config_data.add_elem("numberOfEpochsBetweenFullInferenceOnValImages")
     BATCHSIZE_VAL_WHOLE = config_data.add_elem("batchsize_val_whole")
     NAMES_FOR_PRED_PER_CASE_VAL = config_data.add_elem("namesForPredictionsPerCaseVal")
-    SAVE_SEGM_VAL = config_data.add_elem("saveSegmentationVal")
+    SAVE_SEGM_VAL = config_data.add_elem("saveSegmentationVal", elem_type='Bool', default=True)
     SAVE_PROBMAPS_PER_CLASS_VAL = config_data.add_elem("saveProbMapsForEachClassVal")
     SUFFIX_SEGM_PROB_VAL = config_data.add_elem("suffixForSegmAndProbsDictVal")
     SAVE_INDIV_FMS_VAL = config_data.add_elem("saveIndividualFmsVal")
@@ -140,10 +143,10 @@ class TrainConfig(Config):
     LAYERS_TO_FREEZE_FC = config_data.add_elem("layersToFreezeFC")
     
     # ========= GENERICS =========
-    config_data.set_curr_section('Generic', "generic")
+    config_data.set_curr_section('generic', "Generic")
 
-    PAD_INPUT = config_data.add_elem("padInputImagesBool")
-    RUN_INP_CHECKS = config_data.add_elem("run_input_checks")
+    PAD_INPUT = config_data.add_elem("padInputImagesBool", elem_type='Bool', default=True)
+    RUN_INP_CHECKS = config_data.add_elem("run_input_checks", elem_type='Bool', default=True)
     
     # ======== DEPRECATED, backwards compatibility =======
     REFL_AUGM_PER_AXIS = config_data.add_elem("reflectImagesPerAxis", advanced=True)

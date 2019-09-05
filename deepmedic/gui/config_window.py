@@ -88,7 +88,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
         model_cfg = self.Config(filename)
         for name, value in self.model_config_dict.items():
             cfg_value = model_cfg[name]
-            if cfg_value:
+            if cfg_value or value.__class__ == QtWidgets.QCheckBox:
                 if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
                     index = value[0].findText(cfg_value[0], QtCore.Qt.MatchFixedString)
                     if index < 0:
@@ -99,6 +99,8 @@ class ConfigWindow(QtWidgets.QMainWindow):
                 elif value.__class__ == QtWidgets.QLineEdit:
                     value.setText(str(cfg_value))
                 elif value.__class__ == QtWidgets.QCheckBox:
+                    if cfg_value is None:
+                        cfg_value = self.Config.config_data.get_elem(name).default
                     value.setChecked(bool(cfg_value))
                 elif value.__class__ == QtWidgets.QComboBox:
                     index = value.findText(cfg_value, QtCore.Qt.MatchFixedString)
