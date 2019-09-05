@@ -5,8 +5,7 @@ from deepmedic.gui.ui_mainwindow import Ui_DeepMedic2
 from deepmedic.gui.config_window import enable_on_combobox_value
 from deepmedic.gui.model_config_window import ModelConfigWindow
 from deepmedic.gui.test_config_window import TestConfigWindow
-
-from deepmedic.gui.ui_trainwindow import Ui_model_config_create
+from deepmedic.gui.train_config_window import TrainConfigWindow
 
 
 def p(x):
@@ -22,15 +21,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.ui.model_config_search_button.clicked.connect(partial(self.file_open, self.ui.model_config_path,
                                                                    text='Choose model config file'))
-        self.model_config_window = ModelConfigWindow(self)
-        self.ui.model_config_create_button.clicked.connect(self.open_model_config_window)
-
-        self.test_config_window = TestConfigWindow(self)
         self.ui.train_config_search_button.clicked.connect(partial(self.file_open, self.ui.train_config_path,
                                                                    text='Choose train config file'))
-
         self.ui.test_config_search_button.clicked.connect(partial(self.file_open, self.ui.test_config_path,
                                                                   text='Choose test config file'))
+        self.model_config_window = ModelConfigWindow(self)
+        self.train_config_window = TrainConfigWindow(self)
+        self.test_config_window = TestConfigWindow(self)
+
+        self.ui.model_config_create_button.clicked.connect(self.open_model_config_window)
+        self.ui.train_config_create_button.clicked.connect(self.open_train_config_window)
         self.ui.test_config_create_button.clicked.connect(self.open_test_config_window)
 
         self.ui.load_path_search_button.clicked.connect(partial(self.file_open, self.ui.load_path,
@@ -54,6 +54,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_model_config_window(self):
         self.model_config_window.show()
+
+    def open_train_config_window(self):
+        self.train_config_window.show()
 
     def open_test_config_window(self):
         self.test_config_window.show()

@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 import os
 
 from deepmedic.frontEnd.configParsing.utils import *
-from deepmedic.frontEnd.configParsing.config import Config, ConfigData, ConfigElem
+from deepmedic.frontEnd.configParsing.config import Config, ConfigData
 
 
 class TestConfig(Config):

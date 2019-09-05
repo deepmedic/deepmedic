@@ -8,121 +8,149 @@
 from __future__ import absolute_import, print_function, division
 
 from deepmedic.frontEnd.configParsing.utils import *
-from deepmedic.frontEnd.configParsing.config import Config
+from deepmedic.frontEnd.configParsing.config import Config, ConfigData
 
 
 class TrainConfig(Config):
+    config_data = ConfigData()
+
+    config_data.set_curr_section('session', "Session Parameters")
     
     # Optional but highly suggested.
-    SESSION_NAME = "sessionName"
+    SESSION_NAME = config_data.add_elem("sessionName")
     # [REQUIRED]
-    FOLDER_OUTP = "folderForOutput"
-    SAVED_MODEL = "cnnModelFilePath"
-    TENSORBOARD_LOG = "tensorboardLogtensorboardLog"
+    FOLDER_OUTP = config_data.add_elem("folderForOutput")
+    SAVED_MODEL = config_data.add_elem("cnnModelFilePath")
+    TENSORBOARD_LOG = config_data.add_elem("tensorboardLogtensorboardLog")
 
     # =============TRAINING========================
-    CHANNELS_TR = "channelsTraining"
-    GT_LABELS_TR = "gtLabelsTraining"
-    ROI_MASKS_TR = "roiMasksTraining"
+    config_data.set_curr_section('input', "Input")
+
+    CHANNELS_TR = config_data.add_elem("channelsTraining")
+    GT_LABELS_TR = config_data.add_elem("gtLabelsTraining")
+    ROI_MASKS_TR = config_data.add_elem("roiMasksTraining")
     
     # ~~~~ Sampling (training) ~~~~~
-    TYPE_OF_SAMPLING_TR = "typeOfSamplingForTraining"
-    PROP_OF_SAMPLES_PER_CAT_TR = "proportionOfSamplesToExtractPerCategoryTraining"
-    WEIGHT_MAPS_PER_CAT_FILEPATHS_TR = "weightedMapsForSamplingEachCategoryTrain"
+    config_data.set_curr_section('sampling_train', "Sampling (Training)")
+
+    TYPE_OF_SAMPLING_TR = config_data.add_elem("typeOfSamplingForTraining")
+    PROP_OF_SAMPLES_PER_CAT_TR = config_data.add_elem("proportionOfSamplesToExtractPerCategoryTraining")
+    WEIGHT_MAPS_PER_CAT_FILEPATHS_TR = config_data.add_elem("weightedMapsForSamplingEachCategoryTrain")
     
     # ~~~~~ Training cycle ~~~~~~~~
-    NUM_EPOCHS = "numberOfEpochs"
-    NUM_SUBEP = "numberOfSubepochs"
-    NUM_CASES_LOADED_PERSUB = "numOfCasesLoadedPerSubepoch"
-    NUM_TR_SEGMS_LOADED_PERSUB = "numberTrainingSegmentsLoadedOnGpuPerSubep"
-    BATCHSIZE_TR = "batchsize_train"
-    NUM_OF_PROC_SAMPL = "num_processes_sampling"
+    config_data.set_curr_section('train_cycle', "Training Cycle")
+
+    NUM_EPOCHS = config_data.add_elem("numberOfEpochs")
+    NUM_SUBEP = config_data.add_elem("numberOfSubepochs")
+    NUM_CASES_LOADED_PERSUB = config_data.add_elem("numOfCasesLoadedPerSubepoch")
+    NUM_TR_SEGMS_LOADED_PERSUB = config_data.add_elem("numberTrainingSegmentsLoadedOnGpuPerSubep")
+    BATCHSIZE_TR = config_data.add_elem("batchsize_train")
+    NUM_OF_PROC_SAMPL = config_data.add_elem("num_processes_sampling")
 
     # ~~~~~ Preprocessing ~~~~~~~~
-    NORM = 'norm'
-    INT_NORM = 'intensity_norm'
-    CO_PERCENT = "cutoff_percent"
-    CO_STD = "cutoff_std"
-    CO_MEAN = "cutoff_mean"
+    config_data.set_curr_section('preproc', "Preprocessing")
+
+    NORM = config_data.add_elem('norm')
+    INT_NORM = config_data.add_elem('intensity_norm')
+    CO_PERCENT = config_data.add_elem("cutoff_percent")
+    CO_STD = config_data.add_elem("cutoff_std")
+    CO_MEAN = config_data.add_elem("cutoff_mean")
     
     # ~~~~~ Learning rate schedule ~~~~~
-    LR_SCH_TYPE = "typeOfLearningRateSchedule"
+    config_data.set_curr_section('lr_schedule', "Learning Rate Schedule")
+
+    LR_SCH_TYPE = config_data.add_elem("typeOfLearningRateSchedule")
     # Stable + Auto + Predefined.
-    DIV_LR_BY = "whenDecreasingDivideLrBy"
+    DIV_LR_BY = config_data.add_elem("whenDecreasingDivideLrBy")
     # Stable + Auto
-    NUM_EPOCHS_WAIT = "numEpochsToWaitBeforeLoweringLr"
+    NUM_EPOCHS_WAIT = config_data.add_elem("numEpochsToWaitBeforeLoweringLr")
     # Auto:
-    AUTO_MIN_INCR_VAL_ACC = "min_incr_of_val_acc_considered"
+    AUTO_MIN_INCR_VAL_ACC = config_data.add_elem("min_incr_of_val_acc_considered")
     # Predefined.
-    PREDEF_SCH = "predefinedSchedule"
+    PREDEF_SCH = config_data.add_elem("predefinedSchedule")
     # Exponential
-    EXPON_SCH = "paramsForExpSchedForLrAndMom"
+    EXPON_SCH = config_data.add_elem("paramsForExpSchedForLrAndMom")
+
     # ~~~~ Data Augmentation~~~
-    AUGM_IMG_PRMS_TR = "augm_img_prms_tr"
-    AUGM_SAMPLE_PRMS_TR = "augm_sample_prms_tr"
+    config_data.set_curr_section('data_aug', "Data Augmentation")
+
+    AUGM_IMG_PRMS_TR = config_data.add_elem("augm_img_prms_tr")
+    AUGM_SAMPLE_PRMS_TR = config_data.add_elem("augm_sample_prms_tr")
     
     # ============== VALIDATION ===================
-    PERFORM_VAL_SAMPLES = "performValidationOnSamplesThroughoutTraining"
-    PERFORM_VAL_INFERENCE = "performFullInferenceOnValidationImagesEveryFewEpochs"
-    CHANNELS_VAL = "channelsValidation"
-    GT_LABELS_VAL = "gtLabelsValidation"
-    ROI_MASKS_VAL = "roiMasksValidation"
-    NUM_VAL_SEGMS_LOADED_PERSUB = "numberValidationSegmentsLoadedOnGpuPerSubep"  # For val on samples.
-    BATCHSIZE_VAL_SAMPL = "batchsize_val_samples"
+    config_data.set_curr_section('val', "Validation")
+
+    PERFORM_VAL_SAMPLES = config_data.add_elem("performValidationOnSamplesThroughoutTraining")
+    PERFORM_VAL_INFERENCE = config_data.add_elem("performFullInferenceOnValidationImagesEveryFewEpochs")
+    CHANNELS_VAL = config_data.add_elem("channelsValidation")
+    GT_LABELS_VAL = config_data.add_elem("gtLabelsValidation")
+    ROI_MASKS_VAL = config_data.add_elem("roiMasksValidation")
+    NUM_VAL_SEGMS_LOADED_PERSUB = config_data.add_elem("numberValidationSegmentsLoadedOnGpuPerSubep")  # For val on samples.
+    BATCHSIZE_VAL_SAMPL = config_data.add_elem("batchsize_val_samples")
     
     # ~~~~~~~~ Sampling (validation) ~~~~~~~~~~~~
-    TYPE_OF_SAMPLING_VAL = "typeOfSamplingForVal"
-    PROP_OF_SAMPLES_PER_CAT_VAL = "proportionOfSamplesToExtractPerCategoryVal"
-    WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = "weightedMapsForSamplingEachCategoryVal"
+    config_data.set_curr_section('sampling_val', "Sampling (Validation)")
+
+    TYPE_OF_SAMPLING_VAL = config_data.add_elem("typeOfSamplingForVal")
+    PROP_OF_SAMPLES_PER_CAT_VAL = config_data.add_elem("proportionOfSamplesToExtractPerCategoryVal")
+    WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = config_data.add_elem("weightedMapsForSamplingEachCategoryVal")
     
     # ~~~~~~~~~ Validation by fully inferring whole validation cases ~~~~~~~~
-    NUM_EPOCHS_BETWEEN_VAL_INF = "numberOfEpochsBetweenFullInferenceOnValImages"
-    BATCHSIZE_VAL_WHOLE = "batchsize_val_whole"
-    NAMES_FOR_PRED_PER_CASE_VAL = "namesForPredictionsPerCaseVal"
-    SAVE_SEGM_VAL = "saveSegmentationVal"
-    SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
-    SUFFIX_SEGM_PROB_VAL = "suffixForSegmAndProbsDictVal"
-    SAVE_INDIV_FMS_VAL = "saveIndividualFmsVal"
-    SAVE_4DIM_FMS_VAL = "saveAllFmsIn4DimImageVal"
-    INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal"
-    INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathwayVal"
-    INDICES_OF_FMS_TO_SAVE_FC_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathwayVal"
+    config_data.set_curr_section('val_whole', "Validation on Whole Volumes")
+
+    NUM_EPOCHS_BETWEEN_VAL_INF = config_data.add_elem("numberOfEpochsBetweenFullInferenceOnValImages")
+    BATCHSIZE_VAL_WHOLE = config_data.add_elem("batchsize_val_whole")
+    NAMES_FOR_PRED_PER_CASE_VAL = config_data.add_elem("namesForPredictionsPerCaseVal")
+    SAVE_SEGM_VAL = config_data.add_elem("saveSegmentationVal")
+    SAVE_PROBMAPS_PER_CLASS_VAL = config_data.add_elem("saveProbMapsForEachClassVal")
+    SUFFIX_SEGM_PROB_VAL = config_data.add_elem("suffixForSegmAndProbsDictVal")
+    SAVE_INDIV_FMS_VAL = config_data.add_elem("saveIndividualFmsVal")
+    SAVE_4DIM_FMS_VAL = config_data.add_elem("saveAllFmsIn4DimImageVal")
+    INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = config_data.add_elem("minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal")
+    INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL = config_data.add_elem("minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathwayVal")
+    INDICES_OF_FMS_TO_SAVE_FC_VAL = config_data.add_elem("minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathwayVal")
     
     # ====OPTIMIZATION=====
-    LRATE = "learningRate"
-    OPTIMIZER = "sgd0orAdam1orRms2"
-    MOM_TYPE = "classicMom0OrNesterov1"
-    MOM = "momentumValue"
-    MOM_NORM_NONNORM = "momNonNorm0orNormalized1"
+    config_data.set_curr_section('optimisation', "Optimisation")
+
+    LRATE = config_data.add_elem("learningRate")
+    OPTIMIZER = config_data.add_elem("sgd0orAdam1orRms2")
+    MOM_TYPE = config_data.add_elem("classicMom0OrNesterov1")
+    MOM = config_data.add_elem("momentumValue")
+    MOM_NORM_NONNORM = config_data.add_elem("momNonNorm0orNormalized1")
     # Adam
-    B1_ADAM = "b1Adam"
-    B2_ADAM = "b2Adam"
-    EPS_ADAM = "epsilonAdam"
+    B1_ADAM = config_data.add_elem("b1Adam")
+    B2_ADAM = config_data.add_elem("b2Adam")
+    EPS_ADAM = config_data.add_elem("epsilonAdam")
     # RMS
-    RHO_RMS = "rhoRms"
-    EPS_RMS = "epsilonRms"
+    RHO_RMS = config_data.add_elem("rhoRms")
+    EPS_RMS = config_data.add_elem("epsilonRms")
     # Losses
-    LOSSES_WEIGHTS = "losses_and_weights"
-    W_C_IN_COST = "reweight_classes_in_cost"
+    LOSSES_WEIGHTS = config_data.add_elem("losses_and_weights")
+    W_C_IN_COST = config_data.add_elem("reweight_classes_in_cost")
     # Regularization L1 and L2.
-    L1_REG = "L1_reg"
-    L2_REG = "L2_reg"
+    L1_REG = config_data.add_elem("L1_reg")
+    L2_REG = config_data.add_elem("L2_reg")
     
     # ~~~  Freeze Layers ~~~
-    LAYERS_TO_FREEZE_NORM = "layersToFreezeNormal"
-    LAYERS_TO_FREEZE_SUBS = "layersToFreezeSubsampled"
-    LAYERS_TO_FREEZE_FC = "layersToFreezeFC"
+    config_data.set_curr_section('freeze_layers', "Freeze Layers")
+
+    LAYERS_TO_FREEZE_NORM = config_data.add_elem("layersToFreezeNormal")
+    LAYERS_TO_FREEZE_SUBS = config_data.add_elem("layersToFreezeSubsampled")
+    LAYERS_TO_FREEZE_FC = config_data.add_elem("layersToFreezeFC")
     
     # ========= GENERICS =========
-    PAD_INPUT = "padInputImagesBool"
-    RUN_INP_CHECKS = "run_input_checks"
+    config_data.set_curr_section('Generic', "generic")
+
+    PAD_INPUT = config_data.add_elem("padInputImagesBool")
+    RUN_INP_CHECKS = config_data.add_elem("run_input_checks")
     
     # ======== DEPRECATED, backwards compatibility =======
-    REFL_AUGM_PER_AXIS = "reflectImagesPerAxis"
-    PERF_INT_AUGM_BOOL = "performIntAugm"
-    INT_AUGM_SHIF_MUSTD = "sampleIntAugmShiftWithMuAndStd"
-    INT_AUGM_MULT_MUSTD = "sampleIntAugmMultiWithMuAndStd"
-    OLD_AUGM_SAMPLE_PRMS_TR = "augm_params_tr"
+    REFL_AUGM_PER_AXIS = config_data.add_elem("reflectImagesPerAxis", advanced=True)
+    PERF_INT_AUGM_BOOL = config_data.add_elem("performIntAugm", advanced=True)
+    INT_AUGM_SHIF_MUSTD = config_data.add_elem("sampleIntAugmShiftWithMuAndStd", advanced=True)
+    INT_AUGM_MULT_MUSTD = config_data.add_elem("sampleIntAugmMultiWithMuAndStd", advanced=True)
+    OLD_AUGM_SAMPLE_PRMS_TR = config_data.add_elem("augm_params_tr", advanced=True)
     
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)
