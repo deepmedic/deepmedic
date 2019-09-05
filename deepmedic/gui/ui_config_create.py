@@ -8,6 +8,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
+import os
 from PySide2 import QtCore, QtWidgets, QtGui
 
 LABEL_COL = 0
@@ -28,7 +29,8 @@ class UiConfig(object):
     def create_info_button(self, name, info=None, default=None):
         info_button = QtWidgets.QLabel(self.scrollAreaWidgetContents)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("icons/info.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(os.path.join("deepmedic", "gui", "icons", "info.svg")),
+                       QtGui.QIcon.Normal, QtGui.QIcon.Off)
         info_button.setPixmap(icon.pixmap(QtCore.QSize(12, 12)))
         info_button.setObjectName(name + '_info')
         tooltip_text = '<html><head/><body><p>'
