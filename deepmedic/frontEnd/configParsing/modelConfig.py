@@ -79,7 +79,7 @@ class ModelConfig(Config):
                                           default=False)
     # The below should be mirroring the pathway,
     # otherwise let them specify them but throw warning all around that receptive field should stay the same!
-    N_FMS_SUBS = config_data.add_elem("numberFMsPerLayerSubsampled",
+    N_FMS_SUBS = config_data.add_elem("numberFMsPerLayerSubsampled", parent=USE_SUBSAMPLED,
                                       description='Num. of Feature Maps per Layer',
                                       info="This list should have as many entries as the number of layers in "
                                            "the subsampled pathway.\n"
@@ -92,7 +92,7 @@ class ModelConfig(Config):
                                            "number of FMs. But care must be given if number of layers is changed. "
                                            "In this case, kernel sizes should also be adjusted to achieve same size "
                                            "of Rec.Field.")
-    KERN_DIM_SUBS = config_data.add_elem("kernelDimPerLayerSubsampled",
+    KERN_DIM_SUBS = config_data.add_elem("kernelDimPerLayerSubsampled", parent=USE_SUBSAMPLED,
                                          description='Kernel Dimensions per Layer',
                                          info="This list should have as many entries as the number of layers in "
                                               "the subsampled pathway.\n"
@@ -106,7 +106,7 @@ class ModelConfig(Config):
                                               "different number of FMs, but care must be given if the number of layers "
                                               "is changed. In this case, kernel sizes should also be adjusted to "
                                               "achieve the same size of Rec. Field.")
-    SUBS_FACTOR = config_data.add_elem("subsampleFactor",
+    SUBS_FACTOR = config_data.add_elem("subsampleFactor", parent=USE_SUBSAMPLED,
                                        description='Subsampling Factor',
                                        info="How much to downsample the image that the subsampled-pathway processes.\n"
                                             "Requires either a) list of 3 integers, "
@@ -117,7 +117,7 @@ class ModelConfig(Config):
                                             "pathways. One with input subsampled by [3, 3, 3], and one subsampled by "
                                             "[5, 5, 5]. If not specified, each path mirrors the previous.",
                                        default=[[3, 3, 3]])
-    RESID_CONN_LAYERS_SUBS = config_data.add_elem("layersWithResidualConnSubsampled",
+    RESID_CONN_LAYERS_SUBS = config_data.add_elem("layersWithResidualConnSubsampled", parent=USE_SUBSAMPLED,
                                                   description='Layers with Residual Connections',
                                                   info="List with number of layers, at the output of which to make a "
                                                        "residual connection with the input of the previous layer. "
@@ -129,7 +129,7 @@ class ModelConfig(Config):
                                                        "the input of Layer 3. Also, input to 5th will be added to "
                                                        "output of 6th, and input of 7th to output of 8th.\n"
                                                        "(default: mirrors normal pathway)")
-    LOWER_RANK_LAYERS_SUBS = config_data.add_elem("lowerRankLayersSubsampled",
+    LOWER_RANK_LAYERS_SUBS = config_data.add_elem("lowerRankLayersSubsampled", parent=USE_SUBSAMPLED,
                                                   description='Lower Rank Layers',
                                                   info="Layers to make of lower rank. Ala Yani Ioannou et al, "
                                                        "\"Training CNNs with Low-Rank Filters For Efficient Image "
@@ -218,7 +218,7 @@ class ModelConfig(Config):
                                         "Example: 0 = no dropout. 1= 100% drop of the neurons. "
                                         "Empty list for no dropout.\n"
                                         "Note: The list for FC rates should have one additional entry in comparison "
-                                        "to \"" + N_FMS_FC.name + "\", for the classification layer.\n"
+                                        "to \"" + N_FMS_FC.description + "\", for the classification layer.\n"
                                         "(default: 50% dropout on every Fully Connected layer except for the "
                                         "first one after the concatenation)")
 

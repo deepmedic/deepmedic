@@ -28,8 +28,8 @@ class TestConfig(Config):
     SAVED_MODEL = config_data.add_elem("cnnModelFilePath", elem_type='String',
                                        description="Saved Model Checkpoint",
                                        info="Path to a saved model, to load parameters from in the beginning of the "
-                                            "session. If one is also specified using the command line, the latter will"
-                                            " be used.")
+                                            "session. If one is also specified using the GUI/command line, the latter "
+                                            "will be used.")
 
     config_data.set_curr_section('input', "Input")
 
