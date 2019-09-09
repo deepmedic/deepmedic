@@ -50,15 +50,35 @@ class ConfigData(object):
     def get_sorted_sections(self):
         return sorted(self.sections.values(), key=lambda x: x.get_idx())
 
+    def get_children(self, parent_name):
+        children = []
+        for _, section in self.sections.items():
+            for elem in section.elems:
+                if elem[0].parent and elem[0].parent.name == parent_name:
+                    children += [elem[0]]
+        return children
+
+    def get_elems_with_children(self):
+        elems_with_children = {}
+        for _, section in self.sections.items():
+            for elem in section.elems:
+                if elem[0].parent:
+                    if elem[0].parent in elems_with_children.keys():
+                        elems_with_children[elem[0].parent].append(elem[0])
+                    else:
+                        elems_with_children[elem[0].parent] = [elem[0]]
+        return elems_with_children
+
     def add_elem(self, name, elem_type='Numeric', widget_type='lineedit',
-                 description=None, required=False, options=None, default=None, info=None, advanced=False):
+                 description=None, required=False, options=None, default=None, info=None, advanced=False,
+                 parent=None):
         if self.curr_section:
             return self.curr_section.add_elem(ConfigElem(name, idx=self.curr_section.num_elems,
                                                          section=self.curr_section,
                                                          elem_type=elem_type, widget_type=widget_type,
                                                          description=description,
                                                          required=required, options=options, default=default,
-                                                         info=info, advanced=advanced))
+                                                         info=info, advanced=advanced, parent=parent))
         else:
             raise Exception('No Section Selected')
 
@@ -85,8 +105,8 @@ class ConfigSection(object):
 
 
 class ConfigElem(object):
-    def __init__(self, name, elem_type='Numeric', widget_type='lineedit', description=None,
-                 required=False, options=None, default=None, idx=None, section=None, info=None, advanced=False):
+    def __init__(self, name, elem_type='Numeric', widget_type='lineedit', description=None, required=False,
+                 options=None, default=None, idx=None, section=None, info=None, advanced=False, parent=None):
         if elem_type == 'Bool':
             widget_type = 'checkbox'
         elif widget_type == 'checkbox':
@@ -105,6 +125,7 @@ class ConfigElem(object):
         self.widget_type = widget_type
         self.info = info
         self.advanced = advanced
+        self.parent = parent
 
     def __get__(self, instance, owner):
         return self.name

@@ -29,6 +29,45 @@ def get_widget_type(elem_type):
         return QtWidgets.QCheckBox
     if elem_type == 'combobox':
         return QtWidgets.QComboBox
+    if elem_type == 'multiple':
+        return QtWidgets.QLabel
+
+
+def num(s):
+    # returns a numeric value of the input s (if exists).
+    # Examples: num('5') = 5
+    #           num('[3, 4.5]') = [3, 4.5]
+    #           num('[3, 'string']') = [3, 'string']
+    #           num('string') = 'string'
+    if s is None or s == "":
+        return None
+    if type(s) is bool:
+        if s == 'False':
+            return False
+        else:
+            return True
+    if type(s) is dict:
+        return s
+    s = str(s)
+    try:
+        return int(s)
+    except ValueError:
+        try:
+            return float(s)
+        except ValueError:
+            is_tuple = False
+            if s[0] == '(':
+                is_tuple = True
+            if s[0] == '[' or is_tuple:
+                s = s[1:-1].split(',')
+                s_len = len(s)
+                for i in range(s_len):
+                    s[i] = num(s[i])
+                if is_tuple:
+                    s = tuple(s)
+                return s
+
+            return s.strip().strip('"').strip("'")
 
 
 class ConfigWindow(QtWidgets.QMainWindow):
@@ -45,16 +84,45 @@ class ConfigWindow(QtWidgets.QMainWindow):
         self.ui.action_load.triggered.connect(self.load_config)
         self.ui.action_open.triggered.connect(self.open_config)
         self.ui.action_save_as.triggered.connect(self.save_as_config)
-        self.ui.action_save.triggered.connect(partial(self.save_config))
+        self.ui.action_save.triggered.connect(self.save_config)
         self.ui.action_clear_all.triggered.connect(self.clear_all)
 
         self.ui.save_button.clicked.connect(self.save_as_config)
 
         # self.clear_all()
 
-        self.string_elems = self.get_all_string_elems()
+        self.model_config_dict = self.create_config_dict()
 
-        self.model_config_dict = self.create_model_config_dict()
+        self.string_elems = self.get_all_string_elems()
+        self.connect_parent_statechanged()
+
+    def connect_parent_statechanged(self):
+        elems_with_children = self.Config.config_data.get_elems_with_children()
+        for parent, children in elems_with_children.items():
+            if parent.elem_type == 'Bool':
+                parent_widget = self.model_config_dict[parent.name]
+                parent_widget.stateChanged.connect(partial(self.hide_children, parent_widget, children))
+                self.hide_children(parent_widget, children)  # initialise hidden/visible
+
+    def hide_children(self, parent_widget, children, set_value=None):
+        if set_value is None:
+            set_value = bool(parent_widget.isChecked())
+        set_value = (set_value and bool(parent_widget.isEnabled()))
+        for child in children:
+            widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_label")
+            widget.setEnabled(set_value)
+            widget = self.model_config_dict[child.name]
+            widget.setEnabled(set_value)
+            if child.elem_type == 'Bool':
+                grandchildren = self.Config.config_data.get_children(child.name)
+                if grandchildren:
+                    self.hide_children(widget, grandchildren)
+
+    def print_all_widget_names(self):
+        children = self.findChildren(QtWidgets.QCheckBox)
+        for child in children:
+            if child.objectName().startswith('preproc'):
+                print(child.objectName() + ' ' + str(child))
 
     def get_all_string_elems(self):
         string_elems = []
@@ -82,31 +150,71 @@ class ConfigWindow(QtWidgets.QMainWindow):
         self.filename = self.load_config()
         self.setWindowTitle('DeepMedic2 - ' + os.path.basename(self.filename))
 
+    def get_dictionary_value(self, value):
+        dict_value = {}
+        for sub_name, sub_value in value.items():
+            dict_value[sub_name] = self.get_text_value(sub_name, sub_value)
+        return dict_value
+
+    def set_dictionary_value(self, value, cfg_value):
+        for sub_name, sub_value in value.items():
+            self.set_text_value(sub_name, sub_value, cfg_value[sub_name])
+
+    def get_text_value(self, name, value):
+        value_text = None
+        if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
+            print(value)
+            if value[0].currentText():
+                value_text = [value[0].currentText(), int(value[1][value[0].currentText()].text())]
+        elif value.__class__ == QtWidgets.QLineEdit:
+            value_text = value.text()
+        elif value.__class__ == QtWidgets.QCheckBox:
+            value_text = value.isChecked()
+        elif value.__class__ == QtWidgets.QComboBox:
+            value_text = value.currentText()
+        elif value.__class__ == dict:
+            value_text = self.get_dictionary_value(value)
+
+        if value_text and name in self.string_elems:
+            value_text = '"' + value_text + '"'
+        else:
+            value_text = num(value_text)
+
+        return value_text
+
+    def set_text_value(self, name, value, cfg_value):
+        if cfg_value or value.__class__ == QtWidgets.QCheckBox:
+            if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
+                print(value)
+                index = value[0].findText(cfg_value[0], QtCore.Qt.MatchFixedString)
+                if index < 0:
+                    index = 0
+                value[0].setCurrentIndex(index)
+                if value[0].currentText():
+                    value[1][value[0].currentText()].setText(str(cfg_value[1]))
+            elif value.__class__ == QtWidgets.QLineEdit:
+                value.setText(str(cfg_value))
+            elif value.__class__ == QtWidgets.QCheckBox:
+                if cfg_value is None:
+                    cfg_value = self.Config.config_data.get_elem(name).default
+                value.setChecked(bool(cfg_value))
+            elif value.__class__ == QtWidgets.QComboBox:
+                index = value.findText(cfg_value, QtCore.Qt.MatchFixedString)
+                if index < 0:
+                    index = 0
+                value.setCurrentIndex(index)
+            elif value.__class__ == dict:
+                self.set_dictionary_value(value, cfg_value)
+                pass
+
     def load_config(self):
         filename = self.get_open_filename(text='Load ' + self.window_type + ' Configuration',
                                           formats='DeepMedic Config Files (*.cfg);; All Files (*)')
         model_cfg = self.Config(filename)
         for name, value in self.model_config_dict.items():
             cfg_value = model_cfg[name]
-            if cfg_value or value.__class__ == QtWidgets.QCheckBox:
-                if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
-                    index = value[0].findText(cfg_value[0], QtCore.Qt.MatchFixedString)
-                    if index < 0:
-                        index = 0
-                    value[0].setCurrentIndex(index)
-                    if value[0].currentText():
-                        value[1][value[0].currentText()].setText(str(cfg_value[1]))
-                elif value.__class__ == QtWidgets.QLineEdit:
-                    value.setText(str(cfg_value))
-                elif value.__class__ == QtWidgets.QCheckBox:
-                    if cfg_value is None:
-                        cfg_value = self.Config.config_data.get_elem(name).default
-                    value.setChecked(bool(cfg_value))
-                elif value.__class__ == QtWidgets.QComboBox:
-                    index = value.findText(cfg_value, QtCore.Qt.MatchFixedString)
-                    if index < 0:
-                        index = 0
-                    value.setCurrentIndex(index)
+            self.set_text_value(name, value, cfg_value)
+
         return filename
 
     def save_config(self, filename=None):
@@ -117,21 +225,9 @@ class ConfigWindow(QtWidgets.QMainWindow):
             with open(filename, 'w+') as f:
                 f.write('# Created automatically using the DeepMedic2 GUI\n')
                 for name, value in self.model_config_dict.items():
-                    value_text = None
-                    if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
-                        if value[0].currentText():
-                            value_text = [value[0].currentText(), int(value[1][value[0].currentText()].text())]
-                    elif value.__class__ == QtWidgets.QLineEdit:
-                        value_text = value.text()
-                    elif value.__class__ == QtWidgets.QCheckBox:
-                        value_text = value.isChecked()
-                    elif value.__class__ == QtWidgets.QComboBox:
-                        value_text = value.currentText()
-                    if name in self.string_elems:
-                        value_text = '"' + value_text + '"'
+                    value_text = self.get_text_value(name, value)
                     if value_text:
                         f.write(str(name) + ' = ' + str(value_text) + '\n')
-                    print(name)
                 f.close()
         else:
             self.show_messagebox(box_title="Error saving config file",
@@ -159,22 +255,31 @@ class ConfigWindow(QtWidgets.QMainWindow):
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, text, path, formats)
         return filename
 
-    def create_model_config_dict(self):
+    def create_config_entry(self, elem, prefix=''):
+        if hasattr(self.Config, 'CONV_W_INIT') and elem.elem_type == 'Conv_w':
+            conv_w_dict = {}
+            for value, sub_elem in elem.options.items():
+                qwidget = get_widget_type(sub_elem.widget_type)
+                if prefix:
+                    name = '_' + sub_elem.name
+                else:
+                    name = sub_elem.name
+                conv_w_dict[value] = self.findChild(qwidget, prefix + name + '_' + sub_elem.widget_type)
+            return self.findChild(QtWidgets.QComboBox, prefix + '_combobox'), conv_w_dict
+
+        elif elem.widget_type == 'multiple':
+            mult_dict = {}
+            for name, sub_elem in elem.options.items():
+                mult_dict[name] = self.create_config_entry(sub_elem,
+                                                           prefix=prefix + '_' + sub_elem.name)
+            return mult_dict
+        else:
+            qwidget = get_widget_type(elem.widget_type)
+            return self.findChild(qwidget, prefix + '_' + elem.widget_type)
+
+    def create_config_dict(self):
         config_dict = {}
         for section in self.Config.config_data.get_sorted_sections():
             for elem in section.get_sorted_elems():
-                if hasattr(self.Config, 'CONV_W_INIT') and elem.elem_type == 'Conv_w':
-                    conv_w_dict = {}
-                    for value, sub_elem in self.conv_w_init_elem.options.items():
-                        qwidget = get_widget_type(sub_elem.widget_type)
-                        name = self.conv_w_init_elem.section.name + '_' + sub_elem.name
-                        conv_w_dict[value] = self.findChild(qwidget, name + '_' + sub_elem.widget_type)
-
-                    config_dict[elem.name] = \
-                        (self.findChild(QtWidgets.QComboBox, elem.section.name + '_' + elem.name + '_combobox'),
-                         conv_w_dict)
-                else:
-                    qwidget = get_widget_type(elem.widget_type)
-                    config_dict[elem.name] = \
-                        self.findChild(qwidget, elem.section.name + '_' + elem.name + '_' + elem.widget_type)
+                config_dict[elem.name] = self.create_config_entry(elem, prefix=elem.section.name + '_' + elem.name)
         return config_dict

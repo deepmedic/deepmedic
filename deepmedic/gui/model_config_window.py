@@ -20,13 +20,13 @@ class ModelConfigWindow(ConfigWindow):
         self.sub_prefix = ModelConfig.config_data.get_elem_section(sub_checkbox_name).name + '_' + sub_checkbox_name
         self.sub_checkbox = self.findChild(QtWidgets.QCheckBox, self.sub_prefix + '_checkbox')
 
-        self.sub_checkbox.setChecked(True)
-        self.sub_checkbox.stateChanged.connect(self.hide_sub)
+        # self.sub_checkbox.setChecked(True)
+        # self.sub_checkbox.stateChanged.connect(self.hide_sub)
 
     def enable_kernel_field(self):
         for value, elem in self.conv_w_init_elem.options.items():
             qwidget = get_widget_type(elem.widget_type)
-            name = self.conv_w_init_elem.section.name + '_' + elem.name
+            name = self.conv_w_init_prefix + '_' + elem.name
             enable_on_combobox_value(self.findChild(QtWidgets.QComboBox, self.conv_w_init_prefix + '_combobox'),
                                      value,
                                      [self.findChild(qwidget, name + '_' + elem.widget_type),

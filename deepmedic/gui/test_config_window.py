@@ -1,5 +1,3 @@
-from PySide2 import QtWidgets
-
 from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.frontEnd.configParsing.testConfig import TestConfig
 

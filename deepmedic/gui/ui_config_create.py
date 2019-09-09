@@ -12,8 +12,10 @@ import os
 from PySide2 import QtCore, QtWidgets, QtGui
 
 LABEL_COL = 0
-INPUT_COL = 1
-INFO_COL = INPUT_COL + 1
+INPUT_COL = 2
+INFO_COL = INPUT_COL - 1
+LINE_WIDTH = INPUT_COL - LABEL_COL + 1
+SAVE_BUTTON_SIZE = 3
 
 
 class UiConfig(object):
@@ -23,7 +25,7 @@ class UiConfig(object):
 
     def add_title(self, name, text, widget_num):
         self.add_widget(self.create_label(name, text, title=True), widget_num, LABEL_COL, col_span=2)
-        self.add_widget(self.create_line(name), widget_num + 1, LABEL_COL, col_span=2)
+        self.add_widget(self.create_line(name), widget_num + 1, LABEL_COL, col_span=LINE_WIDTH)
         return widget_num + 2
 
     def create_info_button(self, name, info=None, default=None):
@@ -69,6 +71,7 @@ class UiConfig(object):
     def create_lineedit(self, name):
         widget = QtWidgets.QLineEdit(self.scrollAreaWidgetContents)
         widget.setObjectName(name + '_lineedit')
+        # print(name + '_lineedit')
         return widget
 
     def create_checkbox(self, name, check=False):
@@ -85,7 +88,7 @@ class UiConfig(object):
         widget.addItem("")
         if options:
             for option in options:
-                widget.addItem(option)
+                widget.addItem(str(option))
         return widget
 
     def create_widget(self, name, widget_type, options=None, default=None):
@@ -101,26 +104,58 @@ class UiConfig(object):
     def add_conv_w(self, name, widget_num, options, info=None, default=None):
         self.add_input_field(name, 'combobox', widget_num, INPUT_COL,
                              info=info, default=default, options=options.keys())
+        elem_num = 1
+        sub_char = '├'
         for elem in options.values():
             widget_num += 1
-            self.add_grid_row(name.split('_')[0] + '_' + elem.name, widget_num, widget_type=elem.widget_type,
-                              text=elem.description, options=elem.options, info=elem.info, default=elem.default)
+            if elem_num == len(options):
+                sub_char = '└'
+            self.add_grid_row(name + '_' + elem.name, widget_num, widget_type=elem.widget_type,
+                              text=sub_char + '── ' + elem.description, options=elem.options, info=elem.info, default=elem.default)
+            elem_num += 1
+
         return widget_num
 
     def add_input_field(self, name, widget_type, row, col=INPUT_COL,
                         info=None, default=None, options=None, info_col=INFO_COL):
+        # print("ADD_INPUT_FIELD: " + name + ' ' + widget_type)
         self.gridLayout.addWidget(self.create_widget(name, widget_type, options=options, default=default), row, col)
         if info or default:
             self.gridLayout.addWidget(self.create_info_button(name, info, default), row, info_col)
 
-    def add_grid_row(self, name, widget_num, widget_type='lineedit', text=None, options=None, info=None, default=None):
-
+    def add_dictionary(self, name, text, widget_num, elem_dict, info=None, prefix=''):
         self.add_widget(self.create_label(name, text), widget_num, LABEL_COL)
+        if info:
+            self.gridLayout.addWidget(self.create_info_button(name, info), widget_num, INFO_COL)
+        widget_num += 1
+        elem_num = 1
+        sub_char = '├'
+        prefix_char = '│'
+        for elem_name, elem in elem_dict.items():
+            if elem_num == len(elem_dict):
+                sub_char = '└'
+                prefix_char = '  '
+            widget_num = self.add_grid_row(name + '_' + elem_name, widget_num,
+                                           widget_type=elem.widget_type,
+                                           text=prefix + sub_char + '── ' + elem.description, options=elem.options,
+                                           info=elem.info, default=elem.default, prefix=prefix + prefix_char + ' '*6)
+            elem_num += 1
 
-        if widget_type == 'conv_w':
-            widget_num = self.add_conv_w(name, widget_num, options, info=info, default=default)
+        return widget_num
+
+    def add_grid_row(self, name, widget_num, widget_type='lineedit', text=None, options=None, info=None, default=None,
+                     prefix=''):
+
+        if widget_type == 'multiple':
+            widget_num = self.add_dictionary(name, text, widget_num, options, info, prefix=prefix)
         else:
-            self.add_input_field(name, widget_type, widget_num, INPUT_COL, info=info, default=default, options=options)
+            self.add_widget(self.create_label(name, text), widget_num, LABEL_COL)
+
+            if widget_type == 'conv_w':
+                widget_num = self.add_conv_w(name, widget_num, options, info=info, default=default)
+            else:
+                self.add_input_field(name, widget_type, widget_num, INPUT_COL,
+                                     info=info, default=default, options=options)
 
         return widget_num + 1
 
@@ -153,10 +188,9 @@ class UiConfig(object):
         widget_num = 0
         for section in Config.config_data.get_sorted_sections():
             widget_num = self.add_title(section.name, section.text, widget_num)
-            print(section.name)
             for elem in section.get_sorted_elems():
                 if not elem.advanced:
-                    print('\t ' + elem.name)
+                    # print('\t ' + elem.name)
                     widget_num = self.add_grid_row(section.name + '_' + elem.name, widget_num,
                                                    widget_type=elem.widget_type,
                                                    text=elem.description, options=elem.options,
@@ -167,7 +201,7 @@ class UiConfig(object):
         self.save_button = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
         self.save_button.setObjectName("save_button")
         self.save_button.setText('Save Configuration File')
-        self.gridLayout.addWidget(self.save_button, widget_num + 1, 0, 1, 2)
+        self.gridLayout.addWidget(self.save_button, widget_num + 1, 0, 1, SAVE_BUTTON_SIZE)
         self.horizontalLayout.addLayout(self.gridLayout)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.centralLayout.addWidget(self.scrollArea, 0, 0, 1, 1)
