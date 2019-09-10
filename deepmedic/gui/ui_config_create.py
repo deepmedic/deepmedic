@@ -14,7 +14,8 @@ from PySide2 import QtCore, QtWidgets, QtGui
 LABEL_COL = 0
 INPUT_COL = 2
 INFO_COL = INPUT_COL - 1
-LINE_WIDTH = INPUT_COL - LABEL_COL + 1
+SEARCH_COL = INPUT_COL + 1
+LINE_WIDTH = SEARCH_COL - LABEL_COL + 1
 SAVE_BUTTON_SIZE = 3
 
 
@@ -71,7 +72,6 @@ class UiConfig(object):
     def create_lineedit(self, name):
         widget = QtWidgets.QLineEdit(self.scrollAreaWidgetContents)
         widget.setObjectName(name + '_lineedit')
-        # print(name + '_lineedit')
         return widget
 
     def create_checkbox(self, name, check=False):
@@ -91,6 +91,12 @@ class UiConfig(object):
                 widget.addItem(str(option))
         return widget
 
+    def create_button(self, name, text):
+        widget = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
+        widget.setObjectName(name + '_button')
+        widget.setText(text)
+        return widget
+
     def create_widget(self, name, widget_type, options=None, default=None):
         widget = None
         if widget_type == 'lineedit':
@@ -99,6 +105,8 @@ class UiConfig(object):
             widget = self.create_checkbox(name, check=default)
         elif widget_type == 'combobox':
             widget = self.create_combobox(name, options)
+        elif widget_type == 'button':
+            widget = self.create_button(name, options)
         return widget
 
     def add_conv_w(self, name, widget_num, options, info=None, default=None):
@@ -110,15 +118,14 @@ class UiConfig(object):
             widget_num += 1
             if elem_num == len(options):
                 sub_char = '└'
-            self.add_grid_row(name + '_' + elem.name, widget_num, widget_type=elem.widget_type,
-                              text=sub_char + '── ' + elem.description, options=elem.options, info=elem.info, default=elem.default)
+            self.add_grid_row(name + '_' + elem.name, widget_num, elem,
+                              text=sub_char + '── ' + elem.description)
             elem_num += 1
 
         return widget_num
 
     def add_input_field(self, name, widget_type, row, col=INPUT_COL,
                         info=None, default=None, options=None, info_col=INFO_COL):
-        # print("ADD_INPUT_FIELD: " + name + ' ' + widget_type)
         self.gridLayout.addWidget(self.create_widget(name, widget_type, options=options, default=default), row, col)
         if info or default:
             self.gridLayout.addWidget(self.create_info_button(name, info, default), row, info_col)
@@ -135,16 +142,29 @@ class UiConfig(object):
             if elem_num == len(elem_dict):
                 sub_char = '└'
                 prefix_char = '  '
-            widget_num = self.add_grid_row(name + '_' + elem_name, widget_num,
-                                           widget_type=elem.widget_type,
-                                           text=prefix + sub_char + '── ' + elem.description, options=elem.options,
-                                           info=elem.info, default=elem.default, prefix=prefix + prefix_char + ' '*6)
+            widget_num = self.add_grid_row(name + '_' + elem_name, widget_num, elem,
+                                           text=prefix + sub_char + '── ' + elem.description,
+                                           prefix=prefix + prefix_char + ' '*6)
             elem_num += 1
 
         return widget_num
 
-    def add_grid_row(self, name, widget_num, widget_type='lineedit', text=None, options=None, info=None, default=None,
+    def add_search_button(self, name, widget_num):
+        self.add_widget(self.create_button(name, 'Search'), widget_num, SEARCH_COL)
+
+    def add_grid_row(self, name, widget_num, elem, widget_type=None, text=None, options=None, info=None, default=None,
                      prefix=''):
+
+        if widget_type is None:
+            widget_type = elem.widget_type
+        if text is None:
+            text = elem.description
+        if options is None:
+            options = elem.options
+        if info is None:
+            info = elem.info
+        if default is None:
+            default = elem.default
 
         if widget_type == 'multiple':
             widget_num = self.add_dictionary(name, text, widget_num, options, info, prefix=prefix)
@@ -156,6 +176,10 @@ class UiConfig(object):
             else:
                 self.add_input_field(name, widget_type, widget_num, INPUT_COL,
                                      info=info, default=default, options=options)
+
+            if elem.elem_type in ['File', 'Folder', 'Files']:
+                self.add_search_button(name, widget_num)
+
 
         return widget_num + 1
 
@@ -192,10 +216,7 @@ class UiConfig(object):
                 for elem in section.get_sorted_elems():
                     if not elem.advanced:
                         # print('\t ' + elem.name)
-                        widget_num = self.add_grid_row(section.name + '_' + elem.name, widget_num,
-                                                       widget_type=elem.widget_type,
-                                                       text=elem.description, options=elem.options,
-                                                       info=elem.info, default=elem.default)
+                        widget_num = self.add_grid_row(section.name + '_' + elem.name, widget_num, elem)
 
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout.addItem(spacerItem, widget_num, 0, 1, 3)
