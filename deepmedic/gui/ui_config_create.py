@@ -17,6 +17,8 @@ INFO_COL = INPUT_COL - 1
 SEARCH_COL = INPUT_COL + 1
 LINE_WIDTH = SEARCH_COL - LABEL_COL + 1
 SAVE_BUTTON_SIZE = 3
+NORMAL_SPAN = 2
+SEARCH_SPAN = 1
 
 
 class UiConfig(object):
@@ -111,7 +113,7 @@ class UiConfig(object):
 
     def add_conv_w(self, name, widget_num, options, info=None, default=None):
         self.add_input_field(name, 'combobox', widget_num, INPUT_COL,
-                             info=info, default=default, options=options.keys())
+                             info=info, default=default, options=options.keys(), col_span=NORMAL_SPAN)
         elem_num = 1
         sub_char = '├'
         for elem in options.values():
@@ -125,8 +127,9 @@ class UiConfig(object):
         return widget_num
 
     def add_input_field(self, name, widget_type, row, col=INPUT_COL,
-                        info=None, default=None, options=None, info_col=INFO_COL):
-        self.gridLayout.addWidget(self.create_widget(name, widget_type, options=options, default=default), row, col)
+                        info=None, default=None, options=None, info_col=INFO_COL, col_span=NORMAL_SPAN):
+        self.add_widget(self.create_widget(name, widget_type, options=options, default=default),
+                        row, col, col_span=col_span)
         if info or default:
             self.gridLayout.addWidget(self.create_info_button(name, info, default), row, info_col)
 
@@ -166,19 +169,22 @@ class UiConfig(object):
         if default is None:
             default = elem.default
 
+        col_span = NORMAL_SPAN
+
         if widget_type == 'multiple':
             widget_num = self.add_dictionary(name, text, widget_num, options, info, prefix=prefix)
         else:
             self.add_widget(self.create_label(name, text), widget_num, LABEL_COL)
 
+            if elem.elem_type in ['File', 'Folder', 'Files']:
+                self.add_search_button(name, widget_num)
+                col_span = SEARCH_SPAN
+
             if widget_type == 'conv_w':
                 widget_num = self.add_conv_w(name, widget_num, options, info=info, default=default)
             else:
                 self.add_input_field(name, widget_type, widget_num, INPUT_COL,
-                                     info=info, default=default, options=options)
-
-            if elem.elem_type in ['File', 'Folder', 'Files']:
-                self.add_search_button(name, widget_num)
+                                     info=info, default=default, options=options, col_span=col_span)
 
         return widget_num + 1
 

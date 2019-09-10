@@ -62,13 +62,18 @@ class ConfigWindow(QtWidgets.QMainWindow):
             widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_label")
             if widget:
                 widget.setEnabled(set_value)
+
             widget = self.model_config_dict[child.name]
             if widget:
                 widget.setEnabled(set_value)
-            if child.elem_type == 'Bool':
-                grandchildren = self.Config.config_data.get_children(child.name)
-                if grandchildren:
-                    self.hide_children(widget, grandchildren)
+                if child.elem_type == 'Bool':
+                    grandchildren = self.Config.config_data.get_children(child.name)
+                    if grandchildren:
+                        self.hide_children(widget, grandchildren)
+
+            widget = self.findChild(QtWidgets.QPushButton, child.section.name + '_' + child.name + "_button")
+            if widget:
+                widget.setEnabled(set_value)
 
     def print_all_widget_names(self):
         children = self.findChildren(QtWidgets.QCheckBox)
