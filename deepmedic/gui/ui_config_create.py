@@ -180,7 +180,6 @@ class UiConfig(object):
             if elem.elem_type in ['File', 'Folder', 'Files']:
                 self.add_search_button(name, widget_num)
 
-
         return widget_num + 1
 
     def setup_ui(self, model_config_create, Config, window_type=''):

@@ -1,6 +1,7 @@
 from PySide2 import QtWidgets
 
-from deepmedic.gui.config_window import ConfigWindow, get_widget_type, enable_on_combobox_value
+from deepmedic.gui.config_utils import get_widget_type, enable_on_combobox_value
+from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.frontEnd.configParsing.modelConfig import ModelConfig
 
 

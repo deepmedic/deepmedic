@@ -6,10 +6,7 @@ from deepmedic.gui.config_window import enable_on_combobox_value
 from deepmedic.gui.model_config_window import ModelConfigWindow
 from deepmedic.gui.test_config_window import TestConfigWindow
 from deepmedic.gui.train_config_window import TrainConfigWindow
-
-
-def p(x):
-    print(x)
+from deepmedic.gui.config_utils import p, file_open
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -19,11 +16,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_DeepMedic2()
         self.ui.setupUi(self)
 
-        self.ui.model_config_search_button.clicked.connect(partial(self.file_open, self.ui.model_config_path,
+        self.ui.model_config_search_button.clicked.connect(partial(file_open, self, self.ui.model_config_path,
                                                                    text='Choose model config file'))
-        self.ui.train_config_search_button.clicked.connect(partial(self.file_open, self.ui.train_config_path,
+        self.ui.train_config_search_button.clicked.connect(partial(file_open, self, self.ui.train_config_path,
                                                                    text='Choose train config file'))
-        self.ui.test_config_search_button.clicked.connect(partial(self.file_open, self.ui.test_config_path,
+        self.ui.test_config_search_button.clicked.connect(partial(file_open, self, self.ui.test_config_path,
                                                                   text='Choose test config file'))
         self.model_config_window = ModelConfigWindow(self)
         self.train_config_window = TrainConfigWindow(self)
@@ -33,7 +30,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.train_config_create_button.clicked.connect(self.open_train_config_window)
         self.ui.test_config_create_button.clicked.connect(self.open_test_config_window)
 
-        self.ui.load_path_search_button.clicked.connect(partial(self.file_open, self.ui.load_path,
+        self.ui.load_path_search_button.clicked.connect(partial(file_open, self, self.ui.load_path,
                                                                 text='Choose model checkpoint prefix'))
         self.ui.run_button.clicked.connect(self.run_deepmedic)
         self.ui.device_combobox.currentTextChanged.connect(self.enable_dev_num)
@@ -81,10 +78,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def stderr_read(self):
         text = str(self.process.readAllStandardError(), encoding='utf-8')
         self.append(text)
-
-    def file_open(self, dest, text='Search'):
-        name, _ = QtWidgets.QFileDialog.getOpenFileName(self, text)
-        dest.setText(name)
 
     def enable_train_test(self):
         enable_on_combobox_value(self.ui.session_combobox, 'Train', [self.ui.train_config_label,
