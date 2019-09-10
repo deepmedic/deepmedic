@@ -31,15 +31,20 @@ class ConfigWindow(QtWidgets.QMainWindow):
         self.string_elems = self.get_all_string_elems()
         self.connect_parent_statechanged()
 
-        self.connect_search_buttons()
+        self.connect_all_search_buttons()
 
-    def connect_search_buttons(self):
+    def connect_all_search_buttons(self):
         all_buttons = self.findChildren(QtWidgets.QPushButton)
         for button in all_buttons:
             if not button == self.ui.save_button:
                 elem = self.Config.config_data.get_elem('_'.join(button.objectName().split('_')[1:-1]))
                 if elem is not None:
-                    print(elem.name)
+                    text_input = self.findChild(QtWidgets.QLineEdit, elem.section.name + '_' + elem.name + "_lineedit")
+                    if text_input:
+                        button.clicked.connect(partial(get_search_function(elem.elem_type),
+                                                       self,
+                                                       text_input,
+                                                       'Search ' + elem.elem_type + ' (' + elem.description + ')'))
 
     def connect_parent_statechanged(self):
         elems_with_children = self.Config.config_data.get_elems_with_children()

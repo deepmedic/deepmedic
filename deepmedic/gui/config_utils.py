@@ -10,6 +10,26 @@ def file_open(parent, dest, text='Search'):
     dest.setText(name)
 
 
+def files_open(parent, dest, text='Search'):
+    name, _ = QtWidgets.QFileDialog.getOpenFileNames(parent, text)
+    dest.setText(str(name))
+
+
+def folder_open(parent, dest, text='Search'):
+    name = QtWidgets.QFileDialog.getExistingDirectory(parent, text)
+    dest.setText(name)
+
+
+def get_search_function(search_type='File'):
+    if search_type == 'File':
+        return file_open
+    if search_type == 'Files':
+        return files_open
+    if search_type == 'Folder':
+        return folder_open
+    return None
+
+
 def clear_all_texts(all_texts):
     [text.setText('') for text in all_texts]
 
