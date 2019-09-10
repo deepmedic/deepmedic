@@ -187,14 +187,15 @@ class UiConfig(object):
 
         widget_num = 0
         for section in Config.config_data.get_sorted_sections():
-            widget_num = self.add_title(section.name, section.text, widget_num)
-            for elem in section.get_sorted_elems():
-                if not elem.advanced:
-                    # print('\t ' + elem.name)
-                    widget_num = self.add_grid_row(section.name + '_' + elem.name, widget_num,
-                                                   widget_type=elem.widget_type,
-                                                   text=elem.description, options=elem.options,
-                                                   info=elem.info, default=elem.default)
+            if not section.advanced:
+                widget_num = self.add_title(section.name, section.text, widget_num)
+                for elem in section.get_sorted_elems():
+                    if not elem.advanced:
+                        # print('\t ' + elem.name)
+                        widget_num = self.add_grid_row(section.name + '_' + elem.name, widget_num,
+                                                       widget_type=elem.widget_type,
+                                                       text=elem.description, options=elem.options,
+                                                       info=elem.info, default=elem.default)
 
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout.addItem(spacerItem, widget_num, 0, 1, 3)

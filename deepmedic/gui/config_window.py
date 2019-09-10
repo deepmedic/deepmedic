@@ -110,9 +110,11 @@ class ConfigWindow(QtWidgets.QMainWindow):
         set_value = (set_value and bool(parent_widget.isEnabled()))
         for child in children:
             widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_label")
-            widget.setEnabled(set_value)
+            if widget:
+                widget.setEnabled(set_value)
             widget = self.model_config_dict[child.name]
-            widget.setEnabled(set_value)
+            if widget:
+                widget.setEnabled(set_value)
             if child.elem_type == 'Bool':
                 grandchildren = self.Config.config_data.get_children(child.name)
                 if grandchildren:
@@ -183,7 +185,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
         return value_text
 
     def set_text_value(self, name, value, cfg_value):
-        if cfg_value or value.__class__ == QtWidgets.QCheckBox:
+        if cfg_value is not None or value.__class__ == QtWidgets.QCheckBox:
             if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
                 print(value)
                 index = value[0].findText(cfg_value[0], QtCore.Qt.MatchFixedString)
@@ -199,7 +201,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
                     cfg_value = self.Config.config_data.get_elem(name).default
                 value.setChecked(bool(cfg_value))
             elif value.__class__ == QtWidgets.QComboBox:
-                index = value.findText(cfg_value, QtCore.Qt.MatchFixedString)
+                index = value.findText(str(cfg_value), QtCore.Qt.MatchFixedString)
                 if index < 0:
                     index = 0
                 value.setCurrentIndex(index)

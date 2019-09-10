@@ -32,11 +32,11 @@ class ConfigData(object):
                     return elem[0]
         return None
 
-    def set_curr_section(self, section_name, text=None, idx=None):
+    def set_curr_section(self, section_name, text=None, idx=None, advanced=False):
         if not self.is_section(section_name):
             if not idx:
                 idx = self.num_sections
-            self.add_section((section_name, idx, text))
+            self.add_section((section_name, idx, text, advanced))
             if not section_name == 'other':
                 self.num_sections += 1
         self.curr_section = self.sections[section_name]
@@ -84,7 +84,7 @@ class ConfigData(object):
 
 
 class ConfigSection(object):
-    def __init__(self, name, idx, text=None):
+    def __init__(self, name, idx, text=None, advanced=False):
         self.name = name
         if not text:
             text = name
@@ -92,6 +92,7 @@ class ConfigSection(object):
         self.idx = idx
         self.elems = []
         self.num_elems = 0
+        self.advanced = advanced
 
     def get_idx(self):
         return self.idx
