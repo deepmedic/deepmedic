@@ -23,7 +23,7 @@ class ModelConfig(Config):
                                   "when saving the model.")
     # [REQUIRED] Output:
     FOLDER_OUTP = \
-        config_data.add_elem("folderForOutput", elem_type='String', required=True,
+        config_data.add_elem("folderForOutput", elem_type='Folder', required=True,
                              description='Output Folder',
                              info="The main folder that the output will be placed.")
     

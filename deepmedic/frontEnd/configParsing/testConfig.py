@@ -23,11 +23,11 @@ class TestConfig(Config):
                                   "folders to save the results in.",
                              default="testSession")  # Optional but highly recommended.
     FOLDER_OUTP = \
-        config_data.add_elem("folderForOutput", elem_type='String', required=True,
+        config_data.add_elem("folderForOutput", elem_type='Folder', required=True,
                              description="Output Folder",
                              info="The main folder that the output will be placed.")
     SAVED_MODEL = \
-        config_data.add_elem("cnnModelFilePath", elem_type='String',
+        config_data.add_elem("cnnModelFilePath", elem_type='File',
                              description="Saved Model Checkpoint",
                              info="Path to a saved model, to load parameters from in the beginning of the "
                                   "session. If one is also specified using the GUI/command line, the latter "
@@ -36,24 +36,24 @@ class TestConfig(Config):
     config_data.set_curr_section('input', "Input")
 
     CHANNELS = \
-        config_data.add_elem("channels", required=True, description="Input Channels",
+        config_data.add_elem("channels", required=True, description="Input Channels", elem_type='Files',
                              info="A list that should contain as many entries as the channels of the input "
                                   "image (eg multi-modal MRI). The entries should be paths to files. "
                                   "Those files should be listing the paths to the corresponding channels "
                                   "for each test-case. (see example files).")
     NAMES_FOR_PRED_PER_CASE = \
-        config_data.add_elem("namesForPredictionsPerCase", elem_type='String', required=True,
+        config_data.add_elem("namesForPredictionsPerCase", elem_type='File', required=True,
                              description="Names of Predictions per Case",
                              info="The path to a file, which should list names to give to "
                                   "the results for each testing case. (see example file).")
     ROI_MASKS = \
-        config_data.add_elem("roiMasks", elem_type='String', description="RoI Masks",
+        config_data.add_elem("roiMasks",  elem_type='File', description="RoI Masks",
                              info="The path to a file, which should list paths to the Region-Of-Interest "
                                   "masks for each testing case.\n"
                                   "If ROI masks are provided, inference will only be performed within them "
                                   "(faster). If not specified, inference will be performed on whole volume.")
     GT_LABELS = \
-        config_data.add_elem("gtLabels", elem_type='String', description="Ground Truth Labels",
+        config_data.add_elem("gtLabels",  elem_type='File', description="Ground Truth Labels",
                              info="The path to a file which should list paths to the Ground Truth labels of "
                                   "each testing case. If provided, DSC metrics will be reported")
     BATCHSIZE = \

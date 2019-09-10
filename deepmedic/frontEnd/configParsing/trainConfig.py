@@ -26,10 +26,10 @@ class TrainConfig(Config):
 
     # [REQUIRED]
     FOLDER_OUTP = \
-        config_data.add_elem("folderForOutput", elem_type='String', required=True, description="Output Folder",
+        config_data.add_elem("folderForOutput", elem_type='Folder', required=True, description="Output Folder",
                              info="The main folder that the output will be placed.")
     SAVED_MODEL = \
-        config_data.add_elem("cnnModelFilePath", elem_type='String', description="Saved Model Checkpoint",
+        config_data.add_elem("cnnModelFilePath", elem_type='File', description="Saved Model Checkpoint",
                              info="Path to a saved model, to load parameters from at beginning of the "
                                   "session. If one is also specified in the command line/GUI, the latter "
                                   "will be used.")
@@ -43,6 +43,7 @@ class TrainConfig(Config):
 
     CHANNELS_TR = \
         config_data.add_elem("channelsTraining", description="Input Channels", required=True,
+                             elem_type='Files',
                              info="A list that should contain as many entries as the channels of the input "
                                   "image (eg multi-modal MRI). The entries should be paths to files.\n"
                                   "Those files should be listing the paths to the corresponding channels "
@@ -50,7 +51,7 @@ class TrainConfig(Config):
                                   'Example: ["./trainChannels_flair.cfg", "./trainChannels_t1c.cfg"]'
                              )
     GT_LABELS_TR = \
-        config_data.add_elem("gtLabelsTraining", description="Ground Truth Labels", elem_type='String', required=True,
+        config_data.add_elem("gtLabelsTraining", description="Ground Truth Labels", elem_type='File', required=True,
                              info='The path to a file which should list paths to the Ground Truth labels '
                                   'of each training case.')
     
@@ -58,7 +59,7 @@ class TrainConfig(Config):
     config_data.set_curr_section('sampling_train', "Sampling (Training)")
 
     ROI_MASKS_TR = \
-        config_data.add_elem("roiMasksTraining", description="RoI Masks", elem_type='String',
+        config_data.add_elem("roiMasksTraining", description="RoI Masks", elem_type='File',
                              info="The path to a file, which should list paths to the Region-Of-Interest masks for "
                                   "each training case.\n"
                                   "If ROI masks are provided, the training samples will be extracted only within it. "
@@ -347,6 +348,7 @@ class TrainConfig(Config):
                              info="Specify whether to perform full-inference validation every few epochs.")
     CHANNELS_VAL = \
         config_data.add_elem("channelsValidation", description="Validation Channels",
+                             elem_type='Files',
                              info="A list that should contain as many entries as the channels of the input "
                                   "image (eg multi-modal MRI). The entries should be paths to files.\n"
                                   "Those files should be listing the paths to the corresponding channels "
@@ -354,13 +356,13 @@ class TrainConfig(Config):
                                   'Example: ["./validationChannels_flair.cfg", "./validationChannels_t1c.cfg"]'
                              )
     GT_LABELS_VAL = \
-        config_data.add_elem("gtLabelsValidation", elem_type='String',
+        config_data.add_elem("gtLabelsValidation", elem_type='File',
                              description="Validation Labels",
                              info='[Required for validation on samples, optional for full-inference] The path to a '
                                   'file which should list paths to the Ground Truth labels of each validation case.'
                              )
     ROI_MASKS_VAL = \
-        config_data.add_elem("roiMasksValidation", elem_type='String', description="RoI Masks for Validation",
+        config_data.add_elem("roiMasksValidation", elem_type='File', description="RoI Masks for Validation",
                              info="The path to a file, which should list paths to the Region-Of-Interest masks for "
                                   "each validation case.\n"
                                   "If ROI masks are provided, the validation samples will be extracted only within it. "
@@ -409,6 +411,7 @@ class TrainConfig(Config):
     WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL = \
         config_data.add_elem("weightedMapsForSamplingEachCategoryVal",
                              description="Weighted Maps for Sampling",
+                             elem_type='Files',
                              parent=PERFORM_VAL_SAMPLES,
                              info="This variable allows providing weighted-maps to indicate where to extract more "
                                   "segments for each category of samples. Higher weight means more samples "
@@ -445,7 +448,7 @@ class TrainConfig(Config):
                              info="Batch size for validation on whole volumes.",
                              default=10)
     NAMES_FOR_PRED_PER_CASE_VAL = \
-        config_data.add_elem("namesForPredictionsPerCaseVal", elem_type='String',
+        config_data.add_elem("namesForPredictionsPerCaseVal", elem_type='File',
                              description="",
                              parent=PERFORM_VAL_INFERENCE,
                              info="[Required if requested to save results] The path to a file, which should list names "
