@@ -1,5 +1,5 @@
 from functools import partial
-from PySide2 import QtWidgets, QtCore
+from PySide2 import QtWidgets, QtCore, QtGui
 
 from deepmedic.gui.ui_mainwindow import Ui_DeepMedic2
 from deepmedic.gui.config_window import enable_on_combobox_value
@@ -8,6 +8,7 @@ from deepmedic.gui.test_config_window import TestConfigWindow
 from deepmedic.gui.train_config_window import TrainConfigWindow
 from deepmedic.gui.config_utils import p, file_open
 
+import time
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -33,6 +34,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.load_path_search_button.clicked.connect(partial(file_open, self, self.ui.load_path,
                                                                 text='Choose model checkpoint prefix'))
         self.ui.run_button.clicked.connect(self.run_deepmedic)
+        self.ui.stop_button.setEnabled(False)
+        self.ui.stop_button.clicked.connect(self.stop_deepmedic)
         self.ui.device_combobox.currentTextChanged.connect(self.enable_dev_num)
 
         self.enable_train_test()
@@ -46,8 +49,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.process = QtCore.QProcess(self)
         self.process.readyReadStandardOutput.connect(self.stdout_read)
         self.process.readyReadStandardError.connect(self.stderr_read)
-        self.process.started.connect(lambda: p('Started!'))
-        self.process.finished.connect(lambda: p('Finished!'))
+        self.process.started.connect(lambda: self.deep_medic_start(True))
+        self.process.finished.connect(lambda: self.deep_medic_start(False))
+
+    def deep_medic_start(self, started):
+        self.ui.run_button.setEnabled(not started)
+        self.ui.stop_button.setEnabled(started)
 
     def open_model_config_window(self):
         self.model_config_window.show()
@@ -120,4 +127,7 @@ class MainWindow(QtWidgets.QMainWindow):
             params += ['-resetopt']
 
         # self.process = subprocess.Popen(params)
-        self.process.start('nohup', params)
+        self.process.start('python', params)
+
+    def stop_deepmedic(self):
+        self.process.terminate()
