@@ -129,5 +129,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.process = subprocess.Popen(params)
         self.process.start('python', params)
 
+        self.ui.resetopt_checkbox.hide()
+        self.ui.resetopt_label.hide()
+
     def stop_deepmedic(self):
         self.process.terminate()
+        self.ui.resetopt_checkbox.show()
+        self.ui.resetopt_label.show()

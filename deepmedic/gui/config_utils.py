@@ -57,6 +57,16 @@ def get_widget_type(elem_type):
         return QtWidgets.QComboBox
     if elem_type == 'multiple':
         return QtWidgets.QLabel
+    if elem_type == 'conv_w':
+        return QtWidgets.QComboBox
+
+
+def hide_widget(widget, is_open):
+    if widget is not None:
+        if is_open:
+            widget.hide()
+        else:
+            widget.show()
 
 
 def num(s):

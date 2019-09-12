@@ -1,7 +1,7 @@
 import os
 from functools import partial
 from PySide2 import QtWidgets, QtCore
-from deepmedic.gui.ui_config_create import UiConfig
+from deepmedic.gui.ui_config_create import *
 from deepmedic.gui.config_utils import *
 
 
@@ -32,6 +32,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
         self.connect_parent_statechanged()
 
         self.connect_all_search_buttons()
+        self.connect_all_arrows()
 
     def connect_all_search_buttons(self):
         all_buttons = self.findChildren(QtWidgets.QPushButton)
@@ -46,15 +47,56 @@ class ConfigWindow(QtWidgets.QMainWindow):
                                                        text_input,
                                                        'Search ' + elem.elem_type + ' (' + elem.description + ')'))
 
+    def connect_all_arrows(self):
+        all_labels = self.findChildren(QtWidgets.QLabel)
+        for label in all_labels:
+            if label.objectName().endswith('arrow'):
+                label.clicked.connect(partial(self.hide_section,
+                                              '_'.join(label.objectName().split('_')[:-1]),
+                                              label))
+
+    def hide_widgets(self, elem, is_open, prefix=''):
+        if elem.widget_type == 'conv_w':
+            widget_type = 'combobox'
+        else:
+            widget_type = elem.widget_type
+
+        if not elem.widget_type == 'multiple':
+            widget = self.findChild(get_widget_type(widget_type), prefix + '_' +  widget_type)
+            hide_widget(widget, is_open)
+
+        if elem.widget_type in ['multiple', 'conv_w']:
+            for sub_elem in elem.options.values():
+                self.hide_widgets(sub_elem, is_open, prefix=prefix + '_' + sub_elem.name)
+
+        widget = self.findChild(QtWidgets.QLabel, prefix + '_label')
+        hide_widget(widget, is_open)
+        widget = self.findChild(QtWidgets.QLabel, prefix + '_info')
+        hide_widget(widget, is_open)
+        widget = self.findChild(QtWidgets.QPushButton, prefix + '_button')
+        hide_widget(widget, is_open)
+
+    def hide_section(self, section_name, label):
+        if label.is_open():
+            label.set_icon_rightarrow()
+        else:
+            label.set_icon_downarrow()
+        section = self.Config.config_data.get_section(section_name)
+
+        for elem in section.get_sorted_elems():
+            self.hide_widgets(elem, label.is_open(), prefix=elem.section.name + '_' + elem.name)
+
+        label.open = not label.is_open()
+
     def connect_parent_statechanged(self):
         elems_with_children = self.Config.config_data.get_elems_with_children()
         for parent, children in elems_with_children.items():
             if parent.elem_type == 'Bool':
                 parent_widget = self.model_config_dict[parent.name]
-                parent_widget.stateChanged.connect(partial(self.hide_children, parent_widget, children))
-                self.hide_children(parent_widget, children)  # initialise hidden/visible
+                parent_widget.stateChanged.connect(partial(self.enable_children, parent_widget, children))
+                self.enable_children(parent_widget, children)  # initialise hidden/visible
 
-    def hide_children(self, parent_widget, children, set_value=None):
+    def enable_children(self, parent_widget, children, set_value=None):
         if set_value is None:
             set_value = bool(parent_widget.isChecked())
         set_value = (set_value and bool(parent_widget.isEnabled()))
@@ -69,7 +111,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
                 if child.elem_type == 'Bool':
                     grandchildren = self.Config.config_data.get_children(child.name)
                     if grandchildren:
-                        self.hide_children(widget, grandchildren)
+                        self.enable_children(widget, grandchildren)
 
             widget = self.findChild(QtWidgets.QPushButton, child.section.name + '_' + child.name + "_button")
             if widget:

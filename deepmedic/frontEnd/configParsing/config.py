@@ -44,6 +44,12 @@ class ConfigData(object):
     def is_section(self, section_name):
         return section_name in self.sections.keys()
 
+    def get_section(self, section_name):
+        if self.is_section(section_name):
+            return self.sections[section_name]
+        else:
+            return None
+
     def add_section(self, section_args):
         self.sections[section_args[0]] = ConfigSection(*section_args)
 
@@ -155,5 +161,3 @@ class Config(object):
     
     def override_file_cfg_with_cmd_line_cfg(self, log, args):
         pass
-    
-

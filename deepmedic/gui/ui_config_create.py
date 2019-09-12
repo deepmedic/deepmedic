@@ -11,33 +11,90 @@
 import os
 from PySide2 import QtCore, QtWidgets, QtGui
 
-LABEL_COL = 0
-INPUT_COL = 2
+ARROW_COL = 0
+LABEL_COL = 1
+INPUT_COL = 3
 INFO_COL = INPUT_COL - 1
 SEARCH_COL = INPUT_COL + 1
 LINE_WIDTH = SEARCH_COL - LABEL_COL + 1
-SAVE_BUTTON_SIZE = 3
+SAVE_BUTTON_SIZE = 4
 NORMAL_SPAN = 2
 SEARCH_SPAN = 1
+ROW_HEIGHT = 25
+LINE_HEIGHT = 3
+TITLE_HEIGHT = None  # None = default
+ICONS_FOLDER = os.path.join("deepmedic", "gui", "icons")
+ARROW_SIZE = 10
+
+
+def make_icon(icon_path):
+    icon = QtGui.QIcon()
+    icon.addPixmap(QtGui.QPixmap(icon_path),
+                   QtGui.QIcon.Normal, QtGui.QIcon.Off)
+    return icon
+
+
+class ClickLabel(QtWidgets.QLabel):
+    clicked = QtCore.Signal()
+
+    def __init__(self, parent=None):
+        super(ClickLabel, self).__init__(parent)
+        self.open = True
+        self.icon_size = 12
+
+    def mousePressEvent(self, event):
+        super(ClickLabel, self).mousePressEvent(event)
+        self.clicked.emit()
+        QtWidgets.QLabel.mousePressEvent(self, event)
+
+    def set_icon_size(self, icon_size):
+        if icon_size is not None:
+            self.icon_size = icon_size
+
+    def set_icon(self, icon):
+        self.setPixmap(icon.pixmap(QtCore.QSize(self.icon_size, self.icon_size)))
+        self.setFixedWidth(self.icon_size)
+
+    def set_icon_downarrow(self, icon_size=None):
+        self.set_icon_size(icon_size)
+        self.set_icon(make_icon(os.path.join(ICONS_FOLDER, "triangle_down.svg")))
+
+    def set_icon_rightarrow(self, icon_size=None):
+        self.set_icon_size(icon_size)
+        self.set_icon(make_icon(os.path.join(ICONS_FOLDER, "triangle_right.svg")))
+
+    def set_icon_info(self, icon_size=None):
+        self.set_icon_size(icon_size)
+        self.set_icon(make_icon(os.path.join(ICONS_FOLDER, "info.svg")))
+
+    def is_open(self):
+        return self.open
 
 
 class UiConfig(object):
 
-    def add_widget(self, widget, row, col, row_span=1, col_span=1):
+    def add_widget(self, widget, row, col, row_span=1, col_span=1, height=ROW_HEIGHT):
+        if height is not None:
+            widget.setFixedHeight(height)
         self.gridLayout.addWidget(widget, row, col, row_span, col_span)
 
     def add_title(self, name, text, widget_num):
-        self.add_widget(self.create_label(name, text, title=True), widget_num, LABEL_COL, col_span=2)
-        self.add_widget(self.create_line(name), widget_num + 1, LABEL_COL, col_span=LINE_WIDTH)
+        self.add_widget(self.create_arrow(name), widget_num, ARROW_COL, height=TITLE_HEIGHT)
+        self.add_widget(self.create_label(name, text, title=True), widget_num, LABEL_COL,
+                        col_span=2, height=TITLE_HEIGHT)
+        self.add_widget(self.create_line(name), widget_num + 1, LABEL_COL,
+                        col_span=LINE_WIDTH, height=LINE_HEIGHT)
         return widget_num + 2
 
+    def create_image_label(self, name):
+        label = ClickLabel(self.scrollAreaWidgetContents)
+        label.setObjectName(name)
+        return label
+
     def create_info_button(self, name, info=None, default=None):
-        info_button = QtWidgets.QLabel(self.scrollAreaWidgetContents)
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(os.path.join("deepmedic", "gui", "icons", "info.svg")),
-                       QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        info_button.setPixmap(icon.pixmap(QtCore.QSize(12, 12)))
-        info_button.setObjectName(name + '_info')
+        info_button = self.create_image_label(name + '_info')
+        info_button.set_icon_info()
+
         tooltip_text = '<html><head/><body><p>'
         if info:
             tooltip_text += info
@@ -47,8 +104,13 @@ class UiConfig(object):
             tooltip_text += '(default: ' + str(default) + ')'
         tooltip_text += '</p></body></html>'
         info_button.setToolTip(tooltip_text.replace('\n', '</p><p>'))
-        info_button.setEnabled(False)  # make icon more gray
+
         return info_button
+
+    def create_arrow(self, name):
+        arrow = self.create_image_label(name + '_arrow')
+        arrow.set_icon_downarrow(icon_size=ARROW_SIZE)
+        return arrow
 
     def create_line(self, name):
         line = QtWidgets.QFrame(self.scrollAreaWidgetContents)
@@ -220,7 +282,6 @@ class UiConfig(object):
                 widget_num = self.add_title(section.name, section.text, widget_num)
                 for elem in section.get_sorted_elems():
                     if not elem.advanced:
-                        # print('\t ' + elem.name)
                         widget_num = self.add_grid_row(section.name + '_' + elem.name, widget_num, elem)
 
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
@@ -228,7 +289,7 @@ class UiConfig(object):
         self.save_button = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
         self.save_button.setObjectName("save_button")
         self.save_button.setText('Save Configuration File')
-        self.gridLayout.addWidget(self.save_button, widget_num + 1, 0, 1, SAVE_BUTTON_SIZE)
+        self.gridLayout.addWidget(self.save_button, widget_num + 1, LABEL_COL, 1, SAVE_BUTTON_SIZE)
         self.horizontalLayout.addLayout(self.gridLayout)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.centralLayout.addWidget(self.scrollArea, 0, 0, 1, 1)
@@ -284,4 +345,3 @@ class UiConfig(object):
         self.action_save.setShortcut(QtWidgets.QApplication.translate("model_config_create", "Ctrl+S", None, -1))
         self.action_load.setText(QtWidgets.QApplication.translate("model_config_create", "&Load...", None, -1))
         self.action_load.setShortcut(QtWidgets.QApplication.translate("model_config_create", "Ctrl+L", None, -1))
-
