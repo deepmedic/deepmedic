@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 import datetime
 
 
-def get_pattern_string(pattern='#', width=80) -> str:
+def get_pattern_string(pattern='#', width=80):
     if width == 0:
         return ''
 
