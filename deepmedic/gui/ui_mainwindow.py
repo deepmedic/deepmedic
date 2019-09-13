@@ -92,10 +92,12 @@ class Ui_DeepMedic2(object):
         self.stop_button = QtWidgets.QPushButton(self.centralWidget)
         self.stop_button.setObjectName("stop_button")
         self.gridLayout.addWidget(self.stop_button, 14, 2, 1, 2)
-        self.output_log = QtWidgets.QTextBrowser(self.centralWidget)
+        self.output_log = QtWidgets.QPlainTextEdit(self.centralWidget)
         self.output_log.setStyleSheet("background-color: rgb(0, 0, 0);\n"
 "color: rgb(255, 255, 255);")
         self.output_log.setObjectName("output_log")
+        self.output_log.setMaximumBlockCount(10000)
+        self.output_log.setReadOnly(True)
         self.gridLayout.addWidget(self.output_log, 16, 0, 1, 4)
         self.train_config_create_button = QtWidgets.QPushButton(self.centralWidget)
         self.train_config_create_button.setObjectName("train_config_create_button")
