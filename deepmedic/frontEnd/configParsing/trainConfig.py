@@ -35,8 +35,7 @@ class TrainConfig(Config):
                                   "will be used.")
 
     TENSORBOARD_LOG = \
-        config_data.add_elem("tensorboardLog", elem_type='Bool', description="Log to Tensorboard",
-                             info="Log to Tensorboard.", default=False)
+        config_data.add_elem("tensorboardLog", elem_type='Bool', description="Log to Tensorboard", default=False)
 
     # =============TRAINING========================
     config_data.set_curr_section('train', "Training")
