@@ -216,7 +216,23 @@ class ConfigWindow(QtWidgets.QMainWindow):
 
         return filename
 
-    def save_config(self, filename=None):
+    def write_info(self, f, elem, sub=False, sub_name='', tab=''):
+        if sub:
+            tab += '\t'
+        if sub_name:
+            sub_name = ' (' + sub_name + ')'
+        f.write('# ' + tab + elem.description + sub_name + '\n')
+        tab += '\t'
+        if elem.info:
+            info = elem.info.replace('\n', '\n# ' + tab)
+            f.write('# ' + tab + info + '\n')
+        if elem.default is not None:
+            f.write('# ' + tab + 'Default: ' + str(elem.default) + '\n')
+        if elem.widget_type in ['conv_w', 'multiple']:
+            for sub_name, sub_elem in elem.options.items():
+                self.write_info(f, sub_elem, sub=True, sub_name=sub_name, tab=tab)
+
+    def save_config(self, filename=None, write_info=True):
         if not filename:
             filename = self.filename
 
@@ -224,8 +240,12 @@ class ConfigWindow(QtWidgets.QMainWindow):
             with open(filename, 'w+') as f:
                 f.write('# Created automatically using the DeepMedic2 GUI\n')
                 for name, value in self.model_config_dict.items():
+                    elem = self.Config.config_data.get_elem(name)
                     value_text = self.get_text_value(name, value)
                     if value_text:
+                        f.write('\n')
+                        if write_info and elem:
+                            self.write_info(f, elem)
                         f.write(str(name) + ' = ' + str(value_text) + '\n')
                 f.close()
         else:
