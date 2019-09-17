@@ -52,38 +52,35 @@ class NiftiImage(object):
         return self.reader.GetMetaDataKeys()
 
 
-def get_image_dims_stats(image_list, do_pixs=True, do_dims=False, tqdm_text='Getting Pixel Dimension Stats'):
+def get_image_dims_stats(image_list, do_pixs=True, do_dims=True, disable_tqdm=False,
+                         tqdm_text='Getting Pixel Dimension Stats'):
+    if not (do_dims or do_pixs):
+        return {}, {}
     dims_count = {}
     pix_dims_count = {}
-    for image_path in tqdm(image_list, desc=tqdm_text):
+    for image_path in tqdm(image_list, desc=tqdm_text, disable=disable_tqdm):
         image = NiftiImage(image_path)
 
-        dims = image.get_image_dims()
+        if do_dims:
+            dims = image.get_image_dims()
 
-        if dims in dims_count:
-            dims_count[dims] += 1
-        else:
-            dims_count[dims] = 1
+            if dims in dims_count:
+                dims_count[dims] += 1
+            else:
+                dims_count[dims] = 1
 
-        dims = image.get_image_pixel_dims()
+        if do_pixs:
+            dims = image.get_image_pixel_dims()
 
-        if dims in pix_dims_count:
-            pix_dims_count[dims] += 1
-        else:
-            pix_dims_count[dims] = 1
+            if dims in pix_dims_count:
+                pix_dims_count[dims] += 1
+            else:
+                pix_dims_count[dims] = 1
 
-    print('\n')
-
-    if do_pixs and do_dims:
-        return dims_count, pix_dims_count
-    elif do_pixs:
-        return pix_dims_count
-    else:
-        return dims_count
+    return dims_count, pix_dims_count
 
 
-def pix_check(filelist, verbose=True):
-    pix_count = get_image_dims_stats(filelist, tqdm_text='Running Pixel Dimension Checks')
+def pix_check(pix_count, verbose=True):
     prefix = ' '*(len('[PASSED]') + 1)
     if len(pix_count) > 1:
         print('[FAILED] Pixel dimensions check')
@@ -111,9 +108,7 @@ def pix_check(filelist, verbose=True):
             print(prefix + 'Pixel Dimensions: ' + str(pix_dims))
 
 
-def dims_check(filelist, verbose=True):
-    dims_count = get_image_dims_stats(filelist, do_dims=True, do_pixs=False,
-                                      tqdm_text='Running Image Dimension Checks')
+def dims_check(dims_count, verbose=True):
     prefix = ' '*(len('[PASSED]') + 1)
     if len(dims_count) > 1:
         print('[FAILED] Images dimensions check')
@@ -129,10 +124,15 @@ def dims_check(filelist, verbose=True):
             print(prefix + 'Image Dimensions: ' + str(list(dims_count.keys())[0]))
 
 
-def run_checks(filelist):
+def run_checks(filelist, pixs=False, dims=False, disable_tqdm=False):
     print('Running Checks')
-    pix_check(filelist)
-
+    dims_count, pix_dims_count = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs,
+                                                      disable_tqdm=disable_tqdm,
+                                                      tqdm_text='Running Image and Pixel Dimension Checks')
+    if dims:
+        dims_check(dims_count)
+    if pixs:
+        pix_check(pix_dims_count)
 
 
 if __name__ == "__main__":
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     # for key in img.get_header_keys():
     #     print("{0}: {1}".format(key, img.reader.GetMetaData(key)))
     filelist = glob.glob(os.path.join(base_path, '**/*.nii.gz'), recursive=True)
-    run_checks(filelist)
+    run_checks(filelist, dims=True, pixs=True, disable_tqdm=False)
     # dims_count, pixel_count = get_image_dims_stats(glob.glob(os.path.join(base_path, '**/*.nii.gz'), recursive=True), do_dims=False)
     # print('Dims Count')
     # print_dict(dims_count)
