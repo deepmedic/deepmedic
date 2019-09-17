@@ -685,13 +685,12 @@ def inferenceWholeVolumes(sessionTf,
                                                                     NA_PATTERN, log, image_i, validation_or_testing_str)
 
     # = Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. =
+    metrics_dict_list = None
     if listOfFilepathsToGtLabelsOfEachPatient is not None and total_number_of_images > 0:  # GT was given. Calculate
         (meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3) = calculate_mean_dsc(log,
                                                                                  diceCoeffs1, diceCoeffs2, diceCoeffs3,
                                                                                  NA_PATTERN, validation_or_testing_str)
         metrics_dict_list = dsc_to_dict(meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3)
-    else:
-        metrics_dict_list = {}
 
     end_time = time.time()
 

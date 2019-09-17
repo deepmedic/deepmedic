@@ -19,6 +19,8 @@ from deepmedic.neuralnet.trainer import Trainer
 
 from deepmedic.routines.training import do_training
 
+from deepmedic.logging.tensorboard_logger import TensorboardLogger
+
 import tensorflow as tf
 
 
@@ -48,20 +50,17 @@ class TrainSession(Session):
 
         self._log.print3("----------- Creating Tensorboard Loggers -----------")
 
-        for logger_type in logger_types:
-            if create_log:
-                tensorboard_loggers[logger_type] = \
-                    tf.compat.v1.summary.FileWriter(os.path.join(self._main_out_folder_abs,
-                                                                 "tensorboard",
-                                                                 self._sess_name,
-                                                                 logger_type),
-                                                    tf_graph)
-            else:
-                tensorboard_loggers[logger_type] = None
-
         if create_log:
+            for logger_type in logger_types:
+                tensorboard_loggers[logger_type] = TensorboardLogger(os.path.join(self._main_out_folder_abs,
+                                                                                  "tensorboard",
+                                                                                  self._sess_name,
+                                                                                  logger_type),
+                                                                     tf_graph)
             self._log.print3("Loggers created successfully")
         else:
+            for logger_type in logger_types:
+                tensorboard_loggers[logger_type] = None
             self._log.print3("Config flag to log to tensorboard not present.")
             self._log.print3("Skipping...")
 
@@ -119,9 +118,9 @@ class TrainSession(Session):
                 trainer = Trainer(*(self._params.get_args_for_trainer() + [cnn3d]))
                 trainer.create_optimizer(*self._params.get_args_for_optimizer())  # Trainer and net connect here.
 
-                tensorboard_loggers = self.create_tensorboard_loggers(['train', 'val', 'val_whole'],
-                                                                      graphTf,
-                                                                      create_log=self._params.get_tensorboard_bool())
+            tensorboard_loggers = self.create_tensorboard_loggers(['train', 'val'],
+                                                                  graphTf,
+                                                                  create_log=self._params.get_tensorboard_bool())
 
             # The below should not create any new tf.variables.
             self._log.print3("=========== Compiling the Training Function ===========")

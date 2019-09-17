@@ -120,7 +120,8 @@ def trainOrValidateForSubepoch(log,
         num_batches)
     # This function does NOT flip the class-0 background to foreground!
     acc_monitor_for_ep.updateMonitorAccuraciesWithNewSubepochEntries(mean_cost_subep, array_per_class_RpRnTpTn_in_subep)
-    acc_monitor_for_ep.reportAccuracyForLastSubepoch()
+    acc_monitor_for_ep.log_acc_subep_to_txt()
+    acc_monitor_for_ep.log_acc_subep_to_tensorboard()
     # Done
 
 
@@ -245,6 +246,7 @@ def do_training(sessionTf,
                                                    num_subepochs,
                                                    tensorboard_logger=tensorboard_loggers['train']
                                                    if tensorboard_loggers is not None else None)
+
             acc_monitor_for_ep_val = None if not val_on_samples_during_train else \
                 AccuracyOfEpochMonitorSegmentation(log, 1,
                                                    model_num_epochs_trained,
@@ -389,9 +391,6 @@ def do_training(sessionTf,
             trainer.run_updates_end_of_ep(log, sessionTf, mean_val_acc_of_ep)
             model_num_epochs_trained = trainer.get_num_epochs_trained_tfv().eval(session=sessionTf)
 
-            del acc_monitor_for_ep_train
-            del acc_monitor_for_ep_val
-
             log.print3("SAVING: Epoch #" + str(epoch) + " finished. Saving CNN model.")
             filename_to_save_with = fileToSaveTrainedCnnModelTo + "." + datetimeNowAsStr()
             saver_all.save(sessionTf, filename_to_save_with + ".model.ckpt", write_meta_graph=False)
@@ -405,16 +404,6 @@ def do_training(sessionTf,
                 log.print3(
                     "***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #" + str(
                         epoch) + "...***")
-
-                # create monitor to report
-
-                acc_monitor_for_ep_val_whole = None if not val_on_samples_during_train else \
-                    AccuracyOfEpochMonitorSegmentation(log, None,
-                                                       model_num_epochs_trained,
-                                                       None,
-                                                       num_subepochs,
-                                                       tensorboard_logger=tensorboard_loggers['val_whole']
-                                                       if tensorboard_loggers is not None else None)
 
                 metrics_dict_list = inferenceWholeVolumes(
                     sessionTf,
@@ -440,7 +429,10 @@ def do_training(sessionTf,
                     namesForSavingFms=namesForSavingFms
                 )
 
-                acc_monitor_for_ep_val_whole.reportDSCWholeSegmentation(metrics_dict_list)
+                acc_monitor_for_ep_val.reportDSCWholeSegmentation(metrics_dict_list)
+
+            del acc_monitor_for_ep_train
+            del acc_monitor_for_ep_val
 
         end_time_train = time.time()
         log.print3("TIMING: Training process lasted: {0:.1f}".format(end_time_train - start_time_train) + " secs.")

@@ -130,7 +130,7 @@ class TrainSessionParameters(object):
         self.savedModelFilepath = check_and_adjust_path_to_ckpt(self.log,
                                                                 abs_path_to_saved) if abs_path_to_saved is not None else None
 
-        self.tensorboardLog = bool(cfg[cfg.TENSORBOARD_LOG])
+        self.tensorboardLog = cfg[cfg.TENSORBOARD_LOG] if cfg[cfg.TENSORBOARD_LOG] is not None else False
 
         # ====================TRAINING==========================
         self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
@@ -465,6 +465,7 @@ class TrainSessionParameters(object):
         logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
         logPrint("~~Output~~")
         logPrint("Main output folder = " + str(self.mainOutputAbsFolder))
+        logPrint("Log performance metrics for tensorboard = " + str(self.tensorboardLog))
         logPrint("Path and filename to save trained models = " + str(self.filepath_to_save_models))
 
         logPrint("~~~~~~~~~~~~~~~~~~Generic Information~~~~~~~~~~~~~~~~")
