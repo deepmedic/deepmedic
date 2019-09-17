@@ -130,7 +130,7 @@ class TrainSessionParameters(object):
         self.savedModelFilepath = check_and_adjust_path_to_ckpt(self.log,
                                                                 abs_path_to_saved) if abs_path_to_saved is not None else None
 
-        self.tensorboardLog = bool(cfg[cfg.TENSORBOARD_LOG])
+        self.tensorboardLog = cfg[cfg.TENSORBOARD_LOG] if cfg[cfg.TENSORBOARD_LOG] is not None else False
 
         # ====================TRAINING==========================
         self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
