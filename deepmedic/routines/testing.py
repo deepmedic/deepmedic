@@ -13,7 +13,7 @@ import math
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.dataManagement.sampling import load_imgs_of_subject
-from deepmedic.dataManagement.sampling import getCoordsOfAllSegmentsOfAnImage
+from deepmedic.dataManagement.sampling import get_slice_coords_of_all_img_tiles
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, \
     save4DImgWithAllFmsToNiiWithOriginalHdr
@@ -219,43 +219,41 @@ def construct_fms(fms_to_extract_img, img_part_idx, cnn3d_pathways, fm_idxs, fms
     return img_part_idx, fms_to_extract_img
 
 
-def print_progress_step(log, num_batches, batch_i, batch_size, num_segments_for_case):
-    progress_step = max(1, num_batches // 5)
+def print_progress_step(log, n_batches, batch_i, batch_size, n_segments_for_subj):
+    progress_step = max(1, n_batches // 5)
 
-    if batch_i == 0 or ((batch_i + 1) % progress_step) == 0 or (batch_i + 1) == num_batches:
+    if batch_i == 0 or ((batch_i + 1) % progress_step) == 0 or (batch_i + 1) == n_batches:
         log.print3(
-            "Processed " + str((batch_i + 1) * batch_size) + "/" + str(num_segments_for_case) + " segments.")
+            "Processed " + str((batch_i + 1) * batch_size) + "/" + str(n_segments_for_subj) + " segments.")
 
 
-def load_feed_dict(feeds, channels_segments_per_path, loading_time):
-    start_loading_time = time.time()
+def load_feed_dict(feeds, channels_segments_per_path, loading_time): # KKNOTE: Can we rename the input feeds so that they are easier to deal with?
+    t_load_start = time.time()
 
     feeds_dict = {feeds['x']: np.asarray(channels_segments_per_path[0], dtype='float32')}
     for path_i in range(len(channels_segments_per_path[1:])):
         feeds_dict.update(
             {feeds['x_sub_' + str(path_i)]: np.asarray(channels_segments_per_path[1 + path_i], dtype='float32')})
 
-    end_loading_time = time.time()
-    loading_time += end_loading_time - start_loading_time
+    loading_time += time.time() - t_load_start
 
     return feeds_dict, loading_time
 
 
-def forward_pass(session, list_of_ops, feeds_dict, fwd_pass_time):
-    start_testing_time = time.time()
+def forward_pass(session, list_of_ops, feeds_dict, fwd_pass_time): # KKNOTE: Too much to modularize. No need.
+    t_fwd_start = time.time()
 
     # Forward pass
-    # featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch = \
+    # out_val_of_ops = \
     #     cnn3d.cnnTestAndVisualiseAllFmsFunction( *input_args_to_net )
     fms_and_pred_probs = session.run(fetches=list_of_ops, feed_dict=feeds_dict)
 
-    end_testing_time = time.time()
-    fwd_pass_time += end_testing_time - start_testing_time
+    fwd_pass_time += time.time() - t_fwd_start
 
     return fms_and_pred_probs, fwd_pass_time
 
 
-def get_unpadded_pred_seg(prob_maps_per_class, pad_input_imgs, axes_padding_left_right):
+def unpad_pred_segm(prob_maps_per_class, pad_input_imgs, axes_padding_left_right): # KKNOTE: Too much. It's too lines. Dont make a func.
     pred_seg = np.argmax(prob_maps_per_class, axis=0)  # The segmentation.
     unpadded_pred_seg = pred_seg if not pad_input_imgs else \
         unpadCnnOutputs(pred_seg, axes_padding_left_right)
@@ -263,28 +261,29 @@ def get_unpadded_pred_seg(prob_maps_per_class, pad_input_imgs, axes_padding_left
     return unpadded_pred_seg
 
 
-def get_unpadded_roi_mask(roi_mask, pad_input_imgs, axes_padding_left_right):
-    # Multiply with the below to zero-out anything outside the RoiMask if given.
-    # Provided that RoiMask is binary [0,1].
-    unpadded_roi_mask = 1
-    if isinstance(roi_mask, np.ndarray):  # If roiMask was given:
+def unpad_roi_mask(roi_mask, pad_input_imgs, axes_padding_left_right): # KKNOTE: Too much.
+    # Multiply with the below to zero-out anything outside the roi_mask if given.
+    # Provided that roi_mask is binary [0,1].
+    if not roi_mask is None:
         unpadded_roi_mask = roi_mask if not pad_input_imgs else \
             unpadCnnOutputs(roi_mask, axes_padding_left_right)
-
-    return unpadded_roi_mask
+        return unpadded_roi_mask
+    else :
+        return None
+    
 
 
 def save_pred_seg(unpadded_pred_seg, unpadded_roi_mask, save_pred_seg_bool, suffix_seg, seg_names, filepaths,
-                  image_i, log):
+                  subj_i, log): # KKNOTE: Too much. It's just 1 function call.
 
     if save_pred_seg_bool:  # save predicted segmentation
         # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
         # eg RAS transformation
-        unpadded_pred_seg_in_roi = unpadded_pred_seg * unpadded_roi_mask
+        unpadded_pred_seg_in_roi = unpadded_pred_seg if unpadded_roi_mask is None else unpadded_pred_seg * unpadded_roi_mask
         savePredImgToNiiWithOriginalHdr(unpadded_pred_seg_in_roi,
                                         seg_names,
                                         filepaths,
-                                        image_i,
+                                        subj_i,
                                         suffix_seg,
                                         np.dtype(np.int16),
                                         log)
@@ -292,7 +291,7 @@ def save_pred_seg(unpadded_pred_seg, unpadded_roi_mask, save_pred_seg_bool, suff
 
 def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
                    pad_input_imgs, axes_padding_left_right, unpadded_roi_mask,
-                   prob_names, filepaths, image_i, log):
+                   prob_names, filepaths, subj_i, log):
 
     for class_i in range(0, num_classes):
         if (len(save_prob_maps_bool) >= class_i + 1) and (save_prob_maps_bool[class_i]):  # save per class probMap
@@ -302,11 +301,11 @@ def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
             prob_map_i = prob_maps[class_i, :, :, :]
             unpadded_prob_map_i = prob_map_i if not pad_input_imgs \
                 else unpadCnnOutputs(prob_map_i, axes_padding_left_right)
-            unpadded_prob_map_i_in_roi = unpadded_prob_map_i * unpadded_roi_mask
+            unpadded_prob_map_i_in_roi = unpadded_prob_map_i if unpadded_roi_mask is None else unpadded_prob_map_i * unpadded_roi_mask
             savePredImgToNiiWithOriginalHdr(unpadded_prob_map_i_in_roi,
                                             prob_names,
                                             filepaths,
-                                            image_i,
+                                            subj_i,
                                             suffix,
                                             np.dtype(np.float32),
                                             log)
@@ -315,7 +314,7 @@ def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
 def save_fms_individual(cnn3d_pathways, fm_idxs,
                         multidim_fm_array, pad_input_imgs,
                         axes_padding_left_right, fms_names, filepaths,
-                        image_i, log):
+                        subj_i, log):
     idx_curr = 0
     for pathway_i in range(len(cnn3d_pathways)):
         pathway = cnn3d_pathways[pathway_i]
@@ -334,7 +333,7 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
                         saveFmImgToNiiWithOriginalHdr(unpadded_fm_to_save,
                                                       fms_names,
                                                       filepaths,
-                                                      image_i,
+                                                      subj_i,
                                                       pathway_i,
                                                       layer_i,
                                                       fmActualNumber,
@@ -345,7 +344,7 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
 
 def save_fms_multidim(multidim_fm_array, pad_input_imgs,
                       axes_padding_left_right, fms_names, filepaths,
-                      image_i, log):
+                      subj_i, log):
     multidim_fm_array_4dim = np.transpose(multidim_fm_array, (1, 2, 3, 0))
     unpadded_multidim_fm_array_4dim = multidim_fm_array_4dim if not pad_input_imgs else \
         unpadCnnOutputs(multidim_fm_array_4dim, axes_padding_left_right)
@@ -354,15 +353,15 @@ def save_fms_multidim(multidim_fm_array, pad_input_imgs,
         unpadded_multidim_fm_array_4dim,
         fms_names,
         filepaths,
-        image_i,
+        subj_i,
         log)
 
 
-def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, unpadded_pred_seg,
+def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, unpadded_pred_seg, # KKNOTE: RENAME
                   pad_input_imgs, axes_padding_left_right, unpadded_roi_mask,
-                  num_classes, na_pattern, log, image_i, validation_or_testing_str):
+                  num_classes, na_pattern, log, subj_i, val_or_test_print):
 
-    log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(image_i) +
+    log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(subj_i) +
                " ++++++++++++++++++++++++++")
     # Unpad whatever needed.
     unpadded_gt_labels = gt_labels if not pad_input_imgs else unpadCnnOutputs(gt_labels, axes_padding_left_right)
@@ -377,7 +376,7 @@ def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, unpadded_pred_seg,
             pred_seg_binary_i = unpadded_pred_seg == class_i
             gt_labels_binary_i = unpadded_gt_labels == class_i
 
-        pred_seg_binary_i_in_roi = pred_seg_binary_i * unpadded_roi_mask
+        pred_seg_binary_i_in_roi = pred_seg_binary_i if unpadded_roi_mask is None else pred_seg_binary_i * unpadded_roi_mask
 
         # Calculate the 3 Dices.
         # Dice1 = Allpredicted/allLesions,
@@ -386,28 +385,28 @@ def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, unpadded_pred_seg,
 
         # Dice1 = Allpredicted/allLesions
         dice_1 = calculate_dice(pred_seg_binary_i, gt_labels_binary_i)
-        dices_1[image_i][class_i] = dice_1 if dice_1 != -1 else na_pattern
+        dices_1[subj_i][class_i] = dice_1 if dice_1 != -1 else na_pattern
 
         # Dice2 = PredictedWithinRoiMask / AllLesions
         dice_2 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i)
-        dices_2[image_i][class_i] = dice_2 if dice_2 != -1 else na_pattern
+        dices_2[subj_i][class_i] = dice_2 if dice_2 != -1 else na_pattern
 
         # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask
         dice_3 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i * unpadded_roi_mask)
-        dices_3[image_i][class_i] = dice_3 if dice_3 != -1 else na_pattern
+        dices_3[subj_i][class_i] = dice_3 if dice_3 != -1 else na_pattern
 
-    log.print3("ACCURACY: (" + str(validation_or_testing_str) +
-               ") The Per-Class DICE Coefficients for subject with index #" + str(image_i) +
-               " equal: DICE1=" + strListFl4fNA(dices_1[image_i], na_pattern) +
-               " DICE2=" + strListFl4fNA(dices_2[image_i], na_pattern) +
-               " DICE3=" + strListFl4fNA(dices_3[image_i], na_pattern))
+    log.print3("ACCURACY: (" + str(val_or_test_print) +
+               ") The Per-Class DICE Coefficients for subject with index #" + str(subj_i) +
+               " equal: DICE1=" + strListFl4fNA(dices_1[subj_i], na_pattern) +
+               " DICE2=" + strListFl4fNA(dices_2[subj_i], na_pattern) +
+               " DICE3=" + strListFl4fNA(dices_3[subj_i], na_pattern))
 
     print_dice_explanations(log)
 
     return dices_1, dices_2, dices_3
 
 
-def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, validation_or_testing_str):
+def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, val_or_test_print):
     log.print3(
         "+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
     log.print3(
@@ -417,7 +416,7 @@ def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, validation_or
     mean_dice_2 = getMeanPerColOf2dListExclNA(dices_2, na_pattern)
     mean_dice_3 = getMeanPerColOf2dListExclNA(dices_3, na_pattern)
 
-    log.print3("ACCURACY: (" + str(validation_or_testing_str) +
+    log.print3("ACCURACY: (" + str(val_or_test_print) +
                ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" +
                strListFl4fNA(mean_dice_1, na_pattern) +
                " DICE2=" + strListFl4fNA(mean_dice_2, na_pattern) +
@@ -428,10 +427,10 @@ def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, validation_or
     return mean_dice_1, mean_dice_2, mean_dice_3
 
 
-def print_time_log(log, extract_time, loading_time, fwd_pass_time):
+def print_time_log(log, extract_time, loading_time, fwd_pass_time): # KKNOTE: I'd put it outside because it also serves as comment.
     log.print3("TIMING: Segmentation of subject: [Extracting:] {0:.2f}".format(extract_time) +
-               " [Loading:] {0:.2f}".format(loading_time) +
-               " [ForwardPass:] {0:.2f}".format(fwd_pass_time) +
+               " [Loading (to GPU):] {0:.2f}".format(loading_time) +
+               " [Forward Pass:] {0:.2f}".format(fwd_pass_time) +
                " [Total:] {0:.2f}".format(
                    extract_time + loading_time + fwd_pass_time) + " secs.")
 
@@ -466,242 +465,217 @@ def inferenceWholeVolumes(sessionTf,
                           # --------For FM visualisation---------
                           saveIndividualFmImagesForVisualisation,
                           saveMultidimensionalImageWithAllFms,
-                          indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                          indices_fms_to_save,
                           namesForSavingFms):
     # saveIndividualFmImagesForVisualisation: should contain an entry per pathwayType, even if just []...
     #       ... If not [], the list should contain one entry per layer of the pathway, even if just [].
     #       ... The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
     #       ... Excluding the highest index.
 
-    validation_or_testing_str = "Validation" if val_or_test == "val" else "Testing"
+    val_or_test_print = "Validation" if val_or_test == "val" else "Testing"
+    
+    log.print3("\n")
+    log.print3("####################################################################################################")
+    log.print3("#\t\t\t  Starting full Segmentation of " + str(val_or_test_print) + " subjects   \t\t\t#")
+    log.print3("####################################################################################################")
 
-    log.print3(
-        "###########################################################################################################")
-    log.print3("############################# Starting full Segmentation of " +
-               str(validation_or_testing_str) + " subjects ##########################")
-    log.print3(
-        "###########################################################################################################")
-
-    start_time = time.time()
+    t_whole_start = time.time()
 
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
+    n_classes = cnn3d.num_classes
+    n_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
 
-    NUMBER_OF_CLASSES = cnn3d.num_classes
-
-    total_number_of_images = len(listOfFilepathsToEachChannelOfEachPatient)
-
-    # one dice score for whole + for each class)
+    # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
     # Dice2 - predictedInsideRoiMask/AllLesions
     # Dice3 - predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
-    # A list of dimensions: total_number_of_images X NUMBER_OF_CLASSES
+    # A list of dimensions: n_subjects X n_classes
     # init dice scores
-    diceCoeffs1 = [[-1] * NUMBER_OF_CLASSES for _ in range(total_number_of_images)]
-    diceCoeffs2 = [[-1] * NUMBER_OF_CLASSES for _ in range(total_number_of_images)]
-    diceCoeffs3 = [[-1] * NUMBER_OF_CLASSES for _ in range(total_number_of_images)]
+    dsc1 = [[-1] * n_classes for _ in range(n_subjects)]
+    dsc2 = [[-1] * n_classes for _ in range(n_subjects)]
+    dsc3 = [[-1] * n_classes for _ in range(n_subjects)]
 
-    recFieldCnn = cnn3d.recFieldCnn
+    rec_field = cnn3d.recFieldCnn # Receptive field. List [size-x, size-y, size-z]
 
-    # stride is how much I move in each dimension to acquire the next imagePart.
-    # I move exactly the number I segment in the centre of each image part
-    # (originally this was 9^3 segmented per imagePart).
-    numberOfCentralVoxelsClassified = cnn3d.finalTargetLayer.outputShape["test"][2:]
-    strideOfImagePartsPerDimensionInVoxels = numberOfCentralVoxelsClassified
+    # For tiling the volume: Stride is how much I move in each dimension to get the next segment.
+    # I stride exactly the number of voxels that are predicted per forward pass.
+    n_voxels_predicted = cnn3d.finalTargetLayer.outputShape["test"][2:]
+    stride_of_tiling = n_voxels_predicted # [str-x, str-y, str-z]
 
-    rczHalfRecFieldCnn = [(recFieldCnn[i] - 1) // 2 for i in range(3)]
+    half_rec_field = [(rec_field[i] - 1) // 2 for i in range(len(rec_field))] # -1 to exclude the central voxel.
 
     # Find the total number of feature maps that will be created:
     # NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just [].
     # If not [], the list should contain one entry per layer of the pathway, even if just [].
     # The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
     if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
-        totalNumberOfFMsToProcess = find_num_fm(cnn3d.pathways, indicesOfFmsToVisualisePerPathwayTypeAndPerLayer)
+        n_fms_to_save = find_num_fm(cnn3d.pathways, indices_fms_to_save)
 
-    for image_i in range(total_number_of_images):
-
+    for subj_i in range(n_subjects):
+        log.print3("\n")
         log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #" + str(image_i) + " ~~~~~~~~~~~~~~~~~~~~")
+        log.print3("~~~~~~~~~~~~~~~~~~~~ Segmenting subject with index #" + str(subj_i) + " ~~~~~~~~~~~~~~~~~~~~")
 
-        # load the image channels in cpu
-        (imageChannels,
-         gtLabelsImage,  # only for accurate/correct DICE1-2 calculation
-         roiMask,
-         arrayWithWeightMapsWhereToSampleForEachCategory,  # only used in training. Placeholder here.
-         tupleOfPaddingPerAxesLeftRight  # ((padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
-         # ^ All 0s when no padding.
+        # Load the channels of the subject in RAM
+        (channels,
+         gt_lbl_img,  # only for accurate/correct DICE1-2 calculation
+         roi_mask,
+         _,  # weightmaps. Only for training.
+         pad_added_prepost_each_axis  # ((pad-pre-x, pad-after-x), (pre-y, post-y), (pre-z, post-z))
          ) = load_imgs_of_subject(
             log,
             None,
             "test",
             False,  # run_input_checks.
-            image_i,
+            subj_i,
             listOfFilepathsToEachChannelOfEachPatient,
             listOfFilepathsToGtLabelsOfEachPatient,
             None,
             listOfFilepathsToRoiMaskFastInfOfEachPatient,
-            cnn3d.num_classes,
+            n_classes,
             pad_input_imgs,
-            recFieldCnn,  # only used if padInputsBool
-            cnn3d.pathways[0].getShapeOfInput("test")[2:]  # dimsOfPrimeSegmentRcz, for padding
+            rec_field,
+            cnn3d.pathways[0].getShapeOfInput("test")[2:]  # for padding
         )
 
-        niiDimensions = list(imageChannels.shape[1:])
-        # The predicted probability-maps for the whole volume, one per class.
+        inp_chan_dims = list(channels.shape[1:]) # Dimensions of (padded) input channels.
+        # The main output. Predicted probability-maps for the whole volume, one per class.
         # Will be constructed by stitching together the predictions from each segment.
-        predProbMapsPerClass = np.zeros([NUMBER_OF_CLASSES]+niiDimensions, dtype="float32")
-        # create the big array that will hold all the fms (for feature extraction, to save as a big multi-dim image).
+        prob_map_vols_per_c = np.zeros([n_classes]+inp_chan_dims, dtype="float32")
+        # create the big array that will hold all the fms (for feature extraction).
         if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
-            multidimensionalImageWithAllToBeVisualisedFmsArray = np.zeros([totalNumberOfFMsToProcess] + niiDimensions,
-                                                                          dtype="float32")
+            array_all_fms_to_save = np.zeros([n_fms_to_save] + inp_chan_dims, dtype="float32")
 
         # Tile the image and get all slices of the segments that it fully breaks down to.
-        sliceCoordsOfSegmentsInImage = getCoordsOfAllSegmentsOfAnImage(log,
-                                                                       cnn3d.pathways[0].getShapeOfInput("test")[2:],
-                                                                       # dimsOfPrimarySegment
-                                                                       strideOfImagePartsPerDimensionInVoxels,
-                                                                       batchsize,
-                                                                       imageChannels,
-                                                                       roiMask)
+        slice_coords_of_all_segments = get_slice_coords_of_all_img_tiles(log,
+                                                                         cnn3d.pathways[0].getShapeOfInput("test")[2:],
+                                                                         stride_of_tiling,
+                                                                         batchsize,
+                                                                         inp_chan_dims,
+                                                                         roi_mask)
 
-        num_segments_for_case = len(sliceCoordsOfSegmentsInImage)
-        log.print3(
-            "Starting to segment each image-part by calling the cnn.cnnTestModel(i). "
-            "This part takes a few mins per volume...")
+        n_segments_for_subj = len(slice_coords_of_all_segments)
+        log.print3("Starting to segment each image-part by calling the cnn.cnnTestModel(i). "
+                   "This part takes a few mins per volume...")
 
-        log.print3("Total number of Segments to process:" + str(num_segments_for_case))
+        log.print3("Total number of Segments to process:" + str(n_segments_for_subj))
 
-        imagePartOfConstructedProbMap_i = 0
-        imagePartOfConstructedFeatureMaps_i = 0
-        num_batches = num_segments_for_case // batchsize
-        extractTimePerSubject = 0
-        loadingTimePerSubject = 0
-        fwdPassTimePerSubject = 0
-        for batch_i in range(num_batches):
+        idx_next_tile_in_pred_vols = 0
+        idx_next_tile_in_fm_vols = 0
+        n_batches = n_segments_for_subj // batchsize
+        time_extract_subj = 0
+        time_load_gpu_subj = 0
+        time_fwd_pass_subj = 0
+        for batch_i in range(n_batches):
 
-            print_progress_step(log, num_batches, batch_i, batchsize, num_segments_for_case)
+            print_progress_step(log, n_batches, batch_i, batchsize, n_segments_for_subj)
 
-            # Extract the data for the segments of this batch.
+            # Extract data for the segments of this batch.
             # ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords()
             # of training and use it here as well. )
-            start_extract_time = time.time()
+            t_extract_start = time.time()
+            slice_coords_of_segms_batch = slice_coords_of_all_segments[batch_i * batchsize: (batch_i + 1) * batchsize]
+            channs_of_segms_per_path = extractSegmentsGivenSliceCoords(cnn3d,
+                                                                       slice_coords_of_segms_batch,
+                                                                       channels,
+                                                                       rec_field)
+            time_extract_subj += time.time() - t_extract_start
 
-            sliceCoordsOfSegmentsInBatch = sliceCoordsOfSegmentsInImage[batch_i * batchsize: (batch_i + 1) * batchsize]
-            channsOfSegmentsPerPath = extractSegmentsGivenSliceCoords(cnn3d,
-                                                                      sliceCoordsOfSegmentsInBatch,
-                                                                      imageChannels,
-                                                                      recFieldCnn)
-            end_extract_time = time.time()
-            extractTimePerSubject += end_extract_time - start_extract_time
-
-            # ======= Run the inference ============
-
+            # ============================== Perform forward pass ====================================
             ops_to_fetch = cnn3d.get_main_ops('test')
             list_of_ops = [ops_to_fetch['pred_probs']] + ops_to_fetch['list_of_fms_per_layer']
 
             # No loading of data in bulk as in training, cause here it's only 1 batch per iteration.
-            (feeds_dict, loadingTimePerSubject) = load_feed_dict(cnn3d.get_main_feeds('test'),
-                                                                 channsOfSegmentsPerPath, loadingTimePerSubject)
-
+            (feeds_dict, time_load_gpu_subj) = load_feed_dict(cnn3d.get_main_feeds('test'),
+                                                              channs_of_segms_per_path,
+                                                              time_load_gpu_subj)
             # Forward pass
-            (featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch, fwdPassTimePerSubject) = \
-                forward_pass(sessionTf, list_of_ops, feeds_dict, fwdPassTimePerSubject)
+            (out_val_of_ops,
+             time_fwd_pass_subj) = forward_pass(sessionTf, list_of_ops, feeds_dict, time_fwd_pass_subj)
+            prob_maps_batch = out_val_of_ops[0]
+            fms_per_layer_and_path_for_batch = out_val_of_ops[1:] # [] if no FMs specified.
 
-            predictionForATestBatch = featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[0]
+            # ================ Construct probability maps (volumes) by Stitching  ====================
+            # Stitch predictions for segments of this batch, to create the probability maps for whole volume.
+            # Each prediction for a segment needs to be placed in the correct location in the volume.
+            (idx_next_tile_in_pred_vols,
+             prob_map_vols_per_c) = construct_prob_maps(prob_map_vols_per_c, # KKNOTE: I'd rename this func.
+                                                        batchsize,
+                                                        slice_coords_of_all_segments,
+                                                        half_rec_field,
+                                                        stride_of_tiling,
+                                                        prob_maps_batch,
+                                                        idx_next_tile_in_pred_vols)
 
-            # If no FMs visualised, this should return []
-            listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch = \
-                featureMapsOfEachLayerAndPredictionProbabilitiesAtEndForATestBatch[1:]
-            # No reshape needed, because I now do it internally. But to dimensions (batchSize, FMs, R,C,Z).
-
-            # ~~~~~~~~~~~~~~~~CONSTRUCT THE PREDICTED PROBABILITY MAPS~~~~~~~~~~~~~~
-            # From the results of this batch, create the prediction image by putting the predictions to the correct
-            # place in the image.
-            (imagePartOfConstructedProbMap_i,
-             predProbMapsPerClass) = construct_prob_maps(predProbMapsPerClass,
-                                                         batchsize,
-                                                         sliceCoordsOfSegmentsInImage,
-                                                         rczHalfRecFieldCnn,
-                                                         strideOfImagePartsPerDimensionInVoxels,
-                                                         predictionForATestBatch,
-                                                         imagePartOfConstructedProbMap_i)
-            # ~~~~~~~~~~~~~FINISHED CONSTRUCTING THE PREDICTED PROBABILITY MAPS~~~~~~~
-
-            # ~~~~~~~~~~~~~~CONSTRUCT THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~~~~~~~~
+            # ============== Construct feature maps (volumes) by Stitching =====================
             if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
-                (imagePartOfConstructedFeatureMaps_i,
-                 multidimensionalImageWithAllToBeVisualisedFmsArray) = \
-                    construct_fms(multidimensionalImageWithAllToBeVisualisedFmsArray,
-                                  imagePartOfConstructedFeatureMaps_i,
-                                  cnn3d.pathways,
-                                  indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                                  listWithTheFmsOfAllLayersSortedByPathwayTypeForTheBatch,
-                                  numberOfCentralVoxelsClassified,
-                                  rczHalfRecFieldCnn,
-                                  strideOfImagePartsPerDimensionInVoxels,
-                                  sliceCoordsOfSegmentsInImage,
-                                  batchsize)
+                (idx_next_tile_in_fm_vols,
+                 array_all_fms_to_save) = construct_fms(array_all_fms_to_save, # KKNOTE: I d rename func
+                                                        idx_next_tile_in_fm_vols,
+                                                        cnn3d.pathways,
+                                                        indices_fms_to_save,
+                                                        fms_per_layer_and_path_for_batch,
+                                                        n_voxels_predicted,
+                                                        half_rec_field,
+                                                        stride_of_tiling,
+                                                        slice_coords_of_all_segments,
+                                                        batchsize)
 
-            # ~~~~~~~~~~~~~~~~~~FINISHED CONSTRUCTING THE FEATURE MAPS FOR VISUALISATION~~~~~~~~~~
+            # Done with batch
 
-        print_time_log(log, extractTimePerSubject, loadingTimePerSubject, fwdPassTimePerSubject)
+        print_time_log(log, time_extract_subj, time_load_gpu_subj, time_fwd_pass_subj) # KKNOTE: I would put timing outside.
 
-        # ================ SAVE PREDICTIONS =====================
-        # == saving predicted segmentations ==
-        unpaddedPredSegmentation = get_unpadded_pred_seg(predProbMapsPerClass,
-                                                         pad_input_imgs, tupleOfPaddingPerAxesLeftRight)
-        unpaddedRoiMaskIfGivenElse1 = get_unpadded_roi_mask(roiMask, pad_input_imgs, tupleOfPaddingPerAxesLeftRight)
+        # ======================= Save Output Volumes ========================
+        # Save predicted segmentations
+        unpadded_pred_segm = unpad_pred_segm(prob_map_vols_per_c, pad_input_imgs, pad_added_prepost_each_axis)
+        unpadded_roi_mask = unpad_roi_mask(roi_mask, pad_input_imgs, pad_added_prepost_each_axis)
 
-        save_pred_seg(unpaddedPredSegmentation, unpaddedRoiMaskIfGivenElse1,
+        save_pred_seg(unpadded_pred_segm, unpadded_roi_mask,
                       savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
-                      namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, image_i, log)
+                      namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
 
-        # == saving probability maps ==
-        save_prob_maps(NUMBER_OF_CLASSES, savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
-                       predProbMapsPerClass, pad_input_imgs, tupleOfPaddingPerAxesLeftRight,
-                       unpaddedRoiMaskIfGivenElse1, namesForSavingSegmAndProbs,
-                       listOfFilepathsToEachChannelOfEachPatient, image_i, log)
+        # Save probability maps
+        save_prob_maps(n_classes, savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
+                       prob_map_vols_per_c, pad_input_imgs, pad_added_prepost_each_axis,
+                       unpadded_roi_mask, namesForSavingSegmAndProbs,
+                       listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
 
-        # == saving feature maps ==
+        # Save feature maps
         if saveIndividualFmImagesForVisualisation:
-            save_fms_individual(cnn3d.pathways, indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
-                                multidimensionalImageWithAllToBeVisualisedFmsArray, pad_input_imgs,
-                                tupleOfPaddingPerAxesLeftRight, namesForSavingFms,
+            save_fms_individual(cnn3d.pathways, indices_fms_to_save,
+                                array_all_fms_to_save, pad_input_imgs,
+                                pad_added_prepost_each_axis, namesForSavingFms,
                                 listOfFilepathsToEachChannelOfEachPatient,
-                                image_i, log)
+                                subj_i, log)
 
-        if saveMultidimensionalImageWithAllFms:
-            save_fms_multidim(multidimensionalImageWithAllToBeVisualisedFmsArray, pad_input_imgs,
-                              tupleOfPaddingPerAxesLeftRight, namesForSavingFms,
+        if saveMultidimensionalImageWithAllFms: # KKNOTE: I dont even think anyone is using this.
+            save_fms_multidim(array_all_fms_to_save, pad_input_imgs,
+                              pad_added_prepost_each_axis, namesForSavingFms,
                               listOfFilepathsToEachChannelOfEachPatient,
-                              image_i, log)
-        # ================= FINISHED SAVING RESULTS ====================
+                              subj_i, log)
 
-        # ================= EVALUATE DSC FOR EACH SUBJECT ========================
-        if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided for DSC calculation. Do calculation
-            (diceCoeffs1, diceCoeffs2, diceCoeffs3) = calculate_dsc(diceCoeffs1, diceCoeffs2, diceCoeffs3,
-                                                                    gtLabelsImage, unpaddedPredSegmentation,
-                                                                    pad_input_imgs, tupleOfPaddingPerAxesLeftRight,
-                                                                    unpaddedRoiMaskIfGivenElse1, NUMBER_OF_CLASSES,
-                                                                    NA_PATTERN, log, image_i, validation_or_testing_str)
+        # ================= Evaluate DSC for each Subject ========================
+        if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
+            (dsc1, dsc2, dsc3) = calculate_dsc(dsc1, dsc2, dsc3,
+                                               gt_lbl_img, unpadded_pred_segm,
+                                               pad_input_imgs, pad_added_prepost_each_axis,
+                                               unpadded_roi_mask, n_classes,
+                                               NA_PATTERN, log, subj_i, val_or_test_print)
 
-    # = Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. =
-    metrics_dict_list = None
-    if listOfFilepathsToGtLabelsOfEachPatient is not None and total_number_of_images > 0:  # GT was given. Calculate
-        (meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3) = calculate_mean_dsc(log,
-                                                                                 diceCoeffs1, diceCoeffs2, diceCoeffs3,
-                                                                                 NA_PATTERN, validation_or_testing_str)
-        metrics_dict_list = dsc_to_dict(meanDiceCoeffs1, meanDiceCoeffs2, meanDiceCoeffs3)
+        # Done with subject.
+        
+    # ==================== Report average DSC over all subjects ==================
+    metrics_dict_list = None # KKNOTE: Add comment what it returns. Or find way to get dsc_to_dict from calculate_mean_dsc
+    if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate
+        (meanDsc1, meanDsc2, meanDsc3) = calculate_mean_dsc(log,
+                                                            dsc1, dsc2, dsc3,
+                                                            NA_PATTERN, val_or_test_print)
+        metrics_dict_list = dsc_to_dict(meanDsc1, meanDsc2, meanDsc3)
 
-    end_time = time.time()
 
-    log.print3(
-        "TIMING: " + validation_or_testing_str + " process lasted: {0:.2f}".format(end_time - start_time) + " secs.")
-    log.print3(
-        "###########################################################################################################")
-    log.print3("############################# Finished full Segmentation of " +
-               str(validation_or_testing_str) +
-               " subjects ##########################")
-    log.print3(
-        "###########################################################################################################")
+    log.print3("TIMING: " + val_or_test_print + " process lasted: {0:.2f}".format(time.time() - t_whole_start) + " secs.")
+    log.print3("####################################################################################################")
+    log.print3("#\t\t\t  Finished full Segmentation of " + str(val_or_test_print) + " subjects   \t\t\t#")
+    log.print3("####################################################################################################\n")
 
     return metrics_dict_list

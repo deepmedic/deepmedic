@@ -425,7 +425,7 @@ def do_training(sessionTf,
                     # --------For FM visualisation---------
                     saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
                     saveMultidimensionalImageWithAllFms=saveMultidimensionalImageWithAllFms,
-                    indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                    indices_fms_to_save=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
                     namesForSavingFms=namesForSavingFms
                 )
 
