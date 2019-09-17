@@ -320,7 +320,7 @@ class TrainSessionParameters(object):
 
         # ===================== OTHERS======================
         # Preprocessing
-        self.pad_input_imgs = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
+        self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
 
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
@@ -582,7 +582,7 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
-        logPrint("Pad Input Images = " + str(self.pad_input_imgs))
+        logPrint("Pad Input Images = " + str(self.pad_input))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -625,7 +625,7 @@ class TrainSessionParameters(object):
                 self.batchsize_val_whole,
 
                 # -------Preprocessing-----------
-                self.pad_input_imgs,
+                self.pad_input,
                 # -------Data Augmentation-------
                 self.augm_img_prms_tr,
                 self.augm_sample_prms_tr,

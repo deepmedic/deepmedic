@@ -234,27 +234,7 @@ def prepare_feeds_dict(feeds, channs_of_tiles_per_path): # KKNOTE: Can we rename
             {feeds['x_sub_' + str(path_i)]: np.asarray(channs_of_tiles_per_path[1 + path_i], dtype='float32')})
 
     return feeds_dict
-
-
-def unpad_pred_segm(prob_maps_per_class, pad_input_imgs, axes_padding_left_right): # KKNOTE: Too much. It's too lines. Dont make a func.
-    pred_segm = np.argmax(prob_maps_per_class, axis=0)  # The segmentation.
-    pred_segm_unpad = pred_segm if not pad_input_imgs else \
-        unpad3dArray(pred_segm, axes_padding_left_right)
-
-    return pred_segm_unpad
-
-
-def unpad_roi_mask(roi_mask, pad_input_imgs, axes_padding_left_right): # KKNOTE: Too much.
-    # Multiply with the below to zero-out anything outside the roi_mask if given.
-    # Provided that roi_mask is binary [0,1].
-    if not roi_mask is None:
-        roi_mask_unpad = roi_mask if not pad_input_imgs else \
-            unpad3dArray(roi_mask, axes_padding_left_right)
-        return roi_mask_unpad
-    else :
-        return None
     
-
 
 def save_pred_segm(pred_segm_unpad, roi_mask_unpad, save_pred_segm_bool, suffix_seg, seg_names, filepaths,
                   subj_i, log): # KKNOTE: Too much. It's just 1 function call. Also, arg names _seg should be _pred
@@ -273,7 +253,7 @@ def save_pred_segm(pred_segm_unpad, roi_mask_unpad, save_pred_segm_bool, suffix_
 
 
 def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
-                   pad_input_imgs, axes_padding_left_right, roi_mask_unpad,
+                   pad_input, axes_padding_left_right, roi_mask_unpad,
                    prob_names, filepaths, subj_i, log):
 
     for class_i in range(0, num_classes):
@@ -282,7 +262,7 @@ def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
             # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
             # eg RAS transformation.
             prob_map = prob_maps[class_i, :, :, :]
-            prob_map_unpad = prob_map if not pad_input_imgs \
+            prob_map_unpad = prob_map if not pad_input \
                 else unpad3dArray(prob_map, axes_padding_left_right)
             prob_map_unpad = prob_map_unpad if roi_mask_unpad is None else prob_map_unpad * roi_mask_unpad
             savePredImgToNiiWithOriginalHdr(prob_map_unpad,
@@ -295,7 +275,7 @@ def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
 
 
 def save_fms_individual(cnn3d_pathways, fm_idxs,
-                        multidim_fm_array, pad_input_imgs,
+                        multidim_fm_array, pad_input,
                         axes_padding_left_right, fms_names, filepaths,
                         subj_i, log):
     idx_curr = 0
@@ -310,7 +290,7 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
                     # replacing it with the number of FMs in the layer.
                     for fmActualNumber in range(fms_idx_layer_pathway[0], fms_idx_layer_pathway[1]):
                         fm_to_save = multidim_fm_array[idx_curr]
-                        fm_to_save_unpad = fm_to_save if not pad_input_imgs else \
+                        fm_to_save_unpad = fm_to_save if not pad_input else \
                             unpad3dArray(fm_to_save, axes_padding_left_right)
 
                         saveFmImgToNiiWithOriginalHdr(fm_to_save_unpad,
@@ -327,13 +307,13 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
 
 
 def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, pred_segm_unpad, # KKNOTE: RENAME
-                  pad_input_imgs, axes_padding_left_right, roi_mask_unpad,
+                  pad_input, axes_padding_left_right, roi_mask_unpad,
                   num_classes, na_pattern, log, subj_i, val_or_test_print):
 
     log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(subj_i) +
                " ++++++++++++++++++++++++++")
     # Unpad whatever needed.
-    gt_labels_unpad = gt_labels if not pad_input_imgs else unpad3dArray(gt_labels, axes_padding_left_right)
+    gt_labels_unpad = gt_labels if not pad_input else unpad3dArray(gt_labels, axes_padding_left_right)
 
     # calculate DSC per class.
     for class_i in range(0, num_classes):
@@ -421,7 +401,7 @@ def inferenceWholeVolumes(sessionTf,
                           batchsize,
 
                           # ----Preprocessing------
-                          pad_input_imgs,
+                          pad_input,
 
                           # --------For FM visualisation---------
                           save_fms_flag,
@@ -481,7 +461,7 @@ def inferenceWholeVolumes(sessionTf,
          gt_lbl_img,  # only for accurate/correct DICE1-2 calculation
          roi_mask,
          _,  # weightmaps. Only for training.
-         pad_added_prepost_each_axis  # ((pad-pre-x, pad-after-x), (pre-y, post-y), (pre-z, post-z))
+         padding_left_right_per_axis  # ((pad-pre-x, pad-after-x), (pre-y, post-y), (pre-z, post-z))
          ) = load_imgs_of_subject(log,
                                   None,
                                   "test",
@@ -492,7 +472,7 @@ def inferenceWholeVolumes(sessionTf,
                                   None,
                                   listOfFilepathsToRoiMaskFastInfOfEachPatient,
                                   n_classes,
-                                  pad_input_imgs,
+                                  pad_input,
                                   rec_field,
                                   cnn3d.pathways[0].getShapeOfInput("test")[2:])
 
@@ -575,25 +555,28 @@ def inferenceWholeVolumes(sessionTf,
         log.print3("TIMING: Segmentation of subject: [Forward Pass:] {0:.2f}".format(t_fwd_pass_subj) + " secs.")
 
         # ======================= Save Output Volumes ========================
+        pred_segm = np.argmax(prob_map_vols_per_c, axis=0)  # The segmentation.
+        pred_segm_unpad = pred_segm if not pad_input else unpad3dArray(pred_segm, padding_left_right_per_axis)
+        roi_mask_unpad = None # Use this mask to erase predictions outside the ROI.
+        if roi_mask is not None:
+            roi_mask_unpad = roi_mask if not pad_input else unpad3dArray(roi_mask, padding_left_right_per_axis)
+        
         # Save predicted segmentations
-        pred_segm_unpad = unpad_pred_segm(prob_map_vols_per_c, pad_input_imgs, pad_added_prepost_each_axis)
-        roi_mask_unpad = unpad_roi_mask(roi_mask, pad_input_imgs, pad_added_prepost_each_axis)
-
         save_pred_segm(pred_segm_unpad, roi_mask_unpad,
                        savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
                        namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
 
         # Save probability maps
         save_prob_maps(n_classes, savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
-                       prob_map_vols_per_c, pad_input_imgs, pad_added_prepost_each_axis,
+                       prob_map_vols_per_c, pad_input, padding_left_right_per_axis,
                        roi_mask_unpad, namesForSavingSegmAndProbs,
                        listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
 
         # Save feature maps
         if save_fms_flag:
             save_fms_individual(cnn3d.pathways, idxs_fms_to_save,
-                                array_all_fms_to_save, pad_input_imgs,
-                                pad_added_prepost_each_axis, namesForSavingFms,
+                                array_all_fms_to_save, pad_input,
+                                padding_left_right_per_axis, namesForSavingFms,
                                 listOfFilepathsToEachChannelOfEachPatient,
                                 subj_i, log)
 
@@ -602,7 +585,7 @@ def inferenceWholeVolumes(sessionTf,
         if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
             (dsc1, dsc2, dsc3) = calculate_dsc(dsc1, dsc2, dsc3,
                                                gt_lbl_img, pred_segm_unpad,
-                                               pad_input_imgs, pad_added_prepost_each_axis,
+                                               pad_input, padding_left_right_per_axis,
                                                roi_mask_unpad, n_classes,
                                                NA_PATTERN, log, subj_i, val_or_test_print)
 

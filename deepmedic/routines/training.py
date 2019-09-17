@@ -168,7 +168,7 @@ def do_training(sessionTf,
                 batchsize_val_whole,
 
                 # -------Preprocessing-----------
-                pad_input_imgs,
+                pad_input,
                 # -------Data Augmentation-------
                 augm_img_prms,
                 augm_sample_prms,
@@ -207,7 +207,7 @@ def do_training(sessionTf,
                                listOfFilepathsToGtLabelsOfEachPatientTraining,
                                listOfFilepathsToRoiMaskOfEachPatientTraining,
                                paths_to_wmaps_per_sampl_cat_per_subj_train,
-                               pad_input_imgs,
+                               pad_input,
                                augm_img_prms,
                                augm_sample_prms)
     args_for_sampling_val = (log,
@@ -222,7 +222,7 @@ def do_training(sessionTf,
                              listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
                              listOfFilepathsToRoiMaskOfEachPatientValidation,
                              paths_to_wmaps_per_sampl_cat_per_subj_val,
-                             pad_input_imgs,
+                             pad_input,
                              None,  # no augmentation in val.
                              None)  # no augmentation in val.
 
@@ -419,7 +419,7 @@ def do_training(sessionTf,
                     batchsize=batchsize_val_whole,
 
                     # ----Preprocessing------
-                    pad_input_imgs=pad_input_imgs,
+                    pad_input=pad_input,
 
                     # --------For FM visualisation---------
                     save_fms_flag=save_fms_flag,
