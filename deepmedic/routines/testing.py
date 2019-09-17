@@ -389,6 +389,7 @@ def inferenceWholeVolumes(  sessionTf,
             printExplanationsAboutDice(log)
             
     #================= Loops for all patients have finished. Now lets just report the average DSC over all the processed patients. ====================
+    metrics_dict_list = []
     if listOfFilepathsToGtLabelsOfEachPatient is not None and total_number_of_images>0 : # Ground Truth was provided for calculation of DSC. Do DSC calculation.
         log.print3("+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
         log.print3("+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
@@ -397,6 +398,10 @@ def inferenceWholeVolumes(  sessionTf,
         meanDiceCoeffs3 = getMeanPerColOf2dListExclNA(diceCoeffs3, NA_PATTERN)
         log.print3("ACCURACY: (" + str(validation_or_testing_str) + ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" + strListFl4fNA(meanDiceCoeffs1, NA_PATTERN) + " DICE2="+strListFl4fNA(meanDiceCoeffs2, NA_PATTERN)+" DICE3="+strListFl4fNA(meanDiceCoeffs3, NA_PATTERN))
         printExplanationsAboutDice(log)
+        for i in range(len(meanDiceCoeffs1)):
+            metrics_dict_list.append({'mean_dice1': meanDiceCoeffs1[i],
+                                      'mean_dice2': meanDiceCoeffs2[i],
+                                      'mean_dice3': meanDiceCoeffs3[i]})
         
     end_time = time.time()
     log.print3("TIMING: "+validation_or_testing_str+" process lasted: {0:.2f}".format(end_time-start_time)+" secs.")
@@ -405,11 +410,6 @@ def inferenceWholeVolumes(  sessionTf,
     log.print3("############################# Finished full Segmentation of " + str(validation_or_testing_str) + " subjects ##########################")
     log.print3("###########################################################################################################")
 
-    metrics_dict_list = []
-    for i in range(len(meanDiceCoeffs1)):
-        metrics_dict_list.append({'mean_dice1': meanDiceCoeffs1[i],
-                                  'mean_dice2': meanDiceCoeffs2[i],
-                                  'mean_dice3': meanDiceCoeffs3[i]})
     return metrics_dict_list
 
 
