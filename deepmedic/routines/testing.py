@@ -308,7 +308,7 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
 
 def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, pred_segm_unpad, # KKNOTE: RENAME
                   pad_input, axes_padding_left_right, roi_mask_unpad,
-                  num_classes, na_pattern, log, subj_i, val_or_test_print):
+                  num_classes, na_pattern, log, subj_i, val_test_print):
 
     log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(subj_i) +
                " ++++++++++++++++++++++++++")
@@ -344,7 +344,7 @@ def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, pred_segm_unpad, # KKNOT
         dice_3 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i * roi_mask_unpad)
         dices_3[subj_i][class_i] = dice_3 if dice_3 != -1 else na_pattern
 
-    log.print3("ACCURACY: (" + str(val_or_test_print) +
+    log.print3("ACCURACY: (" + str(val_test_print) +
                ") The Per-Class DICE Coefficients for subject with index #" + str(subj_i) +
                " equal: DICE1=" + strListFl4fNA(dices_1[subj_i], na_pattern) +
                " DICE2=" + strListFl4fNA(dices_2[subj_i], na_pattern) +
@@ -355,7 +355,7 @@ def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, pred_segm_unpad, # KKNOT
     return dices_1, dices_2, dices_3
 
 
-def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, val_or_test_print):
+def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, val_test_print):
     log.print3(
         "+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
     log.print3(
@@ -365,7 +365,7 @@ def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, val_or_test_p
     mean_dice_2 = getMeanPerColOf2dListExclNA(dices_2, na_pattern)
     mean_dice_3 = getMeanPerColOf2dListExclNA(dices_3, na_pattern)
 
-    log.print3("ACCURACY: (" + str(val_or_test_print) +
+    log.print3("ACCURACY: (" + str(val_test_print) +
                ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" +
                strListFl4fNA(mean_dice_1, na_pattern) +
                " DICE2=" + strListFl4fNA(mean_dice_2, na_pattern) +
@@ -412,14 +412,14 @@ def inferenceWholeVolumes(sessionTf,
     #       ... The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
     #       ... Excluding the highest index.
 
-    val_or_test_print = "Validation" if val_or_test == "val" else "Testing"
+    val_test_print = "Validation" if val_or_test == "val" else "Testing"
     
     log.print3("\n")
     log.print3("##############################################################################################")
-    log.print3("#\t\t  Starting full Segmentation of " + str(val_or_test_print) + " subjects   \t\t\t#")
+    log.print3("#\t\t  Starting full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
     log.print3("##############################################################################################")
 
-    t_whole_start = time.time()
+    t_start = time.time()
 
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     n_classes = cnn3d.num_classes
@@ -587,7 +587,7 @@ def inferenceWholeVolumes(sessionTf,
                                                gt_lbl_img, pred_segm_unpad,
                                                pad_input, padding_left_right_per_axis,
                                                roi_mask_unpad, n_classes,
-                                               NA_PATTERN, log, subj_i, val_or_test_print)
+                                               NA_PATTERN, log, subj_i, val_test_print)
 
         # Done with subject.
         
@@ -596,13 +596,13 @@ def inferenceWholeVolumes(sessionTf,
     if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate
         (meanDsc1, meanDsc2, meanDsc3) = calculate_mean_dsc(log,
                                                             dsc1, dsc2, dsc3,
-                                                            NA_PATTERN, val_or_test_print)
+                                                            NA_PATTERN, val_test_print)
         metrics_dict_list = dsc_to_dict(meanDsc1, meanDsc2, meanDsc3)
 
 
-    log.print3("TIMING: " + val_or_test_print + " process lasted: {0:.2f}".format(time.time() - t_whole_start) + " secs.")
+    log.print3("TIMING: " + val_test_print + " process lasted: {0:.2f}".format(time.time() - t_start) + " secs.")
     log.print3("##############################################################################################")
-    log.print3("#\t\t  Finished full Segmentation of " + str(val_or_test_print) + " subjects   \t\t\t#")
+    log.print3("#\t\t  Finished full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
     log.print3("##############################################################################################\n")
 
     return metrics_dict_list
