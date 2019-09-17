@@ -715,12 +715,12 @@ def extractSegmentGivenSliceCoords(train_or_val,
 
 # This is very similar to sample_coords_of_segments() I believe, which is used for training. Consider way to merge them.
 def get_slice_coords_of_all_img_tiles(log,
-                                    dimsOfPrimarySegment, # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
-                                    strideOfSegmentsPerDimInVoxels,
-                                    batch_size,
-                                    inp_chan_dims,
-                                    roi_mask
-                                    ) :
+                                      dimsOfPrimarySegment, # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
+                                      strideOfSegmentsPerDimInVoxels,
+                                      batch_size,
+                                      inp_chan_dims,
+                                      roi_mask
+                                      ) :
     # inp_chan_dims: Dimensions of the (padded) input channels. [x, y, z]
     log.print3("Starting to (tile) extract Segments from the images of the subject for Segmentation...")
     

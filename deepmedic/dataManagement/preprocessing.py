@@ -54,7 +54,7 @@ def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions) : #Works for 2D
 
 
 #In the 3 first axes. Which means it can take a 4-dim image.
-def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight) :
+def unpad3dArray(array1, tupleOfPaddingPerAxesLeftRight) :
     #tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
     unpaddedArray1 = array1[tupleOfPaddingPerAxesLeftRight[0][0]:, tupleOfPaddingPerAxesLeftRight[1][0]:, tupleOfPaddingPerAxesLeftRight[2][0]:]
     #The checks below are to make it work if padding == 0, which may happen for 2D on the 3rd axis.

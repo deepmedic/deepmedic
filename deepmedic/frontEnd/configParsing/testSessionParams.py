@@ -50,8 +50,8 @@ class TestSessionParameters(object) :
         self.suffixForSegmAndProbsDict = cfg[cfg.SUFFIX_SEGM_PROB] if cfg[cfg.SUFFIX_SEGM_PROB] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
         self.batchsize = cfg[cfg.BATCHSIZE] if cfg[cfg.BATCHSIZE] is not None else 10
         #features:
-        self.saveIndividualFmImages = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
-        if self.saveIndividualFmImages:
+        self.save_fms_flag = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
+        if self.save_fms_flag:
             indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL]] +\
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED]] +\
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC]]
@@ -123,7 +123,7 @@ class TestSessionParameters(object) :
             logPrint(">>> WARN: Segmentation and Probability Maps won't be saved. I guess you only wanted the feature maps?")
             
         logPrint("~~~~~~~Ouput-parameters for Feature Maps (FMs)~~~~~~")
-        logPrint("Save FMs in individual images = " + str(self.saveIndividualFmImages))
+        logPrint("Save FMs in individual images = " + str(self.save_fms_flag))
         logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Save Feature Maps at = " + str(self.filepathsToSaveFeaturesForEachPatient))
         
@@ -152,7 +152,7 @@ class TestSessionParameters(object) :
                 #----Preprocessing------
                 self.pad_input_imgs,
                 #--------For FM visualisation---------
-                self.saveIndividualFmImages,
+                self.save_fms_flag,
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatient
                 ]

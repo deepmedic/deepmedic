@@ -178,7 +178,7 @@ def do_training(sessionTf,
                 num_epochs_between_val_on_whole_volumes,
 
                 # --------For FM visualisation---------
-                saveIndividualFmImagesForVisualisation,
+                save_fms_flag,
                 idxs_fms_to_save,
                 namesForSavingFms,
 
@@ -422,7 +422,7 @@ def do_training(sessionTf,
                     pad_input_imgs=pad_input_imgs,
 
                     # --------For FM visualisation---------
-                    saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
+                    save_fms_flag=save_fms_flag,
                     idxs_fms_to_save=idxs_fms_to_save,
                     namesForSavingFms=namesForSavingFms
                 )
