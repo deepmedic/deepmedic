@@ -217,8 +217,8 @@ class AccuracyOfEpochMonitorSegmentation(object):
 
     def reportDSCWholeSegmentation(self, metrics_dict_list):
         # metrics_dict_list: list that holds one element per class, [ elem-class0, elem-class1, .... ]
-        #                             Each element is a dictionary of metrics for the class.
-        #                             E.g. elem-class0 = {'mean_dice1': value, 'mean_dice2': value, mean_dice3': value}
+        #                    Each element is a dictionary of metrics for the class.
+        #                    E.g. elem-class0 = {'mean_dice1': value, 'mean_dice2': value, mean_dice3': value}
         if self.tensorboard_logger is not None:
             self.log.print3('=============== LOGGING TO TENSORBOARD ===============')
             self.log.print3('Logging validation metrics from segmentation of whole validation volumes.')
