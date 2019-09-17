@@ -50,19 +50,17 @@ class TrainSession(Session):
 
         self._log.print3("----------- Creating Tensorboard Loggers -----------")
 
-        for logger_type in logger_types:
-            if create_log:
+        if create_log:
+            for logger_type in logger_types:
                 tensorboard_loggers[logger_type] = TensorboardLogger(os.path.join(self._main_out_folder_abs,
                                                                                   "tensorboard",
                                                                                   self._sess_name,
                                                                                   logger_type),
                                                                      tf_graph)
-            else:
-                tensorboard_loggers[logger_type] = None
-
-        if create_log:
             self._log.print3("Loggers created successfully")
         else:
+            for logger_type in logger_types:
+                tensorboard_loggers[logger_type] = None
             self._log.print3("Config flag to log to tensorboard not present.")
             self._log.print3("Skipping...")
 
