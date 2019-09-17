@@ -465,6 +465,7 @@ class TrainSessionParameters(object):
         logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
         logPrint("~~Output~~")
         logPrint("Main output folder = " + str(self.mainOutputAbsFolder))
+        logPrint("Log performance metrics for tensorboard = " + str(self.tensorboardLog))
         logPrint("Path and filename to save trained models = " + str(self.filepath_to_save_models))
 
         logPrint("~~~~~~~~~~~~~~~~~~Generic Information~~~~~~~~~~~~~~~~")
