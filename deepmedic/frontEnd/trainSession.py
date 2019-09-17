@@ -118,9 +118,9 @@ class TrainSession(Session):
                 trainer = Trainer(*(self._params.get_args_for_trainer() + [cnn3d]))
                 trainer.create_optimizer(*self._params.get_args_for_optimizer())  # Trainer and net connect here.
 
-                tensorboard_loggers = self.create_tensorboard_loggers(['train', 'val'],
-                                                                      graphTf,
-                                                                      create_log=self._params.get_tensorboard_bool())
+            tensorboard_loggers = self.create_tensorboard_loggers(['train', 'val'],
+                                                                  graphTf,
+                                                                  create_log=self._params.get_tensorboard_bool())
 
             # The below should not create any new tf.variables.
             self._log.print3("=========== Compiling the Training Function ===========")
