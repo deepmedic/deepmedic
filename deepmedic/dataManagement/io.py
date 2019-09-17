@@ -27,7 +27,7 @@ def loadVolume(filepath):
         img = np.expand_dims(img, axis=2)
     elif len(img.shape) > 3 :
         # 4D volumes could have been given. Often 3Ds are stored as 4Ds with 4th dim == 1.
-        assert img.shape[3] > 1
+        assert img.shape[3] == 1
         img = img[:,:,:,0]
 
     return img

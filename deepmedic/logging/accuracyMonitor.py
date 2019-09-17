@@ -10,19 +10,24 @@ import numpy as np
 
 from deepmedic.logging.utils import strFl4fNA, strFl5fNA, strListFl4fNA, strListFl5fNA, getMeanOfListExclNA
 
-class AccuracyOfEpochMonitorSegmentation(object) :
+
+class AccuracyOfEpochMonitorSegmentation(object):
     
-    NA_PATTERN = "N/A" #not applicable. Eg for accuracy when class not present.
+    NA_PATTERN = "N/A"  # not applicable. Eg for accuracy when class not present.
     
     def __init__(self,
-                log,
-                training0orValidation1,
-                epoch, #number Of epochs trained prior to this
-                numberOfClasses,
-                numberOfSubepochsPerEpoch) :
-        
+                 log,
+                 training0orValidation1,
+                 epoch,  # number Of epochs trained prior to this
+                 numberOfClasses,
+                 numberOfSubepochsPerEpoch,
+                 tensorboard_logger=None):
+
+        self.tensorboard_logger = tensorboard_logger
+
         self.log = log
         self.training0orValidation1 = training0orValidation1
+        self.trainOrValString = "TRAINING" if self.training0orValidation1 == 0 else "VALIDATION"
         self.epoch = epoch
         self.numberOfClasses = numberOfClasses
         self.numberOfSubepochsPerEpoch = numberOfSubepochsPerEpoch
@@ -76,10 +81,10 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         
         listWithPerClassMeanAccSensSpecDscInSubep = [] # Classes x 4 . 4=Mean Acc, sens, spec, dsc.
         for class_i in range(self.numberOfClasses) :
-            numOfRealPosInSubep = perClassRpRnTpTnInSubep[class_i,0]
-            numOfRealNegInSubep = perClassRpRnTpTnInSubep[class_i,1]
-            numOfTruePosInSubep = perClassRpRnTpTnInSubep[class_i,2]
-            numOfTrueNegInSubep = perClassRpRnTpTnInSubep[class_i,3]
+            numOfRealPosInSubep = perClassRpRnTpTnInSubep[class_i, 0]
+            numOfRealNegInSubep = perClassRpRnTpTnInSubep[class_i, 1]
+            numOfTruePosInSubep = perClassRpRnTpTnInSubep[class_i, 2]
+            numOfTrueNegInSubep = perClassRpRnTpTnInSubep[class_i, 3]
             
             numOfFalsePosInSubep = numOfRealNegInSubep - numOfTrueNegInSubep
             
@@ -108,28 +113,25 @@ class AccuracyOfEpochMonitorSegmentation(object) :
         foregrMeanDiceOfSubep = self.NA_PATTERN if foregrRp == 0 else (2.0*foregrTp)/(foregrPredPosInSubep + foregrRp)
         self.listPerSubepForegrMeanAccSensSpecDsc.append( [ foregrMeanAccOfSubep, foregrMeanAccOnPosOfSubep, foregrMeanPrecOfSubep, foregrMeanAccOnNegOfSubep, foregrMeanDiceOfSubep] )
         
-        #Done!
+        # Done!
         self.numberOfSubepochsForWhichUpdated += 1
-        
-        
-    def reportAccuracyForLastSubepoch(self) :
-        trainOrValString = "TRAINING" if self.training0orValidation1 == 0 else "VALIDATION"
-        numberOfClasses = self.numberOfClasses
+
+    def log_acc_subep_to_txt(self):
         currSubep = self.numberOfSubepochsForWhichUpdated - 1
-        logStr = trainOrValString + ": Epoch #" + str(self.epoch) + ", Subepoch #" + str(currSubep)
+        logStr = self.trainOrValString + ": Epoch #" + str(self.epoch) + ", Subepoch #" + str(currSubep)
         
-        self.log.print3( "+++++++++++++++++++++++ Reporting Accuracy over whole subepoch +++++++++++++++++++++++" )
-        self.log.print3( logStr + ", Overall:\t mean accuracy:   \t" + strFl4fNA(self.meanEmpiricalAccuracyOfEachSubep[currSubep], self.NA_PATTERN) +\
+        self.log.print3("+++++++++++++++++++++++ Reporting Accuracy over whole subepoch +++++++++++++++++++++++")
+        self.log.print3(logStr + ", Overall:\t mean accuracy:   \t" + strFl4fNA(self.meanEmpiricalAccuracyOfEachSubep[currSubep], self.NA_PATTERN) + \
                         "\t=> Correctly-Classified-Voxels/All-Predicted-Voxels = " + str(self.correctlyPredVoxelsInEachSubep[currSubep]) + "/" + str(self.numberOfAllSamplesOfEachSubep[currSubep]) )
-        if self.training0orValidation1 == 0 : # During training, also report the mean value of the Cost Function:
-            self.log.print3( logStr + ", Overall:\t mean cost:      \t" + strFl5fNA(self.meanCostOfEachSubep[currSubep], self.NA_PATTERN) ) 
+        if self.training0orValidation1 == 0:  # During training, also report the mean value of the Cost Function:
+            self.log.print3(logStr + ", Overall:\t mean cost:      \t" + strFl5fNA(self.meanCostOfEachSubep[currSubep], self.NA_PATTERN))
             
         # Report accuracy over subepoch for each class_i:
-        for class_i in range(self.numberOfClasses) :
-            classString = "Class-"+str(class_i)
+        for class_i in range(self.numberOfClasses):
+            class_string = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
             
-            self.log.print3( "+++++++++++++++ Reporting Accuracy over whole subepoch for " + classString + " ++++++++ " + extraDescription + " ++++++++++++++++" )
+            self.log.print3( "+++++++++++++++ Reporting Accuracy over whole subepoch for " + class_string + " ++++++++ " + extraDescription + " ++++++++++++++++" )
             
             [meanAccClassOfSubep,
             meanAccOnPosOfSubep,
@@ -145,17 +147,94 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             
             numOfFpInSubep = numOfRnInSubep - numOfTnInSubep
             
-            logStrClass = logStr + ", " + classString + ":"
-            self.log.print3(logStrClass+"\t mean accuracy:   \t"+ strFl4fNA(meanAccClassOfSubep, self.NA_PATTERN)+"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels = "+str(numOfTpInSubep+numOfTnInSubep)+"/"+str(numOfRpInSubep+numOfRnInSubep))        
-            self.log.print3(logStrClass+"\t mean sensitivity:\t"+ strFl4fNA(meanAccOnPosOfSubep, self.NA_PATTERN)+"\t=> TruePos/RealPos = "+str(numOfTpInSubep)+"/"+str(numOfRpInSubep))
-            self.log.print3(logStrClass+"\t mean precision:\t"+ strFl4fNA(meanPrecOfSubep, self.NA_PATTERN)+"\t=> TruePos/(TruePos+FalsePos) = "+str(numOfTpInSubep)+"/"+str(numOfTpInSubep+numOfFpInSubep))
-            self.log.print3(logStrClass+"\t mean specificity:\t"+ strFl4fNA(meanAccOnNegOfSubep, self.NA_PATTERN)+"\t=> TrueNeg/RealNeg = "+str(numOfTnInSubep)+"/"+str(numOfRnInSubep))
-            self.log.print3(logStrClass+"\t mean Dice:       \t"+ strFl4fNA(meanDiceOfSubep, self.NA_PATTERN))
-            
+            logStrClass = logStr + ", " + class_string + ":"
+            self.log.print3(logStrClass+"\t mean accuracy:   \t" +
+                            strFl4fNA(meanAccClassOfSubep, self.NA_PATTERN) +
+                            "\t=> (TruePos+TrueNeg)/All-Predicted-Voxels = " +
+                            str(numOfTpInSubep+numOfTnInSubep) + "/" +
+                            str(numOfRpInSubep+numOfRnInSubep))
+            self.log.print3(logStrClass+"\t mean sensitivity:\t" + strFl4fNA(meanAccOnPosOfSubep, self.NA_PATTERN)+"\t=> TruePos/RealPos = "+str(numOfTpInSubep)+"/"+str(numOfRpInSubep))
+            self.log.print3(logStrClass+"\t mean precision:\t" + strFl4fNA(meanPrecOfSubep, self.NA_PATTERN)+"\t=> TruePos/(TruePos+FalsePos) = "+str(numOfTpInSubep)+"/"+str(numOfTpInSubep+numOfFpInSubep))
+            self.log.print3(logStrClass+"\t mean specificity:\t" + strFl4fNA(meanAccOnNegOfSubep, self.NA_PATTERN)+"\t=> TrueNeg/RealNeg = "+str(numOfTnInSubep)+"/"+str(numOfRnInSubep))
+            self.log.print3(logStrClass+"\t mean Dice:       \t" + strFl4fNA(meanDiceOfSubep, self.NA_PATTERN))
+
+    def log_to_tensorboard(self, metrics_dict, class_string, step_num):
+        if self.tensorboard_logger is not None:
+            for metric, value in metrics_dict.items():
+                if value == self.NA_PATTERN:
+                    value = np.nan
+                self.tensorboard_logger.add_summary(value, metric + '_' + class_string, step_num)
+
+    def log_acc_subep_to_tensorboard(self):
+        currSubep = self.numberOfSubepochsForWhichUpdated - 1
+
+        self.log.print3('=============== LOGGING TO TENSORBOARD ===============')
+        # check if user included tensorboard logging in the config
+        if self.tensorboard_logger is None:
+            self.log.print3('Tensorboard logging not activated. Skipping...')
+            self.log.print3('======================================================')
+            return
+        self.log.print3('Logging ' + self.trainOrValString + ' metrics')
+        self.log.print3('Epoch: ' + str(self.epoch) +
+                        ' | Subepoch ' + str(currSubep) + '/' + str(self.numberOfSubepochsPerEpoch - 1))
+        step_num = currSubep + (self.epoch * (self.numberOfSubepochsPerEpoch))
+        self.log.print3('Step number: ' + str(step_num))
+
+        # During training, also report the mean value of the Cost Function:
+        if self.training0orValidation1 == 0 and self.tensorboard_logger is not None:
+            self.log.print3('--- Logging average metrics for all classes ---')
+
+            # create metrics dictionary
+            metrics_dict = {'mean_acc': self.meanEmpiricalAccuracyOfEachSubep[currSubep],
+                            'mean_cost': self.meanCostOfEachSubep[currSubep]}
+            class_string = 'Class-all'
+            self.log_to_tensorboard(metrics_dict, class_string, step_num)
+
+            self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
+
+        # Report accuracy over subepoch for each class_i:
+        self.log.print3('--- Logging per class metrics ---')
+        for class_i in range(self.numberOfClasses):
+            class_string = "Class-" + str(class_i)
+
+            [meanAccClassOfSubep,
+             meanAccOnPosOfSubep,
+             meanPrecOfSubep,
+             meanAccOnNegOfSubep,
+             meanDiceOfSubep] = self.listPerSubepPerClassMeanAccSensSpecDsc[currSubep][class_i] if class_i != 0 else \
+                self.listPerSubepForegrMeanAccSensSpecDsc[currSubep]  # If class-0, report foreground.
+
+            # create metrics dictionary
+            metrics_dict = {'mean_acc': meanAccClassOfSubep,
+                            'mean_sens': meanAccOnPosOfSubep,
+                            'mean_prec': meanPrecOfSubep,
+                            'mean_spec': meanAccOnNegOfSubep,
+                            'mean_dice': meanDiceOfSubep}
+            self.log_to_tensorboard(metrics_dict, class_string, step_num)
+
+        self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
+        self.log.print3('======================================================')
+
+    def reportDSCWholeSegmentation(self, metrics_dict_list):
+        # metrics_dict_list: list that holds one element per class, [ elem-class0, elem-class1, .... ]
+        #                    Each element is a dictionary of metrics for the class.
+        #                    E.g. elem-class0 = {'mean_dice1': value, 'mean_dice2': value, mean_dice3': value}
+        if self.tensorboard_logger is not None:
+            self.log.print3('=============== LOGGING TO TENSORBOARD ===============')
+            self.log.print3('Logging validation metrics from segmentation of whole validation volumes.')
+            self.log.print3('Epoch: ' + str(self.epoch))
+            step_num = self.numberOfSubepochsPerEpoch - 1 + (self.epoch * self.numberOfSubepochsPerEpoch)
+            self.log.print3('Step number: ' + str(step_num))
+
+            for i in range(len(metrics_dict_list)):
+                class_string = 'Class-' + str(i)
+                self.log_to_tensorboard(metrics_dict_list[i], class_string, step_num)
+
+            self.log.print3('Logged metrics: ' + str(list(metrics_dict_list[0].keys())))
+            self.log.print3('======================================================')
             
     def reportMeanAccyracyOfEpoch(self) :
-        trainOrValString = "TRAINING" if self.training0orValidation1 == 0 else "VALIDATION"
-        logStr = trainOrValString + ": Epoch #" + str(self.epoch)
+        logStr = self.trainOrValString + ": Epoch #" + str(self.epoch)
         
         # Report the multi-class accuracy first.
         self.log.print3( "( >>>>>>>>>>>>>>>>>>>> Reporting Accuracy over whole epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
@@ -171,10 +250,10 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             
         # Report for each class.
         for class_i in range(self.numberOfClasses) :
-            classString = "Class-"+str(class_i)
+            class_string = "Class-"+str(class_i)
             extraDescription = "[Whole Foreground (Pos) Vs Background (Neg)]" if class_i == 0 else "[This Class (Pos) Vs All Others (Neg)]"
             
-            self.log.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + classString + " >>>>>>>>> " + extraDescription + " <<<<<<<<<<<<<" )
+            self.log.print3( ">>>>>>>>>>>> Reporting Accuracy over whole epoch for " + class_string + " >>>>>>>>> " + extraDescription + " <<<<<<<<<<<<<" )
             
             if class_i != 0 :
                 meanAccPerSubep = [ self.listPerSubepPerClassMeanAccSensSpecDsc[subep_i][class_i][0] for subep_i in range(len(self.listPerSubepPerClassMeanAccSensSpecDsc)) ]
@@ -195,7 +274,7 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             meanSpecOfEp = getMeanOfListExclNA(meanSpecPerSubep, self.NA_PATTERN)
             meanDscOfEp = getMeanOfListExclNA(meanDscPerSubep, self.NA_PATTERN)
             
-            logStrClass = logStr + ", " + classString + ":"
+            logStrClass = logStr + ", " + class_string + ":"
             self.log.print3(logStrClass + "\t mean accuracy of epoch:\t"+ strFl4fNA(meanAccOfEp, self.NA_PATTERN) +"\t=> (TruePos+TrueNeg)/All-Predicted-Voxels")
             self.log.print3(logStrClass + "\t mean sensitivity of epoch:\t"+ strFl4fNA(meanSensOfEp, self.NA_PATTERN) +"\t=> TruePos/RealPos")
             self.log.print3(logStrClass + "\t mean precision of epoch:\t"+ strFl4fNA(meanPrecOfEp, self.NA_PATTERN) +"\t=> TruePos/(TruePos+FalsePos)")
@@ -211,5 +290,3 @@ class AccuracyOfEpochMonitorSegmentation(object) :
             
         self.log.print3( ">>>>>>>>>>>>>>>>>>>>>>>>> End Of Accuracy Report at the end of Epoch <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
         self.log.print3( ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" )
-        
-        
