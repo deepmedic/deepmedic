@@ -297,11 +297,9 @@ class TrainSessionParameters(object):
                                                                                  cfg.SUFFIX_SEGM_PROB_VAL] is not None else {
             "segm": "Segm", "prob": "ProbMapClass"}
         # features:
-        self.saveIndividualFmImagesVal = cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[
-                                                                            cfg.SAVE_INDIV_FMS_VAL] is not None else False
-        self.saveMultidimensionalImageWithAllFmsVal = cfg[cfg.SAVE_4DIM_FMS_VAL] if cfg[
-                                                                                        cfg.SAVE_4DIM_FMS_VAL] is not None else False
-        if self.saveIndividualFmImagesVal == True or self.saveMultidimensionalImageWithAllFmsVal == True:
+        self.saveIndividualFmImagesVal = cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
+
+        if self.saveIndividualFmImagesVal:
             indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] + \
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] + \
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
@@ -317,7 +315,7 @@ class TrainSessionParameters(object):
             getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg)) if cfg[
             cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None  # CAREFUL: Here we use a different parsing function!
         if not self.namesToSavePredictionsAndFeaturesVal and self.val_on_whole_volumes and (
-                self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal):
+                self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal or self.saveIndividualFmImagesVal):
             self.errorRequireNamesOfPredictionsVal()
 
         # ===================== OTHERS======================
@@ -557,7 +555,6 @@ class TrainSessionParameters(object):
             self.suffixForSegmAndProbsDictVal))
         logPrint("~~Feature Maps~~")
         logPrint("Save Feature Maps = " + str(self.saveIndividualFmImagesVal))
-        logPrint("Save FMs in a 4D-image = " + str(self.saveMultidimensionalImageWithAllFmsVal))
         logPrint("Min/Max Indices of FMs to visualise per pathway-type and per layer = " + str(
             self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Filepaths to save FMs per case = " + str(self.filepathsToSaveFeaturesForEachPatientVal))
@@ -639,7 +636,6 @@ class TrainSessionParameters(object):
 
                 # --------For FM visualisation---------
                 self.saveIndividualFmImagesVal,
-                self.saveMultidimensionalImageWithAllFmsVal,
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatientVal,
 

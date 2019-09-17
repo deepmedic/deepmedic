@@ -41,7 +41,7 @@ def print_dice_explanations(log):
     log.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
 
 
-def find_num_fm(cnn3d_pathways, fm_idxs):
+def calc_num_fms_to_save(cnn3d_pathways, fm_idxs):
     fm_num = 0
     for pathway in cnn3d_pathways:
         fm_idxs_pathway = fm_idxs[pathway.pType()]
@@ -342,20 +342,6 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
                         idx_curr += 1
 
 
-def save_fms_multidim(multidim_fm_array, pad_input_imgs,
-                      axes_padding_left_right, fms_names, filepaths,
-                      subj_i, log):
-    multidim_fm_array_4dim = np.transpose(multidim_fm_array, (1, 2, 3, 0))
-    unpadded_multidim_fm_array_4dim = multidim_fm_array_4dim if not pad_input_imgs else \
-        unpadCnnOutputs(multidim_fm_array_4dim, axes_padding_left_right)
-    # Save a multidimensional Nii image. 3D Image, with the 4th dimension being all the Fms...
-    save4DImgWithAllFmsToNiiWithOriginalHdr(
-        unpadded_multidim_fm_array_4dim,
-        fms_names,
-        filepaths,
-        subj_i,
-        log)
-
 
 def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, unpadded_pred_seg, # KKNOTE: RENAME
                   pad_input_imgs, axes_padding_left_right, unpadded_roi_mask,
@@ -464,8 +450,7 @@ def inferenceWholeVolumes(sessionTf,
 
                           # --------For FM visualisation---------
                           saveIndividualFmImagesForVisualisation,
-                          saveMultidimensionalImageWithAllFms,
-                          indices_fms_to_save,
+                          idxs_fms_to_save,
                           namesForSavingFms):
     # saveIndividualFmImagesForVisualisation: should contain an entry per pathwayType, even if just []...
     #       ... If not [], the list should contain one entry per layer of the pathway, even if just [].
@@ -508,8 +493,8 @@ def inferenceWholeVolumes(sessionTf,
     # NOTE: saveIndividualFmImagesForVisualisation should contain an entry per pathwayType, even if just [].
     # If not [], the list should contain one entry per layer of the pathway, even if just [].
     # The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
-    if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
-        n_fms_to_save = find_num_fm(cnn3d.pathways, indices_fms_to_save)
+    if saveIndividualFmImagesForVisualisation:
+        n_fms_to_save = calc_num_fms_to_save(cnn3d.pathways, idxs_fms_to_save)
 
     for subj_i in range(n_subjects):
         log.print3("\n")
@@ -543,7 +528,7 @@ def inferenceWholeVolumes(sessionTf,
         # Will be constructed by stitching together the predictions from each segment.
         prob_map_vols_per_c = np.zeros([n_classes]+inp_chan_dims, dtype="float32")
         # create the big array that will hold all the fms (for feature extraction).
-        if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
+        if saveIndividualFmImagesForVisualisation:
             array_all_fms_to_save = np.zeros([n_fms_to_save] + inp_chan_dims, dtype="float32")
 
         # Tile the image and get all slices of the segments that it fully breaks down to.
@@ -608,12 +593,12 @@ def inferenceWholeVolumes(sessionTf,
                                                         idx_next_tile_in_pred_vols)
 
             # ============== Construct feature maps (volumes) by Stitching =====================
-            if saveIndividualFmImagesForVisualisation or saveMultidimensionalImageWithAllFms:
+            if saveIndividualFmImagesForVisualisation:
                 (idx_next_tile_in_fm_vols,
                  array_all_fms_to_save) = construct_fms(array_all_fms_to_save, # KKNOTE: I d rename func
                                                         idx_next_tile_in_fm_vols,
                                                         cnn3d.pathways,
-                                                        indices_fms_to_save,
+                                                        idxs_fms_to_save,
                                                         fms_per_layer_and_path_for_batch,
                                                         n_voxels_predicted,
                                                         half_rec_field,
@@ -642,17 +627,12 @@ def inferenceWholeVolumes(sessionTf,
 
         # Save feature maps
         if saveIndividualFmImagesForVisualisation:
-            save_fms_individual(cnn3d.pathways, indices_fms_to_save,
+            save_fms_individual(cnn3d.pathways, idxs_fms_to_save,
                                 array_all_fms_to_save, pad_input_imgs,
                                 pad_added_prepost_each_axis, namesForSavingFms,
                                 listOfFilepathsToEachChannelOfEachPatient,
                                 subj_i, log)
 
-        if saveMultidimensionalImageWithAllFms: # KKNOTE: I dont even think anyone is using this.
-            save_fms_multidim(array_all_fms_to_save, pad_input_imgs,
-                              pad_added_prepost_each_axis, namesForSavingFms,
-                              listOfFilepathsToEachChannelOfEachPatient,
-                              subj_i, log)
 
         # ================= Evaluate DSC for each Subject ========================
         if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
