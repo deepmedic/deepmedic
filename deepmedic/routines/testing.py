@@ -40,13 +40,10 @@ def calc_num_fms_to_save(cnn_pathways, fm_idxs):
     return fm_num
 
 
-def construct_prob_maps(prob_maps_per_class,
-                        batch_size,
-                        slice_coords,
-                        half_rec_field,
-                        stride,
-                        prediction_test_batch,
-                        idx_next_tile_in_pred_vols): # KKNOTE: args follow diff order than this func for fms.
+def stitch_predicted_to_prob_maps(prob_maps_per_class, idx_next_tile_in_pred_vols, 
+                                  prob_maps_batch, batch_size, slice_coords, half_rec_field, stride):
+    # prob_maps_per_class: The whole volume that is going to be the final output of the system.
+    # prob_maps_batch: the predictions of the cnn for tiles/segments in a batch. Must be stitched together.
 
     for tile_i in range(batch_size):
         # Now put the label-cube in the new-label-segmentation-image, at the correct position.
@@ -58,7 +55,7 @@ def construct_prob_maps(prob_maps_per_class,
                             top_left[0] + half_rec_field[0]: top_left[0] + half_rec_field[0] + stride[0],
                             top_left[1] + half_rec_field[1]: top_left[1] + half_rec_field[1] + stride[1],
                             top_left[2] + half_rec_field[2]: top_left[2] + half_rec_field[2] + stride[2]
-                            ] = prediction_test_batch[tile_i]
+                            ] = prob_maps_batch[tile_i]
         idx_next_tile_in_pred_vols += 1
 
     return idx_next_tile_in_pred_vols, prob_maps_per_class
@@ -66,7 +63,6 @@ def construct_prob_maps(prob_maps_per_class,
 
 def calculate_num_voxels_sub(num_central_voxels, pathway):
     num_voxels_sub = np.zeros(3)
-
     for i in range(3):
         num_voxels_sub[i] = num_central_voxels[i] - 1 if pathway.pType() != pt.SUBS else \
             int(math.ceil((num_central_voxels[i] * 1.0) / pathway.subsFactor()[i]) - 1)
@@ -74,13 +70,11 @@ def calculate_num_voxels_sub(num_central_voxels, pathway):
     return [int(a) for a in num_voxels_sub]
 
 
-def calculate_num_central_voxels_dir(num_central_voxels, pathway): # KKNOTE: Rename?
+def calculate_num_central_voxels_dir(num_central_voxels, pathway):
     num_voxels_dir = np.zeros(3)
-
     # the math.ceil / subsamplingFactor is a trick to make it work for even subsamplingFactor too.
     # Eg 9/2=4.5 => Get 5. Combined with the trick at repeat,
     # I get my correct number of central voxels hopefully.
-
     for i in range(3):
         num_voxels_dir[i] = int(math.ceil((num_central_voxels[i] * 1.0) / pathway.subsFactor()[i])) \
             if pathway.pType() == pt.SUBS else int(num_central_voxels[i])
@@ -88,40 +82,41 @@ def calculate_num_central_voxels_dir(num_central_voxels, pathway): # KKNOTE: Ren
     return [int(a) for a in num_voxels_dir]
 
 
-def construct_fms(fms_to_extract_img,
-                  idx_next_tile_in_fm_vols, cnn_pathways, fm_idxs, fms_sorted, num_central_voxels,
-                  half_rec_field, stride, slice_coords, batch_size):
-    # idx_curr is the index in the
-    # multidimensional array that holds all the to-be-visualised-fms. It is the one that corresponds to
-    # the next to-be-visualised layer_idx.
+def stitch_predicted_to_fms(array_fms_to_save, idx_next_tile_in_fm_vols,
+                            fms_per_layer_and_path_for_batch, batch_size, slice_coords, half_rec_field, stride,
+                            n_voxels_predicted, cnn_pathways, idxs_fms_to_save):
+    # array_fms_to_save: The whole feature maps that are going to be the final output of the system.
+    # fms_per_layer_and_path_for_batch: FM activations in CNN for tiles/segments in a batch. Must be stitched.
+    # idx_curr is the index in the multidimensional array that holds all the to-be-visualised-fms.
+    # ... It is the one that corresponds to the next to-be-visualised layer_idx.
     idx_curr = 0
-    # layer_idx is the index over all the layers in the
-    # returned list. I will work only with the ones specified to visualise.
+    # layer_idx is the index over all the layers in the returned list.
+    # ... I will work only with the ones specified to visualise.
     layer_idx = 0
 
     for pathway in cnn_pathways:
         for layer_i in range(len(pathway.getLayers())):
-            if fm_idxs[pathway.pType()] == [] or fm_idxs[pathway.pType()][layer_i] == []:
+            if idxs_fms_to_save[pathway.pType()] == [] or idxs_fms_to_save[pathway.pType()][layer_i] == []:
                 continue
-            fms_to_extract_idxs = fm_idxs[pathway.pType()][layer_i]
-            fms_layer = fms_sorted[layer_idx]
+            fms_to_extract_idxs = idxs_fms_to_save[pathway.pType()][layer_i]
+            fms_layer = fms_per_layer_and_path_for_batch[layer_idx]
             # We specify a range of fms to visualise from a layer.
             # curr_idx : fms_to_fill_high_idx defines were to put them in the multidimensional-image-array.
             fms_to_fill_high_idx = idx_curr + fms_to_extract_idxs[1] - fms_to_extract_idxs[0]
 
-            fm_to_reconstruct = fms_to_extract_img[idx_curr:fms_to_fill_high_idx]
+            fm_to_reconstruct = array_fms_to_save[idx_curr:fms_to_fill_high_idx]
 
             # ========================================================================================
             # ====the following calculations could be move OUTSIDE THE FOR LOOPS, by using the kernel-size
             # parameter (from the cnn instance) instead of the shape of the returned value.
-            # ====fmsReturnedForATestBatchForCertainLayer.shape[2] - (num_central_voxels[0]-1)
+            # ====fmsReturnedForATestBatchForCertainLayer.shape[2] - (n_voxels_predicted[0]-1)
             # is essentially the width of the patch left after the convolutions.
             # ====These calculations are pathway and layer-specific. So they could be done once, prior to
             # image processing, and results cached in a list to be accessed during the loop.
 
             (num_voxels_sub_r,
              num_voxels_sub_c,
-             num_voxels_sub_z) = calculate_num_voxels_sub(num_central_voxels, pathway)
+             num_voxels_sub_z) = calculate_num_voxels_sub(n_voxels_predicted, pathway)
 
             r_patch_dim = fms_layer.shape[2] - num_voxels_sub_r
             c_patch_dim = fms_layer.shape[3] - num_voxels_sub_c
@@ -135,7 +130,7 @@ def construct_fms(fms_to_extract_img,
 
             (num_central_voxels_r,
              num_central_voxels_c,
-             num_central_voxels_z) = calculate_num_central_voxels_dir(num_central_voxels, pathway)
+             num_central_voxels_z) = calculate_num_central_voxels_dir(n_voxels_predicted, pathway)
 
             # ============================================================================================
 
@@ -163,9 +158,9 @@ def construct_fms(fms_to_extract_img,
                 # numberOfCentralVoxelsToGetInDirectionR above.
                 central_voxels_all_fms_batch = expanded_output_rcz[:,
                                                                    :,
-                                                                   0:num_central_voxels[0],
-                                                                   0:num_central_voxels[1],
-                                                                   0:num_central_voxels[2]
+                                                                   0:n_voxels_predicted[0],
+                                                                   0:n_voxels_predicted[1],
+                                                                   0:n_voxels_predicted[2]
                                                                    ]
             else:
                 central_voxels_all_fms_batch = central_voxels_all_fms
@@ -204,7 +199,7 @@ def construct_fms(fms_to_extract_img,
     # Next batch-iteration should start from this
     idx_next_tile_in_fm_vols += batch_size
 
-    return idx_next_tile_in_fm_vols, fms_to_extract_img
+    return idx_next_tile_in_fm_vols, array_fms_to_save
 
 
 def print_progress_step(log, n_batches, batch_i, batch_size, n_tiles_for_subj):
@@ -529,28 +524,28 @@ def inference_on_whole_volumes(sessionTf,
             # Stitch predictions for tiles of this batch, to create the probability maps for whole volume.
             # Each prediction for a tile needs to be placed in the correct location in the volume.
             (idx_next_tile_in_pred_vols,
-             prob_maps_vols) = construct_prob_maps(prob_maps_vols, # KKNOTE: I'd rename this func.
-                                                   batchsize,
-                                                   slice_coords_all_tiles,
-                                                   half_rec_field,
-                                                   stride_of_tiling,
-                                                   prob_maps_batch,
-                                                   idx_next_tile_in_pred_vols)
+             prob_maps_vols) = stitch_predicted_to_prob_maps(prob_maps_vols,
+                                                             idx_next_tile_in_pred_vols,
+                                                             prob_maps_batch,
+                                                             batchsize,
+                                                             slice_coords_all_tiles,
+                                                             half_rec_field,
+                                                             stride_of_tiling)
 
             # ============== Construct feature maps (volumes) by Stitching =====================
             if save_fms_flag:
                 (idx_next_tile_in_fm_vols,
-                 array_fms_to_save) = construct_fms(array_fms_to_save, # KKNOTE: I d rename func
-                                                    idx_next_tile_in_fm_vols,
-                                                    cnn3d.pathways,
-                                                    idxs_fms_to_save,
-                                                    fms_per_layer_and_path_for_batch,
-                                                    n_voxels_predicted,
-                                                    half_rec_field,
-                                                    stride_of_tiling,
-                                                    slice_coords_all_tiles,
-                                                    batchsize)
-
+                 array_fms_to_save) = stitch_predicted_to_fms(array_fms_to_save,
+                                                              idx_next_tile_in_fm_vols,
+                                                              fms_per_layer_and_path_for_batch,
+                                                              batchsize,
+                                                              slice_coords_all_tiles,
+                                                              half_rec_field,
+                                                              stride_of_tiling,
+                                                              n_voxels_predicted,
+                                                              cnn3d.pathways,
+                                                              idxs_fms_to_save)
+                 
             # Done with batch
 
         log.print3("TIMING: Segmentation of subject: [Forward Pass:] {0:.2f}".format(t_fwd_pass_subj) + " secs.")
