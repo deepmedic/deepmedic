@@ -23,22 +23,6 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
-def calculate_dice(pred_labels, gt_labels):
-    union_correct = pred_labels * gt_labels
-    tp_num = np.sum(union_correct)
-    gt_pos_num = np.sum(gt_labels)
-    dice = (2.0 * tp_num) / (np.sum(pred_labels) + gt_pos_num) if gt_pos_num != 0 else -1
-    return dice
-
-
-def print_dice_explanations(log):
-    log.print3(
-        "EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground,"
-        " i.e all labels merged, except the background label=0. Useful for multi-class problems.")
-    log.print3(
-        "EXPLANATION: DICE1 is calculated as segmentation over whole volume VS whole Ground Truth (GT). DICE2 is the "
-        "segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
-    log.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
 
 
 def calc_num_fms_to_save(cnn3d_pathways, fm_idxs):
@@ -86,7 +70,7 @@ def calculate_num_voxels_sub(num_central_voxels, pathway):
     return [int(a) for a in num_voxels_sub]
 
 
-def calculate_num_central_voxels_dir(num_central_voxels, pathway):
+def calculate_num_central_voxels_dir(num_central_voxels, pathway): # KKNOTE: Rename?
     num_voxels_dir = np.zeros(3)
 
     # the math.ceil / subsamplingFactor is a trick to make it work for even subsamplingFactor too.
@@ -222,8 +206,7 @@ def print_progress_step(log, n_batches, batch_i, batch_size, n_tiles_for_subj):
     progress_step = max(1, n_batches // 5)
 
     if batch_i == 0 or ((batch_i + 1) % progress_step) == 0 or (batch_i + 1) == n_batches:
-        log.print3(
-            "Processed " + str((batch_i + 1) * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
+        log.print3("Processed " + str((batch_i + 1) * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
 
 
 def prepare_feeds_dict(feeds, channs_of_tiles_per_path): # KKNOTE: Can we rename the input feeds so that they are easier to deal with?
@@ -252,16 +235,16 @@ def save_pred_segm(pred_segm_unpad, roi_mask_unpad, save_pred_segm_bool, suffix_
                                         log)
 
 
-def save_prob_maps(num_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
+def save_prob_maps(n_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
                    pad_input, axes_padding_left_right, roi_mask_unpad,
                    prob_names, filepaths, subj_i, log):
 
-    for class_i in range(0, num_classes):
-        if (len(save_prob_maps_bool) >= class_i + 1) and (save_prob_maps_bool[class_i]):  # save per class probMap
-            suffix = suffix_prob_map + str(class_i)
+    for c in range(n_classes):
+        if (len(save_prob_maps_bool) >= c + 1) and (save_prob_maps_bool[c]):  # save per class probMap
+            suffix = suffix_prob_map + str(c)
             # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
             # eg RAS transformation.
-            prob_map = prob_maps[class_i, :, :, :]
+            prob_map = prob_maps[c, :, :, :]
             prob_map_unpad = prob_map if not pad_input \
                 else unpad3dArray(prob_map, axes_padding_left_right)
             prob_map_unpad = prob_map_unpad if roi_mask_unpad is None else prob_map_unpad * roi_mask_unpad
@@ -305,75 +288,95 @@ def save_fms_individual(cnn3d_pathways, fm_idxs,
                         idx_curr += 1
 
 
+def calculate_dice(pred_labels, gt_lbls):
+    union_correct = pred_labels * gt_lbls
+    tp_num = np.sum(union_correct)
+    gt_pos_num = np.sum(gt_lbls)
+    dice = (2.0 * tp_num) / (np.sum(pred_labels) + gt_pos_num) if gt_pos_num != 0 else -1
+    return dice
 
-def calculate_dsc(dices_1, dices_2, dices_3, gt_labels, pred_segm_unpad, # KKNOTE: RENAME
+
+def print_dice_explanations(log):
+    log.print3(
+        "EXPLANATION: DICE1/2/3 are lists with the DICE per class. For Class-0, we calculate DICE for whole foreground,"
+        " i.e all labels merged, except the background label=0. Useful for multi-class problems.")
+    log.print3(
+        "EXPLANATION: DICE1 is calculated as segmentation over whole volume VS whole Ground Truth (GT). DICE2 is the "
+        "segmentation within the ROI vs GT. DICE3 is segmentation within the ROI vs the GT within the ROI.")
+    log.print3("EXPLANATION: If an ROI mask has been provided, you should be consulting DICE2 or DICE3.")
+    
+    
+def calculate_dsc(metrics_per_subj_per_c, gt_lbls, pred_segm_unpad, # KKNOTE: RENAME
                   pad_input, axes_padding_left_right, roi_mask_unpad,
-                  num_classes, na_pattern, log, subj_i, val_test_print):
+                  n_classes, na_pattern, log, subj_i, val_test_print):
 
     log.print3("+++++++++++++++++++++ Reporting Segmentation Metrics for the subject #" + str(subj_i) +
                " ++++++++++++++++++++++++++")
     # Unpad whatever needed.
-    gt_labels_unpad = gt_labels if not pad_input else unpad3dArray(gt_labels, axes_padding_left_right)
+    gt_lbls_unpad = gt_lbls if not pad_input else unpad3dArray(gt_lbls, axes_padding_left_right)
 
     # calculate DSC per class.
-    for class_i in range(0, num_classes):
-        if class_i == 0:  # do the eval for WHOLE FOREGROUND segmentation (all classes merged except background)
+    for c in range(n_classes):
+        if c == 0:  # do the eval for WHOLE FOREGROUND segmentation (all classes merged except background)
             # Merge every class except the background (assumed to be label == 0 )
-            pred_seg_binary_i = pred_segm_unpad > 0
-            gt_labels_binary_i = gt_labels_unpad > 0
+            pred_seg_bin_c = pred_segm_unpad > 0 # Now it's binary
+            gt_lbls_bin_c = gt_lbls_unpad > 0
         else:
-            pred_seg_binary_i = pred_segm_unpad == class_i
-            gt_labels_binary_i = gt_labels_unpad == class_i
+            pred_seg_bin_c = pred_segm_unpad == c
+            gt_lbls_bin_c = gt_lbls_unpad == c
 
-        pred_seg_binary_i_in_roi = pred_seg_binary_i if roi_mask_unpad is None else pred_seg_binary_i * roi_mask_unpad
-
+        pred_seg_bin_c_in_roi = pred_seg_bin_c if roi_mask_unpad is None else pred_seg_bin_c * roi_mask_unpad
+        gt_lbls_bin_c_in_roi = gt_lbls_bin_c if roi_mask_unpad is None else gt_lbls_bin_c * roi_mask_unpad
+        
         # Calculate the 3 Dices.
         # Dice1 = Allpredicted/allLesions,
         # Dice2 = PredictedWithinRoiMask / AllLesions ,
         # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask.
 
         # Dice1 = Allpredicted/allLesions
-        dice_1 = calculate_dice(pred_seg_binary_i, gt_labels_binary_i)
-        dices_1[subj_i][class_i] = dice_1 if dice_1 != -1 else na_pattern
+        dice_1 = calculate_dice(pred_seg_bin_c, gt_lbls_bin_c)
+        metrics_per_subj_per_c['dice1'][subj_i][c] = dice_1 if dice_1 != -1 else na_pattern
 
         # Dice2 = PredictedWithinRoiMask / AllLesions
-        dice_2 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i)
-        dices_2[subj_i][class_i] = dice_2 if dice_2 != -1 else na_pattern
-
+        dice_2 = calculate_dice(pred_seg_bin_c_in_roi, gt_lbls_bin_c)
+        metrics_per_subj_per_c['dice2'][subj_i][c] = dice_2 if dice_2 != -1 else na_pattern
+        
         # Dice3 = PredictedWithinRoiMask / LesionsInsideRoiMask
-        dice_3 = calculate_dice(pred_seg_binary_i_in_roi, gt_labels_binary_i * roi_mask_unpad)
-        dices_3[subj_i][class_i] = dice_3 if dice_3 != -1 else na_pattern
-
-    log.print3("ACCURACY: (" + str(val_test_print) +
-               ") The Per-Class DICE Coefficients for subject with index #" + str(subj_i) +
-               " equal: DICE1=" + strListFl4fNA(dices_1[subj_i], na_pattern) +
-               " DICE2=" + strListFl4fNA(dices_2[subj_i], na_pattern) +
-               " DICE3=" + strListFl4fNA(dices_3[subj_i], na_pattern))
-
-    print_dice_explanations(log)
-
-    return dices_1, dices_2, dices_3
-
-
-def calculate_mean_dsc(log, dices_1, dices_2, dices_3, na_pattern, val_test_print):
-    log.print3(
-        "+++++++++++++++++++++++++++++++ Segmentation of all subjects finished +++++++++++++++++++++++++++++++++++")
-    log.print3(
-        "+++++++++++++++++++++ Reporting Average Segmentation Metrics over all subjects ++++++++++++++++++++++++++")
-
-    mean_dice_1 = getMeanPerColOf2dListExclNA(dices_1, na_pattern)
-    mean_dice_2 = getMeanPerColOf2dListExclNA(dices_2, na_pattern)
-    mean_dice_3 = getMeanPerColOf2dListExclNA(dices_3, na_pattern)
-
-    log.print3("ACCURACY: (" + str(val_test_print) +
-               ") The Per-Class average DICE Coefficients over all subjects are: DICE1=" +
-               strListFl4fNA(mean_dice_1, na_pattern) +
-               " DICE2=" + strListFl4fNA(mean_dice_2, na_pattern) +
-               " DICE3=" + strListFl4fNA(mean_dice_3, na_pattern))
+        dice_3 = calculate_dice(pred_seg_bin_c_in_roi, gt_lbls_bin_c_in_roi)
+        metrics_per_subj_per_c['dice3'][subj_i][c] = dice_3 if dice_3 != -1 else na_pattern
+        
+    log.print3("ACCURACY: (" + str(val_test_print) + ")" +
+               " The Per-Class DICE Coefficients for subject with index #" + str(subj_i) + " equal:" +
+               " DICE1=" + strListFl4fNA(metrics_per_subj_per_c['dice1'][subj_i], na_pattern) +
+               " DICE2=" + strListFl4fNA(metrics_per_subj_per_c['dice2'][subj_i], na_pattern) +
+               " DICE3=" + strListFl4fNA(metrics_per_subj_per_c['dice3'][subj_i], na_pattern))
 
     print_dice_explanations(log)
 
-    return mean_dice_1, mean_dice_2, mean_dice_3
+    return metrics_per_subj_per_c
+
+
+def report_mean_dice(log, metrics_per_subj_per_c, na_pattern, val_test_print):
+    # dices_1/2/3: A list with NUMBER_OF_SUBJECTS sublists.
+    #              Each sublist has one dice-score per class.
+    log.print3("\n")
+    log.print3("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    log.print3("++++++++++++++++++++++++ Segmentation of all subjects finished ++++++++++++++++++++++++++++")
+    log.print3("++++++++++++++ Reporting Average Segmentation Metrics over all subjects +++++++++++++++++++")
+    
+    mean_metrics = {}
+    for k in metrics_per_subj_per_c.keys():
+        mean_metrics[k] = getMeanPerColOf2dListExclNA(metrics_per_subj_per_c[k], na_pattern)
+    
+    log.print3("ACCURACY: (" + str(val_test_print) + ")" +
+               " The Per-Class average DICE Coefficients over all subjects are:" +
+               " DICE1=" + strListFl4fNA(mean_metrics['dice1'], na_pattern) +
+               " DICE2=" + strListFl4fNA(mean_metrics['dice2'], na_pattern) +
+               " DICE3=" + strListFl4fNA(mean_metrics['dice3'], na_pattern))
+    
+    print_dice_explanations(log)
+    
+    return mean_metrics
 
 
 def dsc_to_dict(dices_1, dices_2, dices_3):
@@ -415,9 +418,9 @@ def inferenceWholeVolumes(sessionTf,
     val_test_print = "Validation" if val_or_test == "val" else "Testing"
     
     log.print3("\n")
-    log.print3("##############################################################################################")
+    log.print3("##########################################################################################")
     log.print3("#\t\t  Starting full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
-    log.print3("##############################################################################################")
+    log.print3("##########################################################################################")
 
     t_start = time.time()
 
@@ -429,12 +432,12 @@ def inferenceWholeVolumes(sessionTf,
     # Dice1 - AllpredictedLes/AllLesions
     # Dice2 - predictedInsideRoiMask/AllLesions
     # Dice3 - predictedInsideRoiMask/ LesionsInsideRoiMask (for comparisons)
-    # A list of dimensions: n_subjects X n_classes
-    # init dice scores
-    dsc1 = [[-1] * n_classes for _ in range(n_subjects)]
-    dsc2 = [[-1] * n_classes for _ in range(n_subjects)]
-    dsc3 = [[-1] * n_classes for _ in range(n_subjects)]
-
+    # Each is a list of dimensions: n_subjects X n_classes
+    # initialization of the lists (values will be replaced)
+    metrics_per_subj_per_c = {"dice1": [[-1] * n_classes for _ in range(n_subjects)],
+                              "dice2": [[-1] * n_classes for _ in range(n_subjects)],
+                              "dice3": [[-1] * n_classes for _ in range(n_subjects)]}
+    
     rec_field = cnn3d.recFieldCnn # Receptive field. List [size-x, size-y, size-z]
 
     # For tiling the volume: Stride is how much I move in each dimension to get the next tile.
@@ -581,9 +584,9 @@ def inferenceWholeVolumes(sessionTf,
                                 subj_i, log)
 
 
-        # ================= Evaluate DSC for each Subject ========================
+        # ================= Evaluate DSC for this subject ========================
         if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
-            (dsc1, dsc2, dsc3) = calculate_dsc(dsc1, dsc2, dsc3,
+            metrics_per_subj_per_c = calculate_dsc(metrics_per_subj_per_c,
                                                gt_lbl_img, pred_segm_unpad,
                                                pad_input, padding_left_right_per_axis,
                                                roi_mask_unpad, n_classes,
@@ -591,18 +594,16 @@ def inferenceWholeVolumes(sessionTf,
 
         # Done with subject.
         
-    # ==================== Report average DSC over all subjects ==================
-    metrics_dict_list = None # KKNOTE: Add comment what it returns. Or find way to get dsc_to_dict from calculate_mean_dsc
+    # ==================== Report average Dice Coefficient over all subjects ==================
+    metrics_dict_list = None # KKNOTE: Add comment what it returns. Or find way to get dsc_to_dict from report_mean_dice
     if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate
-        (meanDsc1, meanDsc2, meanDsc3) = calculate_mean_dsc(log,
-                                                            dsc1, dsc2, dsc3,
-                                                            NA_PATTERN, val_test_print)
-        metrics_dict_list = dsc_to_dict(meanDsc1, meanDsc2, meanDsc3)
+        mean_metrics = report_mean_dice(log, metrics_per_subj_per_c, NA_PATTERN, val_test_print)
+        metrics_dict_list = dsc_to_dict(mean_metrics['dice1'], mean_metrics['dice2'], mean_metrics['dice3'])
 
 
     log.print3("TIMING: " + val_test_print + " process lasted: {0:.2f}".format(time.time() - t_start) + " secs.")
-    log.print3("##############################################################################################")
+    log.print3("##########################################################################################")
     log.print3("#\t\t  Finished full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
-    log.print3("##############################################################################################\n")
+    log.print3("##########################################################################################\n")
 
     return metrics_dict_list
