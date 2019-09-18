@@ -24,9 +24,9 @@ from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
 
 
 
-def calc_num_fms_to_save(cnn3d_pathways, fm_idxs):
+def calc_num_fms_to_save(cnn_pathways, fm_idxs):
     fm_num = 0
-    for pathway in cnn3d_pathways:
+    for pathway in cnn_pathways:
         fm_idxs_pathway = fm_idxs[pathway.pType()]
         if fm_idxs_pathway:
             for layer_i in range(len(pathway.getLayers())):
@@ -40,7 +40,12 @@ def calc_num_fms_to_save(cnn3d_pathways, fm_idxs):
     return fm_num
 
 
-def construct_prob_maps(prob_maps_per_class, batch_size, slice_coords, half_rec_field, stride, prediction_test_batch,
+def construct_prob_maps(prob_maps_per_class,
+                        batch_size,
+                        slice_coords,
+                        half_rec_field,
+                        stride,
+                        prediction_test_batch,
                         idx_next_tile_in_pred_vols): # KKNOTE: args follow diff order than this func for fms.
 
     for tile_i in range(batch_size):
@@ -83,7 +88,8 @@ def calculate_num_central_voxels_dir(num_central_voxels, pathway): # KKNOTE: Ren
     return [int(a) for a in num_voxels_dir]
 
 
-def construct_fms(fms_to_extract_img, idx_next_tile_in_fm_vols, cnn3d_pathways, fm_idxs, fms_sorted, num_central_voxels,
+def construct_fms(fms_to_extract_img,
+                  idx_next_tile_in_fm_vols, cnn_pathways, fm_idxs, fms_sorted, num_central_voxels,
                   half_rec_field, stride, slice_coords, batch_size):
     # idx_curr is the index in the
     # multidimensional array that holds all the to-be-visualised-fms. It is the one that corresponds to
@@ -93,7 +99,7 @@ def construct_fms(fms_to_extract_img, idx_next_tile_in_fm_vols, cnn3d_pathways, 
     # returned list. I will work only with the ones specified to visualise.
     layer_idx = 0
 
-    for pathway in cnn3d_pathways:
+    for pathway in cnn_pathways:
         for layer_i in range(len(pathway.getLayers())):
             if fm_idxs[pathway.pType()] == [] or fm_idxs[pathway.pType()][layer_i] == []:
                 continue
@@ -208,8 +214,8 @@ def print_progress_step(log, n_batches, batch_i, batch_size, n_tiles_for_subj):
         log.print3("Processed " + str((batch_i + 1) * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
 
 
-def prepare_feeds_dict(feeds, channs_of_tiles_per_path): # KKNOTE: Can we rename the input feeds so that they are easier to deal with?
-    
+def prepare_feeds_dict(feeds, channs_of_tiles_per_path):
+    # TODO: Can we rename the input feeds so that they are easier to deal with?
     feeds_dict = {feeds['x']: np.asarray(channs_of_tiles_per_path[0], dtype='float32')}
     for path_i in range(len(channs_of_tiles_per_path[1:])):
         feeds_dict.update(
@@ -218,14 +224,29 @@ def prepare_feeds_dict(feeds, channs_of_tiles_per_path): # KKNOTE: Can we rename
     return feeds_dict
     
 
-def save_pred_segm(pred_segm_unpad, roi_mask_unpad, save_pred_segm_bool, suffix_seg, seg_names, filepaths,
-                  subj_i, log): # KKNOTE: Too much. It's just 1 function call. Also, arg names _seg should be _pred
+def unpad_img(img, unpad_input, padding_left_right_per_axis):
+    # unpad_input: If True, padding_left_right_per_axis == ((0,0), (0,0), (0,0)).
+    #              unpad3dArray deals with no padding. So, this check is not required.
+    if not unpad_input:
+        return img
+    if img is None: # Deals with the case something has not been given. E.g. roi_mask or gt_lbls.
+        return None
+    return unpad3dArray(img, padding_left_right_per_axis)
 
-    if save_pred_segm_bool:  # save predicted segmentation
-        # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
-        # eg RAS transformation
-        pred_segm_unpad_in_roi = pred_segm_unpad if roi_mask_unpad is None else pred_segm_unpad * roi_mask_unpad
-        savePredImgToNiiWithOriginalHdr(pred_segm_unpad_in_roi,
+def unpad_list_of_imgs(list_imgs, unpad_input, padding_left_right_per_axis):
+    if not unpad_input or list_imgs is None:
+        return list_imgs
+    
+    list_unpadded_imgs = []
+    for img in list_imgs:
+        list_unpadded_imgs.append(unpad_img(img, unpad_input, padding_left_right_per_axis)) # Deals with None.
+    return list_unpadded_imgs
+
+def save_pred_seg(pred_seg, save_pred_seg_bool, suffix_seg, seg_names, filepaths, subj_i, log):
+    # filepaths: list of all filepaths to each channel image of each subject. To get header.
+    # Save the image. Pass the filename paths of the normal image to duplicate the header info.
+    if save_pred_seg_bool:
+        savePredImgToNiiWithOriginalHdr(pred_seg,
                                         seg_names,
                                         filepaths,
                                         subj_i,
@@ -234,19 +255,14 @@ def save_pred_segm(pred_segm_unpad, roi_mask_unpad, save_pred_segm_bool, suffix_
                                         log)
 
 
-def save_prob_maps(n_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
-                   pad_input, axes_padding_left_right, roi_mask_unpad,
-                   prob_names, filepaths, subj_i, log):
-
-    for c in range(n_classes):
-        if (len(save_prob_maps_bool) >= c + 1) and (save_prob_maps_bool[c]):  # save per class probMap
-            suffix = suffix_prob_map + str(c)
-            # Save the image. Pass the filename paths of the normal image so that I can duplicate the header info,
-            # eg RAS transformation.
-            prob_map = prob_maps[c, :, :, :]
-            prob_map_unpad = prob_map if not pad_input else unpad3dArray(prob_map, axes_padding_left_right)
-            prob_map_unpad = prob_map_unpad if roi_mask_unpad is None else prob_map_unpad * roi_mask_unpad
-            savePredImgToNiiWithOriginalHdr(prob_map_unpad,
+def save_prob_maps(prob_maps, save_prob_maps_bool, suffix_prob_map, prob_names, filepaths, subj_i, log):
+    # filepaths: list of all filepaths to each channel img of each subject. To get header.
+    # Save the image. Pass the filename paths of the normal image to duplicate the header info.
+    for class_i in range(len(prob_maps)):
+        if (len(save_prob_maps_bool) >= class_i + 1) and save_prob_maps_bool[class_i]:
+            suffix = suffix_prob_map + str(class_i)
+            prob_map = prob_maps[class_i]
+            savePredImgToNiiWithOriginalHdr(prob_map,
                                             prob_names,
                                             filepaths,
                                             subj_i,
@@ -255,26 +271,22 @@ def save_prob_maps(n_classes, save_prob_maps_bool, suffix_prob_map, prob_maps,
                                             log)
 
 
-def save_fms_individual(cnn3d_pathways, fm_idxs,
-                        multidim_fm_array, pad_input,
-                        axes_padding_left_right, fms_names, filepaths,
-                        subj_i, log):
+def save_fms_individual(save_flag, multidim_fm_array, cnn_pathways, fm_idxs, fms_names, filepaths, subj_i, log):
+    if not save_flag:
+        return
+    
     idx_curr = 0
-    for pathway_i in range(len(cnn3d_pathways)):
-        pathway = cnn3d_pathways[pathway_i]
+    for pathway_i in range(len(cnn_pathways)):
+        pathway = cnn_pathways[pathway_i]
         fms_idx_pathway = fm_idxs[pathway.pType()]
         if fms_idx_pathway:
             for layer_i in range(len(pathway.getLayers())):
                 fms_idx_layer_pathway = fms_idx_pathway[layer_i]
                 if fms_idx_layer_pathway:
-                    # If the user specifies to grab more feature maps than exist (eg 9999), correct it,
-                    # replacing it with the number of FMs in the layer.
                     for fmActualNumber in range(fms_idx_layer_pathway[0], fms_idx_layer_pathway[1]):
                         fm_to_save = multidim_fm_array[idx_curr]
-                        fm_to_save_unpad = fm_to_save if not pad_input else \
-                            unpad3dArray(fm_to_save, axes_padding_left_right) # KKNOTE: CAN IT GO IN SAME LINE?
-
-                        saveFmImgToNiiWithOriginalHdr(fm_to_save_unpad,
+                        
+                        saveFmImgToNiiWithOriginalHdr(fm_to_save,
                                                       fms_names,
                                                       filepaths,
                                                       subj_i,
@@ -293,24 +305,21 @@ def calculate_dice(pred_seg, gt_lbl):
     return dice
 
 
-def calc_metrics_for_subject(metrics_per_subj_per_c, subj_i, gt_lbl, pred_segm_unpad,
-                             pad_input, axes_padding_left_right, roi_mask_unpad,
-                             n_classes, na_pattern):
-    # Unpad whatever needed.
-    gt_lbl_unpad = gt_lbl if not pad_input else unpad3dArray(gt_lbl, axes_padding_left_right)
-
+def calc_metrics_for_subject(metrics_per_subj_per_c, subj_i, pred_seg, pred_seg_in_roi,
+                             gt_lbl, gt_lbl_in_roi, roi_mask, n_classes, na_pattern):
     # Calculate DSC per class.
     for c in range(n_classes):
         if c == 0:  # do the eval for WHOLE FOREGROUND segmentation (all classes merged except background)
             # Merge every class except the background (assumed to be label == 0 )
-            pred_seg_bin_c = pred_segm_unpad > 0 # Now it's binary
-            gt_lbl_bin_c = gt_lbl_unpad > 0
+            pred_seg_bin_c = pred_seg > 0 # Now it's binary
+            pred_seg_bin_c_in_roi = pred_seg_in_roi > 0
+            gt_lbl_bin_c = gt_lbl > 0
+            gt_lbl_bin_c_in_roi = gt_lbl_in_roi > 0
         else:
-            pred_seg_bin_c = pred_segm_unpad == c
-            gt_lbl_bin_c = gt_lbl_unpad == c
-
-        pred_seg_bin_c_in_roi = pred_seg_bin_c if roi_mask_unpad is None else pred_seg_bin_c * roi_mask_unpad
-        gt_lbl_bin_c_in_roi = gt_lbl_bin_c if roi_mask_unpad is None else gt_lbl_bin_c * roi_mask_unpad
+            pred_seg_bin_c = pred_seg == c
+            pred_seg_bin_c_in_roi = pred_seg_in_roi == c
+            gt_lbl_bin_c = gt_lbl == c
+            gt_lbl_bin_c_in_roi = gt_lbl_in_roi == c
         
         # Calculate the 3 Dices.
         # Dice1 = Allpredicted/allLesions,
@@ -451,7 +460,7 @@ def inference_on_whole_volumes(sessionTf,
 
         # Load the channels of the subject in RAM
         (channels,
-         gt_lbl_img,  # only for accurate/correct DICE1-2 calculation
+         gt_lbl,  # only for accurate/correct DICE1-2 calculation
          roi_mask,
          _,  # weightmaps. Only for training.
          padding_left_right_per_axis  # ((pad-pre-x, pad-after-x), (pre-y, post-y), (pre-z, post-z))
@@ -472,10 +481,9 @@ def inference_on_whole_volumes(sessionTf,
         inp_chan_dims = list(channels.shape[1:]) # Dimensions of (padded) input channels.
         # The main output. Predicted probability-maps for the whole volume, one per class.
         # Will be constructed by stitching together the predictions from each tile.
-        prob_map_vols_per_c = np.zeros([n_classes]+inp_chan_dims, dtype="float32")
+        prob_maps_vols = np.zeros([n_classes]+inp_chan_dims, dtype="float32")
         # create the big array that will hold all the fms (for feature extraction).
-        if save_fms_flag:
-            array_all_fms_to_save = np.zeros([n_fms_to_save] + inp_chan_dims, dtype="float32")
+        array_fms_to_save = np.zeros([n_fms_to_save] + inp_chan_dims, dtype="float32") if save_fms_flag else None
 
         # Tile the image and get all slices of the tiles that it fully breaks down to.
         slice_coords_all_tiles = get_slice_coords_of_all_img_tiles(log,
@@ -521,72 +529,79 @@ def inference_on_whole_volumes(sessionTf,
             # Stitch predictions for tiles of this batch, to create the probability maps for whole volume.
             # Each prediction for a tile needs to be placed in the correct location in the volume.
             (idx_next_tile_in_pred_vols,
-             prob_map_vols_per_c) = construct_prob_maps(prob_map_vols_per_c, # KKNOTE: I'd rename this func.
-                                                        batchsize,
-                                                        slice_coords_all_tiles,
-                                                        half_rec_field,
-                                                        stride_of_tiling,
-                                                        prob_maps_batch,
-                                                        idx_next_tile_in_pred_vols)
+             prob_maps_vols) = construct_prob_maps(prob_maps_vols, # KKNOTE: I'd rename this func.
+                                                   batchsize,
+                                                   slice_coords_all_tiles,
+                                                   half_rec_field,
+                                                   stride_of_tiling,
+                                                   prob_maps_batch,
+                                                   idx_next_tile_in_pred_vols)
 
             # ============== Construct feature maps (volumes) by Stitching =====================
             if save_fms_flag:
                 (idx_next_tile_in_fm_vols,
-                 array_all_fms_to_save) = construct_fms(array_all_fms_to_save, # KKNOTE: I d rename func
-                                                        idx_next_tile_in_fm_vols,
-                                                        cnn3d.pathways,
-                                                        idxs_fms_to_save,
-                                                        fms_per_layer_and_path_for_batch,
-                                                        n_voxels_predicted,
-                                                        half_rec_field,
-                                                        stride_of_tiling,
-                                                        slice_coords_all_tiles,
-                                                        batchsize)
+                 array_fms_to_save) = construct_fms(array_fms_to_save, # KKNOTE: I d rename func
+                                                    idx_next_tile_in_fm_vols,
+                                                    cnn3d.pathways,
+                                                    idxs_fms_to_save,
+                                                    fms_per_layer_and_path_for_batch,
+                                                    n_voxels_predicted,
+                                                    half_rec_field,
+                                                    stride_of_tiling,
+                                                    slice_coords_all_tiles,
+                                                    batchsize)
 
             # Done with batch
 
         log.print3("TIMING: Segmentation of subject: [Forward Pass:] {0:.2f}".format(t_fwd_pass_subj) + " secs.")
 
-        # ======================= Save Output Volumes ========================
-        pred_segm = np.argmax(prob_map_vols_per_c, axis=0)  # The segmentation.
-        pred_segm_unpad = pred_segm if not pad_input else unpad3dArray(pred_segm, padding_left_right_per_axis)
-        roi_mask_unpad = None # Use this mask to erase predictions outside the ROI.
-        if roi_mask is not None:
-            roi_mask_unpad = roi_mask if not pad_input else unpad3dArray(roi_mask, padding_left_right_per_axis)
+        # ========================== Post-Processing =========================
+        pred_seg = np.argmax(prob_maps_vols, axis=0)  # The segmentation.
+
+        # Unpad all images.        
+        pred_seg_u          = unpad_img(pred_seg, pad_input, padding_left_right_per_axis)
+        gt_lbl_u            = unpad_img(gt_lbl, pad_input, padding_left_right_per_axis)
+        roi_mask_u          = unpad_img(roi_mask, pad_input, padding_left_right_per_axis)
+        prob_maps_vols_u    = unpad_list_of_imgs(prob_maps_vols, pad_input, padding_left_right_per_axis)
+        array_fms_to_save_u = unpad_list_of_imgs(array_fms_to_save, pad_input, padding_left_right_per_axis)
         
+        # Poster-process outside the ROI, e.g. by deleting any predictions outside it.
+        pred_seg_u_in_roi = pred_seg_u if roi_mask_u is None else pred_seg_u * roi_mask_u
+        gt_lbl_u_in_roi = gt_lbl_u if roi_mask_u is None else gt_lbl_u * roi_mask_u
+        for c in range(n_classes):
+            prob_map = prob_maps_vols_u[c]
+            prob_maps_vols_u[c] = prob_map if roi_mask_u is None else prob_map * roi_mask_u
+        prob_maps_vols_u_in_roi = prob_maps_vols_u # Just to follow naming convention for clarity.
+        
+        # ======================= Save Output Volumes ========================
         # Save predicted segmentations
-        save_pred_segm(pred_segm_unpad, roi_mask_unpad,
-                       savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
-                       namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+        save_pred_seg(pred_seg_u_in_roi,
+                      savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
+                      namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
 
         # Save probability maps
-        save_prob_maps(n_classes, savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
-                       prob_map_vols_per_c, pad_input, padding_left_right_per_axis,
-                       roi_mask_unpad, namesForSavingSegmAndProbs,
-                       listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+        save_prob_maps(prob_maps_vols_u_in_roi,
+                       savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
+                       namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
 
         # Save feature maps
-        if save_fms_flag:
-            save_fms_individual(cnn3d.pathways, idxs_fms_to_save,
-                                array_all_fms_to_save, pad_input,
-                                padding_left_right_per_axis, namesForSavingFms,
-                                listOfFilepathsToEachChannelOfEachPatient,
-                                subj_i, log)
-
-
+        save_fms_individual(save_fms_flag, array_fms_to_save_u, cnn3d.pathways, idxs_fms_to_save,
+                            namesForSavingFms, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+        
+        
         # ================= Evaluate DSC for this subject ========================
         if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
             metrics_per_subj_per_c = calc_metrics_for_subject(metrics_per_subj_per_c, subj_i,
-                                                              gt_lbl_img, pred_segm_unpad,
-                                                              pad_input, padding_left_right_per_axis,
-                                                              roi_mask_unpad, n_classes, NA_PATTERN)
+                                                              pred_seg_u, pred_seg_u_in_roi,
+                                                              gt_lbl_u, gt_lbl_u_in_roi,
+                                                              roi_mask_u, n_classes, NA_PATTERN)
             report_metrics_for_subject(log, metrics_per_subj_per_c, subj_i, NA_PATTERN, val_test_print)
             
         # Done with subject.
         
     # ==================== Report average Dice Coefficient over all subjects ==================
     mean_metrics = None # To return something even if ground truth has not been given (in testing)
-    if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate
+    if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate.
         mean_metrics = calc_stats_of_metrics(metrics_per_subj_per_c, NA_PATTERN)
         report_mean_metrics(log, mean_metrics, NA_PATTERN, val_test_print)
 
