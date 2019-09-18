@@ -174,6 +174,7 @@ class AccuracyOfEpochMonitorSegmentation(object):
             self.log.print3('Tensorboard logging not activated. Skipping...')
             self.log.print3('======================================================')
             return
+        
         self.log.print3('Logging ' + self.trainOrValString + ' metrics')
         self.log.print3('Epoch: ' + str(self.epoch) +
                         ' | Subepoch ' + str(currSubep) + '/' + str(self.numberOfSubepochsPerEpoch - 1))
@@ -215,24 +216,36 @@ class AccuracyOfEpochMonitorSegmentation(object):
         self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
         self.log.print3('======================================================')
 
-    def reportDSCWholeSegmentation(self, metrics_dict_list):
+                
+    def reportDSCWholeSegmentation(self, mean_metrics):
+        # mean_metrics: 
         # metrics_dict_list: list that holds one element per class, [ elem-class0, elem-class1, .... ]
         #                    Each element is a dictionary of metrics for the class.
         #                    E.g. elem-class0 = {'mean_dice1': value, 'mean_dice2': value, mean_dice3': value}
-        if self.tensorboard_logger is not None:
-            self.log.print3('=============== LOGGING TO TENSORBOARD ===============')
-            self.log.print3('Logging validation metrics from segmentation of whole validation volumes.')
-            self.log.print3('Epoch: ' + str(self.epoch))
-            step_num = self.numberOfSubepochsPerEpoch - 1 + (self.epoch * self.numberOfSubepochsPerEpoch)
-            self.log.print3('Step number: ' + str(step_num))
-
-            for i in range(len(metrics_dict_list)):
-                class_string = 'Class-' + str(i)
-                self.log_to_tensorboard(metrics_dict_list[i], class_string, step_num)
-
-            self.log.print3('Logged metrics: ' + str(list(metrics_dict_list[0].keys())))
+        self.log.print3('=============== LOGGING TO TENSORBOARD ===============')
+        if self.tensorboard_logger is None:
+            self.log.print3('Tensorboard logging not activated. Skipping...')
             self.log.print3('======================================================')
-            
+            return
+        
+        self.log.print3('Logging validation metrics from segmentation of whole validation volumes.')
+        self.log.print3('Epoch: ' + str(self.epoch))
+        step_num = self.numberOfSubepochsPerEpoch - 1 + (self.epoch * self.numberOfSubepochsPerEpoch)
+        self.log.print3('Step number: ' + str(step_num))
+
+        # Report mean metrics for each class_i:
+        for class_i in range(self.numberOfClasses):
+            # the keys for the below are defined in testing.py routine.
+            metrics_dict = {'mean_dice1': mean_metrics['dice1'][class_i],
+                            'mean_dice2': mean_metrics['dice2'][class_i],
+                            'mean_dice3': mean_metrics['dice3'][class_i]}
+            class_string = 'Class-' + str(class_i)
+            self.log_to_tensorboard(metrics_dict, class_string, step_num)
+
+        self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
+        self.log.print3('======================================================')
+        
+        
     def reportMeanAccyracyOfEpoch(self) :
         logStr = self.trainOrValString + ": Epoch #" + str(self.epoch)
         

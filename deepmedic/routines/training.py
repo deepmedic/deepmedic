@@ -18,7 +18,7 @@ import numpy as np
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.neuralnet.wrappers import CnnWrapperForSampling
 from deepmedic.dataManagement.sampling import getSampledDataAndLabelsForSubepoch
-from deepmedic.routines.testing import inferenceWholeVolumes
+from deepmedic.routines.testing import inference_on_whole_volumes
 
 from deepmedic.logging.utils import datetimeNowAsStr
 
@@ -404,7 +404,7 @@ def do_training(sessionTf,
                     "***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #" + str(
                         epoch) + "...***")
 
-                metrics_dict_list = inferenceWholeVolumes(
+                mean_metrics_val_whole_vols = inference_on_whole_volumes(
                     sessionTf,
                     cnn3d,
                     log,
@@ -415,19 +415,17 @@ def do_training(sessionTf,
                     listOfFilepathsToRoiMaskOfEachPatientValidation,
                     namesForSavingSegmAndProbs=namesForSavingSegmAndProbs,
                     suffixForSegmAndProbsDict=suffixForSegmAndProbsDict,
-                    # Hyper parameters
+                    # --- Hyper parameters ---
                     batchsize=batchsize_val_whole,
-
-                    # ----Preprocessing------
+                    # --- Preprocessing ---
                     pad_input=pad_input,
-
-                    # --------For FM visualisation---------
+                    # --- Saving feature maps ---
                     save_fms_flag=save_fms_flag,
                     idxs_fms_to_save=idxs_fms_to_save,
                     namesForSavingFms=namesForSavingFms
                 )
-
-                acc_monitor_for_ep_val.reportDSCWholeSegmentation(metrics_dict_list)
+                
+                acc_monitor_for_ep_val.reportDSCWholeSegmentation(mean_metrics_val_whole_vols)
 
             del acc_monitor_for_ep_train
             del acc_monitor_for_ep_val
