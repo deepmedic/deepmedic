@@ -261,18 +261,18 @@ def do_training(sessionTf,
             val_on_whole_volumes_after_ep = False
             if val_on_whole_volumes and (model_num_epochs_trained + 1) % num_epochs_between_val_on_whole_volumes == 0:
                 val_on_whole_volumes_after_ep = True
-
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            log.print3(
-                "~~~~~~~~~~~~~\t Starting new Epoch! Epoch #" + str(epoch) + "/" + str(n_epochs) + " \t~~~~~~~~~~~~~")
-            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+                
+            log.print3("")
+            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            log.print3("~~\t\t\t Starting new Epoch! Epoch #" + str(epoch) + "/" + str(n_epochs) + "  \t\t\t~~")
+            log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             start_time_ep = time.time()
 
             for subepoch in range(num_subepochs):
-                log.print3("***************************************************************************************")
-                log.print3(
-                    "*******\t\t Starting new Subepoch: #" + str(subepoch) + "/" + str(num_subepochs) + " \t\t********")
-                log.print3("***************************************************************************************")
+                log.print3("")
+                log.print3("***********************************************************************************")
+                log.print3("*\t\t\t Starting new Subepoch: #" + str(subepoch) + "/" + str(num_subepochs) + " \t\t\t*")
+                log.print3("***********************************************************************************")
 
                 # -------------------------GET DATA FOR THIS SUBEPOCH's VALIDATION---------------------------------
                 if val_on_samples_during_train:
@@ -380,6 +380,7 @@ def do_training(sessionTf,
                 log.print3("TIMING: Training on batches of this subepoch #" + str(subepoch) + " lasted: {0:.1f}".format(
                     end_time_train_subep - start_time_train_subep) + " secs.")
 
+            log.print3("")
             log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
             log.print3("~~~~~~ Epoch #" + str(epoch) + " finished. Reporting Accuracy over whole epoch. ~~~~~~~")
             log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")

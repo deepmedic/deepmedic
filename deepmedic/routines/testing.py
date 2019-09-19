@@ -469,7 +469,7 @@ def calc_stats_of_metrics(metrics_per_subj_per_c, na_pattern):
 def report_mean_metrics(log, mean_metrics, na_pattern, val_test_print):
     # dices_1/2/3: A list with NUMBER_OF_SUBJECTS sublists.
     #              Each sublist has one dice-score per class.
-    log.print3("\n")
+    log.print3("")
     log.print3("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     log.print3("++++++++++++++++++++++++ Segmentation of all subjects finished ++++++++++++++++++++++++++++")
     log.print3("++++++++++++++ Reporting Average Segmentation Metrics over all subjects +++++++++++++++++++")
@@ -511,7 +511,7 @@ def inference_on_whole_volumes(sessionTf,
 
     val_test_print = "Validation" if val_or_test == "val" else "Testing"
     
-    log.print3("\n")
+    log.print3("")
     log.print3("##########################################################################################")
     log.print3("#\t\t  Starting full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
     log.print3("##########################################################################################")
@@ -533,7 +533,7 @@ def inference_on_whole_volumes(sessionTf,
                               "dice3": [[-1] * n_classes for _ in range(n_subjects)]}
     
     for subj_i in range(n_subjects):
-        log.print3("\n")
+        log.print3("")
         log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         log.print3("~~~~~~~~\t Segmenting subject with index #" + str(subj_i) + " \t~~~~~~~~")
 
@@ -621,6 +621,6 @@ def inference_on_whole_volumes(sessionTf,
     log.print3("TIMING: " + val_test_print + " process lasted: {0:.2f}".format(time.time() - t_start) + " secs.")
     log.print3("##########################################################################################")
     log.print3("#\t\t  Finished full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
-    log.print3("##########################################################################################\n")
+    log.print3("##########################################################################################")
 
     return mean_metrics

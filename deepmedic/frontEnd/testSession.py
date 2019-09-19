@@ -121,7 +121,7 @@ class TestSession(Session):
             self._log.print3("")
             self._log.print3("======================================================")
             self._log.print3("=========== Testing with the CNN model ===============")
-            self._log.print3("======================================================\n")
+            self._log.print3("======================================================")
             
             res_code = inference_on_whole_volumes( *( [sessionTf, cnn3d] + self._params.get_args_for_testing() ) )
         
