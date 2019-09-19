@@ -369,6 +369,12 @@ def load_imgs_of_subject(log,
         fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
         roi_mask = loadVolume(fullFilenamePathOfRoiMask)
         
+        if roi_mask.dtype.kind not in ['i','u']:
+            dtype_roi_mask = 'int16'
+            log.print3(id_str+" WARN: Loaded ROI-ask is dtype ["+str(roi_mask.dtype)+"]."
+                       "Rounding and casting to ["+dtype_roi_mask+"]!")
+            roi_mask = np.rint(roi_mask).astype(dtype_roi_mask)
+
         (roi_mask, pad_added_prepost_each_axis) = padCnnInputs(roi_mask, cnnReceptiveField, dims_highres_segment) if pad_input_imgs else [roi_mask, pad_added_prepost_each_axis]
     else :
         roi_mask = None
@@ -401,8 +407,10 @@ def load_imgs_of_subject(log,
         imageGtLabels = loadVolume(fullFilenamePathOfGtLabels)
         
         if imageGtLabels.dtype.kind not in ['i','u']:
-            log.print3(id_str+" WARN: Loaded labels are dtype ["+str(imageGtLabels.dtype)+"]. Rounding and casting them to int!")
-            imageGtLabels = np.rint(imageGtLabels).astype("int32")
+            dtype_gt_lbls = 'int16'
+            log.print3(id_str+" WARN: Loaded labels are dtype ["+str(imageGtLabels.dtype)+"]."
+                       "Rounding and casting to ["+dtype_gt_lbls+"]!")
+            imageGtLabels = np.rint(imageGtLabels).astype(dtype_gt_lbls)
             
         if run_input_checks:
             check_gt_vs_num_classes(log, imageGtLabels, num_classes)

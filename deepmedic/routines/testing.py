@@ -401,7 +401,7 @@ def calculate_dice(pred_seg, gt_lbl):
 
 
 def calc_metrics_for_subject(metrics_per_subj_per_c, subj_i, pred_seg, pred_seg_in_roi,
-                             gt_lbl, gt_lbl_in_roi, roi_mask, n_classes, na_pattern):
+                             gt_lbl, gt_lbl_in_roi, n_classes, na_pattern):
     # Calculate DSC per class.
     for c in range(n_classes):
         if c == 0:  # do the eval for WHOLE FOREGROUND segmentation (all classes merged except background)
@@ -411,11 +411,11 @@ def calc_metrics_for_subject(metrics_per_subj_per_c, subj_i, pred_seg, pred_seg_
             gt_lbl_bin_c = gt_lbl > 0
             gt_lbl_bin_c_in_roi = gt_lbl_in_roi > 0
         else:
-            pred_seg_bin_c = pred_seg == c
-            pred_seg_bin_c_in_roi = pred_seg_in_roi == c
-            gt_lbl_bin_c = gt_lbl == c
-            gt_lbl_bin_c_in_roi = gt_lbl_in_roi == c
-        
+            pred_seg_bin_c = np.rint(pred_seg) == c # randint for valid comparison, in case array is float)
+            pred_seg_bin_c_in_roi = np.rint(pred_seg_in_roi) == c
+            gt_lbl_bin_c = np.rint(gt_lbl) == c
+            gt_lbl_bin_c_in_roi = np.rint(gt_lbl_in_roi) == c
+            
         # Calculate the 3 Dices.
         # Dice1 = Allpredicted/allLesions,
         # Dice2 = PredictedWithinRoiMask / AllLesions ,
@@ -580,7 +580,7 @@ def inference_on_whole_volumes(sessionTf,
         
         # Poster-process outside the ROI, e.g. by deleting any predictions outside it.
         pred_seg_u_in_roi = pred_seg_u if roi_mask_u is None else pred_seg_u * roi_mask_u
-        gt_lbl_u_in_roi = gt_lbl_u if roi_mask_u is None else gt_lbl_u * roi_mask_u
+        gt_lbl_u_in_roi = gt_lbl_u if (gt_lbl_u is None or roi_mask_u is None) else gt_lbl_u * roi_mask_u
         for c in range(n_classes):
             prob_map = prob_maps_vols_u[c]
             prob_maps_vols_u[c] = prob_map if roi_mask_u is None else prob_map * roi_mask_u
@@ -607,7 +607,7 @@ def inference_on_whole_volumes(sessionTf,
             metrics_per_subj_per_c = calc_metrics_for_subject(metrics_per_subj_per_c, subj_i,
                                                               pred_seg_u, pred_seg_u_in_roi,
                                                               gt_lbl_u, gt_lbl_u_in_roi,
-                                                              roi_mask_u, n_classes, NA_PATTERN)
+                                                              n_classes, NA_PATTERN)
             report_metrics_for_subject(log, metrics_per_subj_per_c, subj_i, NA_PATTERN, val_test_print)
             
         # Done with subject.
