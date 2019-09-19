@@ -220,20 +220,29 @@ def prepare_feeds_dict(feeds, channs_of_tiles_per_path):
     
 
 def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
-                                   n_classes, n_voxels_predicted, rec_field,
                                    channels, roi_mask, batchsize,
-                                   save_fms_flag, n_fms_to_save, idxs_fms_to_save ):
+                                   save_fms_flag, idxs_fms_to_save ):
     # One of the main routines. Segment whole volume tile-by-tile.
     
+    # Receptive field is list [size-x, size-y, size-z]. -1 to exclude the central voxel.
+    half_rec_field = [(cnn3d.recFieldCnn[i] - 1) // 2 for i in range(len(cnn3d.recFieldCnn))]
+    # For tiling the volume: Stride is how much I move in each dimension to get the next tile.
+    # I stride exactly the number of voxels that are predicted per forward pass.
+    n_voxels_predicted = cnn3d.finalTargetLayer.outputShape["test"][2:]
+    stride_of_tiling = n_voxels_predicted # [str-x, str-y, str-z]
+    # Find the total number of feature maps that will be created:
+    # NOTE: save_fms_flag should contain an entry per pathwayType, even if just [].
+    # If not [], the list should contain one entry per layer of the pathway, even if just [].
+    # The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
+    n_fms_to_save = calc_num_fms_to_save(cnn3d.pathways, idxs_fms_to_save) if save_fms_flag else 0
+    
+    # Arrays that will be returned.
     inp_chan_dims = list(channels.shape[1:]) # Dimensions of (padded) input channels.
     # The main output. Predicted probability-maps for the whole volume, one per class.
     # Will be constructed by stitching together the predictions from each tile.
-    prob_maps_vols = np.zeros([n_classes]+inp_chan_dims, dtype="float32")
+    prob_maps_vols = np.zeros([cnn3d.num_classes]+inp_chan_dims, dtype="float32")
     # create the big array that will hold all the fms (for feature extraction).
     array_fms_to_save = np.zeros([n_fms_to_save] + inp_chan_dims, dtype="float32") if save_fms_flag else None
-
-    stride_of_tiling = n_voxels_predicted # [str-x, str-y, str-z]
-    half_rec_field = [(rec_field[i] - 1) // 2 for i in range(len(rec_field))] # -1 to exclude the central voxel.
 
     # Tile the image and get all slices of the tiles that it fully breaks down to.
     slice_coords_all_tiles = get_slice_coords_of_all_img_tiles(log,
@@ -512,15 +521,6 @@ def inference_on_whole_volumes(sessionTf,
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
-    rec_field = cnn3d.recFieldCnn # Receptive field. List [size-x, size-y, size-z]
-    # For tiling the volume: Stride is how much I move in each dimension to get the next tile.
-    # I stride exactly the number of voxels that are predicted per forward pass.
-    n_voxels_predicted = cnn3d.finalTargetLayer.outputShape["test"][2:]
-    # Find the total number of feature maps that will be created:
-    # NOTE: save_fms_flag should contain an entry per pathwayType, even if just [].
-    # If not [], the list should contain one entry per layer of the pathway, even if just [].
-    # The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
-    n_fms_to_save = calc_num_fms_to_save(cnn3d.pathways, idxs_fms_to_save) if save_fms_flag else 0
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
@@ -554,7 +554,7 @@ def inference_on_whole_volumes(sessionTf,
                                   listOfFilepathsToRoiMaskFastInfOfEachPatient,
                                   n_classes,
                                   pad_input,
-                                  rec_field,
+                                  cnn3d.recFieldCnn,
                                   cnn3d.pathways[0].getShapeOfInput("test")[2:])
 
         # ==================== Pre-process =====================
@@ -565,9 +565,8 @@ def inference_on_whole_volumes(sessionTf,
         # array_fms_to_save will be None if not saving them.
         (prob_maps_vols,
          array_fms_to_save) = predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
-                                                             n_classes, n_voxels_predicted, rec_field,
                                                              channels, roi_mask, batchsize,
-                                                             save_fms_flag, n_fms_to_save, idxs_fms_to_save )
+                                                             save_fms_flag, idxs_fms_to_save )
         
         # ========================== Post-Processing =========================
         pred_seg = np.argmax(prob_maps_vols, axis=0)  # The segmentation.
