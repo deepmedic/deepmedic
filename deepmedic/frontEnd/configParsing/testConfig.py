@@ -39,7 +39,6 @@ class TestConfig(Config):
     
     #optionals, cause default is False.
     SAVE_INDIV_FMS = "saveIndividualFms"
-    SAVE_4DIM_FMS = "saveAllFmsIn4DimImage"
     
     INDICES_OF_FMS_TO_SAVE_NORMAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathway"
     INDICES_OF_FMS_TO_SAVE_SUBSAMPLED = "minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathway"

@@ -366,11 +366,9 @@ class TrainSessionParameters(object):
             if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None \
             else {"segm": "Segm", "prob": "ProbMapClass"}
         # features:
-        self.saveIndividualFmImagesVal = \
+        self.save_fms_flag_val = \
             cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
-        self.saveMultidimensionalImageWithAllFmsVal = \
-            cfg[cfg.SAVE_4DIM_FMS_VAL] if cfg[cfg.SAVE_4DIM_FMS_VAL] is not None else False
-        if self.saveIndividualFmImagesVal is True or self.saveMultidimensionalImageWithAllFmsVal is True:
+        if self.save_fms_flag_val is True:
             indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] + \
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] + \
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
@@ -392,12 +390,12 @@ class TrainSessionParameters(object):
             else None  # CAREFUL: Here we use a different parsing function!
         if not self.namesToSavePredictionsAndFeaturesVal and self.val_on_whole_volumes \
                 and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal
-                     or self.saveIndividualFmImagesVal or self.saveMultidimensionalImageWithAllFmsVal):
+                     or self.save_fms_flag_val):
             self.errorRequireNamesOfPredictionsVal()
 
         # ===================== OTHERS======================
         # Preprocessing
-        self.pad_input_imgs = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
+        self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
 
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
@@ -639,8 +637,7 @@ class TrainSessionParameters(object):
         logPrint("Suffixes with which to save segmentations and probability maps = " +
                  str(self.suffixForSegmAndProbsDictVal))
         logPrint("~~Feature Maps~~")
-        logPrint("Save Feature Maps = " + str(self.saveIndividualFmImagesVal))
-        logPrint("Save FMs in a 4D-image = " + str(self.saveMultidimensionalImageWithAllFmsVal))
+        logPrint("Save Feature Maps = " + str(self.save_fms_flag_val))
         logPrint("Min/Max Indices of FMs to visualise per pathway-type and per layer = " +
                  str(self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Filepaths to save FMs per case = " + str(self.filepathsToSaveFeaturesForEachPatientVal))
@@ -668,7 +665,7 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
-        logPrint("Pad Input Images = " + str(self.pad_input_imgs))
+        logPrint("Pad Input Images = " + str(self.pad_input))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -711,7 +708,7 @@ class TrainSessionParameters(object):
                 self.batchsize_val_whole,
 
                 # -------Preprocessing-----------
-                self.pad_input_imgs,
+                self.pad_input,
                 # -------Data Augmentation-------
                 self.augm_img_prms_tr,
                 self.augm_sample_prms_tr,
@@ -721,8 +718,7 @@ class TrainSessionParameters(object):
                 self.num_epochs_between_val_on_whole_volumes,
 
                 # --------For FM visualisation---------
-                self.saveIndividualFmImagesVal,
-                self.saveMultidimensionalImageWithAllFmsVal,
+                self.save_fms_flag_val,
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatientVal,
 
