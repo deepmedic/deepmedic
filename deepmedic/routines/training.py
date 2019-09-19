@@ -18,7 +18,7 @@ import numpy as np
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
 from deepmedic.neuralnet.wrappers import CnnWrapperForSampling
 from deepmedic.dataManagement.sampling import getSampledDataAndLabelsForSubepoch
-from deepmedic.routines.testing import inferenceWholeVolumes
+from deepmedic.routines.testing import inference_on_whole_volumes
 
 from deepmedic.logging.utils import datetimeNowAsStr
 
@@ -168,7 +168,7 @@ def do_training(sessionTf,
                 batchsize_val_whole,
 
                 # -------Preprocessing-----------
-                pad_input_imgs,
+                pad_input,
                 # -------Data Augmentation-------
                 augm_img_prms,
                 augm_sample_prms,
@@ -178,9 +178,8 @@ def do_training(sessionTf,
                 num_epochs_between_val_on_whole_volumes,
 
                 # --------For FM visualisation---------
-                saveIndividualFmImagesForVisualisation,
-                saveMultidimensionalImageWithAllFms,
-                indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                save_fms_flag,
+                idxs_fms_to_save,
                 namesForSavingFms,
 
                 # -------- Others --------
@@ -210,7 +209,7 @@ def do_training(sessionTf,
                                listOfFilepathsToGtLabelsOfEachPatientTraining,
                                listOfFilepathsToRoiMaskOfEachPatientTraining,
                                paths_to_wmaps_per_sampl_cat_per_subj_train,
-                               pad_input_imgs,
+                               pad_input,
                                augm_img_prms,
                                augm_sample_prms,
                                norm_params)
@@ -226,7 +225,7 @@ def do_training(sessionTf,
                              listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
                              listOfFilepathsToRoiMaskOfEachPatientValidation,
                              paths_to_wmaps_per_sampl_cat_per_subj_val,
-                             pad_input_imgs,
+                             pad_input,
                              None,  # no augmentation in val.
                              None,  # no augmentation in val.
                              norm_params)
@@ -409,7 +408,7 @@ def do_training(sessionTf,
                     "***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #" + str(
                         epoch) + "...***")
 
-                metrics_dict_list = inferenceWholeVolumes(
+                mean_metrics_val_whole_vols = inference_on_whole_volumes(
                     sessionTf,
                     cnn3d,
                     log,
@@ -420,20 +419,17 @@ def do_training(sessionTf,
                     listOfFilepathsToRoiMaskOfEachPatientValidation,
                     namesForSavingSegmAndProbs=namesForSavingSegmAndProbs,
                     suffixForSegmAndProbsDict=suffixForSegmAndProbsDict,
-                    # Hyper parameters
+                    # --- Hyper parameters ---
                     batchsize=batchsize_val_whole,
-
-                    # ----Preprocessing------
-                    pad_input_imgs=pad_input_imgs,
-
-                    # --------For FM visualisation---------
-                    saveIndividualFmImagesForVisualisation=saveIndividualFmImagesForVisualisation,
-                    saveMultidimensionalImageWithAllFms=saveMultidimensionalImageWithAllFms,
-                    indicesOfFmsToVisualisePerPathwayTypeAndPerLayer=indicesOfFmsToVisualisePerPathwayTypeAndPerLayer,
+                    # --- Preprocessing ---
+                    pad_input=pad_input,
+                    # --- Saving feature maps ---
+                    save_fms_flag=save_fms_flag,
+                    idxs_fms_to_save=idxs_fms_to_save,
                     namesForSavingFms=namesForSavingFms
                 )
-
-                acc_monitor_for_ep_val.reportDSCWholeSegmentation(metrics_dict_list)
+                
+                acc_monitor_for_ep_val.reportDSCWholeSegmentation(mean_metrics_val_whole_vols)
 
             del acc_monitor_for_ep_train
             del acc_monitor_for_ep_val

@@ -83,7 +83,6 @@ class TrainConfig(Config):
     SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
     SUFFIX_SEGM_PROB_VAL = "suffixForSegmAndProbsDictVal"
     SAVE_INDIV_FMS_VAL = "saveIndividualFmsVal"
-    SAVE_4DIM_FMS_VAL = "saveAllFmsIn4DimImageVal"
     INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal"
     INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathwayVal"
     INDICES_OF_FMS_TO_SAVE_FC_VAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathwayVal"

@@ -397,14 +397,17 @@ def load_imgs_of_subject(log,
                          ):
     # paths_per_chan_per_subj: List of lists. One sublist per case. Each should contain...
     # ... as many elements(strings-filenamePaths) as numberOfChannels, pointing to (nii) channels of this case.
-    id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]" if job_i is not None else ""  # is None in testing.
+    # Returns:
+    # pad_added_prepost_each_axis: Padding added before and after each axis. All 0s if no padding.
+    
+    id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]" if job_i is not None else ""  # None in Test
 
     if subj_i >= len(paths_per_chan_per_subj):
         raise ValueError(
             id_str + " The argument 'subj_i' given is greater than the filenames given for the .nii folders!")
 
     log.print3(id_str + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
-
+    
     numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
 
     pad_added_prepost_each_axis = ((0, 0), (0, 0), (0, 0))  # Padding added before and after each axis.
@@ -412,36 +415,42 @@ def load_imgs_of_subject(log,
     if paths_to_masks_per_subj is not None:
         fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
         roi_mask = loadVolume(fullFilenamePathOfRoiMask)
-
-        (roi_mask, pad_added_prepost_each_axis) = \
-            padCnnInputs(roi_mask, cnnReceptiveField, dims_highres_segment) if pad_input_imgs \
-            else [roi_mask, pad_added_prepost_each_axis]
+        
+        if roi_mask.dtype.kind not in ['i','u']:
+            dtype_roi_mask = 'int16'
+            log.print3(id_str + " WARN: Loaded ROI-ask is dtype [" + str(roi_mask.dtype) + "]."
+                       " Rounding and casting to [" + dtype_roi_mask + "]!")
+            roi_mask = np.rint(roi_mask).astype(dtype_roi_mask)
+        
+        (roi_mask,
+         pad_added_prepost_each_axis) = padCnnInputs(roi_mask, cnnReceptiveField, dims_highres_segment) \
+                                            if pad_input_imgs else [roi_mask, pad_added_prepost_each_axis]
     else:
         roi_mask = None
-
+        
     # Load the channels of the patient.
-    niiDimensions = None
+    inp_chan_dims = None  # Dimensions of the (padded) input channels.
     channels = None
 
     for channel_i in range(numberOfNormalScaleChannels):
         fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
         if fullFilenamePathOfChannel != "-":  # normal case, filepath was given.
             channelData = loadVolume(fullFilenamePathOfChannel)
-
-            (channelData, pad_added_prepost_each_axis) = padCnnInputs(channelData, cnnReceptiveField,
-                                                                      dims_highres_segment) if pad_input_imgs else [
-                channelData, pad_added_prepost_each_axis]
-
+            
+            (channelData,
+             pad_added_prepost_each_axis) = padCnnInputs(channelData, cnnReceptiveField, dims_highres_segment) \
+                                                if pad_input_imgs else [channelData, pad_added_prepost_each_axis]
+                                                
             if channels is None:
                 # Initialize the array in which all the channels for the patient will be placed.
-                niiDimensions = list(channelData.shape)
-                channels = np.zeros((numberOfNormalScaleChannels, niiDimensions[0], niiDimensions[1], niiDimensions[2]))
+                inp_chan_dims = list(channelData.shape)
+                channels = np.zeros((numberOfNormalScaleChannels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
 
             channels[channel_i] = channelData
         else:  # "-" was given in the config-listing file. Do Min-fill!
             log.print3(
                 id_str + " WARN: No modality #" + str(channel_i) + " given. Will make input channel full of zeros.")
-            channels[channel_i] = -4.0
+            channels[channel_i] = -4.0 # TODO: Probably 0.0 would be better.
 
     # Load the class labels.
     if paths_to_lbls_per_subj is not None:
@@ -449,16 +458,17 @@ def load_imgs_of_subject(log,
         imageGtLabels = loadVolume(fullFilenamePathOfGtLabels)
 
         if imageGtLabels.dtype.kind not in ['i', 'u']:
-            log.print3(id_str + " WARN: Loaded labels are dtype [" + str(
-                imageGtLabels.dtype) + "]. Rounding and casting them to int!")
-            imageGtLabels = np.rint(imageGtLabels).astype("int32")
+            dtype_gt_lbls = 'int16'
+            log.print3(id_str + " WARN: Loaded labels are dtype [" + str(imageGtLabels.dtype) + "]."
+                       " Rounding and casting to [" + dtype_gt_lbls + "]!")
+            imageGtLabels = np.rint(imageGtLabels).astype(dtype_gt_lbls)
 
         if run_input_checks:
             check_gt_vs_num_classes(log, imageGtLabels, num_classes)
 
-        (imageGtLabels, pad_added_prepost_each_axis) = padCnnInputs(imageGtLabels, cnnReceptiveField,
-                                                                    dims_highres_segment) if pad_input_imgs else [
-            imageGtLabels, pad_added_prepost_each_axis]
+        (imageGtLabels,
+         pad_added_prepost_each_axis) = padCnnInputs(imageGtLabels, cnnReceptiveField, dims_highres_segment) \
+                                            if pad_input_imgs else [imageGtLabels, pad_added_prepost_each_axis]
     else:
         imageGtLabels = None  # For validation and testing
 
@@ -819,47 +829,43 @@ def extractSegmentGivenSliceCoords(train_or_val,
 #
 # ###########################################################
 
-# This is very similar to sample_coords_of_segments() I believe, which is used for training. Consider way to merge them.
-def getCoordsOfAllSegmentsOfAnImage(log,
-                                    dimsOfPrimarySegment,
-                                    # RCZ dims of input to primary pathway (NORMAL).
-                                    # Which should be the first one in .pathways.
-                                    strideOfSegmentsPerDimInVoxels,
-                                    batch_size,
-                                    channelsOfImageNpArray,
-                                    roi_mask
-                                    ):
-    # channelsOfImageNpArray: np array [n_channels, x, y, z]
+# TODO: This is very similar to sample_coords_of_segments() I believe, which is used for training.
+#       Consider way to merge them.
+def get_slice_coords_of_all_img_tiles(log,
+                                      dimsOfPrimarySegment, # xyz dims of input to primary pathway (normal)
+                                      strideOfSegmentsPerDimInVoxels,
+                                      batch_size,
+                                      inp_chan_dims,
+                                      roi_mask
+                                      ):
+    # inp_chan_dims: Dimensions of the (padded) input channels. [x, y, z]
     log.print3("Starting to (tile) extract Segments from the images of the subject for Segmentation...")
 
     sliceCoordsOfSegmentsToReturn = []
 
-    niiDimensions = list(channelsOfImageNpArray[0].shape)  # Dims of the volumes
-
     zLowBoundaryNext = 0
     zAxisCentralPartPredicted = False
     while not zAxisCentralPartPredicted:
-        zFarBoundary = min(zLowBoundaryNext + dimsOfPrimarySegment[2], niiDimensions[2])  # Excluding.
+        zFarBoundary = min(zLowBoundaryNext + dimsOfPrimarySegment[2], inp_chan_dims[2])  # Excluding.
         zLowBoundary = zFarBoundary - dimsOfPrimarySegment[2]
         zLowBoundaryNext = zLowBoundaryNext + strideOfSegmentsPerDimInVoxels[2]
-        zAxisCentralPartPredicted = False if zFarBoundary < niiDimensions[
-            2] else True  # THIS IS THE IMPORTANT CRITERION.
+        zAxisCentralPartPredicted = False if zFarBoundary < inp_chan_dims[2] else True  # IMPORTANT CRITERION
 
         cLowBoundaryNext = 0
         cAxisCentralPartPredicted = False
         while not cAxisCentralPartPredicted:
-            cFarBoundary = min(cLowBoundaryNext + dimsOfPrimarySegment[1], niiDimensions[1])  # Excluding.
+            cFarBoundary = min(cLowBoundaryNext + dimsOfPrimarySegment[1], inp_chan_dims[1])  # Excluding.
             cLowBoundary = cFarBoundary - dimsOfPrimarySegment[1]
             cLowBoundaryNext = cLowBoundaryNext + strideOfSegmentsPerDimInVoxels[1]
-            cAxisCentralPartPredicted = False if cFarBoundary < niiDimensions[1] else True
+            cAxisCentralPartPredicted = False if cFarBoundary < inp_chan_dims[1] else True
 
             rLowBoundaryNext = 0
             rAxisCentralPartPredicted = False
             while not rAxisCentralPartPredicted:
-                rFarBoundary = min(rLowBoundaryNext + dimsOfPrimarySegment[0], niiDimensions[0])  # Excluding.
+                rFarBoundary = min(rLowBoundaryNext + dimsOfPrimarySegment[0], inp_chan_dims[0])  # Excluding.
                 rLowBoundary = rFarBoundary - dimsOfPrimarySegment[0]
                 rLowBoundaryNext = rLowBoundaryNext + strideOfSegmentsPerDimInVoxels[0]
-                rAxisCentralPartPredicted = False if rFarBoundary < niiDimensions[0] else True
+                rAxisCentralPartPredicted = False if rFarBoundary < inp_chan_dims[0] else True
 
                 # In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
                 if isinstance(roi_mask, np.ndarray):

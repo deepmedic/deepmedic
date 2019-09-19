@@ -50,9 +50,8 @@ class TestSessionParameters(object) :
         self.suffixForSegmAndProbsDict = cfg[cfg.SUFFIX_SEGM_PROB] if cfg[cfg.SUFFIX_SEGM_PROB] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
         self.batchsize = cfg[cfg.BATCHSIZE] if cfg[cfg.BATCHSIZE] is not None else 10
         #features:
-        self.saveIndividualFmImages = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
-        self.saveMultidimensionalImageWithAllFms = cfg[cfg.SAVE_4DIM_FMS] if cfg[cfg.SAVE_4DIM_FMS] is not None else False
-        if self.saveIndividualFmImages == True or self.saveMultidimensionalImageWithAllFms == True:
+        self.save_fms_flag = cfg[cfg.SAVE_INDIV_FMS] if cfg[cfg.SAVE_INDIV_FMS] is not None else False
+        if self.save_fms_flag:
             indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL]] +\
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED]] +\
                                                          [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC]]
@@ -62,7 +61,7 @@ class TestSessionParameters(object) :
         self.filepathsToSaveFeaturesForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
         #Preprocessing
-        self.pad_input_imgs = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
+        self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         
         #Others useful internally or for reporting:
         self.numberOfCases = len(self.channelsFilepaths)
@@ -124,16 +123,13 @@ class TestSessionParameters(object) :
             logPrint(">>> WARN: Segmentation and Probability Maps won't be saved. I guess you only wanted the feature maps?")
             
         logPrint("~~~~~~~Ouput-parameters for Feature Maps (FMs)~~~~~~")
-        logPrint("Save FMs in individual images = " + str(self.saveIndividualFmImages))
-        logPrint("Save all requested FMs in one 4D image = " + str(self.saveMultidimensionalImageWithAllFms))
-        if self.saveMultidimensionalImageWithAllFms :
-            logPrint(">>> WARN : The 4D image can be hundreds of MBytes if the CNN is big and many FMs are chosen to be saved. Configure wisely.")
+        logPrint("Save FMs in individual images = " + str(self.save_fms_flag))
         logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Save Feature Maps at = " + str(self.filepathsToSaveFeaturesForEachPatient))
         
         logPrint("~~~~~~~ Parameters for Preprocessing ~~~~~~")
-        logPrint("Pad Input Images = " + str(self.pad_input_imgs))
-        if not self.pad_input_imgs :
+        logPrint("Pad Input Images = " + str(self.pad_input))
+        if not self.pad_input :
             logPrint(">>> WARN: Inference near the borders of the image might be incomplete if not padded! Although some speed is gained if not padded. Task-specific, your choice.")
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -154,10 +150,9 @@ class TestSessionParameters(object) :
                 # Hyper parameters
                 self.batchsize,
                 #----Preprocessing------
-                self.pad_input_imgs,
+                self.pad_input,
                 #--------For FM visualisation---------
-                self.saveIndividualFmImages,
-                self.saveMultidimensionalImageWithAllFms,
+                self.save_fms_flag,
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatient
                 ]

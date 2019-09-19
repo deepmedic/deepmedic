@@ -70,7 +70,7 @@ def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions):  # Works for 2
 
 
 # In the 3 first axes. Which means it can take a 4-dim image.
-def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight):
+def unpad3dArray(array1, tupleOfPaddingPerAxesLeftRight):
     # tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
     unpaddedArray1 = array1[tupleOfPaddingPerAxesLeftRight[0][0]:,
                      tupleOfPaddingPerAxesLeftRight[1][0]:,
@@ -82,9 +82,12 @@ def unpadCnnOutputs(array1, tupleOfPaddingPerAxesLeftRight):
         if tupleOfPaddingPerAxesLeftRight[1][1] > 0 else unpaddedArray1
     unpaddedArray1 = unpaddedArray1[:, :, :-tupleOfPaddingPerAxesLeftRight[2][1]] \
         if tupleOfPaddingPerAxesLeftRight[2][1] > 0 else unpaddedArray1
-
+        
     return unpaddedArray1
 
+
+# ====================== (below) Z-Score Intensity Normalization. ==================
+# Could make classes? class Normalizer and children? (zscore)
 
 def neg_val_check(img, log):
     is_neg_int = img < 0
@@ -202,3 +205,6 @@ def normalize_images(log, channels, roi_mask, norm_params=None, id_str='', verbo
                        "): Mean=" + str(new_mean) + ", Std=" + str(new_std))
 
     return channels_norm
+
+# ====================== (above) Z-Score Intensity Normalization. ==================
+
