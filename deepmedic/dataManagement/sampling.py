@@ -69,8 +69,8 @@ def getSampledDataAndLabelsForSubepoch(log,
     start_time_sampling = time.time()
     training_or_validation_str = "Training" if train_or_val == "train" else "Validation"
 
-    log.print3(id_str + " :=:=:=:=:=:=: Starting to sample for next [" +
-               training_or_validation_str + "]... :=:=:=:=:=:=:")
+    log.print3(id_str +
+               " :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
 
     total_number_of_subjects = len(paths_per_chan_per_subj)
     inds_of_subjects_for_subep = \

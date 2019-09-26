@@ -400,9 +400,9 @@ class TrainSessionParameters(object):
 
         # Normalisation
         self.norm = cfg[cfg.NORM] if cfg[cfg.NORM] is not None else False
-        self.norm_zscore = cfg[cfg.NORM_ZSCORE] if cfg[cfg.NORM_ZSCORE] is not None else False
         self.norm_params = {}
-        if self.norm and self.norm_zcore:
+        self.norm_zscore = cfg[cfg.NORM_ZSCORE] if cfg[cfg.NORM_ZSCORE] is not None else False
+        if self.norm and self.norm_zscore:
             self.norm_params['norm_zscore'] = \
                 {'cutoff_percent': cfg[cfg.CO_PERCENT],
                  'cutoff_std': cfg[cfg.CO_STD],
@@ -680,14 +680,14 @@ class TrainSessionParameters(object):
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
         logPrint("Pad Input Images = " + str(self.pad_input))
-        logPrint("~~Normalization~~")
+        logPrint("~~Normalisation~~")
         logPrint("Normalisation = " + str(bool(self.norm)))
         if self.norm:
-            logPrint("Intensity Normalization = " + str(bool(self.norm_params['int_norm'])))
-            if self.norm_params['int_norm']:
-                logPrint("Cutoff percentile = " + str(self.norm_params['cutoff_percent']))
-                logPrint("Cutoff standard deviation = " + str(self.norm_params['cutoff_std']))
-                logPrint("Cutoff whole image mean = " + str(self.norm_params['cutoff_mean']))
+            logPrint("Intensity Normalisation (Z-Score) = " + str(bool(self.norm_params['norm_zscore'])))
+            if self.norm_params['norm_zscore']:
+                logPrint("(Z-Score) Cutoff percentile = " + str(self.norm_params['norm_zscore']['cutoff_percent']))
+                logPrint("(Z-Score) Cutoff standard deviation = " + str(self.norm_params['norm_zscore']['cutoff_std']))
+                logPrint("(Z-Score) Cutoff whole image mean = " + str(self.norm_params['norm_zscore']['cutoff_mean']))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")

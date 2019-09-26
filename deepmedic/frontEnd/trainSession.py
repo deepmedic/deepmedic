@@ -49,15 +49,14 @@ class TrainSession(Session):
         tensorboard_loggers = {}
 
         self._log.print3("----------- Creating Tensorboard Loggers -----------")
-        self.tensorboard_loggers = {}
 
         if create_log:
             for logger_type in logger_types:
-                self.tensorboard_loggers[logger_type] = TensorboardLogger(os.path.join(self._main_out_folder_abs,
-                                                                                       "tensorboard",
-                                                                                       self._sess_name,
-                                                                                       logger_type),
-                                                                          tf_graph)
+                tensorboard_loggers[logger_type] = TensorboardLogger(os.path.join(self._main_out_folder_abs,
+                                                                                  "tensorboard",
+                                                                                  self._sess_name,
+                                                                                  logger_type),
+                                                                     tf_graph)
             self._log.print3("Loggers created successfully")
         else:
             for logger_type in logger_types:
