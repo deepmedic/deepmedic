@@ -394,13 +394,14 @@ class TrainSessionParameters(object):
             self.errorRequireNamesOfPredictionsVal()
 
         # ===================== OTHERS======================
-        # Preprocessing
+        # ==== Preprocessing =====
+        # Padding
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
 
         # Normalisation
         self.norm = cfg[cfg.NORM]
-        if self.norm:
-            self.norm_params = {'int_norm': cfg[cfg.INT_NORM],
+        if self.norm_zscore:
+            self.norm_zscore_params = {'int_norm': cfg[cfg.INT_NORM],
                                 'cutoff_percent': cfg[cfg.CO_PERCENT],
                                 'cutoff_std': cfg[cfg.CO_STD],
                                 'cutoff_mean': cfg[cfg.CO_MEAN]}
