@@ -93,7 +93,7 @@ def neg_val_check(img, log):
     is_neg_int = img < 0
     num_voxels_neg_int = np.sum(is_neg_int)
     if num_voxels_neg_int > 0:
-        log.print3("[WARNING] One image has " + str(num_voxels_neg_int) +
+        log.print3("WARN: One image has " + str(num_voxels_neg_int) +
                    " voxels with intensity below zero! Unexpected!\n" +
                    "The voxels with negative ints have (min, max, mean) = (" + str(np.min(img[is_neg_int])) + ", " +
                    str(np.max(img[is_neg_int])) + ", " + str(np.mean(img[is_neg_int])) + ").")
