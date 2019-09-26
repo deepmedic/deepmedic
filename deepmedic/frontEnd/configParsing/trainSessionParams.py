@@ -399,17 +399,17 @@ class TrainSessionParameters(object):
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
 
         # Normalisation
-        self.norm = cfg[cfg.NORM]
-        if self.norm_zscore:
-            self.norm_zscore_params = {'int_norm': cfg[cfg.INT_NORM],
-                                'cutoff_percent': cfg[cfg.CO_PERCENT],
-                                'cutoff_std': cfg[cfg.CO_STD],
-                                'cutoff_mean': cfg[cfg.CO_MEAN]}
+        self.norm = cfg[cfg.NORM] if cfg[cfg.NORM] is not None else False
+        self.norm_zscore = cfg[cfg.NORM_ZSCORE] if cfg[cfg.NORM_ZSCORE] is not None else False
+        self.norm_params = {}
+        if self.norm and self.norm_zcore:
+            self.norm_params['norm_zscore'] = \
+                {'cutoff_percent': cfg[cfg.CO_PERCENT],
+                 'cutoff_std': cfg[cfg.CO_STD],
+                 'cutoff_mean': cfg[cfg.CO_MEAN] if cfg[cfg.CO_MEAN] is not None else False
+                 }
         else:
-            self.norm_params = {'int_norm': False,
-                                'cutoff_percent': None,
-                                'cutoff_std': None,
-                                'cutoff_mean': False}
+            self.norm_params['norm_zscore'] = None
 
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
@@ -548,9 +548,6 @@ class TrainSessionParameters(object):
 
     def get_tensorboard_bool(self):
         return self.tensorboardLog
-
-    def get_norm_params(self):
-        return self.norm_params
 
     def print_params(self):
         logPrint = self.log.print3
@@ -748,7 +745,11 @@ class TrainSessionParameters(object):
                 self.filepathsToSaveFeaturesForEachPatientVal,
 
                 # -------- Others --------
-                self.run_input_checks
+                self.run_input_checks,
+
+                # -------- Normalisation ------
+                self.norm,
+                self.norm_params
                 ]
         return args
 

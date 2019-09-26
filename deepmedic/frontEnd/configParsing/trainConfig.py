@@ -39,8 +39,8 @@ class TrainConfig(Config):
     NUM_OF_PROC_SAMPL = "num_processes_sampling"
 
     # ~~~~~ Preprocessing ~~~~~~~~
+    NORM = 'normalisation'
     NORM_ZSCORE = 'norm_zscore'
-    INT_NORM = 'intensity_norm'
     CO_PERCENT = "cutoff_percent"
     CO_STD = "cutoff_std"
     CO_MEAN = "cutoff_mean"

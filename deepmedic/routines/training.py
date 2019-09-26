@@ -185,10 +185,12 @@ def do_training(sessionTf,
                 # -------- Others --------
                 run_input_checks,
 
-                # ------- loggers -------
-                tensorboard_loggers=None,
                 # ---- Normalization ----
-                norm_params=None
+                norm,
+                norm_params,
+
+                # ------- loggers -------
+                tensorboard_loggers
                 ):
     id_str = "[MAIN|PID:" + str(os.getpid()) + "]"
     start_time_train = time.time()
@@ -212,6 +214,7 @@ def do_training(sessionTf,
                                pad_input,
                                augm_img_prms,
                                augm_sample_prms,
+                               norm,
                                norm_params)
     args_for_sampling_val = (log,
                              "val",
@@ -228,6 +231,7 @@ def do_training(sessionTf,
                              pad_input,
                              None,  # no augmentation in val.
                              None,  # no augmentation in val.
+                             norm,
                              norm_params)
 
     sampling_job_submitted_train = False

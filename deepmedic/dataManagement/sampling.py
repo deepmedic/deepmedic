@@ -58,7 +58,8 @@ def getSampledDataAndLabelsForSubepoch(log,
                                        augm_img_prms,
                                        augm_sample_prms,
                                        # Normalisation,
-                                       norm_params=None
+                                       norm,
+                                       norm_params
                                        ):
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -114,6 +115,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                          inds_of_subjects_for_subep,
                          n_samples_per_subj,
                          # Normalization
+                         norm,
                          norm_params]
 
     log.print3(id_str + " Will sample from [" + str(n_subjects_for_subep) +
@@ -263,6 +265,7 @@ def load_subj_and_get_samples(job_i,
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
                               n_samples_per_subj,
+                              norm,
                               norm_params):
     # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
@@ -299,8 +302,8 @@ def load_subj_and_get_samples(job_i,
                               cnn3d.recFieldCnn,  # used if pad_input_imgs
                               dims_highres_segment)  # used if pad_input_imgs.
 
-    if norm_params['int_norm']:
-        channels = normalize_images(log, channels, roi_mask, norm_params=norm_params, id_str=id_str)
+    if norm and norm_params['norm_zscore']:
+        channels = normalize_images(log, channels, roi_mask, norm_params=norm_params['norm_zscore'], id_str=id_str)
 
     # Augment at image level:
     time_augm_0 = time.time()
