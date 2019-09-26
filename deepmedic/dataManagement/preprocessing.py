@@ -173,7 +173,7 @@ def print_norm_log(log, norm_params, num_channels, id_str=''):
                ', '.join(list(cutoff_types)) if cutoff_types else 'None')
 
 
-def normalize_images(log, channels, roi_mask, norm_params=None, id_str='', verbose=False):
+def normalise_zscore(log, channels, roi_mask, norm_params=None, id_str='', verbose=False):
 
     channels_norm = np.zeros(channels.shape)
     roi_mask_bool = roi_mask > 0

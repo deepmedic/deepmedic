@@ -23,7 +23,7 @@ from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3d
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.augmentSample import augment_sample
 from deepmedic.dataManagement.augmentImage import augment_images_of_case
-from deepmedic.dataManagement.preprocessing import normalize_images, init_norm_params
+from deepmedic.dataManagement.preprocessing import normalise_zscore, init_norm_params
 
 
 # Order of calls:
@@ -93,7 +93,7 @@ def getSampledDataAndLabelsForSubepoch(log,
     # Get how many samples I should get from each subject.
     n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
 
-    # Get normalization parameters dictionary
+    # Get normalisation parameters dictionary
     if norm_params is None:
         norm_params = init_norm_params()
 
@@ -303,7 +303,7 @@ def load_subj_and_get_samples(job_i,
                               dims_highres_segment)  # used if pad_input_imgs.
 
     if norm and norm_params['norm_zscore']:
-        channels = normalize_images(log, channels, roi_mask, norm_params=norm_params['norm_zscore'], id_str=id_str)
+        channels = normalise_zscore(log, channels, roi_mask, norm_params=norm_params['norm_zscore'], id_str=id_str)
 
     # Augment at image level:
     time_augm_0 = time.time()
