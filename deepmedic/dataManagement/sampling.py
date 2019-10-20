@@ -69,10 +69,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                " :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
 
     total_number_of_subjects = len(paths_per_chan_per_subj)
-    inds_of_subjects_for_subep = \
-        get_random_subjects_to_train_subep(total_number_of_subjects=total_number_of_subjects,
-                                           max_subjects_on_gpu_for_subepoch=max_n_cases_per_subep,
-                                           get_max_subjects_for_gpu_even_if_total_less=False)
+    inds_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects, max_n_cases_per_subep)
 
     log.print3(id_str + " Out of [" + str(total_number_of_subjects) + "] subjects given for [" +
                training_or_validation_str + "], we will sample from maximum [" + str(max_n_cases_per_subep) +
@@ -221,7 +218,8 @@ def get_random_subjects_to_train_subep(total_number_of_subjects,
                 number_of_extra_subjects_to_get_to_fill_gpu = min(
                     max_subjects_on_gpu_for_subepoch - len(random_order_chosen_subjects), total_number_of_subjects)
                 random_order_chosen_subjects += (subjects_indices[:number_of_extra_subjects_to_get_to_fill_gpu])
-            assert len(random_order_chosen_subjects) != max_subjects_on_gpu_for_subepoch
+            assert len(random_order_chosen_subjects) == max_subjects_on_gpu_for_subepoch
+            
     else:
         random_order_chosen_subjects += subjects_indices[:max_subjects_on_gpu_for_subepoch]
 
@@ -330,7 +328,7 @@ def load_subj_and_get_samples(job_i,
             log.print3( id_str + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string +
                         "] samples from this subject!")
             assert n_samples_for_cat == 0
-
+            
         coords_of_samples = sample_coords_of_segments(log,
                                                       job_i,
                                                       n_samples_for_cat,
@@ -382,7 +380,6 @@ def load_imgs_of_subject(log,
                          ):
     # paths_per_chan_per_subj: List of lists. One sublist per case. Each should contain...
     # ... as many elements(strings-filenamePaths) as numberOfChannels, pointing to (nii) channels of this case.
-    assert subj_i < len(paths_per_chan_per_subj)
     
     id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]" if job_i is not None else ""  # None in Test
     log.print3(id_str + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
@@ -441,7 +438,8 @@ def load_imgs_of_subject(log,
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[
                 subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
-            assert np.all(weightedMapForThisCatData >= 0)
+            if not np.all(weightedMapForThisCatData >= 0):
+                raise ValueError("Negative values found in weightmap. Unexpected. Zero or positives allowed.")
             wmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
     else:
         wmaps_to_sample_per_cat = None
