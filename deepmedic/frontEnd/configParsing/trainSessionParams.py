@@ -392,14 +392,13 @@ class TrainSessionParameters(object):
                      or self.save_fms_flag_val):
             self.errorRequireNamesOfPredictionsVal()
 
-        # ===================== OTHERS======================
+        # ===================== PRE-PROCESSING ======================
         # === Data compatibility checks ===
         self.run_input_checks = cfg[cfg.RUN_INP_CHECKS] if cfg[cfg.RUN_INP_CHECKS] is not None else True
-        # ==== Preprocessing =====
-        # Padding
+        # == Padding ==
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
-        # Normalization
-        norm_zscore_prms = {'apply': False, # True/False
+        # == Normalization ==
+        norm_zscore_prms = {'apply': True, # True/False
                             'cutoff_percents': [0.,1.], # None or [low, high] with each 0.0 to 1.0
                             'cutoff_times_std': [99.,99.], # None or [low, high] with each positive Float
                             'cutoff_below_mean': False}
@@ -410,11 +409,13 @@ class TrainSessionParameters(object):
         self.norm_prms = {} # If None, no int norm.
         self.norm_prms['zscore'] = norm_zscore_prms
         
+        # ============= OTHERS ==========
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
         self.numberOfCasesVal = len(self.channelsFilepathsVal)
         
-        # HIDDENS, no config allowed for these at the moment:
+        # ========= HIDDENS =============
+        # no config allowed for these at the moment:
 
         # Re-weight samples in the cost function *on a per-class basis*: Type of re-weighting and training schedule.
         # E.g. to exclude a class, or counter class imbalance.
@@ -674,10 +675,10 @@ class TrainSessionParameters(object):
         logPrint("Subsampled pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[1]))
         logPrint("FC pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
 
-        logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
+        logPrint("~~~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~")
         logPrint("~~Data Compabitibility Checks~~")
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
-        logPrint("~~Pre Processing~~")
+        logPrint("~~Padding~~")
         logPrint("Pad Input Images = " + str(self.pad_input))
         logPrint("~~Intensity Normalization~~")
         logPrint("(Z-Score) Apply = " + str(self.norm_prms['zscore']['apply']))
@@ -738,10 +739,10 @@ class TrainSessionParameters(object):
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatientVal,
 
-                # --- Data Compatibility Checks ---
+                # --- Data compatibility checks ---
                 self.run_input_checks,
                 
-                # -------- Pre-processing ------
+                # -------- Pre-Processing ------
                 self.pad_input,
                 self.norm_prms
                 ]

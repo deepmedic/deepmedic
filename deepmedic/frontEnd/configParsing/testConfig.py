@@ -25,8 +25,6 @@ class TestConfig(Config):
     
     
     #[OPTIONALS]
-    PAD_INPUT = "padInputImagesBool"
-    
     ROI_MASKS = "roiMasks"
     
     GT_LABELS = "gtLabels"
@@ -43,6 +41,13 @@ class TestConfig(Config):
     INDICES_OF_FMS_TO_SAVE_NORMAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathway"
     INDICES_OF_FMS_TO_SAVE_SUBSAMPLED = "minMaxIndicesOfFmsToSaveFromEachLayerOfSubsampledPathway"
     INDICES_OF_FMS_TO_SAVE_FC = "minMaxIndicesOfFmsToSaveFromEachLayerOfFullyConnectedPathway"
+    
+    # ========= GENERICS =========
+    # ~~~~ Data compabitiliby checks ~~~
+    RUN_INP_CHECKS = "run_input_checks"
+    # ~~~~~ Preprocessing ~~~~~~~~
+    PAD_INPUT = "padInputImagesBool"
+    NORM_ZSCORE_PRMS = "norm_zscore_prms"
     
 
     def __init__(self, abs_path_to_cfg):

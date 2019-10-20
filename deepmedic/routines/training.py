@@ -419,12 +419,14 @@ def do_training(sessionTf,
                                                                          paths_to_masks_per_subj_val,
                                                                          namesForSavingSegmAndProbs,
                                                                          suffixForSegmAndProbsDict,
-                                                                         # --- Hyper parameters ---
+                                                                         # Hyper parameters
                                                                          batchsize_val_whole,
-                                                                         # --- Preprocessing ---
+                                                                         # Data compatibility checks
+                                                                         run_input_checks,
+                                                                         # Pre-Processing
                                                                          pad_input,
                                                                          norm_prms,
-                                                                         # --- Saving feature maps ---
+                                                                         # Saving feature maps
                                                                          save_fms_flag,
                                                                          idxs_fms_to_save,
                                                                          namesForSavingFms)

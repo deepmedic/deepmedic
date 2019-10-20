@@ -496,12 +496,14 @@ def inference_on_whole_volumes(sessionTf,
                                paths_to_masks_per_subj,
                                namesForSavingSegmAndProbs,
                                suffixForSegmAndProbsDict,
-                               # --- Hyper parameters ---
+                               # Hyper parameters
                                batchsize,
-                               # --- Preprocessing ---
+                               # Data compatibility checks
+                               run_input_checks,
+                               # Pre-Processing
                                pad_input,
                                norm_prms,
-                               # --- Saving feature maps ---
+                               # Saving feature maps
                                save_fms_flag,
                                idxs_fms_to_save,
                                namesForSavingFms):
@@ -521,7 +523,7 @@ def inference_on_whole_volumes(sessionTf,
 
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     n_classes = cnn3d.num_classes
-    n_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
+    n_subjects = len(paths_per_chan_per_subj)
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
@@ -545,12 +547,12 @@ def inference_on_whole_volumes(sessionTf,
          padding_left_right_per_axis) = load_and_preproc_imgs_of_subj(log, "", "test",
                                                       # For loading
                                                       subj_i,
-                                                      listOfFilepathsToEachChannelOfEachPatient,
-                                                      listOfFilepathsToGtLabelsOfEachPatient,
+                                                      paths_per_chan_per_subj,
+                                                      paths_to_lbls_per_subj,
                                                       None,
-                                                      listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                                                      paths_to_masks_per_subj,
                                                       # For preprocessing
-                                                      False,  # run_input_checks.
+                                                      run_input_checks,
                                                       n_classes,
                                                       pad_input,
                                                       cnn3d.recFieldCnn,
@@ -586,20 +588,20 @@ def inference_on_whole_volumes(sessionTf,
         # Save predicted segmentations
         save_pred_seg(pred_seg_u_in_roi,
                       savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
-                      namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+                      namesForSavingSegmAndProbs, paths_per_chan_per_subj, subj_i, log)
 
         # Save probability maps
         save_prob_maps(prob_maps_vols_u_in_roi,
                        savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
-                       namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+                       namesForSavingSegmAndProbs, paths_per_chan_per_subj, subj_i, log)
 
         # Save feature maps
         save_fms_individual(save_fms_flag, array_fms_to_save_u, cnn3d.pathways, idxs_fms_to_save,
-                            namesForSavingFms, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+                            namesForSavingFms, paths_per_chan_per_subj, subj_i, log)
         
         
         # ================= Evaluate DSC for this subject ========================
-        if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
+        if paths_to_lbls_per_subj is not None:  # GT was provided.
             metrics_per_subj_per_c = calc_metrics_for_subject(metrics_per_subj_per_c, subj_i,
                                                               pred_seg_u, pred_seg_u_in_roi,
                                                               gt_lbl_u, gt_lbl_u_in_roi,
@@ -610,7 +612,7 @@ def inference_on_whole_volumes(sessionTf,
         
     # ==================== Report average Dice Coefficient over all subjects ==================
     mean_metrics = None # To return something even if ground truth has not been given (in testing)
-    if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate.
+    if paths_to_lbls_per_subj is not None and n_subjects > 0:  # GT was given. Calculate.
         mean_metrics = calc_stats_of_metrics(metrics_per_subj_per_c, NA_PATTERN)
         report_mean_metrics(log, mean_metrics, NA_PATTERN, val_test_print)
 
