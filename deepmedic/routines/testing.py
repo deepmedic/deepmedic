@@ -559,6 +559,9 @@ def inference_on_whole_volumes(sessionTf,
                                                       cnn3d.pathways[0].getShapeOfInput("test")[2:],
                                                       norm_prms)
         
+        # ============== Augmentation ==================
+        # TODO: Add augmentation here. And aggregate results after prediction of the whole volumes
+        
         # ============== Predict whole volume ==================
         # array_fms_to_save will be None if not saving them.
         (prob_maps_vols,
