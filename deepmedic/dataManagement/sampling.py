@@ -452,7 +452,7 @@ def load_imgs_of_subject(log,
         
         if roi_mask.dtype.kind not in ['i','u']:
             dtype_roi_mask = 'int16'
-            log.print3(job_id + " WARN: Loaded ROI-ask is dtype [" + str(roi_mask.dtype) + "]."
+            log.print3(job_id + " WARN: Loaded ROI-mask is dtype [" + str(roi_mask.dtype) + "]."
                        " Rounding and casting to [" + dtype_roi_mask + "]!")
             roi_mask = np.rint(roi_mask).astype(dtype_roi_mask)    
     else:
