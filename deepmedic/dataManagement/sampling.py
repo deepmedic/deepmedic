@@ -304,7 +304,7 @@ def load_subj_and_get_samples(job_i,
     #(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_added_prepost_each_axis) = pad_imgs_of_case()
 
     if norm and norm_prms['norm_zscore']:
-        channels = normalise_zscore(log, channels, roi_mask, norm_prms=norm_prms['norm_zscore'], id_str=id_str)
+        channels = normalise_zscore(log, channels, roi_mask, norm_prms['norm_zscore'], id_str=id_str)
 
     # Augment at image level:
     time_augm_0 = time.time()
@@ -320,10 +320,10 @@ def load_subj_and_get_samples(job_i,
 
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
-    sampling_maps_per_cat = sampling_type.logicDecidingSamplingMapsPerCategory(wmaps_to_sample_per_cat,
-                                                                               gt_lbl_img,
-                                                                               roi_mask,
-                                                                               dims_of_scan)
+    sampling_maps_per_cat = sampling_type.derive_sampling_maps_per_cat(wmaps_to_sample_per_cat,
+                                                                       gt_lbl_img,
+                                                                       roi_mask,
+                                                                       dims_of_scan)
 
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_i],
@@ -502,28 +502,28 @@ def load_imgs_of_subject(log,
 # made for 3d
 def sample_coords_of_segments(log,
                               job_i,
-                              numOfSegmentsToExtractForThisSubject,
-                              dimsOfSegmentRcz,
+                              n_samples,
+                              dims_of_segment,
                               dims_of_scan,
-                              weightMapToSampleFrom):
+                              sampling_map):
     """
-    This function returns the coordinates (index) of the "central" voxel of sampled image parts (1voxel to the left if even part-dimension).
-    It also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
+    Returns: [ coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled ]
+             Coordinates (xyz indices) of the "central" voxel of sampled segments (1 voxel to the left if dimension is even).
+             Also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
     
-    Return value: [ rcz-coordsOfCentralVoxelsOfPartsSampled, rcz-sliceCoordsOfImagePartsSampled ]
-    > coordsOfCentralVoxelsOfPartsSampled : an array with shape: 3(rcz) x numOfSegmentsToExtractForThisSubject. 
-        Example: [ rCoordsForCentralVoxelOfEachPart, cCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
-        >> r/c/z-CoordsForCentralVoxelOfEachPart : A 1-dim array with numOfSegmentsToExtractForThisSubject, that holds the r-index within the image of each sampled part.
-    > sliceCoordsOfImagePartsSampled : 3(rcz) x NumberOfImagePartSamples x 2. The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
-        Example: [ r-sliceCoordsOfImagePart, c-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
+    > coordsOfCentralVoxelsOfPartsSampled: array with shape: 3(xyz) x n_samples. 
+        Example: [ xCoordsForCentralVoxelOfEachPart, yCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
+        >> x/y/z-CoordsForCentralVoxelOfEachPart: 1-dim array with n_samples, holding the x-indices of samples in image.
+    > sliceCoordsOfImagePartsSampled: 3(xyz) x NumberOfImagePartSamples x 2.
+        The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
+        Example: [ x-sliceCoordsOfImagePart, y-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
     """
     id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]"
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called.
     # Which is still fine.
-    if np.sum(weightMapToSampleFrom) == 0:
-        log.print3(
-            id_str + " WARN: The sampling mask/map was found just zeros! No image parts were sampled for this subject!")
+    if np.sum(sampling_map) == 0:
+        log.print3(id_str + " WARN: Sampling map was found just zeros! No image segments were sampled from this subject!")
         return [[[], [], []], [[], [], []]]
 
     imagePartsSampled = []
@@ -541,35 +541,34 @@ def sample_coords_of_segments(log,
     # I want 13 dim ImagePart)
 
     # dim1: 1 row per r,c,z. Dim2: left/right width not to sample from (=half segment).
-    halfImagePartBoundaries = np.zeros((len(dimsOfSegmentRcz), 2),
-                                       dtype='int32')
+    halfImagePartBoundaries = np.zeros((len(dims_of_segment), 2), dtype='int32')
 
     # The below starts all zero. Will be Multiplied by other true-false arrays expressing if the relevant
     # voxels are within boundaries.
     # In the end, the final vector will be true only for the indices of lesions that are within all boundaries.
-    booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries = np.zeros(weightMapToSampleFrom.shape, dtype="int32")
+    booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries = np.zeros(sampling_map.shape, dtype="int32")
 
     # This loop leads to booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries to be true for the indices ...
     # ...that allow getting an imagePart CENTERED on them, and be safely within image boundaries. Note that ...
     # ... if the imagePart is of even dimension, the "central" voxel is one voxel to the left.
-    for rcz_i in range(len(dimsOfSegmentRcz)):
-        if dimsOfSegmentRcz[rcz_i] % 2 == 0:  # even
-            dimensionDividedByTwo = dimsOfSegmentRcz[rcz_i] // 2
+    for rcz_i in range(len(dims_of_segment)):
+        if dims_of_segment[rcz_i] % 2 == 0:  # even
+            dimensionDividedByTwo = dims_of_segment[rcz_i] // 2
             # central of ImagePart is 1 vox closer to begining of axes.
             halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwo - 1,
                                               dimensionDividedByTwo]
         else:  # odd
-            dimensionDividedByTwoFloor = math.floor(
-                dimsOfSegmentRcz[rcz_i] // 2)  # eg 5/2 = 2, with the 3rd voxel being the "central"
+            # If odd, middle voxel is the "central". Eg 5/2 = 2, with 3rd voxel being the central.
+            dimensionDividedByTwoFloor = math.floor(dims_of_segment[rcz_i] // 2)
             halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwoFloor, dimensionDividedByTwoFloor]
             # used to be [halfImagePartBoundaries[0][0]: -halfImagePartBoundaries[0][1]],
             # but in 2D case halfImagePartBoundaries might be ==0, causes problem and you get a null slice.
     booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries[
-    halfImagePartBoundaries[0][0]: dims_of_scan[0] - halfImagePartBoundaries[0][1],
-    halfImagePartBoundaries[1][0]: dims_of_scan[1] - halfImagePartBoundaries[1][1],
-    halfImagePartBoundaries[2][0]: dims_of_scan[2] - halfImagePartBoundaries[2][1]] = 1
+        halfImagePartBoundaries[0][0]: dims_of_scan[0] - halfImagePartBoundaries[0][1],
+        halfImagePartBoundaries[1][0]: dims_of_scan[1] - halfImagePartBoundaries[1][1],
+        halfImagePartBoundaries[2][0]: dims_of_scan[2] - halfImagePartBoundaries[2][1]] = 1
 
-    constrainedWithImageBoundariesMaskToSample = weightMapToSampleFrom * \
+    constrainedWithImageBoundariesMaskToSample = sampling_map * \
                                                  booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries
     # normalize the probabilities to sum to 1, cause the function needs it as so.
     constrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample / (
@@ -580,13 +579,13 @@ def sample_coords_of_segments(log,
     # This is going to be a 3xNumberOfImagePartSamples array.
     indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts = np.random.choice(
         constrainedWithImageBoundariesMaskToSample.size,
-        size=numOfSegmentsToExtractForThisSubject,
+        size=n_samples,
         replace=True,
         p=flattenedConstrainedWithImageBoundariesMaskToSample)
     # np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), 
     # where each of the array in the tuple has the same shape as the listOfIndices. 
     # They have the r/c/z coords that correspond to the index of the flattened version.
-    # So, coordsOfCentralVoxelsOfPartsSampled will be array of shape: 3(rcz) x numOfSegmentsToExtractForThisSubject.
+    # So, coordsOfCentralVoxelsOfPartsSampled will be array of shape: 3(rcz) x n_samples.
     coordsOfCentralVoxelsOfPartsSampled = np.asarray(
         np.unravel_index(indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts,
                          constrainedWithImageBoundariesMaskToSample.shape  # the shape of the roi_mask/scan.
