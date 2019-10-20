@@ -110,11 +110,7 @@ class TrainConfig(Config):
     RUN_INP_CHECKS = "run_input_checks"
     # ~~~~~ Preprocessing ~~~~~~~~
     PAD_INPUT = "padInputImagesBool"
-    DO_NORM = 'normalize'
-    NORM_ZSCORE = 'norm_zscore'
-    CO_PERCENT = "cutoff_percent"
-    CO_STD = "cutoff_std"
-    CO_MEAN = "cutoff_mean"
+    NORM_ZSCORE_PRMS = "norm_zscore_prms"
     
     # ======== DEPRECATED, backwards compatibility =======
     REFL_AUGM_PER_AXIS = "reflectImagesPerAxis"

@@ -23,7 +23,7 @@ from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3d
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.augmentSample import augment_sample
 from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
-from deepmedic.dataManagement.preprocessing import normalise_zscore, init_norm_prms
+from deepmedic.dataManagement.preprocessing import normalize_int_of_imgs
 
 
 # Order of calls:
@@ -55,11 +55,9 @@ def getSampledDataAndLabelsForSubepoch(log,
                                        paths_to_wmaps_per_sampl_cat_per_subj,
                                        # Preprocessing & Augmentation
                                        pad_input_imgs,
-                                       norm,
                                        norm_prms,
                                        augm_img_prms,
-                                       augm_sample_prms
-                                       ):
+                                       augm_sample_prms):
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
 
@@ -92,10 +90,6 @@ def getSampledDataAndLabelsForSubepoch(log,
     # Get how many samples I should get from each subject.
     n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
 
-    # Get normalisation parameters dictionary
-    if norm_prms is None:
-        norm_prms = init_norm_prms()
-
     args_sampling_job = [log,
                          train_or_val,
                          run_input_checks,
@@ -107,15 +101,14 @@ def getSampledDataAndLabelsForSubepoch(log,
                          paths_to_wmaps_per_sampl_cat_per_subj,
                          # Pre-processing:
                          pad_input_imgs,
+                         norm_prms,
                          augm_img_prms,
                          augm_sample_prms,
 
                          n_subjects_for_subep,
                          inds_of_subjects_for_subep,
-                         n_samples_per_subj,
-                         # Normalization
-                         norm,
-                         norm_prms]
+                         n_samples_per_subj
+                         ]
 
     log.print3(id_str + " Will sample from [" + str(n_subjects_for_subep) +
                "] subjects for next " + training_or_validation_str + "...")
@@ -258,14 +251,13 @@ def load_subj_and_get_samples(job_i,
                               paths_to_wmaps_per_sampl_cat_per_subj,
                               # Pre-processing:
                               pad_input_imgs,
+                              norm_prms,
                               augm_img_prms,
                               augm_sample_prms,
 
                               n_subjects_for_subep,
                               inds_of_subjects_for_subep,
-                              n_samples_per_subj,
-                              norm,
-                              norm_prms):
+                              n_samples_per_subj):
     # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channs_of_samples_per_path, lbls_predicted_part_of_samples )
@@ -303,9 +295,9 @@ def load_subj_and_get_samples(job_i,
     
     #(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_added_prepost_each_axis) = pad_imgs_of_case()
 
-    if norm and norm_prms['norm_zscore']:
-        channels = normalise_zscore(log, channels, roi_mask, norm_prms['norm_zscore'], id_str=id_str)
-
+    channels = normalize_int_of_imgs(log, channels, roi_mask, norm_prms, id_str)
+    
+    
     # Augment at image level:
     time_augm_0 = time.time()
     (channels,

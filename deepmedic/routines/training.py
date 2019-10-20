@@ -131,8 +131,9 @@ def do_training(sessionTf,
                 saver_all,
                 cnn3d,
                 trainer,
+                tensorboard_loggers,
+                
                 log,
-
                 fileToSaveTrainedCnnModelTo,
 
                 val_on_samples_during_train,
@@ -186,11 +187,7 @@ def do_training(sessionTf,
 
                 # -------- Pre-processing ------
                 pad_input,
-                do_norm,
-                norm_prms,
-
-                # ------- loggers -------
-                tensorboard_loggers
+                norm_prms
                 ):
     id_str = "[MAIN|PID:" + str(os.getpid()) + "]"
     start_time_train = time.time()
@@ -212,7 +209,6 @@ def do_training(sessionTf,
                                listOfFilepathsToRoiMaskOfEachPatientTraining,
                                paths_to_wmaps_per_sampl_cat_per_subj_train,
                                pad_input,
-                               do_norm,
                                norm_prms,
                                augm_img_prms,
                                augm_sample_prms
@@ -230,7 +226,6 @@ def do_training(sessionTf,
                              listOfFilepathsToRoiMaskOfEachPatientValidation,
                              paths_to_wmaps_per_sampl_cat_per_subj_val,
                              pad_input,
-                             do_norm,
                              norm_prms,
                              None,  # no augmentation in val.
                              None  # no augmentation in val.

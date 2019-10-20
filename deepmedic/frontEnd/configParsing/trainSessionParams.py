@@ -398,19 +398,18 @@ class TrainSessionParameters(object):
         # ==== Preprocessing =====
         # Padding
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
-        # Normalisation
-        self.do_norm = cfg[cfg.DO_NORM] if cfg[cfg.DO_NORM] is not None else False
-        self.norm_prms = {}
-        self.norm_zscore = cfg[cfg.NORM_ZSCORE] if cfg[cfg.NORM_ZSCORE] is not None else False
-        if self.do_norm and self.norm_zscore:
-            self.norm_prms['norm_zscore'] = \
-                {'cutoff_percent': cfg[cfg.CO_PERCENT],
-                 'cutoff_std': cfg[cfg.CO_STD],
-                 'cutoff_mean': cfg[cfg.CO_MEAN] if cfg[cfg.CO_MEAN] is not None else False
-                 }
-        else:
-            self.norm_prms['norm_zscore'] = None
-
+        # Normalization
+        norm_zscore_prms = {'apply': False, # True/False
+                            'cutoff_percents': [0.,1.], # None or [low, high] with each 0.0 to 1.0
+                            'cutoff_times_std': [99.,99.], # None or [low, high] with each positive Float
+                            'cutoff_below_mean': False}
+        if cfg[cfg.NORM_ZSCORE_PRMS] is not None:
+            for key in cfg[cfg.NORM_ZSCORE_PRMS]:
+                norm_zscore_prms[key] = cfg[cfg.NORM_ZSCORE_PRMS][key]
+        # Aggregate params from all types of normalization:
+        self.norm_prms = {} # If None, no int norm.
+        self.norm_prms['zscore'] = norm_zscore_prms
+        
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
         self.numberOfCasesVal = len(self.channelsFilepathsVal)
@@ -680,13 +679,11 @@ class TrainSessionParameters(object):
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
         logPrint("~~Pre Processing~~")
         logPrint("Pad Input Images = " + str(self.pad_input))
-        logPrint("Normalize input images = " + str(bool(self.do_norm)))
-        if self.do_norm:
-            logPrint("Intensity Normalisation (Z-Score) = " + str(bool(self.norm_prms['norm_zscore'])))
-            if self.norm_prms['norm_zscore']:
-                logPrint("(Z-Score) Cutoff percentile = " + str(self.norm_prms['norm_zscore']['cutoff_percent']))
-                logPrint("(Z-Score) Cutoff standard deviation = " + str(self.norm_prms['norm_zscore']['cutoff_std']))
-                logPrint("(Z-Score) Cutoff whole image mean = " + str(self.norm_prms['norm_zscore']['cutoff_mean']))
+        logPrint("~~Intensity Normalization~~")
+        logPrint("(Z-Score) Apply = " + str(self.norm_prms['zscore']['apply']))
+        logPrint("(Z-Score) Cutoff below/above percentiles = " + str(self.norm_prms['zscore']['cutoff_percents']))
+        logPrint("(Z-Score) Cutoff below/above times the std = " + str(self.norm_prms['zscore']['cutoff_times_std']))
+        logPrint("(Z-Score) Cutoff below whole image mean = " + str(self.norm_prms['zscore']['cutoff_below_mean']))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -746,7 +743,6 @@ class TrainSessionParameters(object):
                 
                 # -------- Pre-processing ------
                 self.pad_input,
-                self.do_norm,
                 self.norm_prms
                 ]
         return args
