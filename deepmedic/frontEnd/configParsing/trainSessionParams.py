@@ -400,8 +400,9 @@ class TrainSessionParameters(object):
         # == Normalization ==
         norm_zscore_prms = {'apply': True, # True/False
                             'cutoff_percents': [0.,1.], # None or [low, high] with each 0.0 to 1.0
-                            'cutoff_times_std': [99.,99.], # None or [low, high] with each positive Float
-                            'cutoff_below_mean': False}
+                            'cutoff_times_std': [10.,10.], # None or [low, high] with each positive Float
+                            'cutoff_below_mean': False,
+                            'verbose': False}
         if cfg[cfg.NORM_ZSCORE_PRMS] is not None:
             for key in cfg[cfg.NORM_ZSCORE_PRMS]:
                 norm_zscore_prms[key] = cfg[cfg.NORM_ZSCORE_PRMS][key]
