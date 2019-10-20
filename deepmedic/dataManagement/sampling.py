@@ -22,8 +22,8 @@ from deepmedic.dataManagement.io import loadVolume
 from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.augmentSample import augment_sample
-from deepmedic.dataManagement.augmentImage import augment_images_of_case
-from deepmedic.dataManagement.preprocessing import normalise_zscore, init_norm_params
+from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
+from deepmedic.dataManagement.preprocessing import normalise_zscore, init_norm_prms
 
 
 # Order of calls:
@@ -55,11 +55,10 @@ def getSampledDataAndLabelsForSubepoch(log,
                                        paths_to_wmaps_per_sampl_cat_per_subj,
                                        # Preprocessing & Augmentation
                                        pad_input_imgs,
-                                       augm_img_prms,
-                                       augm_sample_prms,
-                                       # Normalisation,
                                        norm,
-                                       norm_params
+                                       norm_prms,
+                                       augm_img_prms,
+                                       augm_sample_prms
                                        ):
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -94,8 +93,8 @@ def getSampledDataAndLabelsForSubepoch(log,
     n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
 
     # Get normalisation parameters dictionary
-    if norm_params is None:
-        norm_params = init_norm_params()
+    if norm_prms is None:
+        norm_prms = init_norm_prms()
 
     args_sampling_job = [log,
                          train_or_val,
@@ -116,7 +115,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                          n_samples_per_subj,
                          # Normalization
                          norm,
-                         norm_params]
+                         norm_prms]
 
     log.print3(id_str + " Will sample from [" + str(n_subjects_for_subep) +
                "] subjects for next " + training_or_validation_str + "...")
@@ -266,7 +265,7 @@ def load_subj_and_get_samples(job_i,
                               inds_of_subjects_for_subep,
                               n_samples_per_subj,
                               norm,
-                              norm_params):
+                              norm_prms):
     # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channs_of_samples_per_path, lbls_predicted_part_of_samples )
@@ -285,7 +284,7 @@ def load_subj_and_get_samples(job_i,
     (channels,  # nparray [channels,dim0,dim1,dim2]
      gt_lbl_img,
      roi_mask,
-     weightmaps_to_sample_per_cat,
+     wmaps_to_sample_per_cat,
      pad_added_prepost_each_axis
      ) = load_imgs_of_subject(log,
                               job_i,
@@ -301,37 +300,38 @@ def load_subj_and_get_samples(job_i,
                               pad_input_imgs,
                               cnn3d.recFieldCnn,  # used if pad_input_imgs
                               dims_highres_segment)  # used if pad_input_imgs.
+    
+    #(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_added_prepost_each_axis) = pad_imgs_of_case()
 
-    if norm and norm_params['norm_zscore']:
-        channels = normalise_zscore(log, channels, roi_mask, norm_params=norm_params['norm_zscore'], id_str=id_str)
+    if norm and norm_prms['norm_zscore']:
+        channels = normalise_zscore(log, channels, roi_mask, norm_prms=norm_prms['norm_zscore'], id_str=id_str)
 
     # Augment at image level:
     time_augm_0 = time.time()
     (channels,
      gt_lbl_img,
      roi_mask,
-     weightmaps_to_sample_per_cat) = augment_images_of_case(channels,
-                                                            gt_lbl_img,
-                                                            roi_mask,
-                                                            weightmaps_to_sample_per_cat,
-                                                            augm_img_prms)
+     wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
+                                                     gt_lbl_img,
+                                                     roi_mask,
+                                                     wmaps_to_sample_per_cat,
+                                                     augm_img_prms)
     time_augm_img = time.time() - time_augm_0
 
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
-    sampling_maps_per_cat = sampling_type.logicDecidingSamplingMapsPerCategory(
-        weightmaps_to_sample_per_cat,
-        gt_lbl_img,
-        roi_mask,
-        dims_of_scan)
+    sampling_maps_per_cat = sampling_type.logicDecidingSamplingMapsPerCategory(wmaps_to_sample_per_cat,
+                                                                               gt_lbl_img,
+                                                                               roi_mask,
+                                                                               dims_of_scan)
 
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_i],
                                                                                    sampling_maps_per_cat)
 
     str_samples_per_cat = " Got samples per category: "
-    for cat_i in range(sampling_type.getNumberOfCategoriesToSample()):
-        cat_string = sampling_type.getStringsPerCategoryToSample()[cat_i]
+    for cat_i in range(sampling_type.get_n_sampling_cats()):
+        cat_string = sampling_type.get_sampling_cats_as_str()[cat_i]
         n_samples_for_cat = n_samples_per_cat[cat_i]
         sampling_map = sampling_maps_per_cat[cat_i]
         # Check if the class is valid for sampling.
@@ -478,7 +478,7 @@ def load_imgs_of_subject(log,
     # May be provided only for training.
     if train_val_or_test != "test" and paths_to_wmaps_per_sampl_cat_per_subj is not None:
         n_sampl_categs = len(paths_to_wmaps_per_sampl_cat_per_subj)
-        weightmaps_to_sample_per_cat = np.zeros([n_sampl_categs] + list(channels[0].shape), dtype="float32")
+        wmaps_to_sample_per_cat = np.zeros([n_sampl_categs] + list(channels[0].shape), dtype="float32")
         for cat_i in range(n_sampl_categs):
             filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[
@@ -492,11 +492,11 @@ def load_imgs_of_subject(log,
                                                          dims_highres_segment) \
                 if pad_input_imgs else [weightedMapForThisCatData, pad_added_prepost_each_axis]
 
-            weightmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
+            wmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
     else:
-        weightmaps_to_sample_per_cat = None
+        wmaps_to_sample_per_cat = None
 
-    return channels, imageGtLabels, roi_mask, weightmaps_to_sample_per_cat, pad_added_prepost_each_axis
+    return channels, imageGtLabels, roi_mask, wmaps_to_sample_per_cat, pad_added_prepost_each_axis
 
 
 # made for 3d

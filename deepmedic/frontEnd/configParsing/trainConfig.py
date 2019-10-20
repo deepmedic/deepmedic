@@ -37,13 +37,6 @@ class TrainConfig(Config):
     NUM_TR_SEGMS_LOADED_PERSUB = "numberTrainingSegmentsLoadedOnGpuPerSubep"
     BATCHSIZE_TR = "batchsize_train"
     NUM_OF_PROC_SAMPL = "num_processes_sampling"
-
-    # ~~~~~ Preprocessing ~~~~~~~~
-    NORM = 'normalisation'
-    NORM_ZSCORE = 'norm_zscore'
-    CO_PERCENT = "cutoff_percent"
-    CO_STD = "cutoff_std"
-    CO_MEAN = "cutoff_mean"
     
     # ~~~~~ Learning rate schedule ~~~~~
     LR_SCH_TYPE = "typeOfLearningRateSchedule"
@@ -113,8 +106,15 @@ class TrainConfig(Config):
     LAYERS_TO_FREEZE_FC = "layersToFreezeFC"
     
     # ========= GENERICS =========
-    PAD_INPUT = "padInputImagesBool"
+    # ~~~~ Data compabitiliby checks ~~~
     RUN_INP_CHECKS = "run_input_checks"
+    # ~~~~~ Preprocessing ~~~~~~~~
+    PAD_INPUT = "padInputImagesBool"
+    DO_NORM = 'normalize'
+    NORM_ZSCORE = 'norm_zscore'
+    CO_PERCENT = "cutoff_percent"
+    CO_STD = "cutoff_std"
+    CO_MEAN = "cutoff_mean"
     
     # ======== DEPRECATED, backwards compatibility =======
     REFL_AUGM_PER_AXIS = "reflectImagesPerAxis"

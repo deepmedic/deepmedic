@@ -36,12 +36,13 @@ def trainOrValidateForSubepoch(log,
                                labelsForCentralOfSegmentsForSubep):
     """
     Returned array is of dimensions [NumberOfClasses x 6]
-    For each class: [meanAccuracyOfSubepoch, meanAccuracyOnPositivesOfSubepoch, meanAccuracyOnNegativesOfSubepoch, meanDiceOfSubepoch, mean_cost_subep]
+    For each class: [mean acc of subep, mean acc on positives, mean acc on negatives, mean DSC of subep, mean cost of subep]
     In the case of VALIDATION, mean_cost_subep is just a placeholder. Only valid when training.
     """
 
     costs_of_batches = []
-    # each row in the array below will hold the number of Real Positives, Real Negatives, True Predicted Positives and True Predicted Negatives in the subepoch, in this order.
+    # Each row of array below holds number of:
+    #     Real Positives, Real Negatives, True Predicted Positives, True Predicted Negatives in the subepoch, in this order.
     array_per_class_RpRnTpTn_in_subep = np.zeros([cnn3d.num_classes, 4], dtype="int32")
 
     print_progress_step = max(1, num_batches // 5)
@@ -160,15 +161,13 @@ def do_training(sessionTf,
                 num_parallel_proc_sampling,  # -1: seq. 0: thread for sampling. >0: multiprocess sampling
 
                 # -------Sampling Type---------
-                samplingTypeInstanceTraining,
+                sampling_type_inst_tr,
                 # Instance of the deepmedic/samplingType.SamplingType class for training and validation
-                samplingTypeInstanceValidation,
+                sampling_type_inst_val,
                 batchsize_train,
                 batchsize_val_samples,
                 batchsize_val_whole,
 
-                # -------Preprocessing-----------
-                pad_input,
                 # -------Data Augmentation-------
                 augm_img_prms,
                 augm_sample_prms,
@@ -182,12 +181,13 @@ def do_training(sessionTf,
                 idxs_fms_to_save,
                 namesForSavingFms,
 
-                # -------- Others --------
+                # --- Data Compatibility Checks ---
                 run_input_checks,
 
-                # ---- Normalization ----
-                norm,
-                norm_params,
+                # -------- Pre-processing ------
+                pad_input,
+                do_norm,
+                norm_prms,
 
                 # ------- loggers -------
                 tensorboard_loggers
@@ -206,16 +206,17 @@ def do_training(sessionTf,
                                cnn3dWrapper,
                                max_n_cases_per_subep_train,
                                n_samples_per_subep_train,
-                               samplingTypeInstanceTraining,
+                               sampling_type_inst_tr,
                                listOfFilepathsToEachChannelOfEachPatientTraining,
                                listOfFilepathsToGtLabelsOfEachPatientTraining,
                                listOfFilepathsToRoiMaskOfEachPatientTraining,
                                paths_to_wmaps_per_sampl_cat_per_subj_train,
                                pad_input,
+                               do_norm,
+                               norm_prms,
                                augm_img_prms,
-                               augm_sample_prms,
-                               norm,
-                               norm_params)
+                               augm_sample_prms
+                               )
     args_for_sampling_val = (log,
                              "val",
                              num_parallel_proc_sampling,
@@ -223,16 +224,17 @@ def do_training(sessionTf,
                              cnn3dWrapper,
                              max_n_cases_per_subep_train,
                              n_samples_per_subep_val,
-                             samplingTypeInstanceValidation,
+                             sampling_type_inst_val,
                              listOfFilepathsToEachChannelOfEachPatientValidation,
                              listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
                              listOfFilepathsToRoiMaskOfEachPatientValidation,
                              paths_to_wmaps_per_sampl_cat_per_subj_val,
                              pad_input,
+                             do_norm,
+                             norm_prms,
                              None,  # no augmentation in val.
-                             None,  # no augmentation in val.
-                             norm,
-                             norm_params)
+                             None  # no augmentation in val.
+                             )
 
     sampling_job_submitted_train = False
     sampling_job_submitted_val = False
@@ -336,7 +338,7 @@ def do_training(sessionTf,
                     (channsOfSegmentsForSubepPerPathwayTrain,
                      labelsForCentralOfSegmentsForSubepTrain) = getSampledDataAndLabelsForSubepoch(
                         *args_for_sampling_train)
-                elif sampling_job_submitted_train:  # Sampling job should have been done in parallel with previous train/val. Just grab results.
+                elif sampling_job_submitted_train:  # Sampling job should have been done in parallel with previous train/val. Grab results.
                     (channsOfSegmentsForSubepPerPathwayTrain,
                      labelsForCentralOfSegmentsForSubepTrain) = parallelJobToGetDataForNextTraining.get()
                     sampling_job_submitted_train = False
@@ -350,7 +352,7 @@ def do_training(sessionTf,
                      labelsForCentralOfSegmentsForSubepTrain) = parallelJobToGetDataForNextTraining.get()
                     sampling_job_submitted_train = False
 
-                # ------------------------SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH-----------------
+                # ----- SUBMIT PARALLEL JOB TO GET VALIDATION/TRAINING DATA (if val is/not performed) FOR NEXT SUBEPOCH -----
                 if worker_pool is not None and not (val_on_whole_volumes_after_ep and (subepoch == num_subepochs - 1)):
                     if val_on_samples_during_train:
                         log.print3(id_str + " MULTIPROC: Before Training in subepoch #" + str(
@@ -410,8 +412,7 @@ def do_training(sessionTf,
 
             if val_on_whole_volumes_after_ep:
                 log.print3(
-                    "***Starting validation with Full Inference / Segmentation on validation subjects for Epoch #" + str(
-                        epoch) + "...***")
+                    "***Starting validation with segmentation of whole subjects for Epoch #" + str(epoch) + "...***")
 
                 mean_metrics_val_whole_vols = inference_on_whole_volumes(
                     sessionTf,

@@ -99,7 +99,7 @@ def neg_val_check(img, log):
                    str(np.max(img[is_neg_int])) + ", " + str(np.mean(img[is_neg_int])) + ").")
 
 
-def init_norm_params():
+def init_norm_prms():
     return {'int_norm': False,
             'cutoff_percent': None,
             'cutoff_std': None,
@@ -158,38 +158,38 @@ def get_norm_stats(log, src, roi_mask_bool,
     return norm_mean, norm_std
 
 
-def print_norm_log(log, norm_params, num_channels, id_str=''):
+def print_norm_log(log, norm_prms, num_channels, id_str=''):
 
     cutoff_types = []
 
-    if norm_params['cutoff_percent']:
+    if norm_prms['cutoff_percent']:
         cutoff_types += ['Percentile']
-    if norm_params['cutoff_std']:
+    if norm_prms['cutoff_std']:
         cutoff_types += ['Standard Deviation']
-    if norm_params['cutoff_mean']:
+    if norm_prms['cutoff_mean']:
         cutoff_types += ['Whole Image Mean']
 
     log.print3(id_str + "Normalising " + str(num_channels) + " channel(s) with the following cutoff type(s): " +
                ', '.join(list(cutoff_types)) if cutoff_types else 'None')
 
 
-def normalise_zscore(log, channels, roi_mask, norm_params=None, id_str='', verbose=False):
+def normalise_zscore(log, channels, roi_mask, norm_prms=None, id_str='', verbose=False):
 
     channels_norm = np.zeros(channels.shape)
     roi_mask_bool = roi_mask > 0
-    if norm_params is None:
-        norm_params = init_norm_params()
+    if norm_prms is None:
+        norm_prms = init_norm_prms()
 
     if id_str:
         id_str += ' '
 
-    print_norm_log(log, norm_params, len(channels), id_str=id_str)
+    print_norm_log(log, norm_prms, len(channels), id_str=id_str)
 
     for idx, channel in enumerate(channels):
         norm_mean, norm_std = get_norm_stats(log, channel, roi_mask_bool,
-                                             cutoff_percent=norm_params['cutoff_percent'],
-                                             cutoff_std=norm_params['cutoff_std'],
-                                             cutoff_mean=norm_params['cutoff_mean'],
+                                             cutoff_percent=norm_prms['cutoff_percent'],
+                                             cutoff_std=norm_prms['cutoff_std'],
+                                             cutoff_mean=norm_prms['cutoff_mean'],
                                              verbose=verbose,
                                              id_str=id_str)
         # Apply the normalization
