@@ -40,7 +40,7 @@ from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
 # Main sampling process during training. Executed in parallel while training on a batch on GPU.
 # Called from training.do_training()
 def getSampledDataAndLabelsForSubepoch(log,
-                                       train_or_val,
+                                       train_val_or_test,
                                        num_parallel_proc,
                                        run_input_checks,
                                        cnn3d,
@@ -57,24 +57,25 @@ def getSampledDataAndLabelsForSubepoch(log,
                                        norm_prms,
                                        augm_img_prms,
                                        augm_sample_prms):
+    # train_val_or_test: 'train', 'val' or 'test'
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
 
-    id_str = "[SAMPLER-TR|PID:" + str(os.getpid()) + "]" if train_or_val == "train" \
+    job_id = "[SAMPLER-TR|PID:" + str(os.getpid()) + "]" if train_val_or_test == "train" \
         else "[SAMPLER-VAL|PID:" + str(os.getpid()) + "]"
     start_time_sampling = time.time()
-    training_or_validation_str = "Training" if train_or_val == "train" else "Validation"
+    training_or_validation_str = "Training" if train_val_or_test == "train" else "Validation"
 
-    log.print3(id_str +
+    log.print3(job_id +
                " :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
 
     total_number_of_subjects = len(paths_per_chan_per_subj)
     inds_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects, max_n_cases_per_subep)
 
-    log.print3(id_str + " Out of [" + str(total_number_of_subjects) + "] subjects given for [" +
+    log.print3(job_id + " Out of [" + str(total_number_of_subjects) + "] subjects given for [" +
                training_or_validation_str + "], we will sample from maximum [" + str(max_n_cases_per_subep) +
                "] per subepoch.")
-    log.print3(id_str + " Shuffled indices of subjects that were randomly chosen: " + str(inds_of_subjects_for_subep))
+    log.print3(job_id + " Shuffled indices of subjects that were randomly chosen: " + str(inds_of_subjects_for_subep))
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
@@ -87,7 +88,7 @@ def getSampledDataAndLabelsForSubepoch(log,
     n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
 
     args_sampling_job = [log,
-                         train_or_val,
+                         train_val_or_test,
                          run_input_checks,
                          cnn3d,
                          sampling_type,
@@ -106,15 +107,15 @@ def getSampledDataAndLabelsForSubepoch(log,
                          n_samples_per_subj
                          ]
 
-    log.print3(id_str + " Will sample from [" + str(n_subjects_for_subep) +
+    log.print3(job_id + " Will sample from [" + str(n_subjects_for_subep) +
                "] subjects for next " + training_or_validation_str + "...")
 
     jobs_inds_to_do = list(range(n_subjects_for_subep))  # One job per subject.
 
     if num_parallel_proc <= 0:  # Sequentially
-        for job_i in jobs_inds_to_do:
+        for job_idx in jobs_inds_to_do:
             (channs_of_samples_from_job_per_path,
-             lbls_predicted_part_of_samples_from_job) = load_subj_and_get_samples(*([job_i] + args_sampling_job))
+             lbls_predicted_part_of_samples_from_job) = load_subj_and_get_samples(*([job_idx] + args_sampling_job))
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
                 # concat does not copy.
                 channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i]
@@ -124,47 +125,47 @@ def getSampledDataAndLabelsForSubepoch(log,
         while len(jobs_inds_to_do) > 0:  # While jobs remain.
             jobs = collections.OrderedDict()
 
-            log.print3(id_str + " ******* Spawning children processes to sample from [" +
+            log.print3(job_id + " ******* Spawning children processes to sample from [" +
                        str(len(jobs_inds_to_do)) + "] subjects*******")
-            log.print3(id_str + " MULTIPROC: Number of CPUs detected: " + str(multiprocessing.cpu_count()) +
+            log.print3(job_id + " MULTIPROC: Number of CPUs detected: " + str(multiprocessing.cpu_count()) +
                        ". Requested to use max: [" + str(num_parallel_proc) + "]")
             num_workers = min(num_parallel_proc, multiprocessing.cpu_count())
-            log.print3(id_str + " MULTIPROC: Spawning [" + str(num_workers) + "] processes to load data and sample.")
+            log.print3(job_id + " MULTIPROC: Spawning [" + str(num_workers) + "] processes to load data and sample.")
             worker_pool = multiprocessing.Pool(processes=num_workers, initializer=init_sampling_proc)
 
             try:  # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
-                for job_i in jobs_inds_to_do:  # submit jobs
-                    jobs[job_i] = worker_pool.apply_async(load_subj_and_get_samples, ([job_i] + args_sampling_job))
+                for job_idx in jobs_inds_to_do:  # submit jobs
+                    jobs[job_idx] = worker_pool.apply_async(load_subj_and_get_samples, ([job_idx] + args_sampling_job))
 
                 # copy with list(...), so that this loops normally even if something is removed from list.
-                for job_i in list(jobs_inds_to_do):
+                for job_idx in list(jobs_inds_to_do):
                     try:
                         # timeout in case process for some reason never started (happens in py3)
                         (channs_of_samples_from_job_per_path,
-                         lbls_predicted_part_of_samples_from_job) = jobs[job_i].get(timeout=30)
+                         lbls_predicted_part_of_samples_from_job) = jobs[job_idx].get(timeout=30)
                         for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
                             # concat does not copy.
                             channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i]
                         # concat does not copy.
                         lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job
-                        jobs_inds_to_do.remove(job_i)
+                        jobs_inds_to_do.remove(job_idx)
                     except multiprocessing.TimeoutError:
                         log.print3(
-                            id_str + "\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" +
-                            str(job_i) + "].\n WARN: MULTIPROC: Will resubmit job [" + str(job_i) + "].\n")
+                            job_id + "\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" +
+                            str(job_idx) + "].\n WARN: MULTIPROC: Will resubmit job [" + str(job_idx) + "].\n")
                         if num_workers == 1:
                             break  # If this 1 worker got stuck, every job will wait timeout. Slow. Recreate pool.
 
             except (Exception, KeyboardInterrupt) as e:
                 log.print3(
-                    id_str + "\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): " + str(e) + "\n")
+                    job_id + "\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): " + str(e) + "\n")
                 log.print3(traceback.format_exc())
                 worker_pool.terminate()
                 worker_pool.join()  # Will wait. A KeybInt will kill this (py3)
                 raise e
             except:  # Catches everything, even a sys.exit(1) exception.
                 log.print3(
-                    id_str + "\n\n ERROR: Unexpected error in getSampledDataAndLabelsForSubepoch(). System info: ",
+                    job_id + "\n\n ERROR: Unexpected error in getSampledDataAndLabelsForSubepoch(). System info: ",
                     sys.exc_info()[0])
                 worker_pool.terminate()
                 worker_pool.join()
@@ -179,10 +180,10 @@ def getSampledDataAndLabelsForSubepoch(log,
      lbls_predicted_part_of_samples_for_subep) = shuffleSegments(channs_of_samples_per_path_for_subep,
                                                                  lbls_predicted_part_of_samples_for_subep)
     end_time_sampling = time.time()
-    log.print3(id_str + " TIMING: Sampling for next [" + training_or_validation_str +
+    log.print3(job_id + " TIMING: Sampling for next [" + training_or_validation_str +
                "] lasted: {0:.1f}".format(end_time_sampling - start_time_sampling) + " secs.")
 
-    log.print3(id_str + " :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
+    log.print3(job_id + " :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
 
     channs_of_samples_arr_per_path = [np.asarray(channs_of_samples_for_path, dtype="float32") for
                                       channs_of_samples_for_path in channs_of_samples_per_path_for_subep]
@@ -236,9 +237,9 @@ def get_n_samples_per_subj_in_subep(n_samples, n_subjects):
     return n_samples_per_subj
 
 
-def load_subj_and_get_samples(job_i,
+def load_subj_and_get_samples(job_idx,
                               log,
-                              train_or_val,
+                              train_val_or_test,
                               run_input_checks,
                               cnn3d,
                               sampling_type,
@@ -258,41 +259,34 @@ def load_subj_and_get_samples(job_i,
     # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channs_of_samples_per_path, lbls_predicted_part_of_samples )
-    id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]"
+    job_id = "[JOB:" + str(job_idx) + "|PID:" + str(os.getpid()) + "]"
     log.print3(
-        id_str + " Load & sample from subject of index (in user's list): " + str(inds_of_subjects_for_subep[job_i]) +
-        " (Job #" + str(job_i) + "/" + str(n_subjects_for_subep) + ")")
+        job_id + " Load & sample from subject of index (in user's list): " + str(inds_of_subjects_for_subep[job_idx]) +
+        " (Job #" + str(job_idx) + "/" + str(n_subjects_for_subep) + ")")
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
     channs_of_samples_per_path = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
 
-    dims_highres_segment = cnn3d.pathways[0].getShapeOfInput(train_or_val)[2:]
+    dims_highres_segment = cnn3d.pathways[0].getShapeOfInput(train_val_or_test)[2:]
 
     (channels,  # nparray [channels,dim0,dim1,dim2]
      gt_lbl_img,
      roi_mask,
-     wmaps_to_sample_per_cat) = load_imgs_of_subject(log,
-                                                     job_i,
-                                                     train_or_val,
-                                                     inds_of_subjects_for_subep[job_i],
-                                                     paths_per_chan_per_subj,
-                                                     paths_to_lbls_per_subj,
-                                                     paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in test
-                                                     paths_to_masks_per_subj)
-    
-    if run_input_checks:
-        check_gt_vs_num_classes(log, gt_lbl_img, cnn3d.num_classes)
-    
-    (channels,
-     gt_lbl_img,
-     roi_mask,
      wmaps_to_sample_per_cat,
-     _) = pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                           pad_input_imgs, cnn3d.recFieldCnn, dims_highres_segment)
-    
-    channels = normalize_int_of_imgs(log, channels, roi_mask, norm_prms, id_str)
+     padding_left_right_per_axis) = load_and_preproc_imgs_of_subj(
+                                                    log, job_id, train_val_or_test,
+                                                    # For loading
+                                                    inds_of_subjects_for_subep[job_idx],
+                                                    paths_per_chan_per_subj,
+                                                    paths_to_lbls_per_subj,
+                                                    paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in test
+                                                    paths_to_masks_per_subj,
+                                                    # For preprocessing
+                                                    run_input_checks, cnn3d.num_classes, # checks
+                                                    pad_input_imgs, cnn3d.recFieldCnn, dims_highres_segment, # pad
+                                                    norm_prms)
     
     # Augment at image level:
     time_augm_0 = time.time()
@@ -314,7 +308,7 @@ def load_subj_and_get_samples(job_i,
                                                                        dims_of_scan)
 
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
-    (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_i],
+    (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
 
     str_samples_per_cat = " Got samples per category: "
@@ -325,12 +319,12 @@ def load_subj_and_get_samples(job_i,
         # Check if the class is valid for sampling.
         # Invalid if eg there is no such class in the subject's manual segmentation.
         if not valid_cats[cat_i]:
-            log.print3( id_str + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string +
+            log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string +
                         "] samples from this subject!")
             assert n_samples_for_cat == 0
             
         coords_of_samples = sample_coords_of_segments(log,
-                                                      job_i,
+                                                      job_idx,
                                                       n_samples_for_cat,
                                                       dims_highres_segment,
                                                       dims_of_scan,
@@ -345,7 +339,7 @@ def load_subj_and_get_samples(job_i,
             (channs_of_sample_per_path,
              lbls_predicted_part_of_sample
              # used to be gtLabelsForThisImagePart, before extracting only for the central voxels.
-             ) = extractSegmentGivenSliceCoords(train_or_val,
+             ) = extractSegmentGivenSliceCoords(train_val_or_test,
                                                 cnn3d,
                                                 coord_center,
                                                 channels,
@@ -361,8 +355,43 @@ def load_subj_and_get_samples(job_i,
                 channs_of_samples_per_path[pathway_i].append(channs_of_sample_per_path[pathway_i])
             lbls_predicted_part_of_samples.append(lbls_predicted_part_of_sample)
 
-    log.print3(id_str + str_samples_per_cat + ". Seconds augmenting [Image: {0:.1f}".format(time_augm_img) + "]")
+    log.print3(job_id + str_samples_per_cat + ". Seconds augmenting [Image: {0:.1f}".format(time_augm_img) + "]")
     return (channs_of_samples_per_path, lbls_predicted_part_of_samples)
+
+
+def load_and_preproc_imgs_of_subj(log, job_id, train_val_or_test,
+                                  # For loading
+                                  subj_idx,
+                                  paths_per_chan_per_subj,
+                                  paths_to_lbls_per_subj,
+                                  paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in test
+                                  paths_to_masks_per_subj,
+                                  # For preprocessing
+                                  run_input_checks, n_classes,
+                                  pad_input_imgs, dims_rec_field, dims_highres_segment,
+                                  norm_prms):
+    # job_id: String for logging. "" for testing.
+    # train_val_or_test: String. 'train', 'val' or "test"
+    (channels,  # nparray [channels,dim0,dim1,dim2]
+     gt_lbl_img,
+     roi_mask,
+     wmaps_to_sample_per_cat) = load_imgs_of_subject(log, job_id, train_val_or_test,
+                                                     subj_idx,
+                                                     paths_per_chan_per_subj,
+                                                     paths_to_lbls_per_subj,
+                                                     paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in test
+                                                     paths_to_masks_per_subj)
+    (channels,
+    gt_lbl_img,
+    roi_mask,
+    wmaps_to_sample_per_cat,
+    pad_left_right_per_axis) = preprocess_imgs_of_subj(log, job_id,
+                                                       channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                                                       run_input_checks, n_classes,
+                                                       pad_input_imgs, dims_rec_field, dims_highres_segment,
+                                                       norm_prms)
+         
+    return (channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_per_axis)
 
 
 # roi_mask_filename and roiMinusLesion_mask_filename can be passed "no".
@@ -370,7 +399,7 @@ def load_subj_and_get_samples(job_i,
 # This is so because: the do_training() function only needs the roiMinusLesion_mask,
 # whereas the do_testing() only needs the roi_mask.
 def load_imgs_of_subject(log,
-                         job_i, # None in testing.
+                         job_id,
                          train_val_or_test,
                          subj_i,
                          paths_per_chan_per_subj,
@@ -378,11 +407,11 @@ def load_imgs_of_subject(log,
                          paths_to_wmaps_per_sampl_cat_per_subj,  # Placeholder in testing.
                          paths_to_masks_per_subj
                          ):
+    # train_val_or_test: 'train', 'val' or 'test'
     # paths_per_chan_per_subj: List of lists. One sublist per case. Each should contain...
     # ... as many elements(strings-filenamePaths) as numberOfChannels, pointing to (nii) channels of this case.
     
-    id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]" if job_i is not None else ""  # None in Test
-    log.print3(id_str + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
+    log.print3(job_id + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
     
     numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
         
@@ -401,7 +430,7 @@ def load_imgs_of_subject(log,
 
             channels[channel_i] = channelData
         else:  # "-" was given in the config-listing file. Do Min-fill!
-            log.print3(id_str + " WARN: No modality #" + str(channel_i) + " given. Will make zero-filled channel.")
+            log.print3(job_id + " WARN: No modality #" + str(channel_i) + " given. Will make zero-filled channel.")
             channels[channel_i] = 0.0
     
     # Load the class labels.
@@ -411,7 +440,7 @@ def load_imgs_of_subject(log,
 
         if gt_lbl_img.dtype.kind not in ['i', 'u']:
             dtype_gt_lbls = 'int16'
-            log.print3(id_str + " WARN: Loaded labels are dtype [" + str(gt_lbl_img.dtype) + "]."
+            log.print3(job_id + " WARN: Loaded labels are dtype [" + str(gt_lbl_img.dtype) + "]."
                        " Rounding and casting to [" + dtype_gt_lbls + "]!")
             gt_lbl_img = np.rint(gt_lbl_img).astype(dtype_gt_lbls)
     else:
@@ -423,7 +452,7 @@ def load_imgs_of_subject(log,
         
         if roi_mask.dtype.kind not in ['i','u']:
             dtype_roi_mask = 'int16'
-            log.print3(id_str + " WARN: Loaded ROI-ask is dtype [" + str(roi_mask.dtype) + "]."
+            log.print3(job_id + " WARN: Loaded ROI-ask is dtype [" + str(roi_mask.dtype) + "]."
                        " Rounding and casting to [" + dtype_roi_mask + "]!")
             roi_mask = np.rint(roi_mask).astype(dtype_roi_mask)    
     else:
@@ -447,9 +476,30 @@ def load_imgs_of_subject(log,
     return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat
 
 
+def preprocess_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                            run_input_checks, n_classes,
+                            pad_input_imgs, dims_rec_field, dims_highres_segment,
+                            norm_prms):
+    # job_id: Should be "" in testing.
+    
+    if run_input_checks:
+        check_gt_vs_num_classes(log, gt_lbl_img, n_classes)
+    
+    (channels,
+     gt_lbl_img,
+     roi_mask,
+     wmaps_to_sample_per_cat,
+     pad_left_right_per_axis) = pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                                                 pad_input_imgs, dims_rec_field, dims_highres_segment)
+    
+    channels = normalize_int_of_imgs(log, channels, roi_mask, norm_prms, job_id)
+
+    return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_per_axis
+
+
 # made for 3d
 def sample_coords_of_segments(log,
-                              job_i,
+                              job_id,
                               n_samples,
                               dims_of_segment,
                               dims_of_scan,
@@ -466,12 +516,11 @@ def sample_coords_of_segments(log,
         The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
         Example: [ x-sliceCoordsOfImagePart, y-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
     """
-    id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]"
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called.
     # Which is still fine.
     if np.sum(sampling_map) == 0:
-        log.print3(id_str + " WARN: Sampling map was found just zeros! No image segments were sampled from this subject!")
+        log.print3(job_id + " WARN: Sampling map was found just zeros! No image segments were sampled from this subject!")
         return [[[], [], []], [[], [], []]]
 
     imagePartsSampled = []
@@ -693,7 +742,7 @@ def shuffleSegments(channs_of_samples_per_path, lbls_predicted_part_of_samples):
 
 # I must merge this with function: extractSegmentsGivenSliceCoords() that is used for Testing! Should be easy!
 # This is used in training/val only.
-def extractSegmentGivenSliceCoords(train_or_val,
+def extractSegmentGivenSliceCoords(train_val_or_test,
                                    cnn3d,
                                    coord_center,
                                    channels,
@@ -712,7 +761,7 @@ def extractSegmentGivenSliceCoords(train_or_val,
         if pathway.pType() == pt.FC:
             continue
         subSamplingFactor = pathway.subsFactor()
-        pathwayInputShapeRcz = pathway.getShapeOfInput(train_or_val)[2:]
+        pathwayInputShapeRcz = pathway.getShapeOfInput(train_val_or_test)[2:]
         leftBoundaryRcz = [coord_center[0] - subSamplingFactor[0] * (pathwayInputShapeRcz[0] - 1) // 2,
                            coord_center[1] - subSamplingFactor[1] * (pathwayInputShapeRcz[1] - 1) // 2,
                            coord_center[2] - subSamplingFactor[2] * (pathwayInputShapeRcz[2] - 1) // 2]
@@ -733,7 +782,7 @@ def extractSegmentGivenSliceCoords(train_or_val,
         if cnn3d.pathways[pathway_i].pType() == pt.FC or cnn3d.pathways[pathway_i].pType() == pt.NORM:
             continue
         # this datastructure is similar to channelsForThisImagePart, but contains voxels from the subsampled image.
-        dimsOfPrimarySegment = cnn3d.pathways[pathway_i].getShapeOfInput(train_or_val)[2:]
+        dimsOfPrimarySegment = cnn3d.pathways[pathway_i].getShapeOfInput(train_val_or_test)[2:]
 
         # rightmost  are placeholders here.
         slicesCoordsOfSegmForPrimaryPathway = [[leftBoundaryRcz[0], rightBoundaryRcz[0] - 1],
@@ -745,13 +794,13 @@ def extractSegmentGivenSliceCoords(train_or_val,
             subsampledImageChannels=channels,
             image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
             subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
-            subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput(train_or_val)[2:]
+            subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput(train_val_or_test)[2:]
             )
 
         channs_of_sample_per_path.append(channsForThisSubsampledPartAndPathway)
 
     # Get ground truth labels for training.
-    numOfCentralVoxelsClassifRcz = cnn3d.finalTargetLayer_outputShape[train_or_val][2:]
+    numOfCentralVoxelsClassifRcz = cnn3d.finalTargetLayer_outputShape[train_val_or_test][2:]
     leftBoundaryRcz = [coord_center[0] - (numOfCentralVoxelsClassifRcz[0] - 1) // 2,
                        coord_center[1] - (numOfCentralVoxelsClassifRcz[1] - 1) // 2,
                        coord_center[2] - (numOfCentralVoxelsClassifRcz[2] - 1) // 2]
@@ -901,10 +950,10 @@ def extractSegmentsGivenSliceCoords(cnn3d,
 ###########################################
 
 def check_gt_vs_num_classes(log, img_gt, num_classes):
-    id_str = "[" + str(os.getpid()) + "]"
+    job_id = "[" + str(os.getpid()) + "]"
     max_in_gt = np.max(img_gt)
     if np.max(img_gt) > num_classes - 1:  # num_classes includes background=0
-        msg = id_str + " ERROR:\t GT labels include value [" + str(max_in_gt) + "] greater than what CNN expects." +\
+        msg = job_id + " ERROR:\t GT labels include value [" + str(max_in_gt) + "] greater than what CNN expects." +\
               "\n\t In model-config the number of classes was specified as [" + str(num_classes) + "]." + \
               "\n\t Check your data or change the number of classes in model-config." + \
               "\n\t Note: number of classes in model config should include the background as a class."

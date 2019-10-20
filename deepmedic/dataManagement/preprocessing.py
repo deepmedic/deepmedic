@@ -24,14 +24,14 @@ def calc_border_int_of_3d_img(img_3d):
 
 # ============= Padding =======================
 
-def calc_pad_per_axis(pad_input_imgs, dims_img, rec_field, dims_highres_segment):
-    # rec_field: size of CNN's receptive field. [x,y,z]
+def calc_pad_per_axis(pad_input_imgs, dims_img, dims_rec_field, dims_highres_segment):
+    # dims_rec_field: size of CNN's receptive field. [x,y,z]
     # dims_highres_segment: The size of image segments that the cnn gets.
     #     So that we calculate the pad that will go to the side of the volume.
     if not pad_input_imgs:
         return ((0, 0), (0, 0), (0, 0))
     
-    rec_field_array = np.asarray(rec_field, dtype="int16")
+    rec_field_array = np.asarray(dims_rec_field, dtype="int16")
     dims_img_arr = np.asarray(dims_img,dtype="int16")
     dims_segm_arr = np.asarray(dims_highres_segment, dtype="int16")
     # paddingValue = (img[0, 0, 0] + img[-1, 0, 0] + img[0, -1, 0] + img[-1, -1, 0] + img[0, 0, -1]
@@ -54,7 +54,7 @@ def calc_pad_per_axis(pad_input_imgs, dims_img, rec_field, dims_highres_segment)
 # These pad/unpad should have their own class, and an instance should be created per subject.
 # So that unpad gets how much to unpad from the pad.
 def pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                     pad_input_imgs, rec_field, dims_highres_segment):
+                     pad_input_imgs, dims_rec_field, dims_highres_segment):
     # channels: np.array of dimensions [n_channels, x-dim, y-dim, z-dim]
     # gt_lbl_img: np.array
     # roi_mask: np.array
@@ -64,7 +64,8 @@ def pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
     # pad_left_right_axes: Padding added before and after each axis. All 0s if no padding.
     
     # Padding added before and after each axis. ((0, 0), (0, 0), (0, 0)) if no pad.
-    pad_left_right_per_axis = calc_pad_per_axis(pad_input_imgs, channels[0].shape, rec_field, dims_highres_segment)
+    pad_left_right_per_axis = calc_pad_per_axis(pad_input_imgs,
+                                                channels[0].shape, dims_rec_field, dims_highres_segment)
     if not pad_input_imgs:
         return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_axes
     
@@ -92,28 +93,29 @@ def pad_3d_img(img, pad_left_right_per_axis):
     return np.lib.pad(img, pad_left_right_per_axis, 'reflect')
 
 # In the 3 first axes. Which means it can take a 4-dim image.
-def unpad3dArray(array1, tupleOfPaddingPerAxesLeftRight):
-    # tupleOfPaddingPerAxesLeftRight : ( (padLeftR, padRightR), (padLeftC,padRightC), (padLeftZ,padRightZ)).
-    unpaddedArray1 = array1[tupleOfPaddingPerAxesLeftRight[0][0]:,
-                     tupleOfPaddingPerAxesLeftRight[1][0]:,
-                     tupleOfPaddingPerAxesLeftRight[2][0]:]
+def unpad_3d_img(img, padding_left_right_per_axis):
+    # img: 3d array
+    # padding_left_right_per_axis : ((pad-left-x,pad-right-x), (pad-left-y,pad-right-y), (pad-left-z,pad-right-z))
+    unpadded_img = img[padding_left_right_per_axis[0][0]:,
+                       padding_left_right_per_axis[1][0]:,
+                       padding_left_right_per_axis[2][0]:]
     # The checks below are to make it work if padding == 0, which may happen for 2D on the 3rd axis.
-    unpaddedArray1 = unpaddedArray1[:-tupleOfPaddingPerAxesLeftRight[0][1], :, :] \
-        if tupleOfPaddingPerAxesLeftRight[0][1] > 0 else unpaddedArray1
-    unpaddedArray1 = unpaddedArray1[:, :-tupleOfPaddingPerAxesLeftRight[1][1], :] \
-        if tupleOfPaddingPerAxesLeftRight[1][1] > 0 else unpaddedArray1
-    unpaddedArray1 = unpaddedArray1[:, :, :-tupleOfPaddingPerAxesLeftRight[2][1]] \
-        if tupleOfPaddingPerAxesLeftRight[2][1] > 0 else unpaddedArray1
+    unpadded_img = unpadded_img[:-padding_left_right_per_axis[0][1], :, :] \
+        if padding_left_right_per_axis[0][1] > 0 else unpadded_img
+    unpadded_img = unpadded_img[:, :-padding_left_right_per_axis[1][1], :] \
+        if padding_left_right_per_axis[1][1] > 0 else unpadded_img
+    unpadded_img = unpadded_img[:, :, :-padding_left_right_per_axis[2][1]] \
+        if padding_left_right_per_axis[2][1] > 0 else unpadded_img
         
-    return unpaddedArray1
+    return unpadded_img
 
 
 # ============================ (below) Intensity Normalization. ==================================
 # Could make classes? class Normalizer and children? (zscore)
 
-def normalize_int_of_imgs(log, channels, roi_mask, prms, id_str):
+def normalize_int_of_imgs(log, channels, roi_mask, prms, job_id):
     if prms is not None:
-        channels = normalize_int_zscore(log, channels, roi_mask, prms['zscore'], id_str)
+        channels = normalize_int_zscore(log, channels, roi_mask, prms['zscore'], job_id)
     return channels
 
 # ===== (below) Z-Score Intensity Normalization. =====
@@ -149,7 +151,7 @@ def get_cutoff_mask(src, low, high):
 
 def get_norm_stats(log, src, roi_mask_bool,
                    cutoff_percents=None, cutoff_times_std=None, cutoff_below_mean=False,
-                   verbose=False, id_str=''):
+                   verbose=False, job_id=''):
 
     neg_val_check(src, log)
     src_mean, src_std, src_max = get_img_stats(src)
@@ -164,7 +166,7 @@ def get_norm_stats(log, src, roi_mask_bool,
         cutoff_high = np.percentile(src_roi, cutoff_percents[1])
         mask_bool_norm *= get_cutoff_mask(src, cutoff_low, cutoff_high)
         if verbose:
-            log.print3(id_str + "Cutting off intensities with [percentiles] (within Roi). "
+            log.print3(job_id + "Cutting off intensities with [percentiles] (within Roi). "
                                 "Cutoffs: Min=" + str(cutoff_low) + ", High=" + str(cutoff_high))
 
     if cutoff_times_std:
@@ -173,14 +175,14 @@ def get_norm_stats(log, src, roi_mask_bool,
         cutoff_mask = get_cutoff_mask(src, cutoff_low, cutoff_high)
         mask_bool_norm *= cutoff_mask
         if verbose:
-            log.print3(id_str + "Cutting off intensities with [std] (within Roi). "
+            log.print3(job_id + "Cutting off intensities with [std] (within Roi). "
                                 "Cutoffs: Min=" + str(cutoff_low) + ", High=" + str(cutoff_high))
 
     if cutoff_below_mean:
         cutoff_low = src_mean
         mask_bool_norm *= get_cutoff_mask(src, cutoff_low, src_max)  # no high cutoff
         if verbose:
-            log.print3(id_str + "Cutting off intensities with [below wholeImageMean for air]. "
+            log.print3(job_id + "Cutting off intensities with [below wholeImageMean for air]. "
                                 "Cutoff: Min=" + str(cutoff_low))
 
     norm_mean, norm_std, _ = get_img_stats(src[mask_bool_norm])
@@ -188,7 +190,7 @@ def get_norm_stats(log, src, roi_mask_bool,
     return norm_mean, norm_std
 
 
-def print_norm_log(log, norm_prms, num_channels, id_str=''):
+def print_norm_log(log, norm_prms, num_channels, job_id=''):
 
     cutoff_types = []
 
@@ -199,21 +201,21 @@ def print_norm_log(log, norm_prms, num_channels, id_str=''):
     if norm_prms['cutoff_below_mean']:
         cutoff_types += ['Whole Image Mean']
 
-    log.print3(id_str + "Normalizing " + str(num_channels) + " channel(s) with the following cutoff type(s): " +
+    log.print3(job_id + "Normalizing " + str(num_channels) + " channel(s) with the following cutoff type(s): " +
                ', '.join(list(cutoff_types)) if cutoff_types else 'None')
 
 
-def normalize_int_zscore(log, channels, roi_mask, norm_prms, id_str='', verbose=False):
+def normalize_int_zscore(log, channels, roi_mask, norm_prms, job_id='', verbose=False):
 
     channels_norm = np.zeros(channels.shape)
     roi_mask_bool = roi_mask > 0
     if norm_prms is None:
         norm_prms = default_zscore_prms()
         
-    if id_str:
-        id_str += ' '
+    if job_id:
+        job_id += ' '
 
-    print_norm_log(log, norm_prms, len(channels), id_str=id_str)
+    print_norm_log(log, norm_prms, len(channels), job_id=job_id)
 
     for idx, channel in enumerate(channels):
         norm_mean, norm_std = get_norm_stats(log, channel, roi_mask_bool,
@@ -221,17 +223,17 @@ def normalize_int_zscore(log, channels, roi_mask, norm_prms, id_str='', verbose=
                                              cutoff_times_std=norm_prms['cutoff_times_std'],
                                              cutoff_below_mean=norm_prms['cutoff_below_mean'],
                                              verbose=verbose,
-                                             id_str=id_str)
+                                             job_id=job_id)
         # Apply the normalization
         channels_norm[idx] = (channel - norm_mean) / (1.0 * norm_std)
 
         if verbose:
             old_mean, old_std, _ = get_img_stats(channel)
-            log.print3(id_str + "Original image stats(channel " + str(idx) +
+            log.print3(job_id + "Original image stats(channel " + str(idx) +
                        "): Mean=" + str(old_mean) + ", Std=" + str(old_std))
-            log.print3(id_str + "Image was normalized using: Mean=" + str(norm_mean) + ", Std=" + str(norm_std))
+            log.print3(job_id + "Image was normalized using: Mean=" + str(norm_mean) + ", Std=" + str(norm_std))
             new_mean, new_std, _ = get_img_stats(channels_norm[idx])
-            log.print3(id_str + "Normalized image stats(channel " + str(idx) +
+            log.print3(job_id + "Normalized image stats(channel " + str(idx) +
                        "): Mean=" + str(new_mean) + ", Std=" + str(new_std))
 
     return channels_norm

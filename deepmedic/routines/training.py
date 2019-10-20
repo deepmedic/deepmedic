@@ -142,17 +142,17 @@ def do_training(sessionTf,
                 namesForSavingSegmAndProbs,
                 suffixForSegmAndProbsDict,
 
-                listOfFilepathsToEachChannelOfEachPatientTraining,
-                listOfFilepathsToEachChannelOfEachPatientValidation,
+                paths_per_chan_per_subj_train,
+                paths_per_chan_per_subj_val,
 
-                listOfFilepathsToGtLabelsOfEachPatientTraining,
-                listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
+                paths_to_lbls_per_subj_train,
+                paths_to_lbls_per_subj_val,
 
                 paths_to_wmaps_per_sampl_cat_per_subj_train,
                 paths_to_wmaps_per_sampl_cat_per_subj_val,
 
-                listOfFilepathsToRoiMaskOfEachPatientTraining,
-                listOfFilepathsToRoiMaskOfEachPatientValidation,
+                paths_to_masks_per_subj_train,
+                paths_to_masks_per_subj_val,
 
                 n_epochs,  # Every epoch the CNN model is saved.
                 num_subepochs,  # per epoch. Every subepoch Accuracy is reported
@@ -204,9 +204,9 @@ def do_training(sessionTf,
                                max_n_cases_per_subep_train,
                                n_samples_per_subep_train,
                                sampling_type_inst_tr,
-                               listOfFilepathsToEachChannelOfEachPatientTraining,
-                               listOfFilepathsToGtLabelsOfEachPatientTraining,
-                               listOfFilepathsToRoiMaskOfEachPatientTraining,
+                               paths_per_chan_per_subj_train,
+                               paths_to_lbls_per_subj_train,
+                               paths_to_masks_per_subj_train,
                                paths_to_wmaps_per_sampl_cat_per_subj_train,
                                pad_input,
                                norm_prms,
@@ -221,9 +221,9 @@ def do_training(sessionTf,
                              max_n_cases_per_subep_train,
                              n_samples_per_subep_val,
                              sampling_type_inst_val,
-                             listOfFilepathsToEachChannelOfEachPatientValidation,
-                             listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
-                             listOfFilepathsToRoiMaskOfEachPatientValidation,
+                             paths_per_chan_per_subj_val,
+                             paths_to_lbls_per_subj_val,
+                             paths_to_masks_per_subj_val,
                              paths_to_wmaps_per_sampl_cat_per_subj_val,
                              pad_input,
                              norm_prms,
@@ -409,26 +409,25 @@ def do_training(sessionTf,
                 log.print3(
                     "***Starting validation with segmentation of whole subjects for Epoch #" + str(epoch) + "...***")
 
-                mean_metrics_val_whole_vols = inference_on_whole_volumes(
-                    sessionTf,
-                    cnn3d,
-                    log,
-                    "val",
-                    savePredictedSegmAndProbsDict,
-                    listOfFilepathsToEachChannelOfEachPatientValidation,
-                    listOfFilepathsToGtLabelsOfEachPatientValidationOnSamplesAndDsc,
-                    listOfFilepathsToRoiMaskOfEachPatientValidation,
-                    namesForSavingSegmAndProbs=namesForSavingSegmAndProbs,
-                    suffixForSegmAndProbsDict=suffixForSegmAndProbsDict,
-                    # --- Hyper parameters ---
-                    batchsize=batchsize_val_whole,
-                    # --- Preprocessing ---
-                    pad_input=pad_input,
-                    # --- Saving feature maps ---
-                    save_fms_flag=save_fms_flag,
-                    idxs_fms_to_save=idxs_fms_to_save,
-                    namesForSavingFms=namesForSavingFms
-                )
+                mean_metrics_val_whole_vols = inference_on_whole_volumes(sessionTf,
+                                                                         cnn3d,
+                                                                         log,
+                                                                         "val",
+                                                                         savePredictedSegmAndProbsDict,
+                                                                         paths_per_chan_per_subj_val,
+                                                                         paths_to_lbls_per_subj_val,
+                                                                         paths_to_masks_per_subj_val,
+                                                                         namesForSavingSegmAndProbs,
+                                                                         suffixForSegmAndProbsDict,
+                                                                         # --- Hyper parameters ---
+                                                                         batchsize_val_whole,
+                                                                         # --- Preprocessing ---
+                                                                         pad_input,
+                                                                         norm_prms,
+                                                                         # --- Saving feature maps ---
+                                                                         save_fms_flag,
+                                                                         idxs_fms_to_save,
+                                                                         namesForSavingFms)
                 
                 acc_monitor_for_ep_val.reportDSCWholeSegmentation(mean_metrics_val_whole_vols)
 

@@ -12,12 +12,12 @@ import numpy as np
 import math
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
-from deepmedic.dataManagement.sampling import load_imgs_of_subject
+from deepmedic.dataManagement.sampling import load_and_preproc_imgs_of_subj
 from deepmedic.dataManagement.sampling import get_slice_coords_of_all_img_tiles
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, \
     save4DImgWithAllFmsToNiiWithOriginalHdr
-from deepmedic.dataManagement.preprocessing import unpad3dArray
+from deepmedic.dataManagement.preprocessing import unpad_3d_img
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
@@ -319,12 +319,12 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
 
 def unpad_img(img, unpad_input, padding_left_right_per_axis):
     # unpad_input: If True, padding_left_right_per_axis == ((0,0), (0,0), (0,0)).
-    #              unpad3dArray deals with no padding. So, this check is not required.
+    #              unpad_3d_img deals with no padding. So, this check is not required.
     if not unpad_input:
         return img
     if img is None: # Deals with the case something has not been given. E.g. roi_mask or gt_lbls.
         return None
-    return unpad3dArray(img, padding_left_right_per_axis)
+    return unpad_3d_img(img, padding_left_right_per_axis)
 
 
 def unpad_list_of_imgs(list_imgs, unpad_input, padding_left_right_per_axis):
@@ -491,15 +491,16 @@ def inference_on_whole_volumes(sessionTf,
                                log,
                                val_or_test,
                                savePredictedSegmAndProbsDict,
-                               listOfFilepathsToEachChannelOfEachPatient,
-                               listOfFilepathsToGtLabelsOfEachPatient,
-                               listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                               paths_per_chan_per_subj,
+                               paths_to_lbls_per_subj,
+                               paths_to_masks_per_subj,
                                namesForSavingSegmAndProbs,
                                suffixForSegmAndProbsDict,
                                # --- Hyper parameters ---
                                batchsize,
                                # --- Preprocessing ---
                                pad_input,
+                               norm_prms,
                                # --- Saving feature maps ---
                                save_fms_flag,
                                idxs_fms_to_save,
@@ -537,29 +538,24 @@ def inference_on_whole_volumes(sessionTf,
         log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         log.print3("~~~~~~~~\t Segmenting subject with index #" + str(subj_i) + " \t~~~~~~~~")
 
-        # Load the channels of the subject in RAM
         (channels,
-         gt_lbl,  # only for accurate/correct DICE1-2 calculation
+         gt_lbl,  # only for calculating performance.
          roi_mask,
          _,  # weightmaps. Only for training.
-         padding_left_right_per_axis  # ((pad-pre-x, pad-after-x), (pre-y, post-y), (pre-z, post-z))
-         ) = load_imgs_of_subject(log,
-                                  None,
-                                  "test",
-                                  False,  # run_input_checks.
-                                  subj_i,
-                                  listOfFilepathsToEachChannelOfEachPatient,
-                                  listOfFilepathsToGtLabelsOfEachPatient,
-                                  None,
-                                  listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                                  n_classes,
-                                  pad_input,
-                                  cnn3d.recFieldCnn,
-                                  cnn3d.pathways[0].getShapeOfInput("test")[2:])
-
-        # ==================== Pre-process =====================
-        # TODO: Move padding here
-        #       Do normalization here
+         padding_left_right_per_axis) = load_and_preproc_imgs_of_subj(log, "", "test",
+                                                      # For loading
+                                                      subj_i,
+                                                      listOfFilepathsToEachChannelOfEachPatient,
+                                                      listOfFilepathsToGtLabelsOfEachPatient,
+                                                      None,
+                                                      listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                                                      # For preprocessing
+                                                      False,  # run_input_checks.
+                                                      n_classes,
+                                                      pad_input,
+                                                      cnn3d.recFieldCnn,
+                                                      cnn3d.pathways[0].getShapeOfInput("test")[2:],
+                                                      norm_prms)
         
         # ============== Predict whole volume ==================
         # array_fms_to_save will be None if not saving them.
