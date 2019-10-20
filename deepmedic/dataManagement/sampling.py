@@ -19,11 +19,10 @@ import signal
 import collections
 
 from deepmedic.dataManagement.io import loadVolume
-from deepmedic.dataManagement.preprocessing import calculateTheZeroIntensityOf3dImage, padCnnInputs
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
+from deepmedic.dataManagement.preprocessing import pad_imgs_of_case, normalize_int_of_imgs, calc_border_int_of_3d_img
 from deepmedic.dataManagement.augmentSample import augment_sample
 from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
-from deepmedic.dataManagement.preprocessing import normalize_int_of_imgs
 
 
 # Order of calls:
@@ -276,27 +275,26 @@ def load_subj_and_get_samples(job_i,
     (channels,  # nparray [channels,dim0,dim1,dim2]
      gt_lbl_img,
      roi_mask,
+     wmaps_to_sample_per_cat) = load_imgs_of_subject(log,
+                                                     job_i,
+                                                     train_or_val,
+                                                     inds_of_subjects_for_subep[job_i],
+                                                     paths_per_chan_per_subj,
+                                                     paths_to_lbls_per_subj,
+                                                     paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in test
+                                                     paths_to_masks_per_subj)
+    
+    if run_input_checks:
+        check_gt_vs_num_classes(log, gt_lbl_img, cnn3d.num_classes)
+    
+    (channels,
+     gt_lbl_img,
+     roi_mask,
      wmaps_to_sample_per_cat,
-     pad_added_prepost_each_axis
-     ) = load_imgs_of_subject(log,
-                              job_i,
-                              train_or_val,
-                              run_input_checks,
-                              inds_of_subjects_for_subep[job_i],
-                              paths_per_chan_per_subj,
-                              paths_to_lbls_per_subj,
-                              paths_to_wmaps_per_sampl_cat_per_subj,  # Placeholder in testing.
-                              paths_to_masks_per_subj,
-                              cnn3d.num_classes,
-                              # Preprocessing
-                              pad_input_imgs,
-                              cnn3d.recFieldCnn,  # used if pad_input_imgs
-                              dims_highres_segment)  # used if pad_input_imgs.
+     _) = pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                           pad_input_imgs, cnn3d.recFieldCnn, dims_highres_segment)
     
-    #(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_added_prepost_each_axis) = pad_imgs_of_case()
-
     channels = normalize_int_of_imgs(log, channels, roi_mask, norm_prms, id_str)
-    
     
     # Augment at image level:
     time_augm_0 = time.time()
@@ -329,11 +327,9 @@ def load_subj_and_get_samples(job_i,
         # Check if the class is valid for sampling.
         # Invalid if eg there is no such class in the subject's manual segmentation.
         if not valid_cats[cat_i]:
-            log.print3(
-                id_str + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string +
-                "] samples from this subject!")
+            log.print3( id_str + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string +
+                        "] samples from this subject!")
             assert n_samples_for_cat == 0
-            continue
 
         coords_of_samples = sample_coords_of_segments(log,
                                                       job_i,
@@ -376,36 +372,53 @@ def load_subj_and_get_samples(job_i,
 # This is so because: the do_training() function only needs the roiMinusLesion_mask,
 # whereas the do_testing() only needs the roi_mask.
 def load_imgs_of_subject(log,
-                         job_i,  # None in testing.
+                         job_i, # None in testing.
                          train_val_or_test,
-                         run_input_checks,
                          subj_i,
                          paths_per_chan_per_subj,
                          paths_to_lbls_per_subj,
                          paths_to_wmaps_per_sampl_cat_per_subj,  # Placeholder in testing.
-                         paths_to_masks_per_subj,
-                         num_classes,
-                         # Preprocessing
-                         pad_input_imgs,
-                         cnnReceptiveField,  # only used if pad_input_imgs
-                         dims_highres_segment
+                         paths_to_masks_per_subj
                          ):
     # paths_per_chan_per_subj: List of lists. One sublist per case. Each should contain...
     # ... as many elements(strings-filenamePaths) as numberOfChannels, pointing to (nii) channels of this case.
-    # Returns:
-    # pad_added_prepost_each_axis: Padding added before and after each axis. All 0s if no padding.
+    assert subj_i < len(paths_per_chan_per_subj)
     
     id_str = "[JOB:" + str(job_i) + "|PID:" + str(os.getpid()) + "]" if job_i is not None else ""  # None in Test
-
-    if subj_i >= len(paths_per_chan_per_subj):
-        raise ValueError(
-            id_str + " The argument 'subj_i' given is greater than the filenames given for the .nii folders!")
-
     log.print3(id_str + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
     
     numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
+        
+    # Load the channels of the patient.
+    inp_chan_dims = None  # Dimensions of the (padded) input channels.
+    channels = None
+    for channel_i in range(numberOfNormalScaleChannels):
+        fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
+        if fullFilenamePathOfChannel != "-":  # normal case, filepath was given.
+            channelData = loadVolume(fullFilenamePathOfChannel)
+            
+            if channels is None:
+                # Initialize the array in which all the channels for the patient will be placed.
+                inp_chan_dims = list(channelData.shape)
+                channels = np.zeros((numberOfNormalScaleChannels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
 
-    pad_added_prepost_each_axis = ((0, 0), (0, 0), (0, 0))  # Padding added before and after each axis.
+            channels[channel_i] = channelData
+        else:  # "-" was given in the config-listing file. Do Min-fill!
+            log.print3(id_str + " WARN: No modality #" + str(channel_i) + " given. Will make zero-filled channel.")
+            channels[channel_i] = 0.0
+    
+    # Load the class labels.
+    if paths_to_lbls_per_subj is not None:
+        fullFilenamePathOfGtLabels = paths_to_lbls_per_subj[subj_i]
+        gt_lbl_img = loadVolume(fullFilenamePathOfGtLabels)
+
+        if gt_lbl_img.dtype.kind not in ['i', 'u']:
+            dtype_gt_lbls = 'int16'
+            log.print3(id_str + " WARN: Loaded labels are dtype [" + str(gt_lbl_img.dtype) + "]."
+                       " Rounding and casting to [" + dtype_gt_lbls + "]!")
+            gt_lbl_img = np.rint(gt_lbl_img).astype(dtype_gt_lbls)
+    else:
+        gt_lbl_img = None  # For validation and testing
 
     if paths_to_masks_per_subj is not None:
         fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
@@ -415,58 +428,10 @@ def load_imgs_of_subject(log,
             dtype_roi_mask = 'int16'
             log.print3(id_str + " WARN: Loaded ROI-ask is dtype [" + str(roi_mask.dtype) + "]."
                        " Rounding and casting to [" + dtype_roi_mask + "]!")
-            roi_mask = np.rint(roi_mask).astype(dtype_roi_mask)
-        
-        (roi_mask,
-         pad_added_prepost_each_axis) = padCnnInputs(roi_mask, cnnReceptiveField, dims_highres_segment) \
-                                            if pad_input_imgs else [roi_mask, pad_added_prepost_each_axis]
+            roi_mask = np.rint(roi_mask).astype(dtype_roi_mask)    
     else:
         roi_mask = None
         
-    # Load the channels of the patient.
-    inp_chan_dims = None  # Dimensions of the (padded) input channels.
-    channels = None
-
-    for channel_i in range(numberOfNormalScaleChannels):
-        fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
-        if fullFilenamePathOfChannel != "-":  # normal case, filepath was given.
-            channelData = loadVolume(fullFilenamePathOfChannel)
-            
-            (channelData,
-             pad_added_prepost_each_axis) = padCnnInputs(channelData, cnnReceptiveField, dims_highres_segment) \
-                                                if pad_input_imgs else [channelData, pad_added_prepost_each_axis]
-                                                
-            if channels is None:
-                # Initialize the array in which all the channels for the patient will be placed.
-                inp_chan_dims = list(channelData.shape)
-                channels = np.zeros((numberOfNormalScaleChannels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
-
-            channels[channel_i] = channelData
-        else:  # "-" was given in the config-listing file. Do Min-fill!
-            log.print3(
-                id_str + " WARN: No modality #" + str(channel_i) + " given. Will make input channel full of zeros.")
-            channels[channel_i] = -4.0 # TODO: Probably 0.0 would be better.
-
-    # Load the class labels.
-    if paths_to_lbls_per_subj is not None:
-        fullFilenamePathOfGtLabels = paths_to_lbls_per_subj[subj_i]
-        imageGtLabels = loadVolume(fullFilenamePathOfGtLabels)
-
-        if imageGtLabels.dtype.kind not in ['i', 'u']:
-            dtype_gt_lbls = 'int16'
-            log.print3(id_str + " WARN: Loaded labels are dtype [" + str(imageGtLabels.dtype) + "]."
-                       " Rounding and casting to [" + dtype_gt_lbls + "]!")
-            imageGtLabels = np.rint(imageGtLabels).astype(dtype_gt_lbls)
-
-        if run_input_checks:
-            check_gt_vs_num_classes(log, imageGtLabels, num_classes)
-
-        (imageGtLabels,
-         pad_added_prepost_each_axis) = padCnnInputs(imageGtLabels, cnnReceptiveField, dims_highres_segment) \
-                                            if pad_input_imgs else [imageGtLabels, pad_added_prepost_each_axis]
-    else:
-        imageGtLabels = None  # For validation and testing
-
     # May be provided only for training.
     if train_val_or_test != "test" and paths_to_wmaps_per_sampl_cat_per_subj is not None:
         n_sampl_categs = len(paths_to_wmaps_per_sampl_cat_per_subj)
@@ -477,18 +442,11 @@ def load_imgs_of_subject(log,
                 subj_i]
             weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
             assert np.all(weightedMapForThisCatData >= 0)
-
-            (weightedMapForThisCatData,
-             pad_added_prepost_each_axis) = padCnnInputs(weightedMapForThisCatData,
-                                                         cnnReceptiveField,
-                                                         dims_highres_segment) \
-                if pad_input_imgs else [weightedMapForThisCatData, pad_added_prepost_each_axis]
-
             wmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
     else:
         wmaps_to_sample_per_cat = None
 
-    return channels, imageGtLabels, roi_mask, wmaps_to_sample_per_cat, pad_added_prepost_each_axis
+    return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat
 
 
 # made for 3d
@@ -697,7 +655,7 @@ def getImagePartFromSubsampledImageForTraining(dimsOfPrimarySegment,
 
     # I now have exactly where to get the slice from and where to put it in the new array.
     for channel_i in range(len(subsampledImageChannels)):
-        intensityZeroOfChannel = calculateTheZeroIntensityOf3dImage(subsampledImageChannels[channel_i])
+        intensityZeroOfChannel = calc_border_int_of_3d_img(subsampledImageChannels[channel_i])
         subsampledChannelsForThisImagePart[channel_i] *= intensityZeroOfChannel
 
         sliceOfSubsampledImageNotPadded = subsampledImageChannels[channel_i][
@@ -706,14 +664,14 @@ def getImagePartFromSubsampledImageForTraining(dimsOfPrimarySegment,
                                           zlowCorrected: zhighNonInclCorrected: subSamplingFactor[2]
                                           ]
         subsampledChannelsForThisImagePart[
-        channel_i,
-        rLowToPutTheNotPaddedInSubsampledImPart: rLowToPutTheNotPaddedInSubsampledImPart +
-                                                 dimensionsOfTheSliceOfSubsampledImageNotPadded[0],
-        cLowToPutTheNotPaddedInSubsampledImPart: cLowToPutTheNotPaddedInSubsampledImPart +
-                                                 dimensionsOfTheSliceOfSubsampledImageNotPadded[1],
-        zLowToPutTheNotPaddedInSubsampledImPart: zLowToPutTheNotPaddedInSubsampledImPart +
-                                                 dimensionsOfTheSliceOfSubsampledImageNotPadded[
-                                                     2]] = sliceOfSubsampledImageNotPadded
+            channel_i,
+            rLowToPutTheNotPaddedInSubsampledImPart: rLowToPutTheNotPaddedInSubsampledImPart +
+                                                     dimensionsOfTheSliceOfSubsampledImageNotPadded[0],
+            cLowToPutTheNotPaddedInSubsampledImPart: cLowToPutTheNotPaddedInSubsampledImPart +
+                                                     dimensionsOfTheSliceOfSubsampledImageNotPadded[1],
+            zLowToPutTheNotPaddedInSubsampledImPart: zLowToPutTheNotPaddedInSubsampledImPart +
+                                                     dimensionsOfTheSliceOfSubsampledImageNotPadded[2]
+            ] = sliceOfSubsampledImageNotPadded
 
     # placeholderReturn = np.ones([3,19,19,19], dtype="float32") #channel, dims
     return subsampledChannelsForThisImagePart
@@ -948,8 +906,7 @@ def check_gt_vs_num_classes(log, img_gt, num_classes):
     id_str = "[" + str(os.getpid()) + "]"
     max_in_gt = np.max(img_gt)
     if np.max(img_gt) > num_classes - 1:  # num_classes includes background=0
-        msg = id_str + " ERROR:\t GT labels included a label value [" + str(
-            max_in_gt) + "] greater than what CNN expects." + \
+        msg = id_str + " ERROR:\t GT labels include value [" + str(max_in_gt) + "] greater than what CNN expects." +\
               "\n\t In model-config the number of classes was specified as [" + str(num_classes) + "]." + \
               "\n\t Check your data or change the number of classes in model-config." + \
               "\n\t Note: number of classes in model config should include the background as a class."

@@ -8,66 +8,88 @@
 from __future__ import absolute_import, division
 
 import numpy as np
-
-
-def reflectImageArrayIfNeeded(reflectFlags, imageArray):
-    stepsForReflectionPerDimension = [-1 if reflectFlags[0] else 1,
-                                      -1 if reflectFlags[1] else 1,
-                                      -1 if reflectFlags[2] else 1]
-    
-    reflImageArray = imageArray[::stepsForReflectionPerDimension[0],
-                                ::stepsForReflectionPerDimension[1],
-                                ::stepsForReflectionPerDimension[2]]
-    return reflImageArray
     
 
-def calculateTheZeroIntensityOf3dImage(image3d):
-    intensityZeroOfChannel = np.mean([image3d[0, 0, 0],
-                                      image3d[-1, 0, 0],
-                                      image3d[0, -1, 0],
-                                      image3d[-1, -1, 0],
-                                      image3d[0, 0, -1],
-                                      image3d[-1, 0, -1],
-                                      image3d[0, -1, -1],
-                                      image3d[-1, -1, -1]
-                                      ])
-    return intensityZeroOfChannel
+def calc_border_int_of_3d_img(img_3d):
+    border_int = np.mean([img_3d[0, 0, 0],
+                          img_3d[-1, 0, 0],
+                          img_3d[0, -1, 0],
+                          img_3d[-1, -1, 0],
+                          img_3d[0, 0, -1],
+                          img_3d[-1, 0, -1],
+                          img_3d[0, -1, -1],
+                          img_3d[-1, -1, -1]
+                          ])
+    return border_int
 
+# ============= Padding =======================
+
+def calc_pad_per_axis(pad_input_imgs, dims_img, rec_field, dims_highres_segment):
+    # rec_field: size of CNN's receptive field. [x,y,z]
+    # dims_highres_segment: The size of image segments that the cnn gets.
+    #     So that we calculate the pad that will go to the side of the volume.
+    if not pad_input_imgs:
+        return ((0, 0), (0, 0), (0, 0))
+    
+    rec_field_array = np.asarray(rec_field, dtype="int16")
+    dims_img_arr = np.asarray(dims_img,dtype="int16")
+    dims_segm_arr = np.asarray(dims_highres_segment, dtype="int16")
+    # paddingValue = (img[0, 0, 0] + img[-1, 0, 0] + img[0, -1, 0] + img[-1, -1, 0] + img[0, 0, -1]
+    #                 + img[-1, 0, -1] + img[0, -1, -1] + img[-1, -1, -1]) / 8.0
+    # Calculate how much padding needed to fully infer the original img, taking only the receptive field in account.
+    pad_left = (rec_field_array - 1) // 2
+    pad_right = rec_field_array - 1 - pad_left
+    # Now, to cover the case that the specified size for sampled image-segment is larger than the image
+    # (eg full-image inference and current image is smaller), pad further to right.
+    extra_pad_right = np.maximum(0, dims_segm_arr - (dims_img_arr + pad_left + pad_right))
+    pad_right += extra_pad_right
+    
+    pad_left_right_per_axis = ((pad_left[0], pad_right[0]),
+                               (pad_left[1], pad_right[1]),
+                               (pad_left[2], pad_right[2]))
+    
+    return pad_left_right_per_axis
 
 # The padding / unpadding could probably be done more generically.
-# These two pad/unpad should have their own class, and an instance should be created per subject.
+# These pad/unpad should have their own class, and an instance should be created per subject.
 # So that unpad gets how much to unpad from the pad.
-def padCnnInputs(array1, cnnReceptiveField, imagePartDimensions):  # Works for 2D as well I think.
-    # array1: the loaded volume. Not segments.
-    # imagePartDimensions: The size of image segments that the cnn gets.
-    # So that we calculate the pad that will go to the side of the volume.
-    cnnReceptiveFieldArray = np.asarray(cnnReceptiveField, dtype="int16")
-    array1Dimensions = np.asarray(array1.shape,dtype="int16")
-    if len(array1.shape) != 3 :
-        print("ERROR! Given array in padCnnInputs() was expected of 3-dimensions, "
-              "but was passed an array of dimensions: ", array1.shape, ", Exiting!")
-        exit(1)
-
-    # paddingValue = (array1[0, 0, 0] + array1[-1, 0, 0] + array1[0, -1, 0] + array1[-1, -1, 0] + array1[0, 0, -1]
-    #                 + array1[-1, 0, -1] + array1[0, -1, -1] + array1[-1, -1, -1]) / 8.0
-    # Calculate how much padding needed to fully infer the original array1, taking only the receptive field in account.
-    paddingAtLeftPerAxis = (cnnReceptiveFieldArray - 1) // 2
-    paddingAtRightPerAxis = cnnReceptiveFieldArray - 1 - paddingAtLeftPerAxis
-    # Now, to cover the case that the specified image-segment of the CNN is larger than the image
-    # (eg full-image inference and current image is smaller), pad further to right.
-    paddingFurtherToTheRightNeededForSegment = np.maximum(0,
-                                                          np.asarray(imagePartDimensions, dtype="int16")
-                                                          - (array1Dimensions
-                                                             + paddingAtLeftPerAxis+paddingAtRightPerAxis))
-    paddingAtRightPerAxis += paddingFurtherToTheRightNeededForSegment
+def pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                     pad_input_imgs, rec_field, dims_highres_segment):
+    # channels: np.array of dimensions [n_channels, x-dim, y-dim, z-dim]
+    # gt_lbl_img: np.array
+    # roi_mask: np.array
+    # wmaps_to_sample_per_cat: np.array of dimensions [num_categories, x-dim, y-dim, z-dim]
+    # dims_highres_segment: list [x,y,z] of dimensions of the normal-resolution samples for cnn.
+    # Returns:
+    # pad_left_right_axes: Padding added before and after each axis. All 0s if no padding.
     
-    tupleOfPaddingPerAxes = ((paddingAtLeftPerAxis[0], paddingAtRightPerAxis[0]),
-                             (paddingAtLeftPerAxis[1], paddingAtRightPerAxis[1]),
-                             (paddingAtLeftPerAxis[2], paddingAtRightPerAxis[2]))
-    # Very poor design because channels/gt/bmask etc are all getting back a different padding?
-    # tupleOfPaddingPerAxes is returned in order for unpad to know.
-    return [np.lib.pad(array1, tupleOfPaddingPerAxes, 'reflect'), tupleOfPaddingPerAxes]
+    # Padding added before and after each axis. ((0, 0), (0, 0), (0, 0)) if no pad.
+    pad_left_right_per_axis = calc_pad_per_axis(pad_input_imgs, channels[0].shape, rec_field, dims_highres_segment)
+    if not pad_input_imgs:
+        return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_axes
+    
+    channels = pad_4d_arr(channels, pad_left_right_per_axis)
 
+    if gt_lbl_img is not None:
+        gt_lbl_img = pad_3d_img(gt_lbl_img, pad_left_right_per_axis)
+    
+    if roi_mask is not None:
+        roi_mask = pad_3d_img(roi_mask, pad_left_right_per_axis)
+    
+    if wmaps_to_sample_per_cat is not None:
+        wmaps_to_sample_per_cat = pad_4d_arr(wmaps_to_sample_per_cat, pad_left_right_per_axis)
+    
+    return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_per_axis
+
+def pad_4d_arr(arr_4d, pad_left_right_per_axis_3d):
+    # Do not pad first dimension. E.g. for channels or weightmaps, [n_chans,x,y,z]
+    pad_left_right_per_axis_4d = ((0,0),) + pad_left_right_per_axis_3d
+    return np.lib.pad(arr_4d, pad_left_right_per_axis_4d, 'reflect')
+
+def pad_3d_img(img, pad_left_right_per_axis):
+    # img: 3D array.
+    # pad_left_right_per_axis is returned in order for unpadding to know how much to remove.
+    return np.lib.pad(img, pad_left_right_per_axis, 'reflect')
 
 # In the 3 first axes. Which means it can take a 4-dim image.
 def unpad3dArray(array1, tupleOfPaddingPerAxesLeftRight):
@@ -215,4 +237,16 @@ def normalize_int_zscore(log, channels, roi_mask, norm_prms, id_str='', verbose=
     return channels_norm
 
 # ====================== (above) Z-Score Intensity Normalization. ==================
+
+# ================= Others ========================
+# Deprecated
+def reflect_array_if_needed(reflect_flags, arr):
+    strides_for_refl_per_dim = [-1 if reflect_flags[0] else 1,
+                              -1 if reflect_flags[1] else 1,
+                              -1 if reflect_flags[2] else 1]
+    
+    refl_arr = arr[::strides_for_refl_per_dim[0],
+                   ::strides_for_refl_per_dim[1],
+                   ::strides_for_refl_per_dim[2]]
+    return refl_arr
 
