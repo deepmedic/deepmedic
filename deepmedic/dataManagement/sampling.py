@@ -179,9 +179,8 @@ def getSampledDataAndLabelsForSubepoch(log,
     (channs_of_samples_per_path_for_subep,
      lbls_predicted_part_of_samples_for_subep) = shuffleSegments(channs_of_samples_per_path_for_subep,
                                                                  lbls_predicted_part_of_samples_for_subep)
-    end_time_sampling = time.time()
     log.print3(job_id + " TIMING: Sampling for next [" + training_or_validation_str +
-               "] lasted: {0:.1f}".format(end_time_sampling - start_time_sampling) + " secs.")
+               "] lasted: {0:.1f}".format(time.time() - start_time_sampling) + " secs.")
 
     log.print3(job_id + " :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
 

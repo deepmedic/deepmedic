@@ -321,10 +321,9 @@ def do_training(sessionTf,
                                                acc_monitor_for_ep_val,
                                                channsOfSegmentsForSubepPerPathwayVal,
                                                labelsForCentralOfSegmentsForSubepVal)
-                    end_time_val_subep = time.time()
                     log.print3(
                         "TIMING: Validation on batches of this subepoch #" + str(subepoch) + " lasted: {0:.1f}".format(
-                            end_time_val_subep - start_time_val_subep) + " secs.")
+                            time.time() - start_time_val_subep) + " secs.")
 
                 # -------------------------GET DATA FOR THIS SUBEPOCH's TRAINING---------------------------------
                 if worker_pool is None:  # Sequential processing.
@@ -377,9 +376,8 @@ def do_training(sessionTf,
                                            acc_monitor_for_ep_train,
                                            channsOfSegmentsForSubepPerPathwayTrain,
                                            labelsForCentralOfSegmentsForSubepTrain)
-                end_time_train_subep = time.time()
                 log.print3("TIMING: Training on batches of this subepoch #" + str(subepoch) + " lasted: {0:.1f}".format(
-                    end_time_train_subep - start_time_train_subep) + " secs.")
+                    time.time() - start_time_train_subep) + " secs.")
 
             log.print3("")
             log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
