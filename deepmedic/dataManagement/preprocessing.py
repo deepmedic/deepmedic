@@ -96,7 +96,7 @@ def pad_3d_img(img, pad_left_right_per_axis):
 # In the 3 first axes. Which means it can take a 4-dim image.
 def unpad_3d_img(img, padding_left_right_per_axis):
     # img: 3d array
-    # padding_left_right_per_axis : ((pad-left-x,pad-right-x), (pad-left-y,pad-right-y), (pad-left-z,pad-right-z))
+    # padding_left_right_per_axis: ((pad-l-x,pad-r-x), (pad-l-y,pad-r-y), (pad-l-z,pad-r-z))
     unpadded_img = img[padding_left_right_per_axis[0][0]:,
                        padding_left_right_per_axis[1][0]:,
                        padding_left_right_per_axis[2][0]:]
@@ -123,18 +123,20 @@ def normalize_int_of_subj(log, channels, roi_mask, prms, job_id):
     if prms is None:
         return channels
     
-    verbose_lvl = 0
-    if 'verbose_lvl' in prms:
-        verbose_lvl = prms['verbose_lvl']
-    
+    verbose_lvl = prms['verbose_lvl'] if 'verbose_lvl' in prms else 0
+    norms_applied = []
+
     time_0 = time.time()
     # TODO: window_ints(min, max)
     # TODO: linear_rescale_to(new_min, new_max)
     if 'zscore' in prms:
-        channels = normalize_zscore_subj(log, channels, roi_mask, prms['zscore'], verbose_lvl, job_id)
-        
+        channels, applied = normalize_zscore_subj(log, channels, roi_mask, prms['zscore'], verbose_lvl, job_id)
+        if applied:
+            norms_applied.append('zscore')
+
     if verbose_lvl >= 1:
-        log.print3(job_id + " Normalizing intensities done. Took [{0:.1f}".format(time.time() - time_0) + "] secs")
+        log.print3(job_id + " Normalized subject's images with " +str(norms_applied) + ". " +\
+                   "Took [{0:.1f}".format(time.time() - time_0) + "] secs")
         
     return channels
 
@@ -220,29 +222,50 @@ def normalize_zscore_img(img, roi_mask_bool,
 def normalize_zscore_subj(log, channels, roi_mask, prms, verbose_lvl=0, job_id='', in_place=True):
     # channels: array [n_channels, x, y, z]
     # roi_mask: array [x,y,z]
-    # norm_params: {'apply': a, 'cutoff_percents': b, 'cutoff_times_std': c, 'cutoff_below_mean': d}
-    #     apply            : Whether to perform z-score normalization. True / False
-    #     cutoff_percents, cutoff_times_std, cutoff_below_mean: see called function normalize_zscore_img()
+    # norm_params: dictionary with following key:value entries
+    #     'apply_to_all_channels': True/False -> Whether to perform z-score normalization.
+    #     'apply_per_channel': [Booleans] -> List of len(channels) booleans, whether to normalize each channel.
+    #     'cutoff_percents', 'cutoff_times_std', 'cutoff_below_mean': see called func normalize_zscore_img()
+    #     NOTE: If apply_to_all_channels: True, then REQUIRES that apply_per_channel: None
+    #     E.g. BRATS: cutoff_perc: [5., 95.], cutoff_times_std: [2., 2.], cutoff_below_mean: True
     # verbose_lvl: 0: no logging, 1: Timing, 2: Stats per channel
-    # For BRATS17: cutoff_perc: [5., 95.], cutoff_times_std: [2., 2.], cutoff_below_mean: True
     # job_id: string for logging, specifying job number and pid. In testing, "".
+    assert not (prms['apply_to_all_channels'] and prms['apply_per_channel'] is not None)
+    assert (prms['apply_per_channel'] is None or isinstance(prms['apply_per_channel'], list))
     
-    if prms is None or not prms['apply']:
-        return channels
+    list_bools_apply_per_c = None
+
+    if prms is None:
+        return channels, False
+    elif prms['apply_to_all_channels']:
+        list_bools_apply_per_c = [True] * len(channels)
+    elif prms['apply_per_channel'] is None:
+        return channels, False
+    elif isinstance(prms['apply_per_channel'], list):
+        assert len(prms['apply_per_channel']) == len(channels)
+        list_bools_apply_per_c = prms['apply_per_channel']
+    else:
+        raise ValueError("Unexpected value for parameter in normalize_zscore_subj()")
     
     channels_norm = channels if in_place else np.zeros(channels.shape)
     roi_mask_bool = roi_mask > 0 if roi_mask is not None else np.ones(channels[0].shape) > 0
+    applied = False
     
     for idx, channel in enumerate(channels):
+        if not list_bools_apply_per_c[idx]:
+            continue
+
         channels_norm[idx], log_info = normalize_zscore_img(channel, roi_mask_bool,
                                                             prms['cutoff_percents'],
                                                             prms['cutoff_times_std'],
                                                             prms['cutoff_below_mean'],
                                                             verbose_lvl>=2)
+        applied = True
+        
         if verbose_lvl >=2:
             log.print3(job_id + " Z-Score Normalization of Channel-" + str(idx) + ":\n\t" + log_info)
     
-    return channels_norm
+    return channels_norm, applied
 
 # ====================== (above) Z-Score Intensity Normalization. ==================
 

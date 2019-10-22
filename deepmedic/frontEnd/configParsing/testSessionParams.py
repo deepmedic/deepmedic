@@ -14,6 +14,13 @@ class TestSessionParameters(object) :
     @staticmethod
     def getSessionName(sessionName) :
         return sessionName if sessionName is not None else "testSession"
+    @staticmethod
+    def errorIntNormZScoreTwoAppliesGiven():
+        print("ERROR: In testing-config, for the variable (dictionary) norm_zscore_prms,"
+              "\n\tif ['apply_to_all_channels': True] then it must ['apply_per_channel': None]"
+              "\n\tOtherwise, requires ['apply_to_all_channels': False] if ['apply_per_channel': [..list..] ]"
+              "\n\tExiting!")
+        exit(1)
     
     def __init__(self,
                 log,
@@ -66,13 +73,18 @@ class TestSessionParameters(object) :
         # == Padding ==
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         # == Normalization ==
-        norm_zscore_prms = {'apply': False, # True/False
+        norm_zscore_prms = {'apply_to_all_channels': False, # True/False
+                            'apply_per_channel': None, # Must be None if above True. Else, List Bool per channel
                             'cutoff_percents': None, # None or [low, high], each from 0.0 to 100. Eg [5.,95.]
                             'cutoff_times_std': None, # None or [low, high], each positive Float. Eg [3.,3.]
                             'cutoff_below_mean': False}
         if cfg[cfg.NORM_ZSCORE_PRMS] is not None:
             for key in cfg[cfg.NORM_ZSCORE_PRMS]:
                 norm_zscore_prms[key] = cfg[cfg.NORM_ZSCORE_PRMS][key]
+        if norm_zscore_prms['apply_to_all_channels'] and norm_zscore_prms['apply_per_channel'] is not None:
+            self.errorIntNormZScoreTwoAppliesGiven()
+        if norm_zscore_prms['apply_per_channel'] is not None:
+            assert len(norm_zscore_prms['apply_per_channel']) == len(cfg[cfg.CHANNELS]) # num channels
         # Aggregate params from all types of normalization:
         # norm_prms = None : No int normalization will be performed.
         # norm_prms['verbose_lvl']: 0: No logging, 1: Type of cutoffs and timing 2: Stats.

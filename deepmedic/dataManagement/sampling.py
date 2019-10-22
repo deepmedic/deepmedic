@@ -270,7 +270,7 @@ def load_subj_and_get_samples(job_idx,
     channs_of_samples_per_path = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
 
-    dims_highres_segment = cnn3d.pathways[0].getShapeOfInput(train_val_or_test)[2:]
+    dims_hres_segment = cnn3d.pathways[0].getShapeOfInput(train_val_or_test)[2:]
     
     # Load images of subject
     time_load_0 = time.time()
@@ -281,7 +281,7 @@ def load_subj_and_get_samples(job_idx,
                                                      inds_of_subjects_for_subep[job_idx],
                                                      paths_per_chan_per_subj,
                                                      paths_to_lbls_per_subj,
-                                                     paths_to_wmaps_per_sampl_cat_per_subj, # Placeholder in test
+                                                     paths_to_wmaps_per_sampl_cat_per_subj,
                                                      paths_to_masks_per_subj)
      
     # Pre-process images of subject
@@ -291,11 +291,11 @@ def load_subj_and_get_samples(job_idx,
     gt_lbl_img,
     roi_mask,
     wmaps_to_sample_per_cat,
-    pad_left_right_per_axis) = preprocess_imgs_of_subj(log, job_id,
-                                                       channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                                                       run_input_checks, cnn3d.num_classes, # checks
-                                                       pad_input_imgs, cnn3d.recFieldCnn, dims_highres_segment, # pad
-                                                       norm_prms)
+    pad_left_right_per_axis) = preproc_imgs_of_subj(log, job_id,
+                                                    channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                                                    run_input_checks, cnn3d.num_classes, # checks
+                                                    pad_input_imgs, cnn3d.recFieldCnn, dims_hres_segment, # pad
+                                                    norm_prms)
     time_prep = time.time() - time_prep_0
     
     # Augment at image level:
@@ -334,9 +334,9 @@ def load_subj_and_get_samples(job_idx,
             assert n_samples_for_cat == 0
             
         coords_of_samples = sample_coords_of_segments(log,
-                                                      job_idx,
+                                                      job_id,
                                                       n_samples_for_cat,
-                                                      dims_highres_segment,
+                                                      dims_hres_segment,
                                                       dims_of_scan,
                                                       sampling_map)
         str_samples_per_cat += "[" + cat_string + ": " + str(len(coords_of_samples[0][0])) + "/" + str(
@@ -386,7 +386,7 @@ def load_imgs_of_subject(log,
                          paths_to_wmaps_per_sampl_cat_per_subj,
                          paths_to_masks_per_subj
                          ):
-    # paths_per_chan_per_subj: List of lists. One sublist per case. Each should contain...
+    # paths_per_chan_per_subj: None or List of lists. One sublist per case. Each should contain...
     # ... as many elements(strings-filenamePaths) as numberOfChannels, pointing to (nii) channels of this case.
     
     log.print3(job_id + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
@@ -454,21 +454,21 @@ def load_imgs_of_subject(log,
     return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat
 
 
-def preprocess_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                            run_input_checks, n_classes,
-                            pad_input_imgs, dims_rec_field, dims_highres_segment,
-                            norm_prms):
+def preproc_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
+                         run_input_checks, n_classes,
+                         pad_input_imgs, dims_rec_field, dims_hres_segment,
+                         norm_prms):
     # job_id: Should be "" in testing.
     
     if run_input_checks:
-        check_gt_vs_num_classes(log, gt_lbl_img, n_classes)
+        check_gt_vs_num_classes(log, job_id, gt_lbl_img, n_classes)
     
     (channels,
      gt_lbl_img,
      roi_mask,
      wmaps_to_sample_per_cat,
      pad_left_right_per_axis) = pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                                                 pad_input_imgs, dims_rec_field, dims_highres_segment)
+                                                 pad_input_imgs, dims_rec_field, dims_hres_segment)
     
     channels = normalize_int_of_subj(log, channels, roi_mask, norm_prms, job_id)
     
@@ -927,8 +927,10 @@ def extractSegmentsGivenSliceCoords(cnn3d,
 # Checks whether the data is as expected  #
 ###########################################
 
-def check_gt_vs_num_classes(log, img_gt, num_classes):
-    job_id = "[" + str(os.getpid()) + "]"
+def check_gt_vs_num_classes(log, job_id, img_gt, num_classes):
+    if img_gt is None: # If manual labels are not provided. E.g. in testing.
+        return
+
     max_in_gt = np.max(img_gt)
     if np.max(img_gt) > num_classes - 1:  # num_classes includes background=0
         msg = job_id + " ERROR:\t GT labels include value [" + str(max_in_gt) + "] greater than what CNN expects." +\
@@ -937,3 +939,4 @@ def check_gt_vs_num_classes(log, img_gt, num_classes):
               "\n\t Note: number of classes in model config should include the background as a class."
         log.print3(msg)
         raise ValueError(msg)
+

@@ -12,7 +12,7 @@ import numpy as np
 import math
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
-from deepmedic.dataManagement.sampling import load_imgs_of_subject, preprocess_imgs_of_subj
+from deepmedic.dataManagement.sampling import load_imgs_of_subject, preproc_imgs_of_subj
 from deepmedic.dataManagement.sampling import get_slice_coords_of_all_img_tiles
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, \
@@ -524,7 +524,7 @@ def inference_on_whole_volumes(sessionTf,
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(paths_per_chan_per_subj)
-    dims_highres_segment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
+    dims_hres_segment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
@@ -554,11 +554,11 @@ def inference_on_whole_volumes(sessionTf,
         gt_lbl_img,
         roi_mask,
         _,
-        pad_left_right_per_axis) = preprocess_imgs_of_subj(log, "",
-                                                           channels, gt_lbl_img, roi_mask, None,
-                                                           run_input_checks, n_classes, # checks
-                                                           pad_input, cnn3d.recFieldCnn, dims_highres_segment, # pad
-                                                           norm_prms)
+        pad_left_right_per_axis) = preproc_imgs_of_subj(log, "",
+                                                        channels, gt_lbl_img, roi_mask, None,
+                                                        run_input_checks, n_classes, # checks
+                                                        pad_input, cnn3d.recFieldCnn, dims_hres_segment, # pad
+                                                        norm_prms)
     
         # ============== Augmentation ==================
         # TODO: Add augmentation here. And aggregate results after prediction of the whole volumes
