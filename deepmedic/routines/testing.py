@@ -12,7 +12,7 @@ import numpy as np
 import math
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
-from deepmedic.dataManagement.sampling import load_and_preproc_imgs_of_subj
+from deepmedic.dataManagement.sampling import load_imgs_of_subject, preprocess_imgs_of_subj
 from deepmedic.dataManagement.sampling import get_slice_coords_of_all_img_tiles
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, \
@@ -317,23 +317,23 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
     return prob_maps_vols, array_fms_to_save
 
 
-def unpad_img(img, unpad_input, padding_left_right_per_axis):
-    # unpad_input: If True, padding_left_right_per_axis == ((0,0), (0,0), (0,0)).
+def unpad_img(img, unpad_input, pad_left_right_per_axis):
+    # unpad_input: If True, pad_left_right_per_axis == ((0,0), (0,0), (0,0)).
     #              unpad_3d_img deals with no padding. So, this check is not required.
     if not unpad_input:
         return img
     if img is None: # Deals with the case something has not been given. E.g. roi_mask or gt_lbls.
         return None
-    return unpad_3d_img(img, padding_left_right_per_axis)
+    return unpad_3d_img(img, pad_left_right_per_axis)
 
 
-def unpad_list_of_imgs(list_imgs, unpad_input, padding_left_right_per_axis):
+def unpad_list_of_imgs(list_imgs, unpad_input, pad_left_right_per_axis):
     if not unpad_input or list_imgs is None:
         return list_imgs
     
     list_unpadded_imgs = []
     for img in list_imgs:
-        list_unpadded_imgs.append(unpad_img(img, unpad_input, padding_left_right_per_axis)) # Deals with None.
+        list_unpadded_imgs.append(unpad_img(img, unpad_input, pad_left_right_per_axis)) # Deals with None.
     return list_unpadded_imgs
 
 
@@ -524,6 +524,7 @@ def inference_on_whole_volumes(sessionTf,
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(paths_per_chan_per_subj)
+    dims_highres_segment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
@@ -539,26 +540,26 @@ def inference_on_whole_volumes(sessionTf,
         log.print3("")
         log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         log.print3("~~~~~~~~\t Segmenting subject with index #" + str(subj_i) + " \t~~~~~~~~")
-
-        (channels,
-         gt_lbl,  # only for calculating performance.
-         roi_mask,
-         _,  # weightmaps. Only for training.
-         padding_left_right_per_axis) = load_and_preproc_imgs_of_subj(log, "", "test",
-                                                      # For loading
-                                                      subj_i,
-                                                      paths_per_chan_per_subj,
-                                                      paths_to_lbls_per_subj,
-                                                      None,
-                                                      paths_to_masks_per_subj,
-                                                      # For preprocessing
-                                                      run_input_checks,
-                                                      n_classes,
-                                                      pad_input,
-                                                      cnn3d.recFieldCnn,
-                                                      cnn3d.pathways[0].getShapeOfInput("test")[2:],
-                                                      norm_prms)
         
+        (channels,  # nparray [channels,dim0,dim1,dim2]
+         gt_lbl_img,
+         roi_mask,
+         _) = load_imgs_of_subject(log, "",
+                                   subj_i,
+                                   paths_per_chan_per_subj,
+                                   paths_to_lbls_per_subj,
+                                   None, # weightmaps, not for test
+                                   paths_to_masks_per_subj)
+        (channels,
+        gt_lbl_img,
+        roi_mask,
+        _,
+        pad_left_right_per_axis) = preprocess_imgs_of_subj(log, "",
+                                                           channels, gt_lbl_img, roi_mask, None,
+                                                           run_input_checks, n_classes, # checks
+                                                           pad_input, cnn3d.recFieldCnn, dims_highres_segment, # pad
+                                                           norm_prms)
+    
         # ============== Augmentation ==================
         # TODO: Add augmentation here. And aggregate results after prediction of the whole volumes
         
@@ -573,11 +574,11 @@ def inference_on_whole_volumes(sessionTf,
         pred_seg = np.argmax(prob_maps_vols, axis=0)  # The segmentation.
 
         # Unpad all images.        
-        pred_seg_u          = unpad_img(pred_seg, pad_input, padding_left_right_per_axis)
-        gt_lbl_u            = unpad_img(gt_lbl, pad_input, padding_left_right_per_axis)
-        roi_mask_u          = unpad_img(roi_mask, pad_input, padding_left_right_per_axis)
-        prob_maps_vols_u    = unpad_list_of_imgs(prob_maps_vols, pad_input, padding_left_right_per_axis)
-        array_fms_to_save_u = unpad_list_of_imgs(array_fms_to_save, pad_input, padding_left_right_per_axis)
+        pred_seg_u          = unpad_img(pred_seg, pad_input, pad_left_right_per_axis)
+        gt_lbl_u            = unpad_img(gt_lbl_img, pad_input, pad_left_right_per_axis)
+        roi_mask_u          = unpad_img(roi_mask, pad_input, pad_left_right_per_axis)
+        prob_maps_vols_u    = unpad_list_of_imgs(prob_maps_vols, pad_input, pad_left_right_per_axis)
+        array_fms_to_save_u = unpad_list_of_imgs(array_fms_to_save, pad_input, pad_left_right_per_axis)
         
         # Poster-process outside the ROI, e.g. by deleting any predictions outside it.
         pred_seg_u_in_roi = pred_seg_u if roi_mask_u is None else pred_seg_u * roi_mask_u

@@ -398,17 +398,17 @@ class TrainSessionParameters(object):
         # == Padding ==
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
         # == Normalization ==
-        norm_zscore_prms = {'apply': True, # True/False
-                            'cutoff_percents': [0.,1.], # None or [low, high] with each 0.0 to 1.0
-                            'cutoff_times_std': [10.,10.], # None or [low, high] with each positive Float
-                            'cutoff_below_mean': False,
-                            'verbose': False}
+        norm_zscore_prms = {'apply': False, # True/False
+                            'cutoff_percents': None, # None or [low, high], each from 0.0 to 100. Eg [5.,95.]
+                            'cutoff_times_std': None, # None or [low, high], each positive Float. Eg [3.,3.]
+                            'cutoff_below_mean': False}
         if cfg[cfg.NORM_ZSCORE_PRMS] is not None:
             for key in cfg[cfg.NORM_ZSCORE_PRMS]:
                 norm_zscore_prms[key] = cfg[cfg.NORM_ZSCORE_PRMS][key]
         # Aggregate params from all types of normalization:
-        self.norm_prms = {} # If None, no int norm.
-        self.norm_prms['zscore'] = norm_zscore_prms
+        # norm_prms = None : No int normalization will be performed.
+        # norm_prms['verbose_lvl']: 0: No logging, 1: Type of cutoffs and timing 2: Stats.
+        self.norm_prms = {'verbose_lvl': 2, 'zscore': norm_zscore_prms}
         
         # ============= OTHERS ==========
         # Others useful internally or for reporting:
@@ -682,10 +682,8 @@ class TrainSessionParameters(object):
         logPrint("~~Padding~~")
         logPrint("Pad Input Images = " + str(self.pad_input))
         logPrint("~~Intensity Normalization~~")
-        logPrint("(Z-Score) Apply = " + str(self.norm_prms['zscore']['apply']))
-        logPrint("(Z-Score) Cutoff below/above percentiles = " + str(self.norm_prms['zscore']['cutoff_percents']))
-        logPrint("(Z-Score) Cutoff below/above times the std = " + str(self.norm_prms['zscore']['cutoff_times_std']))
-        logPrint("(Z-Score) Cutoff below whole image mean = " + str(self.norm_prms['zscore']['cutoff_below_mean']))
+        logPrint("Verbosity level = " + str(self.norm_prms['verbose_lvl']))
+        logPrint("Z-Score parameters = " + str(self.norm_prms['zscore']))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")

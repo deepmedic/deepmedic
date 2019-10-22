@@ -8,7 +8,8 @@
 from __future__ import absolute_import, division
 
 import numpy as np
-    
+import time
+
 
 def calc_border_int_of_3d_img(img_3d):
     border_int = np.mean([img_3d[0, 0, 0],
@@ -114,16 +115,36 @@ def unpad_3d_img(img, padding_left_right_per_axis):
 # Could make classes? class Normalizer and children? (zscore)
 
 # Main normalization method. This calls each different type of normalizer.
-def normalize_int_of_imgs(log, channels, roi_mask, prms, job_id):
-    if prms is not None:
-        channels = normalize_int_zscore(log, channels, roi_mask, prms['zscore'], job_id)
+def normalize_int_of_subj(log, channels, roi_mask, prms, job_id):
+    # prms = {'verbose_lvl': 0/1/2
+    #         'zscore': None or dictionary with parameters
+    #        }
+    
+    if prms is None:
+        return channels
+    
+    verbose_lvl = 0
+    if 'verbose_lvl' in prms:
+        verbose_lvl = prms['verbose_lvl']
+    
+    time_0 = time.time()
+    # TODO: window_ints(min, max)
+    # TODO: linear_rescale_to(new_min, new_max)
+    if 'zscore' in prms:
+        channels = normalize_zscore_subj(log, channels, roi_mask, prms['zscore'], verbose_lvl, job_id)
+        
+    if verbose_lvl >= 1:
+        log.print3(job_id + " Normalizing intensities done. Took [{0:.1f}".format(time.time() - time_0) + "] secs")
+        
     return channels
-
 
 # ===== (below) Z-Score Intensity Normalization. =====
 
-def get_img_stats(img):
-    return np.mean(img), np.std(img), np.max(img)
+def get_img_stats(img, calc_mean=True, calc_std=True, calc_max=True):
+    mean = np.mean(img) if calc_mean else None
+    std = np.std(img) if calc_std else None
+    max = np.max(img) if calc_max else None
+    return mean, std, max
 
 
 def get_cutoff_mask(img, low, high):
@@ -132,98 +153,95 @@ def get_cutoff_mask(img, low, high):
     return low_mask * high_mask
 
 
-def get_norm_stats(log, img, roi_mask_bool,
-                   cutoff_percents, cutoff_times_std, cutoff_below_mean,
-                   verbose=False, job_id=''):
-
-    img_mean, img_std, img_max = get_img_stats(img)
-
+def normalize_zscore_img(img, roi_mask_bool,
+                         cutoff_percents, cutoff_times_std, cutoff_below_mean,
+                         get_stats_info=False):
+    #     cutoff_percents  : Percentile cutoff (floats: [low_percentile, high_percentile], values in [0-100])
+    #     cutoff_times_std : Cutoff in terms of standard deviation (floats: [low_multiple, high_multiple])
+    #     cutoff_below_mean: Low cutoff of whole image mean (True or False)
+    # Returns: Normalized image and a string that can be logged/printed with info on cutoffs used.
+    # get_stats_info: If True, also computes and returns info on statistics. Extra compute.
+    
+    old_mean = None
+    old_std = None
+    log_info = "For computing mean/std for normalizing, disregarded voxels according to following rules:"
     img_roi = img[roi_mask_bool]  # This gets flattened automatically. It's a vector array.
-    img_roi_mean, img_roi_std, img_roi_max = get_img_stats(img_roi)
-
-    # Init auxiliary variables
-    mask_bool_norm = roi_mask_bool.copy()
+    mask_bool_norm = roi_mask_bool.copy() # Needed, so that below do not change it for other channels
+    log_info += "\n\t Cutoff outside ROI."
+    
     if cutoff_percents is not None:
         cutoff_low = np.percentile(img_roi, cutoff_percents[0])
         cutoff_high = np.percentile(img_roi, cutoff_percents[1])
         mask_bool_norm *= get_cutoff_mask(img, cutoff_low, cutoff_high)
-        if verbose:
-            log.print3(job_id + " Cutting off intensities with [percentiles] (within ROI)."
-                                " Cutoffs: Min=" + str(cutoff_low) + ", High=" + str(cutoff_high))
+        log_info += "\n\t Cutoff ints outside " + str(cutoff_percents) + " 'percentiles' (within ROI)." +\
+                    " Cutoffs: Low={0:.2f}".format(cutoff_low) + ", Max={0:.2f}".format(cutoff_high)
 
     if cutoff_times_std is not None:
+        img_roi_mean, img_roi_std, _ = get_img_stats(img_roi, calc_max=False)
+        old_mean = img_roi_mean
+        old_std = img_roi_std
         cutoff_low = img_roi_mean - cutoff_times_std[0] * img_roi_std
         cutoff_high = img_roi_mean + cutoff_times_std[1] * img_roi_std
         mask_bool_norm *= get_cutoff_mask(img, cutoff_low, cutoff_high)
-        if verbose:
-            log.print3(job_id + " Cutting off intensities with [std] (within ROI)."
-                                " Cutoffs: Min=" + str(cutoff_low) + ", High=" + str(cutoff_high))
+        log_info += "\n\t Cutoff ints below/above " + str(cutoff_times_std) +\
+                    " times the 'std' from the 'mean' (within ROI)." +\
+                    " Cutoffs: Low={0:.2f}".format(cutoff_low) + ", High={0:.2f}".format(cutoff_high)
 
-    if cutoff_below_mean:
+    if cutoff_below_mean: # Avoid if not asked, to save compute.
+        img_mean, _, img_max = get_img_stats(img, calc_std=False)
         cutoff_low = img_mean
-        mask_bool_norm *= get_cutoff_mask(img, cutoff_low, img_max)  # no high cutoff
-        if verbose:
-            log.print3(job_id + " Cutting off intensities [below original img mean] (to cut air)."
-                                " Cutoff: Min=" + str(cutoff_low))
+        cutoff_high = img_max
+        mask_bool_norm *= get_cutoff_mask(img, cutoff_low, cutoff_high)  # no high cutoff
+        log_info += "\n\t Cutoff ints below mean of *original* img (cuts air in brain MRI)." +\
+                    " Cutoff: Low={0:.2f}".format(cutoff_low)
 
-    norm_mean, norm_std, _ = get_img_stats(img[mask_bool_norm])
+    norm_mean, norm_std, _ = get_img_stats(img[mask_bool_norm], calc_max=False)
 
-    return norm_mean, norm_std
+    # Normalize
+    normalized_img = (img - norm_mean) / (1.0 * norm_std)
+    
+    # Report
+    if get_stats_info:
+        if old_mean is None:# May have been computed as part of above calc.
+            old_mean = np.mean(img_roi)
+        if old_std is None:
+            old_std = np.std(img_roi)
+        new_mean, new_std, _ = get_img_stats(normalized_img[roi_mask_bool], calc_max=False)
+        
+        log_info += "\n\t Stats (mean/std within ROI): " +\
+                    "Original [{0:.2f}".format(old_mean) + "/{0:.2f}".format(old_std) + "], " +\
+                    "Normalized using [{0:.2f}".format(norm_mean) + "/{0:.2f}".format(norm_std) + "], " +\
+                    "Final [{0:.2f}".format(new_mean) + "/{0:.2f}".format(new_std) +"]"
+        
+    return normalized_img, log_info
 
-# Unused
-def print_norm_log(log, prms, n_channels, job_id=''):
-    # Not useful, because a bug can lead to this to being printed without cutoffs used in practice.
-    # Example of such a bug: if these checks and those in the main function become different.
-    cutoff_types = []
-
-    if prms['cutoff_percents'] is not None:
-        cutoff_types += ['Percentile']
-    if prms['cutoff_times_std'] is not None:
-        cutoff_types += ['Standard Deviation']
-    if prms['cutoff_below_mean']:
-        cutoff_types += ['Whole Image Mean']
-
-    log.print3(job_id + " Normalizing " + str(n_channels) + " channel(s) with the following cutoff type(s): " +
-               ', '.join(list(cutoff_types)) if cutoff_types else 'None')
 
 # Main z-score method.
-def normalize_int_zscore(log, channels, roi_mask, prms, job_id=''):
+def normalize_zscore_subj(log, channels, roi_mask, prms, verbose_lvl=0, job_id='', in_place=True):
     # channels: array [n_channels, x, y, z]
     # roi_mask: array [x,y,z]
     # norm_params: {'apply': a, 'cutoff_percents': b, 'cutoff_times_std': c, 'cutoff_below_mean': d}
     #     apply            : Whether to perform z-score normalization. True / False
-    #     cutoff_percents  : percentile cutoff (floats: [low_percentile, high_percentile], values in [0-100])
-    #     cutoff_times_std : cutoff in terms of standard deviation (floats: [low_multiple, high_multiple])
-    #     cutoff_below_mean: low cutoff of whole image mean (True or False)
-    # For BRATS: cutoff_perc: [5., 95], cutoff_times_std: [2., 2.], cutoff_below_mean: True
+    #     cutoff_percents, cutoff_times_std, cutoff_below_mean: see called function normalize_zscore_img()
+    # verbose_lvl: 0: no logging, 1: Timing, 2: Stats per channel
+    # For BRATS17: cutoff_perc: [5., 95.], cutoff_times_std: [2., 2.], cutoff_below_mean: True
     # job_id: string for logging, specifying job number and pid. In testing, "".
     
     if prms is None or not prms['apply']:
         return channels
     
-    channels_norm = np.zeros(channels.shape)
-    roi_mask_bool = roi_mask > 0
-    verbose = prms['verbose']
+    channels_norm = channels if in_place else np.zeros(channels.shape)
+    roi_mask_bool = roi_mask > 0 if roi_mask is not None else np.ones(channels[0].shape) > 0
     
     for idx, channel in enumerate(channels):
-        norm_mean, norm_std = get_norm_stats(log, channel, roi_mask_bool,
-                                             prms['cutoff_percents'],
-                                             prms['cutoff_times_std'],
-                                             prms['cutoff_below_mean'],
-                                             verbose,
-                                             job_id)
-        # Apply the normalization
-        channels_norm[idx] = (channel - norm_mean) / (1.0 * norm_std)
-
-        if verbose:
-            old_mean, old_std, _ = get_img_stats(channel)
-            log.print3(job_id + " Original image stats (channel " + str(idx) + "):" +
-                       " Mean=" + str(old_mean) + ", Std=" + str(old_std))
-            log.print3(job_id + " Image was normalized using: Mean=" + str(norm_mean) + ", Std=" + str(norm_std))
-            new_mean, new_std, _ = get_img_stats(channels_norm[idx])
-            log.print3(job_id + " Normalized image stats (channel " + str(idx) + "):" +
-                       " Mean=" + str(new_mean) + ", Std=" + str(new_std))
-
+        channels_norm[idx], log_info = normalize_zscore_img(channel, roi_mask_bool,
+                                                            prms['cutoff_percents'],
+                                                            prms['cutoff_times_std'],
+                                                            prms['cutoff_below_mean'],
+                                                            verbose_lvl>=2)
+        if verbose_lvl >=2:
+            log.print3(job_id + " Z-Score Normalization of Channel-" + str(idx) + ":\n\t" + log_info)
+    
     return channels_norm
 
 # ====================== (above) Z-Score Intensity Normalization. ==================
