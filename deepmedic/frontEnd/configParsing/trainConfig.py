@@ -110,6 +110,7 @@ class TrainConfig(Config):
     RUN_INP_CHECKS = "run_input_checks"
     # ~~~~~ Preprocessing ~~~~~~~~
     PAD_INPUT = "padInputImagesBool"
+    NORM_VERB_LVL = "norm_verbosity_lvl"
     NORM_ZSCORE_PRMS = "norm_zscore_prms"
     
     # ======== DEPRECATED, backwards compatibility =======

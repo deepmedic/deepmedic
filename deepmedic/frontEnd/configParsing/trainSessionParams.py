@@ -408,7 +408,8 @@ class TrainSessionParameters(object):
         # Aggregate params from all types of normalization:
         # norm_prms = None : No int normalization will be performed.
         # norm_prms['verbose_lvl']: 0: No logging, 1: Type of cutoffs and timing 2: Stats.
-        self.norm_prms = {'verbose_lvl': 2, 'zscore': norm_zscore_prms}
+        self.norm_prms = {'verbose_lvl': cfg[cfg.NORM_VERB_LVL] if cfg[cfg.NORM_VERB_LVL] is not None else 0,
+                          'zscore': norm_zscore_prms}
         
         # ============= OTHERS ==========
         # Others useful internally or for reporting:
