@@ -119,7 +119,7 @@ class AccuracyOfEpochMonitorSegmentation(object):
     def log_acc_subep_to_txt(self):
         currSubep = self.numberOfSubepochsForWhichUpdated - 1
         logStr = self.trainOrValString + ": Epoch #" + str(self.epoch) + ", Subepoch #" + str(currSubep)
-        
+        self.log.print3("")
         self.log.print3("+++++++++++++++++++++++ Reporting Accuracy over whole subepoch +++++++++++++++++++++++")
         self.log.print3(logStr + ", Overall:\t mean accuracy:   \t" + strFl4fNA(self.meanEmpiricalAccuracyOfEachSubep[currSubep], self.NA_PATTERN) + \
                         "\t=> Correctly-Classified-Voxels/All-Predicted-Voxels = " + str(self.correctlyPredVoxelsInEachSubep[currSubep]) + "/" + str(self.numberOfAllSamplesOfEachSubep[currSubep]) )

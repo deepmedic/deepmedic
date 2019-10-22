@@ -12,12 +12,12 @@ import numpy as np
 import math
 
 from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
-from deepmedic.dataManagement.sampling import load_imgs_of_subject
+from deepmedic.dataManagement.sampling import load_imgs_of_subject, preprocess_imgs_of_subj
 from deepmedic.dataManagement.sampling import get_slice_coords_of_all_img_tiles
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, \
     save4DImgWithAllFmsToNiiWithOriginalHdr
-from deepmedic.dataManagement.preprocessing import unpad3dArray
+from deepmedic.dataManagement.preprocessing import unpad_3d_img
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
@@ -317,23 +317,23 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
     return prob_maps_vols, array_fms_to_save
 
 
-def unpad_img(img, unpad_input, padding_left_right_per_axis):
-    # unpad_input: If True, padding_left_right_per_axis == ((0,0), (0,0), (0,0)).
-    #              unpad3dArray deals with no padding. So, this check is not required.
+def unpad_img(img, unpad_input, pad_left_right_per_axis):
+    # unpad_input: If True, pad_left_right_per_axis == ((0,0), (0,0), (0,0)).
+    #              unpad_3d_img deals with no padding. So, this check is not required.
     if not unpad_input:
         return img
     if img is None: # Deals with the case something has not been given. E.g. roi_mask or gt_lbls.
         return None
-    return unpad3dArray(img, padding_left_right_per_axis)
+    return unpad_3d_img(img, pad_left_right_per_axis)
 
 
-def unpad_list_of_imgs(list_imgs, unpad_input, padding_left_right_per_axis):
+def unpad_list_of_imgs(list_imgs, unpad_input, pad_left_right_per_axis):
     if not unpad_input or list_imgs is None:
         return list_imgs
     
     list_unpadded_imgs = []
     for img in list_imgs:
-        list_unpadded_imgs.append(unpad_img(img, unpad_input, padding_left_right_per_axis)) # Deals with None.
+        list_unpadded_imgs.append(unpad_img(img, unpad_input, pad_left_right_per_axis)) # Deals with None.
     return list_unpadded_imgs
 
 
@@ -469,7 +469,7 @@ def calc_stats_of_metrics(metrics_per_subj_per_c, na_pattern):
 def report_mean_metrics(log, mean_metrics, na_pattern, val_test_print):
     # dices_1/2/3: A list with NUMBER_OF_SUBJECTS sublists.
     #              Each sublist has one dice-score per class.
-    log.print3("\n")
+    log.print3("")
     log.print3("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     log.print3("++++++++++++++++++++++++ Segmentation of all subjects finished ++++++++++++++++++++++++++++")
     log.print3("++++++++++++++ Reporting Average Segmentation Metrics over all subjects +++++++++++++++++++")
@@ -491,16 +491,19 @@ def inference_on_whole_volumes(sessionTf,
                                log,
                                val_or_test,
                                savePredictedSegmAndProbsDict,
-                               listOfFilepathsToEachChannelOfEachPatient,
-                               listOfFilepathsToGtLabelsOfEachPatient,
-                               listOfFilepathsToRoiMaskFastInfOfEachPatient,
+                               paths_per_chan_per_subj,
+                               paths_to_lbls_per_subj,
+                               paths_to_masks_per_subj,
                                namesForSavingSegmAndProbs,
                                suffixForSegmAndProbsDict,
-                               # --- Hyper parameters ---
+                               # Hyper parameters
                                batchsize,
-                               # --- Preprocessing ---
+                               # Data compatibility checks
+                               run_input_checks,
+                               # Pre-Processing
                                pad_input,
-                               # --- Saving feature maps ---
+                               norm_prms,
+                               # Saving feature maps
                                save_fms_flag,
                                idxs_fms_to_save,
                                namesForSavingFms):
@@ -511,7 +514,7 @@ def inference_on_whole_volumes(sessionTf,
 
     val_test_print = "Validation" if val_or_test == "val" else "Testing"
     
-    log.print3("\n")
+    log.print3("")
     log.print3("##########################################################################################")
     log.print3("#\t\t  Starting full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
     log.print3("##########################################################################################")
@@ -520,7 +523,8 @@ def inference_on_whole_volumes(sessionTf,
 
     NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
     n_classes = cnn3d.num_classes
-    n_subjects = len(listOfFilepathsToEachChannelOfEachPatient)
+    n_subjects = len(paths_per_chan_per_subj)
+    dims_highres_segment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
@@ -533,33 +537,31 @@ def inference_on_whole_volumes(sessionTf,
                               "dice3": [[-1] * n_classes for _ in range(n_subjects)]}
     
     for subj_i in range(n_subjects):
-        log.print3("\n")
+        log.print3("")
         log.print3("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         log.print3("~~~~~~~~\t Segmenting subject with index #" + str(subj_i) + " \t~~~~~~~~")
-
-        # Load the channels of the subject in RAM
-        (channels,
-         gt_lbl,  # only for accurate/correct DICE1-2 calculation
+        
+        (channels,  # nparray [channels,dim0,dim1,dim2]
+         gt_lbl_img,
          roi_mask,
-         _,  # weightmaps. Only for training.
-         padding_left_right_per_axis  # ((pad-pre-x, pad-after-x), (pre-y, post-y), (pre-z, post-z))
-         ) = load_imgs_of_subject(log,
-                                  None,
-                                  "test",
-                                  False,  # run_input_checks.
-                                  subj_i,
-                                  listOfFilepathsToEachChannelOfEachPatient,
-                                  listOfFilepathsToGtLabelsOfEachPatient,
-                                  None,
-                                  listOfFilepathsToRoiMaskFastInfOfEachPatient,
-                                  n_classes,
-                                  pad_input,
-                                  cnn3d.recFieldCnn,
-                                  cnn3d.pathways[0].getShapeOfInput("test")[2:])
-
-        # ==================== Pre-process =====================
-        # TODO: Move padding here
-        #       Do normalization here
+         _) = load_imgs_of_subject(log, "",
+                                   subj_i,
+                                   paths_per_chan_per_subj,
+                                   paths_to_lbls_per_subj,
+                                   None, # weightmaps, not for test
+                                   paths_to_masks_per_subj)
+        (channels,
+        gt_lbl_img,
+        roi_mask,
+        _,
+        pad_left_right_per_axis) = preprocess_imgs_of_subj(log, "",
+                                                           channels, gt_lbl_img, roi_mask, None,
+                                                           run_input_checks, n_classes, # checks
+                                                           pad_input, cnn3d.recFieldCnn, dims_highres_segment, # pad
+                                                           norm_prms)
+    
+        # ============== Augmentation ==================
+        # TODO: Add augmentation here. And aggregate results after prediction of the whole volumes
         
         # ============== Predict whole volume ==================
         # array_fms_to_save will be None if not saving them.
@@ -572,11 +574,11 @@ def inference_on_whole_volumes(sessionTf,
         pred_seg = np.argmax(prob_maps_vols, axis=0)  # The segmentation.
 
         # Unpad all images.        
-        pred_seg_u          = unpad_img(pred_seg, pad_input, padding_left_right_per_axis)
-        gt_lbl_u            = unpad_img(gt_lbl, pad_input, padding_left_right_per_axis)
-        roi_mask_u          = unpad_img(roi_mask, pad_input, padding_left_right_per_axis)
-        prob_maps_vols_u    = unpad_list_of_imgs(prob_maps_vols, pad_input, padding_left_right_per_axis)
-        array_fms_to_save_u = unpad_list_of_imgs(array_fms_to_save, pad_input, padding_left_right_per_axis)
+        pred_seg_u          = unpad_img(pred_seg, pad_input, pad_left_right_per_axis)
+        gt_lbl_u            = unpad_img(gt_lbl_img, pad_input, pad_left_right_per_axis)
+        roi_mask_u          = unpad_img(roi_mask, pad_input, pad_left_right_per_axis)
+        prob_maps_vols_u    = unpad_list_of_imgs(prob_maps_vols, pad_input, pad_left_right_per_axis)
+        array_fms_to_save_u = unpad_list_of_imgs(array_fms_to_save, pad_input, pad_left_right_per_axis)
         
         # Poster-process outside the ROI, e.g. by deleting any predictions outside it.
         pred_seg_u_in_roi = pred_seg_u if roi_mask_u is None else pred_seg_u * roi_mask_u
@@ -590,20 +592,20 @@ def inference_on_whole_volumes(sessionTf,
         # Save predicted segmentations
         save_pred_seg(pred_seg_u_in_roi,
                       savePredictedSegmAndProbsDict["segm"], suffixForSegmAndProbsDict["segm"],
-                      namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+                      namesForSavingSegmAndProbs, paths_per_chan_per_subj, subj_i, log)
 
         # Save probability maps
         save_prob_maps(prob_maps_vols_u_in_roi,
                        savePredictedSegmAndProbsDict["prob"], suffixForSegmAndProbsDict["prob"],
-                       namesForSavingSegmAndProbs, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+                       namesForSavingSegmAndProbs, paths_per_chan_per_subj, subj_i, log)
 
         # Save feature maps
         save_fms_individual(save_fms_flag, array_fms_to_save_u, cnn3d.pathways, idxs_fms_to_save,
-                            namesForSavingFms, listOfFilepathsToEachChannelOfEachPatient, subj_i, log)
+                            namesForSavingFms, paths_per_chan_per_subj, subj_i, log)
         
         
         # ================= Evaluate DSC for this subject ========================
-        if listOfFilepathsToGtLabelsOfEachPatient is not None:  # GT was provided.
+        if paths_to_lbls_per_subj is not None:  # GT was provided.
             metrics_per_subj_per_c = calc_metrics_for_subject(metrics_per_subj_per_c, subj_i,
                                                               pred_seg_u, pred_seg_u_in_roi,
                                                               gt_lbl_u, gt_lbl_u_in_roi,
@@ -614,13 +616,13 @@ def inference_on_whole_volumes(sessionTf,
         
     # ==================== Report average Dice Coefficient over all subjects ==================
     mean_metrics = None # To return something even if ground truth has not been given (in testing)
-    if listOfFilepathsToGtLabelsOfEachPatient is not None and n_subjects > 0:  # GT was given. Calculate.
+    if paths_to_lbls_per_subj is not None and n_subjects > 0:  # GT was given. Calculate.
         mean_metrics = calc_stats_of_metrics(metrics_per_subj_per_c, NA_PATTERN)
         report_mean_metrics(log, mean_metrics, NA_PATTERN, val_test_print)
 
     log.print3("TIMING: " + val_test_print + " process lasted: {0:.2f}".format(time.time() - t_start) + " secs.")
     log.print3("##########################################################################################")
     log.print3("#\t\t  Finished full Segmentation of " + str(val_test_print) + " subjects   \t\t\t#")
-    log.print3("##########################################################################################\n")
+    log.print3("##########################################################################################")
 
     return mean_metrics

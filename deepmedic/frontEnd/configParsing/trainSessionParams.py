@@ -215,14 +215,14 @@ class TrainSessionParameters(object):
             parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg)) \
             if cfg[cfg.ROI_MASKS_TR] is not None else None
 
-        samplingTypeToUseTr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
-        self.samplingTypeInstanceTrain = samplingType.SamplingType(self.log, samplingTypeToUseTr, num_classes)
-        if samplingTypeToUseTr in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None:
-            self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample(cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR])
+        sampling_type_flag_tr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
+        self.sampling_type_inst_tr = samplingType.SamplingType(self.log, sampling_type_flag_tr, num_classes)
+        if sampling_type_flag_tr in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None:
+            self.sampling_type_inst_tr.set_perc_of_samples_per_cat(cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR])
         else:
-            numberOfCategoriesOfSamplesTr = self.samplingTypeInstanceTrain.getNumberOfCategoriesToSample()
-            self.samplingTypeInstanceTrain.setPercentOfSamplesPerCategoryToSample(
-                [1.0 / numberOfCategoriesOfSamplesTr] * numberOfCategoriesOfSamplesTr)
+            n_sampl_cats_tr = self.sampling_type_inst_tr.get_n_sampling_cats()
+            self.sampling_type_inst_tr.set_perc_of_samples_per_cat(
+                [1.0 / n_sampl_cats_tr] * n_sampl_cats_tr)
 
         self.paths_to_wmaps_per_sampl_cat_per_subj_train = None
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None:
@@ -329,14 +329,13 @@ class TrainSessionParameters(object):
         self.batchsize_val_samples = cfg[cfg.BATCHSIZE_VAL_SAMPL] if cfg[cfg.BATCHSIZE_VAL_SAMPL] is not None else 50
 
         # ~~~~~~~~~ Sampling (Validation) ~~~~~~~~~~~
-        samplingTypeToUseVal = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else 1
-        self.samplingTypeInstanceVal = samplingType.SamplingType(self.log, samplingTypeToUseVal, num_classes)
-        if samplingTypeToUseVal in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] is not None:
-            self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample(cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL])
+        sampling_type_flag_val = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else 1
+        self.sampling_type_inst_val = samplingType.SamplingType(self.log, sampling_type_flag_val, num_classes)
+        if sampling_type_flag_val in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] is not None:
+            self.sampling_type_inst_val.set_perc_of_samples_per_cat(cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL])
         else:
-            numberOfCategoriesOfSamplesVal = self.samplingTypeInstanceVal.getNumberOfCategoriesToSample()
-            self.samplingTypeInstanceVal.setPercentOfSamplesPerCategoryToSample(
-                [1.0 / numberOfCategoriesOfSamplesVal] * numberOfCategoriesOfSamplesVal)
+            n_sampl_cats_val = self.sampling_type_inst_val.get_n_sampling_cats()
+            self.sampling_type_inst_val.set_perc_of_samples_per_cat([1.0 / n_sampl_cats_val] * n_sampl_cats_val)
 
         self.paths_to_wmaps_per_sampl_cat_per_subj_val = None
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
@@ -393,16 +392,32 @@ class TrainSessionParameters(object):
                      or self.save_fms_flag_val):
             self.errorRequireNamesOfPredictionsVal()
 
-        # ===================== OTHERS======================
-        # Preprocessing
+        # ===================== PRE-PROCESSING ======================
+        # === Data compatibility checks ===
+        self.run_input_checks = cfg[cfg.RUN_INP_CHECKS] if cfg[cfg.RUN_INP_CHECKS] is not None else True
+        # == Padding ==
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
-
+        # == Normalization ==
+        norm_zscore_prms = {'apply': False, # True/False
+                            'cutoff_percents': None, # None or [low, high], each from 0.0 to 100. Eg [5.,95.]
+                            'cutoff_times_std': None, # None or [low, high], each positive Float. Eg [3.,3.]
+                            'cutoff_below_mean': False}
+        if cfg[cfg.NORM_ZSCORE_PRMS] is not None:
+            for key in cfg[cfg.NORM_ZSCORE_PRMS]:
+                norm_zscore_prms[key] = cfg[cfg.NORM_ZSCORE_PRMS][key]
+        # Aggregate params from all types of normalization:
+        # norm_prms = None : No int normalization will be performed.
+        # norm_prms['verbose_lvl']: 0: No logging, 1: Type of cutoffs and timing 2: Stats.
+        self.norm_prms = {'verbose_lvl': cfg[cfg.NORM_VERB_LVL] if cfg[cfg.NORM_VERB_LVL] is not None else 0,
+                          'zscore': norm_zscore_prms}
+        
+        # ============= OTHERS ==========
         # Others useful internally or for reporting:
         self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
         self.numberOfCasesVal = len(self.channelsFilepathsVal)
-        self.run_input_checks = cfg[cfg.RUN_INP_CHECKS] if cfg[cfg.RUN_INP_CHECKS] is not None else True
-
-        # HIDDENS, no config allowed for these at the moment:
+        
+        # ========= HIDDENS =============
+        # no config allowed for these at the moment:
 
         # Re-weight samples in the cost function *on a per-class basis*: Type of re-weighting and training schedule.
         # E.g. to exclude a class, or counter class imbalance.
@@ -559,11 +574,11 @@ class TrainSessionParameters(object):
         logPrint("~~ Sampling (train) ~~")
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
 
-        logPrint("Type of Sampling = " + str(self.samplingTypeInstanceTrain.getStringOfSamplingType()) +
-                 " (" + str(self.samplingTypeInstanceTrain.getIntSamplingType()) + ")")
-        logPrint("Sampling Categories = " + str(self.samplingTypeInstanceTrain.getStringsPerCategoryToSample()))
+        logPrint("Type of Sampling = " + str(self.sampling_type_inst_tr.get_type_as_str()) +
+                 " (" + str(self.sampling_type_inst_tr.get_type_as_int()) + ")")
+        logPrint("Sampling Categories = " + str(self.sampling_type_inst_tr.get_sampling_cats_as_str()))
         logPrint("Percent of Samples to extract per Sampling Category = " +
-                 str(self.samplingTypeInstanceTrain.getPercentPerCategoryToSample()))
+                 str(self.sampling_type_inst_tr.get_perc_to_sample_per_cat()))
         logPrint("Paths to weight-Maps for sampling of each category = " +
                  str(self.paths_to_wmaps_per_sampl_cat_per_subj_train))
 
@@ -618,11 +633,11 @@ class TrainSessionParameters(object):
         logPrint("Batch size (val on samples) = " + str(self.batchsize_val_samples))
 
         logPrint("~~ Sampling (val) ~~")
-        logPrint("Type of Sampling = " + str(self.samplingTypeInstanceVal.getStringOfSamplingType()) + " (" +
-                 str(self.samplingTypeInstanceVal.getIntSamplingType()) + ")")
-        logPrint("Sampling Categories = " + str(self.samplingTypeInstanceVal.getStringsPerCategoryToSample()))
+        logPrint("Type of Sampling = " + str(self.sampling_type_inst_val.get_type_as_str()) + " (" +
+                 str(self.sampling_type_inst_val.get_type_as_int()) + ")")
+        logPrint("Sampling Categories = " + str(self.sampling_type_inst_val.get_sampling_cats_as_str()))
         logPrint("Percent of Samples to extract per Sampling Category = " +
-                 str(self.samplingTypeInstanceVal.getPercentPerCategoryToSample()))
+                 str(self.sampling_type_inst_val.get_perc_to_sample_per_cat()))
         logPrint("Paths to weight-maps for sampling of each category = " +
                  str(self.paths_to_wmaps_per_sampl_cat_per_subj_val))
 
@@ -662,10 +677,14 @@ class TrainSessionParameters(object):
         logPrint("Subsampled pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[1]))
         logPrint("FC pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
 
-        logPrint("~~~~~~~~~~~~~~~~~~Other Generic Parameters~~~~~~~~~~~~~~~~")
+        logPrint("~~~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~")
+        logPrint("~~Data Compabitibility Checks~~")
         logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
-        logPrint("~~Pre Processing~~")
+        logPrint("~~Padding~~")
         logPrint("Pad Input Images = " + str(self.pad_input))
+        logPrint("~~Intensity Normalization~~")
+        logPrint("Verbosity level = " + str(self.norm_prms['verbose_lvl']))
+        logPrint("Z-Score parameters = " + str(self.norm_prms['zscore']))
 
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
@@ -701,14 +720,12 @@ class TrainSessionParameters(object):
                 self.num_parallel_proc_sampling,
 
                 # -------Sampling Type---------
-                self.samplingTypeInstanceTrain,
-                self.samplingTypeInstanceVal,
+                self.sampling_type_inst_tr,
+                self.sampling_type_inst_val,
                 self.batchsize_train,
                 self.batchsize_val_samples,
                 self.batchsize_val_whole,
-
-                # -------Preprocessing-----------
-                self.pad_input,
+                
                 # -------Data Augmentation-------
                 self.augm_img_prms_tr,
                 self.augm_sample_prms_tr,
@@ -722,8 +739,12 @@ class TrainSessionParameters(object):
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatientVal,
 
-                # -------- Others --------
-                self.run_input_checks
+                # --- Data compatibility checks ---
+                self.run_input_checks,
+                
+                # -------- Pre-Processing ------
+                self.pad_input,
+                self.norm_prms
                 ]
         return args
 

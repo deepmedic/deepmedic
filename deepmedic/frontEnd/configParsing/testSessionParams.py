@@ -60,13 +60,31 @@ class TestSessionParameters(object) :
             self.indices_fms_per_pathtype_per_layer_to_save = None
         self.filepathsToSaveFeaturesForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         
-        #Preprocessing
+        # ===================== PRE-PROCESSING ======================
+        # === Data compatibility checks ===
+        self.run_input_checks = cfg[cfg.RUN_INP_CHECKS] if cfg[cfg.RUN_INP_CHECKS] is not None else True
+        # == Padding ==
         self.pad_input = cfg[cfg.PAD_INPUT] if cfg[cfg.PAD_INPUT] is not None else True
+        # == Normalization ==
+        norm_zscore_prms = {'apply': False, # True/False
+                            'cutoff_percents': None, # None or [low, high], each from 0.0 to 100. Eg [5.,95.]
+                            'cutoff_times_std': None, # None or [low, high], each positive Float. Eg [3.,3.]
+                            'cutoff_below_mean': False}
+        if cfg[cfg.NORM_ZSCORE_PRMS] is not None:
+            for key in cfg[cfg.NORM_ZSCORE_PRMS]:
+                norm_zscore_prms[key] = cfg[cfg.NORM_ZSCORE_PRMS][key]
+        # Aggregate params from all types of normalization:
+        # norm_prms = None : No int normalization will be performed.
+        # norm_prms['verbose_lvl']: 0: No logging, 1: Type of cutoffs and timing 2: Stats.
+        self.norm_prms = {'verbose_lvl': cfg[cfg.NORM_VERB_LVL] if cfg[cfg.NORM_VERB_LVL] is not None else 0,
+                          'zscore': norm_zscore_prms}
         
+        # ============= OTHERS =============
         #Others useful internally or for reporting:
         self.numberOfCases = len(self.channelsFilepaths)
         
-        #HIDDENS, no config allowed for these at the moment:
+        # ============= HIDDENS =============
+        # no config allowed for these at the moment:
         self._makeFilepathsForPredictionsAndFeatures( folderForPredictions, folderForFeatures )
         
     def _makeFilepathsForPredictionsAndFeatures(self,
@@ -127,10 +145,18 @@ class TestSessionParameters(object) :
         logPrint("Indices of min/max FMs to save, per type of pathway (normal/subsampled/FC) and per layer = " + str(self.indices_fms_per_pathtype_per_layer_to_save))
         logPrint("Save Feature Maps at = " + str(self.filepathsToSaveFeaturesForEachPatient))
         
-        logPrint("~~~~~~~ Parameters for Preprocessing ~~~~~~")
+        logPrint("~~~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~")
+        logPrint("~~Data Compabitibility Checks~~")
+        logPrint("Check whether input data has correct format (can slow down process) = " + str(self.run_input_checks))
+        logPrint("~~Padding~~")
         logPrint("Pad Input Images = " + str(self.pad_input))
         if not self.pad_input :
-            logPrint(">>> WARN: Inference near the borders of the image might be incomplete if not padded! Although some speed is gained if not padded. Task-specific, your choice.")
+            logPrint(">>> WARN: Inference near the borders of the image might be incomplete if not padded!" +\
+                     "Although some speed is gained if no padding is used. It is task-specific. Your choice.")
+        logPrint("~~Intensity Normalization~~")
+        logPrint("Verbosity level = " + str(self.norm_prms['verbose_lvl']))
+        logPrint("Z-Score parameters = " + str(self.norm_prms['zscore']))
+        
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================\n")
         
@@ -149,9 +175,12 @@ class TestSessionParameters(object) :
                 self.suffixForSegmAndProbsDict,
                 # Hyper parameters
                 self.batchsize,
-                #----Preprocessing------
+                # Data compatibility checks
+                self.run_input_checks,
+                # Pre-Processing
                 self.pad_input,
-                #--------For FM visualisation---------
+                self.norm_prms,
+                # For FM visualisation
                 self.save_fms_flag,
                 self.indices_fms_per_pathtype_per_layer_to_save,
                 self.filepathsToSaveFeaturesForEachPatient
