@@ -31,7 +31,7 @@ from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
 #    get_n_samples_per_subj_in_subep
 #    load_subj_and_get_samples
 #        load_imgs_of_subject
-#        sample_coords_of_segments
+#        sample_idxs_of_segments
 #        extractSegmentGivenSliceCoords
 #            getImagePartFromSubsampledImageForTraining
 #    shuffleSegments
@@ -71,19 +71,19 @@ def getSampledDataAndLabelsForSubepoch(log,
                " :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
 
     total_number_of_subjects = len(paths_per_chan_per_subj)
-    inds_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects, max_n_cases_per_subep)
+    idxs_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects, max_n_cases_per_subep)
 
     log.print3(sampler_id + " Out of [" + str(total_number_of_subjects) + "] subjects given for [" +
                training_or_validation_str + "], we will sample from maximum [" + str(max_n_cases_per_subep) +
                "] per subepoch.")
-    log.print3(sampler_id + " Shuffled indices of subjects that were randomly chosen: " + str(inds_of_subjects_for_subep))
+    log.print3(sampler_id + " Shuffled indices of subjects that were randomly chosen: " + str(idxs_of_subjects_for_subep))
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
     channs_of_samples_per_path_for_subep = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
     lbls_predicted_part_of_samples_for_subep = []  # Labels only for the central/predicted part of segments.
     # Can be different than max_n_cases_per_subep, because of available images number.
-    n_subjects_for_subep = len(inds_of_subjects_for_subep)
+    n_subjects_for_subep = len(idxs_of_subjects_for_subep)
 
     # Get how many samples I should get from each subject.
     n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
@@ -104,17 +104,17 @@ def getSampledDataAndLabelsForSubepoch(log,
                          augm_sample_prms,
 
                          n_subjects_for_subep,
-                         inds_of_subjects_for_subep,
+                         idxs_of_subjects_for_subep,
                          n_samples_per_subj
                          ]
 
     log.print3(sampler_id + " Will sample from [" + str(n_subjects_for_subep) +
                "] subjects for next " + training_or_validation_str + "...")
 
-    jobs_inds_to_do = list(range(n_subjects_for_subep))  # One job per subject.
+    jobs_idxs_to_do = list(range(n_subjects_for_subep))  # One job per subject.
 
     if num_parallel_proc <= 0:  # Sequentially
-        for job_idx in jobs_inds_to_do:
+        for job_idx in jobs_idxs_to_do:
             (channs_of_samples_from_job_per_path,
              lbls_predicted_part_of_samples_from_job) = load_subj_and_get_samples(*([job_idx] + args_sampling_job))
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
@@ -123,11 +123,11 @@ def getSampledDataAndLabelsForSubepoch(log,
             lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job  # concat does not copy.
 
     else:  # Parallelize sampling from each subject
-        while len(jobs_inds_to_do) > 0:  # While jobs remain.
+        while len(jobs_idxs_to_do) > 0:  # While jobs remain.
             jobs = collections.OrderedDict()
 
             log.print3(sampler_id + " ******* Spawning children processes to sample from [" +
-                       str(len(jobs_inds_to_do)) + "] subjects*******")
+                       str(len(jobs_idxs_to_do)) + "] subjects*******")
             log.print3(sampler_id + " MULTIPROC: Number of CPUs detected: " + str(multiprocessing.cpu_count()) +
                        ". Requested to use max: [" + str(num_parallel_proc) + "]")
             num_workers = min(num_parallel_proc, multiprocessing.cpu_count())
@@ -135,11 +135,11 @@ def getSampledDataAndLabelsForSubepoch(log,
             worker_pool = multiprocessing.Pool(processes=num_workers, initializer=init_sampling_proc)
 
             try:  # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
-                for job_idx in jobs_inds_to_do:  # submit jobs
+                for job_idx in jobs_idxs_to_do:  # submit jobs
                     jobs[job_idx] = worker_pool.apply_async(load_subj_and_get_samples, ([job_idx] + args_sampling_job))
 
                 # copy with list(...), so that this loops normally even if something is removed from list.
-                for job_idx in list(jobs_inds_to_do):
+                for job_idx in list(jobs_idxs_to_do):
                     try:
                         # timeout in case process for some reason never started (happens in py3)
                         (channs_of_samples_from_job_per_path,
@@ -149,7 +149,7 @@ def getSampledDataAndLabelsForSubepoch(log,
                             channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i]
                         # concat does not copy.
                         lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job
-                        jobs_inds_to_do.remove(job_idx)
+                        jobs_idxs_to_do.remove(job_idx)
                     except multiprocessing.TimeoutError:
                         log.print3(
                             sampler_id + "\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" +
@@ -253,7 +253,7 @@ def load_subj_and_get_samples(job_idx,
                               augm_sample_prms,
 
                               n_subjects_for_subep,
-                              inds_of_subjects_for_subep,
+                              idxs_of_subjects_for_subep,
                               n_samples_per_subj):
     # train_val_or_test: 'train', 'val' or 'test'
     # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
@@ -263,7 +263,7 @@ def load_subj_and_get_samples(job_idx,
         else "[VAL|JOB:" + str(job_idx) + "|PID:" + str(os.getpid()) + "]"
     
     log.print3(job_id + " (#" + str(job_idx) + "/" + str(n_subjects_for_subep) + ") Sampling job started. " +
-               "Load & sample from subject of index (in user's list): " + str(inds_of_subjects_for_subep[job_idx]) )
+               "Load & sample from subject of index (in user's list): " + str(idxs_of_subjects_for_subep[job_idx]) )
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
@@ -278,7 +278,7 @@ def load_subj_and_get_samples(job_idx,
      gt_lbl_img,
      roi_mask,
      wmaps_to_sample_per_cat) = load_imgs_of_subject(log, job_id,
-                                                     inds_of_subjects_for_subep[job_idx],
+                                                     idxs_of_subjects_for_subep[job_idx],
                                                      paths_per_chan_per_subj,
                                                      paths_to_lbls_per_subj,
                                                      paths_to_wmaps_per_sampl_cat_per_subj,
@@ -323,30 +323,30 @@ def load_subj_and_get_samples(job_idx,
 
     str_samples_per_cat = " Samples per category: "
     for cat_i in range(sampling_type.get_n_sampling_cats()):
-        cat_string = sampling_type.get_sampling_cats_as_str()[cat_i]
+        cat_str = sampling_type.get_sampling_cats_as_str()[cat_i]
         n_samples_for_cat = n_samples_per_cat[cat_i]
         sampling_map = sampling_maps_per_cat[cat_i]
         # Check if the class is valid for sampling.
         # Invalid if eg there is no such class in the subject's manual segmentation.
         if not valid_cats[cat_i]:
-            log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_string +
+            log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_str +
                         "] samples from this subject!")
             assert n_samples_for_cat == 0
             
-        coords_of_samples = sample_coords_of_segments(log,
-                                                      job_id,
-                                                      n_samples_for_cat,
-                                                      dims_hres_segment,
-                                                      dims_of_scan,
-                                                      sampling_map)
-        str_samples_per_cat += "[" + cat_string + ": " + str(len(coords_of_samples[0][0])) + "/" + str(
-            n_samples_for_cat) + "] "
+        (idxs_sampl_centers,
+         slice_idxs_sampl_segms) = sample_idxs_of_segments(log,
+                                                           job_id,
+                                                           n_samples_for_cat,
+                                                           dims_hres_segment,
+                                                           dims_of_scan,
+                                                           sampling_map)
+        str_samples_per_cat += "[" + cat_str + ": " + str(len(idxs_sampl_centers[0])) + "/" + str(n_samples_for_cat) + "] "
 
         # Use the just sampled coordinates of slices to actually extract the segments (data) from the subject's images.
         time_augm_samples = 0
-        for image_part_i in range(len(coords_of_samples[0][0])):
-            coord_center = coords_of_samples[0][:, image_part_i]
-
+        for image_part_i in range(len(idxs_sampl_centers[0])):
+            coord_center = idxs_sampl_centers[:, image_part_i]
+            
             (channs_of_sample_per_path,
              lbls_predicted_part_of_sample) = extractSegmentGivenSliceCoords(train_val_or_test,
                                                                              cnn3d,
@@ -476,32 +476,30 @@ def preproc_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_s
 
 
 # made for 3d
-def sample_coords_of_segments(log,
-                              job_id,
-                              n_samples,
-                              dims_of_segment,
-                              dims_of_scan,
-                              sampling_map):
+def sample_idxs_of_segments(log,
+                            job_id,
+                            n_samples,
+                            dims_of_segment,
+                            dims_of_scan,
+                            sampling_map):
     """
-    Returns: [ coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled ]
+    Returns: [ idxs_of_sampled_centers, slice_idxs_of_sampled_segms ]
              Coordinates (xyz indices) of the "central" voxel of sampled segments (1 voxel to the left if dimension is even).
              Also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
     
-    > coordsOfCentralVoxelsOfPartsSampled: array with shape: 3(xyz) x n_samples. 
+    > idxs_of_sampled_centers: array with shape: 3(xyz) x n_samples.
         Example: [ xCoordsForCentralVoxelOfEachPart, yCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
         >> x/y/z-CoordsForCentralVoxelOfEachPart: 1-dim array with n_samples, holding the x-indices of samples in image.
-    > sliceCoordsOfImagePartsSampled: 3(xyz) x NumberOfImagePartSamples x 2.
+    > slice_idxs_of_sampled_segms: 3(xyz) x NumberOfImagePartSamples x 2.
         The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
         Example: [ x-sliceCoordsOfImagePart, y-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
     """
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called.
     # Which is still fine.
-    if np.sum(sampling_map) == 0:
+    if np.isclose(np.sum(sampling_map), 0):
         log.print3(job_id + " WARN: Sampling map was found just zeros! No image segments were sampled from this subject!")
         return [[[], [], []], [[], [], []]]
-
-    imagePartsSampled = []
 
     # Now out of these, I need to randomly select one, which will be an ImagePart's central voxel.
     # But I need to be CAREFUL and get one that IS NOT closer to the image boundaries than the dimensions of the
@@ -515,73 +513,66 @@ def sample_coords_of_segments(log,
     # BTW imagePartDim takes kernel into account (ie if I want 9^3 voxels classified per imagePart with kernel 5x5,
     # I want 13 dim ImagePart)
 
+    # number of voxels to exclude from edges of the image, left and right in each axis, when sampling...
+    # ...the center of a segment. So that the segment will be fully contained in the image. (half segm left & right)
     # dim1: 1 row per r,c,z. Dim2: left/right width not to sample from (=half segment).
-    halfImagePartBoundaries = np.zeros((len(dims_of_segment), 2), dtype='int32')
+    n_vox_excl_left_right = np.zeros((len(dims_of_segment), 2), dtype='int32')
 
     # The below starts all zero. Will be Multiplied by other true-false arrays expressing if the relevant
     # voxels are within boundaries.
     # In the end, the final vector will be true only for the indices of lesions that are within all boundaries.
-    booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries = np.zeros(sampling_map.shape, dtype="int32")
+    mask_excl_near_edges = np.zeros(sampling_map.shape, dtype="int32")
 
-    # This loop leads to booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries to be true for the indices ...
+    # This loop leads to mask_excl_near_edges to be true for the indices ...
     # ...that allow getting an imagePart CENTERED on them, and be safely within image boundaries. Note that ...
     # ... if the imagePart is of even dimension, the "central" voxel is one voxel to the left.
     for rcz_i in range(len(dims_of_segment)):
         if dims_of_segment[rcz_i] % 2 == 0:  # even
-            dimensionDividedByTwo = dims_of_segment[rcz_i] // 2
+            dims_div_2 = dims_of_segment[rcz_i] // 2
             # central of ImagePart is 1 vox closer to begining of axes.
-            halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwo - 1,
-                                              dimensionDividedByTwo]
+            n_vox_excl_left_right[rcz_i] = [dims_div_2 - 1, dims_div_2]
         else:  # odd
             # If odd, middle voxel is the "central". Eg 5/2 = 2, with 3rd voxel being the central.
-            dimensionDividedByTwoFloor = math.floor(dims_of_segment[rcz_i] // 2)
-            halfImagePartBoundaries[rcz_i] = [dimensionDividedByTwoFloor, dimensionDividedByTwoFloor]
-            # used to be [halfImagePartBoundaries[0][0]: -halfImagePartBoundaries[0][1]],
-            # but in 2D case halfImagePartBoundaries might be ==0, causes problem and you get a null slice.
-    booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries[
-        halfImagePartBoundaries[0][0]: dims_of_scan[0] - halfImagePartBoundaries[0][1],
-        halfImagePartBoundaries[1][0]: dims_of_scan[1] - halfImagePartBoundaries[1][1],
-        halfImagePartBoundaries[2][0]: dims_of_scan[2] - halfImagePartBoundaries[2][1]] = 1
+            dims_div_2_floor = math.floor(dims_of_segment[rcz_i] // 2)
+            n_vox_excl_left_right[rcz_i] = [dims_div_2_floor, dims_div_2_floor]
+            # used to be [n_vox_excl_left_right[0][0]: -n_vox_excl_left_right[0][1]],
+            # but in 2D case n_vox_excl_left_right might be ==0, causes problem and you get a null slice.
+    mask_excl_near_edges[
+        n_vox_excl_left_right[0][0]: dims_of_scan[0] - n_vox_excl_left_right[0][1],
+        n_vox_excl_left_right[1][0]: dims_of_scan[1] - n_vox_excl_left_right[1][1],
+        n_vox_excl_left_right[2][0]: dims_of_scan[2] - n_vox_excl_left_right[2][1]] = 1
 
-    constrainedWithImageBoundariesMaskToSample = sampling_map * \
-                                                 booleanNpArray_voxelsToCentraliseImPartsWithinBoundaries
+    sampling_map_excl_near_edges = sampling_map * mask_excl_near_edges
     # normalize the probabilities to sum to 1, cause the function needs it as so.
-    constrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample / (
-                1.0 * np.sum(constrainedWithImageBoundariesMaskToSample))
+    sampling_map_excl_near_edges = sampling_map_excl_near_edges / (1.0 * np.sum(sampling_map_excl_near_edges))
 
-    flattenedConstrainedWithImageBoundariesMaskToSample = constrainedWithImageBoundariesMaskToSample.flatten()
+    sampling_map_excl_near_edges_flat = sampling_map_excl_near_edges.flatten()
 
     # This is going to be a 3xNumberOfImagePartSamples array.
-    indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts = np.random.choice(
-        constrainedWithImageBoundariesMaskToSample.size,
+    idxs_of_flat_map_sampled_as_centers = np.random.choice(
+        sampling_map_excl_near_edges.size,
         size=n_samples,
         replace=True,
-        p=flattenedConstrainedWithImageBoundariesMaskToSample)
+        p=sampling_map_excl_near_edges_flat)
     # np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), 
     # where each of the array in the tuple has the same shape as the listOfIndices. 
     # They have the r/c/z coords that correspond to the index of the flattened version.
-    # So, coordsOfCentralVoxelsOfPartsSampled will be array of shape: 3(rcz) x n_samples.
-    coordsOfCentralVoxelsOfPartsSampled = np.asarray(
-        np.unravel_index(indicesInTheFlattenArrayThatWereSampledAsCentralVoxelsOfImageParts,
-                         constrainedWithImageBoundariesMaskToSample.shape  # the shape of the roi_mask/scan.
-                         )
-        )
+    # So, idxs_of_sampled_centers will be array of shape: 3(rcz) x n_samples.
+    idxs_of_sampled_centers = np.asarray(np.unravel_index(idxs_of_flat_map_sampled_as_centers,
+                                                            sampling_map_excl_near_edges.shape)
+                                          )
     # Array with shape: 3(rcz) x NumberOfImagePartSamples x 2.
     # Last dimension has [0] for lowest boundary of slice, and [1] for highest boundary. INCLUSIVE BOTH SIDES.
-    sliceCoordsOfImagePartsSampled = np.zeros(list(coordsOfCentralVoxelsOfPartsSampled.shape) + [2], dtype="int32")
-    sliceCoordsOfImagePartsSampled[:, :, 0] = coordsOfCentralVoxelsOfPartsSampled - \
-                                              halfImagePartBoundaries[:,
-                                                                      np.newaxis,
-                                                                      0]  # np.newaxis broadcasts. To broadcast the -+.
-    sliceCoordsOfImagePartsSampled[:, :, 1] = coordsOfCentralVoxelsOfPartsSampled + \
-                                              halfImagePartBoundaries[:, np.newaxis, 1]
+    slice_idxs_of_sampled_segms = np.zeros(list(idxs_of_sampled_centers.shape) + [2], dtype="int32")
+    # below, np.newaxis broadcasts. To broadcast the -+.
+    slice_idxs_of_sampled_segms[:, :, 0] = idxs_of_sampled_centers - n_vox_excl_left_right[:, np.newaxis, 0]
+    slice_idxs_of_sampled_segms[:, :, 1] = idxs_of_sampled_centers + n_vox_excl_left_right[:, np.newaxis, 1]
 
-    # coordsOfCentralVoxelsOfPartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
-    # sliceCoordsOfImagePartsSampled: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. ...
+    # idxs_of_sampled_centers: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
+    # slice_idxs_of_sampled_segms: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. ...
     # ... The last dim has [0] for the lower boundary of the slice, and [1] for the higher boundary.
     # ... The slice coordinates returned are INCLUSIVE BOTH sides.
-    imagePartsSampled = [coordsOfCentralVoxelsOfPartsSampled, sliceCoordsOfImagePartsSampled]
-    return imagePartsSampled
+    return (idxs_of_sampled_centers, slice_idxs_of_sampled_segms)
 
 
 def getImagePartFromSubsampledImageForTraining(dimsOfPrimarySegment,
@@ -806,7 +797,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
 #
 # ###########################################################
 
-# TODO: This is very similar to sample_coords_of_segments() I believe, which is used for training.
+# TODO: This is very similar to sample_idxs_of_segments() I believe, which is used for training.
 #       Consider way to merge them.
 def get_slice_coords_of_all_img_tiles(log,
                                       dimsOfPrimarySegment, # xyz dims of input to primary pathway (normal)
