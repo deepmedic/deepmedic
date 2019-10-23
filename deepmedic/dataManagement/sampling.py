@@ -262,7 +262,7 @@ def load_subj_and_get_samples(job_idx,
     job_id = "[TRA|JOB:" + str(job_idx) + "|PID:" + str(os.getpid()) + "]" if train_val_or_test == 'train' \
         else "[VAL|JOB:" + str(job_idx) + "|PID:" + str(os.getpid()) + "]"
     
-    log.print3(job_id + " (#" + str(job_idx) + "/" + str(n_subjects_for_subep) + ") Sampling job started. " +
+    log.print3(job_id + " Started. (#" + str(job_idx) + "/" + str(n_subjects_for_subep) + ") sampling job. " +
                "Load & sample from subject of index (in user's list): " + str(idxs_of_subjects_for_subep[job_idx]) )
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
@@ -321,7 +321,7 @@ def load_subj_and_get_samples(job_idx,
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
 
-    str_samples_per_cat = " Samples per category: "
+    str_samples_per_cat = " Done. Samples per category: "
     for cat_i in range(sampling_type.get_n_sampling_cats()):
         cat_str = sampling_type.get_sampling_cats_as_str()[cat_i]
         n_samples_for_cat = n_samples_per_cat[cat_i]
@@ -332,6 +332,7 @@ def load_subj_and_get_samples(job_idx,
             log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_str +
                         "] samples from this subject!")
             assert n_samples_for_cat == 0
+            continue # This should not be needed, the next func should also handle it. But whatever.
             
         (idxs_sampl_centers,
          slice_idxs_sampl_segms) = sample_idxs_of_segments(log,
@@ -366,7 +367,8 @@ def load_subj_and_get_samples(job_idx,
                 channs_of_samples_per_path[pathway_i].append(channs_of_sample_per_path[pathway_i])
             lbls_predicted_part_of_samples.append(lbls_predicted_part_of_sample)
         
-    log.print3(job_id + str_samples_per_cat + ". TIMING: " +
+    log.print3(job_id + str_samples_per_cat)
+    log.print3(job_id + "TIMING: " +
                "[Load: {0:.1f}".format(time_load) + "] "
                "[Preproc: {0:.1f}".format(time_prep) + "] " +
                "[Augm-Img: {0:.1f}".format(time_augm_img) + "] " +
@@ -497,8 +499,9 @@ def sample_idxs_of_segments(log,
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called.
     # Which is still fine.
-    if np.isclose(np.sum(sampling_map), 0):
-        log.print3(job_id + " WARN: Sampling map was found just zeros! No image segments were sampled from this subject!")
+    if np.isclose(np.sum(sampling_map), 0.):
+        log.print3(job_id + " WARN: Sampling map for category is just zeros! " +\
+                   " No samples for category from subject!")
         return [[[], [], []], [[], [], []]]
 
     # Now out of these, I need to randomly select one, which will be an ImagePart's central voxel.
@@ -544,8 +547,13 @@ def sample_idxs_of_segments(log,
 
     sampling_map_excl_near_edges = sampling_map * mask_excl_near_edges
     # normalize the probabilities to sum to 1, cause the function needs it as so.
-    sampling_map_excl_near_edges = sampling_map_excl_near_edges / (1.0 * np.sum(sampling_map_excl_near_edges))
-
+    sum_sampl_map = np.sum(sampling_map_excl_near_edges)
+    if np.isclose(sum_sampl_map, 0.) : # is zero
+        log.print3(id_str+" WARN: AFTER EXCLUDING NEAR EDGES, sampling map for category is just zeros! " +\
+                   " No samples for category from subject!")
+        return [ [[],[],[]], [[],[],[]] ]
+    
+    sampling_map_excl_near_edges = sampling_map_excl_near_edges / (1.0 * sum_sampl_map)
     sampling_map_excl_near_edges_flat = sampling_map_excl_near_edges.flatten()
 
     # This is going to be a 3xNumberOfImagePartSamples array.
