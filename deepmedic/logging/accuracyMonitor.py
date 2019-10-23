@@ -53,15 +53,13 @@ class AccuracyOfEpochMonitorSegmentation(object):
         self.listPerSubepForegrMeanAccSensSpecDsc = [] # NOTE: May contain N0T-APPLICABLE=self.NA_PATTERN elements, eg when class not present!
         
     # ==== API ====
-    def getMeanEmpiricalAccuracyOfEpoch(self): # Multiclass mean accuracy. As in: Number-of-Voxels-Correctly-Classified / All-voxels
+    def get_avg_accuracy_ep(self): # Multiclass mean accuracy. As in: Number-of-Voxels-Correctly-Classified / All-voxels
         return np.mean(self.meanEmpiricalAccuracyOfEachSubep)
     
     
     # Generic. Does not flip the class-0 background class.
-    def updateMonitorAccuraciesWithNewSubepochEntries(  self,
-                                                        meanCostOfSubepoch,
-                                                        perClassRpRnTpTnInSubep # Class X 4. The Real Pos, Real Neg, True Pos (pred), True Neg (pred).
-                                                        ) :
+    def update_metrics_after_subep(self, meanCostOfSubepoch, perClassRpRnTpTnInSubep):
+        # perClassRpRnTpTnInSubep # Class X 4. The Real Pos, Real Neg, True Pos (pred), True Neg (pred).
         #---------- This first part takes care of the overall, multi-class mean accuracy: meanAccuracy = Num-Voxels-Predicted-Correct-Class / All-Voxels. 
         if self.training0orValidation1 == 0 :
             self.meanCostOfEachSubep.append(meanCostOfSubepoch)
@@ -217,7 +215,7 @@ class AccuracyOfEpochMonitorSegmentation(object):
         self.log.print3('======================================================')
 
                 
-    def reportDSCWholeSegmentation(self, mean_metrics):
+    def report_metrics_whole_vols(self, mean_metrics):
         # mean_metrics: 
         # metrics_dict_list: list that holds one element per class, [ elem-class0, elem-class1, .... ]
         #                    Each element is a dictionary of metrics for the class.
@@ -246,7 +244,7 @@ class AccuracyOfEpochMonitorSegmentation(object):
         self.log.print3('======================================================')
         
         
-    def reportMeanAccyracyOfEpoch(self) :
+    def report_metrics_samples_ep(self) :
         logStr = self.trainOrValString + ": Epoch #" + str(self.epoch)
         
         # Report the multi-class accuracy first.
