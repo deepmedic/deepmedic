@@ -368,7 +368,7 @@ def load_subj_and_get_samples(job_idx,
             lbls_predicted_part_of_samples.append(lbls_predicted_part_of_sample)
         
     log.print3(job_id + str_samples_per_cat)
-    log.print3(job_id + "TIMING: " +
+    log.print3(job_id + " TIMING: " +
                "[Load: {0:.1f}".format(time_load) + "] "
                "[Preproc: {0:.1f}".format(time_prep) + "] " +
                "[Augm-Img: {0:.1f}".format(time_augm_img) + "] " +
