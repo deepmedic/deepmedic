@@ -11,7 +11,7 @@ import time
 import numpy as np
 import math
 
-from deepmedic.logging.accuracyMonitor import AccuracyOfEpochMonitorSegmentation
+from deepmedic.logging.accuracyMonitor import AccuracyMonitorForEpSegm
 from deepmedic.dataManagement.sampling import load_imgs_of_subject, preproc_imgs_of_subj
 from deepmedic.dataManagement.sampling import get_slice_coords_of_all_img_tiles
 from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
@@ -521,7 +521,7 @@ def inference_on_whole_volumes(sessionTf,
 
     t_start = time.time()
 
-    NA_PATTERN = AccuracyOfEpochMonitorSegmentation.NA_PATTERN
+    NA_PATTERN = AccuracyMonitorForEpSegm.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(paths_per_chan_per_subj)
     dims_hres_segment = cnn3d.pathways[0].getShapeOfInput("test")[2:]

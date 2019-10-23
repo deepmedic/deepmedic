@@ -11,7 +11,7 @@ import numpy as np
 from deepmedic.logging.utils import strFl4fNA, strFl5fNA, strListFl4fNA, strListFl5fNA, getMeanOfListExclNA
 
 
-class AccuracyOfEpochMonitorSegmentation(object):
+class AccuracyMonitorForEpSegm(object):
     
     NA_PATTERN = "N/A"  # not applicable. Eg for accuracy when class not present.
     
