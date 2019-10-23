@@ -18,7 +18,7 @@ import multiprocessing
 import signal
 import collections
 
-from deepmedic.dataManagement.io import loadVolume
+from deepmedic.dataManagement.io import load_volume
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.preprocessing import pad_imgs_of_case, normalize_int_of_subj, calc_border_int_of_3d_img
 from deepmedic.dataManagement.augmentSample import augment_sample
@@ -26,7 +26,7 @@ from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
 
 
 # Order of calls:
-# getSampledDataAndLabelsForSubepoch
+# get_samples_for_subepoch
 #    get_random_subjects_to_train_subep
 #    get_n_samples_per_subj_in_subep
 #    load_subj_and_get_samples
@@ -34,30 +34,30 @@ from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
 #        sample_idxs_of_segments
 #        extractSegmentGivenSliceCoords
 #            getImagePartFromSubsampledImageForTraining
-#    shuffleSegments
+#    shuffle_samples
 
 
 # Main sampling process during training. Executed in parallel while training on a batch on GPU.
 # Called from training.do_training()
 # TODO: I think this should be a "sampler" class and moved to training.py. To keep this file generic-sampling.
-def getSampledDataAndLabelsForSubepoch(log,
-                                       train_val_or_test,
-                                       num_parallel_proc,
-                                       run_input_checks,
-                                       cnn3d,
-                                       max_n_cases_per_subep,
-                                       n_samples_per_subep,
-                                       sampling_type,
-                                       # Paths to input files
-                                       paths_per_chan_per_subj,
-                                       paths_to_lbls_per_subj,
-                                       paths_to_masks_per_subj,
-                                       paths_to_wmaps_per_sampl_cat_per_subj,
-                                       # Preprocessing & Augmentation
-                                       pad_input_imgs,
-                                       norm_prms,
-                                       augm_img_prms,
-                                       augm_sample_prms):
+def get_samples_for_subepoch(log,
+                             train_val_or_test,
+                             num_parallel_proc,
+                             run_input_checks,
+                             cnn3d,
+                             max_n_cases_per_subep,
+                             n_samples_per_subep,
+                             sampling_type,
+                             # Paths to input files
+                             paths_per_chan_per_subj,
+                             paths_to_lbls_per_subj,
+                             paths_to_masks_per_subj,
+                             paths_to_wmaps_per_sampl_cat_per_subj,
+                             # Preprocessing & Augmentation
+                             pad_input_imgs,
+                             norm_prms,
+                             augm_img_prms,
+                             augm_sample_prms):
     # train_val_or_test: 'train', 'val' or 'test'
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -159,14 +159,14 @@ def getSampledDataAndLabelsForSubepoch(log,
 
             except (Exception, KeyboardInterrupt) as e:
                 log.print3(
-                    sampler_id + "\n\n ERROR: Caught exception in getSampledDataAndLabelsForSubepoch(): " + str(e) + "\n")
+                    sampler_id + "\n\n ERROR: Caught exception in get_samples_for_subepoch(): " + str(e) + "\n")
                 log.print3(traceback.format_exc())
                 worker_pool.terminate()
                 worker_pool.join()  # Will wait. A KeybInt will kill this (py3)
                 raise e
             except:  # Catches everything, even a sys.exit(1) exception.
                 log.print3(
-                    sampler_id + "\n\n ERROR: Unexpected error in getSampledDataAndLabelsForSubepoch(). System info: ",
+                    sampler_id + "\n\n ERROR: Unexpected error in get_samples_for_subepoch(). System info: ",
                     sys.exc_info()[0])
                 worker_pool.terminate()
                 worker_pool.join()
@@ -178,7 +178,7 @@ def getSampledDataAndLabelsForSubepoch(log,
 
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
     (channs_of_samples_per_path_for_subep,
-     lbls_predicted_part_of_samples_for_subep) = shuffleSegments(channs_of_samples_per_path_for_subep,
+     lbls_predicted_part_of_samples_for_subep) = shuffle_samples(channs_of_samples_per_path_for_subep,
                                                                  lbls_predicted_part_of_samples_for_subep)
     log.print3(sampler_id + " TIMING: Sampling for next [" + training_or_validation_str +
                "] lasted: {0:.1f}".format(time.time() - start_time_sampling) + " secs.")
@@ -401,7 +401,7 @@ def load_imgs_of_subject(log,
     for channel_i in range(numberOfNormalScaleChannels):
         fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
         if fullFilenamePathOfChannel != "-":  # normal case, filepath was given.
-            channelData = loadVolume(fullFilenamePathOfChannel)
+            channelData = load_volume(fullFilenamePathOfChannel)
             
             if channels is None:
                 # Initialize the array in which all the channels for the patient will be placed.
@@ -416,7 +416,7 @@ def load_imgs_of_subject(log,
     # Load the class labels.
     if paths_to_lbls_per_subj is not None:
         fullFilenamePathOfGtLabels = paths_to_lbls_per_subj[subj_i]
-        gt_lbl_img = loadVolume(fullFilenamePathOfGtLabels)
+        gt_lbl_img = load_volume(fullFilenamePathOfGtLabels)
 
         if gt_lbl_img.dtype.kind not in ['i', 'u']:
             dtype_gt_lbls = 'int16'
@@ -428,7 +428,7 @@ def load_imgs_of_subject(log,
 
     if paths_to_masks_per_subj is not None:
         fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
-        roi_mask = loadVolume(fullFilenamePathOfRoiMask)
+        roi_mask = load_volume(fullFilenamePathOfRoiMask)
         
         if roi_mask.dtype.kind not in ['i','u']:
             dtype_roi_mask = 'int16'
@@ -446,7 +446,7 @@ def load_imgs_of_subject(log,
             filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
             filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[
                 subj_i]
-            weightedMapForThisCatData = loadVolume(filepathToTheWeightMapOfThisPatientForThisCategory)
+            weightedMapForThisCatData = load_volume(filepathToTheWeightMapOfThisPatientForThisCategory)
             if not np.all(weightedMapForThisCatData >= 0):
                 raise ValueError("Negative values found in weightmap. Unexpected. Zero or positives allowed.")
             wmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
@@ -701,7 +701,7 @@ def getImagePartFromSubsampledImageForTraining(dimsOfPrimarySegment,
     return subsampledChannelsForThisImagePart
 
 
-def shuffleSegments(channs_of_samples_per_path, lbls_predicted_part_of_samples):
+def shuffle_samples(channs_of_samples_per_path, lbls_predicted_part_of_samples):
     n_paths_taking_inp = len(channs_of_samples_per_path)
     inp_to_zip = [sublist_for_path for sublist_for_path in channs_of_samples_per_path]
     inp_to_zip += [lbls_predicted_part_of_samples]

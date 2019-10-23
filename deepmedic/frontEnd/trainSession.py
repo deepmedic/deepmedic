@@ -13,7 +13,7 @@ from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiv
 from deepmedic.frontEnd.configParsing.trainSessionParams import TrainSessionParameters
 from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTrainingSession, handle_exception_tf_restore
 
-from deepmedic.logging.utils import datetimeNowAsStr
+from deepmedic.logging.utils import datetime_now_str
 from deepmedic.neuralnet.cnn3d import Cnn3d
 from deepmedic.neuralnet.trainer import Trainer
 
@@ -183,7 +183,7 @@ class TrainSession(Session):
                 tf.variables_initializer(var_list=collection_vars_trainer).run()
                 self._log.print3("All variables were initialized.")
 
-                filename_to_save_with = self._params.filepath_to_save_models + ".initial." + datetimeNowAsStr()
+                filename_to_save_with = self._params.filepath_to_save_models + ".initial." + datetime_now_str()
                 self._log.print3("Saving the initial model at:" + str(filename_to_save_with))
                 saver_all.save(sessionTf, filename_to_save_with+".model.ckpt", write_meta_graph=False)
                 # tf.train.write_graph( graph_or_graph_def=sessionTf.graph.as_graph_def(),
