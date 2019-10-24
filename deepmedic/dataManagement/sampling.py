@@ -27,9 +27,9 @@ from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
 
 # Order of calls:
 # get_samples_for_subepoch
-#    get_random_subjects_to_train_subep
-#    get_n_samples_per_subj_in_subep
-#    load_subj_and_get_samples
+#    choose_random_subjects
+#    get_n_samples_per_subj
+#    load_subj_and_sample
 #        load_imgs_of_subject
 #        sample_idxs_of_segments
 #        extractSegmentGivenSliceCoords
@@ -65,28 +65,28 @@ def get_samples_for_subepoch(log,
     sampler_id = "[TRA|SAMPLER|PID:" + str(os.getpid()) + "]" if train_val_or_test == "train" \
             else "[VAL|SAMPLER|PID:" + str(os.getpid()) + "]"
     start_time_sampling = time.time()
-    training_or_validation_str = "Training" if train_val_or_test == "train" else "Validation"
+    tr_or_val_str_log = "Training" if train_val_or_test == "train" else "Validation"
 
     log.print3(sampler_id +
-               " :=:=:=:=:=:=: Starting to sample for next [" + training_or_validation_str + "]... :=:=:=:=:=:=:")
+               " :=:=:=:=:=:=: Starting to sample for next [" + tr_or_val_str_log + "]... :=:=:=:=:=:=:")
 
-    total_number_of_subjects = len(paths_per_chan_per_subj)
-    idxs_of_subjects_for_subep = get_random_subjects_to_train_subep(total_number_of_subjects, max_n_cases_per_subep)
+    n_total_subjects = len(paths_per_chan_per_subj)
+    idxs_of_subjs_for_subep = choose_random_subjects(n_total_subjects, max_n_cases_per_subep)
 
-    log.print3(sampler_id + " Out of [" + str(total_number_of_subjects) + "] subjects given for [" +
-               training_or_validation_str + "], we will sample from maximum [" + str(max_n_cases_per_subep) +
+    log.print3(sampler_id + " Out of [" + str(n_total_subjects) + "] subjects given for [" +
+               tr_or_val_str_log + "], we will sample from maximum [" + str(max_n_cases_per_subep) +
                "] per subepoch.")
-    log.print3(sampler_id + " Shuffled indices of subjects that were randomly chosen: " + str(idxs_of_subjects_for_subep))
+    log.print3(sampler_id + " Shuffled indices of subjects that were randomly chosen: " + str(idxs_of_subjs_for_subep))
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
-    channs_of_samples_per_path_for_subep = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
-    lbls_predicted_part_of_samples_for_subep = []  # Labels only for the central/predicted part of segments.
+    channs_of_samples_per_path = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
+    lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
     # Can be different than max_n_cases_per_subep, because of available images number.
-    n_subjects_for_subep = len(idxs_of_subjects_for_subep)
+    n_subjs_for_subep = len(idxs_of_subjs_for_subep)
 
     # Get how many samples I should get from each subject.
-    n_samples_per_subj = get_n_samples_per_subj_in_subep(n_samples_per_subep, n_subjects_for_subep)
+    n_samples_per_subj = get_n_samples_per_subj(n_samples_per_subep, n_subjs_for_subep)
 
     args_sampling_job = [log,
                          train_val_or_test,
@@ -103,24 +103,24 @@ def get_samples_for_subepoch(log,
                          augm_img_prms,
                          augm_sample_prms,
 
-                         n_subjects_for_subep,
-                         idxs_of_subjects_for_subep,
+                         n_subjs_for_subep,
+                         idxs_of_subjs_for_subep,
                          n_samples_per_subj
                          ]
 
-    log.print3(sampler_id + " Will sample from [" + str(n_subjects_for_subep) +
-               "] subjects for next " + training_or_validation_str + "...")
+    log.print3(sampler_id + " Will sample from [" + str(n_subjs_for_subep) +
+               "] subjects for next " + tr_or_val_str_log + "...")
 
-    jobs_idxs_to_do = list(range(n_subjects_for_subep))  # One job per subject.
+    jobs_idxs_to_do = list(range(n_subjs_for_subep))  # One job per subject.
 
     if num_parallel_proc <= 0:  # Sequentially
         for job_idx in jobs_idxs_to_do:
-            (channs_of_samples_from_job_per_path,
-             lbls_predicted_part_of_samples_from_job) = load_subj_and_get_samples(*([job_idx] + args_sampling_job))
+            (channs_samples_from_job_per_path,
+             lbls_predicted_part_samples_from_job) = load_subj_and_sample(*([job_idx] + args_sampling_job))
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
                 # concat does not copy.
-                channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i]
-            lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job  # concat does not copy.
+                channs_of_samples_per_path[pathway_i] += channs_samples_from_job_per_path[pathway_i]
+            lbls_predicted_part_of_samples += lbls_predicted_part_samples_from_job  # concat does not copy.
 
     else:  # Parallelize sampling from each subject
         while len(jobs_idxs_to_do) > 0:  # While jobs remain.
@@ -128,67 +128,69 @@ def get_samples_for_subepoch(log,
 
             log.print3(sampler_id + " ******* Spawning children processes to sample from [" +
                        str(len(jobs_idxs_to_do)) + "] subjects*******")
-            log.print3(sampler_id + " MULTIPROC: Number of CPUs detected: " + str(multiprocessing.cpu_count()) +
+            log.print3(sampler_id + " MULTIPR: Number of CPUs detected: " + str(multiprocessing.cpu_count()) +
                        ". Requested to use max: [" + str(num_parallel_proc) + "]")
-            num_workers = min(num_parallel_proc, multiprocessing.cpu_count())
-            log.print3(sampler_id + " MULTIPROC: Spawning [" + str(num_workers) + "] processes to load data and sample.")
-            worker_pool = multiprocessing.Pool(processes=num_workers, initializer=init_sampling_proc)
+            n_workers = min(num_parallel_proc, multiprocessing.cpu_count())
+            log.print3(sampler_id + " MULTIPR: Spawning [" + str(n_workers) + "] processes to load and sample.")
+            mp_pool = multiprocessing.Pool(processes=n_workers, initializer=init_sampling_proc)
 
-            try:  # Stacktrace in multiprocessing: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
+            try:  # Stacktrace in MULTIPR: https://jichu4n.com/posts/python-multiprocessing-and-exceptions/
                 for job_idx in jobs_idxs_to_do:  # submit jobs
-                    jobs[job_idx] = worker_pool.apply_async(load_subj_and_get_samples, ([job_idx] + args_sampling_job))
+                    jobs[job_idx] = mp_pool.apply_async(load_subj_and_sample, ([job_idx] + args_sampling_job))
 
                 # copy with list(...), so that this loops normally even if something is removed from list.
                 for job_idx in list(jobs_idxs_to_do):
                     try:
                         # timeout in case process for some reason never started (happens in py3)
-                        (channs_of_samples_from_job_per_path,
-                         lbls_predicted_part_of_samples_from_job) = jobs[job_idx].get(timeout=30)
+                        (channs_samples_from_job_per_path,
+                         lbls_predicted_part_samples_from_job) = jobs[job_idx].get(timeout=30)
                         for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
                             # concat does not copy.
-                            channs_of_samples_per_path_for_subep[pathway_i] += channs_of_samples_from_job_per_path[pathway_i]
+                            channs_of_samples_per_path[pathway_i] += channs_samples_from_job_per_path[pathway_i]
                         # concat does not copy.
-                        lbls_predicted_part_of_samples_for_subep += lbls_predicted_part_of_samples_from_job
+                        lbls_predicted_part_of_samples += lbls_predicted_part_samples_from_job
                         jobs_idxs_to_do.remove(job_idx)
                     except multiprocessing.TimeoutError:
-                        log.print3(
-                            sampler_id + "\n\n WARN: MULTIPROC: Caught TimeoutError when getting results of job [" +
-                            str(job_idx) + "].\n WARN: MULTIPROC: Will resubmit job [" + str(job_idx) + "].\n")
-                        if num_workers == 1:
-                            break  # If this 1 worker got stuck, every job will wait timeout. Slow. Recreate pool.
+                        log.print3(sampler_id +\
+                              "\n\n WARN: MULTIPR: Caught TimeoutError when getting results of job [" +
+                              str(job_idx) + "].\n WARN: MULTIPR: Will resubmit job [" + str(job_idx) + "].\n")
+                        if n_workers == 1:
+                            break  # If this worker got stuck, every job will wait timeout. Slow. Recreate pool.
+                    except Exception as e:
+                        log.print3(sampler_id + "\n\n ERROR: Caught exception from job [" + str(job_idx) + "].")
+                        raise e
 
             except (Exception, KeyboardInterrupt) as e:
                 log.print3(
                     sampler_id + "\n\n ERROR: Caught exception in get_samples_for_subepoch(): " + str(e) + "\n")
                 log.print3(traceback.format_exc())
-                worker_pool.terminate()
-                worker_pool.join()  # Will wait. A KeybInt will kill this (py3)
+                mp_pool.terminate()
+                mp_pool.join()  # Will wait. A KeybInt will kill this (py3)
                 raise e
             except:  # Catches everything, even a sys.exit(1) exception.
-                log.print3(
-                    sampler_id + "\n\n ERROR: Unexpected error in get_samples_for_subepoch(). System info: ",
-                    sys.exc_info()[0])
-                worker_pool.terminate()
-                worker_pool.join()
+                log.print3(sampler_id + "\n\n ERROR: Unexpected error in get_samples_for_subepoch(). " +\
+                           "System info: ", sys.exc_info()[0])
+                mp_pool.terminate()
+                mp_pool.join()
                 raise Exception("Unexpected error.")
             else:  # Nothing went wrong
-                # Needed in case any processes are hanging. worker_pool.close() does not solve this.
-                worker_pool.terminate()
-                worker_pool.join()
+                # Needed in case any processes are hanging. mp_pool.close() does not solve this.
+                mp_pool.terminate()
+                mp_pool.join()
 
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
-    (channs_of_samples_per_path_for_subep,
-     lbls_predicted_part_of_samples_for_subep) = shuffle_samples(channs_of_samples_per_path_for_subep,
-                                                                 lbls_predicted_part_of_samples_for_subep)
-    log.print3(sampler_id + " TIMING: Sampling for next [" + training_or_validation_str +
+    (channs_of_samples_per_path,
+     lbls_predicted_part_of_samples) = shuffle_samples(channs_of_samples_per_path,
+                                                                 lbls_predicted_part_of_samples)
+    log.print3(sampler_id + " TIMING: Sampling for next [" + tr_or_val_str_log +
                "] lasted: {0:.1f}".format(time.time() - start_time_sampling) + " secs.")
 
-    log.print3(sampler_id + " :=:=:=:=:=:=: Finished sampling for next [" + training_or_validation_str + "] :=:=:=:=:=:=:")
+    log.print3(sampler_id + " :=:=:=:=:=:= Finished sampling for next [" + tr_or_val_str_log + "] =:=:=:=:=:=:")
 
     channs_of_samples_arr_per_path = [np.asarray(channs_of_samples_for_path, dtype="float32") for
-                                      channs_of_samples_for_path in channs_of_samples_per_path_for_subep]
+                                      channs_of_samples_for_path in channs_of_samples_per_path]
 
-    lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples_for_subep,
+    lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples,
                                                     dtype="int32")  # Could be int16 to save RAM?
 
     return channs_of_samples_arr_per_path, lbls_predicted_part_of_samples_arr
@@ -200,15 +202,15 @@ def init_sampling_proc():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def get_random_subjects_to_train_subep(total_number_of_subjects,
-                                       max_subjects_on_gpu_for_subepoch,
-                                       get_max_subjects_for_gpu_even_if_total_less=False):
+def choose_random_subjects(n_total_subjects,
+                           max_subjects_on_gpu_for_subepoch,
+                           get_max_subjects_for_gpu_even_if_total_less=False):
     # Returns: list of indices
-    subjects_indices = list(range(total_number_of_subjects))  # list() for python3, cause shuffle() cant get range
+    subjects_indices = list(range(n_total_subjects))  # list() for python3, cause shuffle() cant get range
     random_order_chosen_subjects = []
     random.shuffle(subjects_indices)  # does it in place. Now they are shuffled
 
-    if max_subjects_on_gpu_for_subepoch >= total_number_of_subjects:
+    if max_subjects_on_gpu_for_subepoch >= n_total_subjects:
         random_order_chosen_subjects += subjects_indices
 
         # This is if I want to have a certain amount on GPU, even if total subjects are less.
@@ -216,7 +218,7 @@ def get_random_subjects_to_train_subep(total_number_of_subjects,
             while len(random_order_chosen_subjects) < max_subjects_on_gpu_for_subepoch:
                 random.shuffle(subjects_indices)
                 number_of_extra_subjects_to_get_to_fill_gpu = min(
-                    max_subjects_on_gpu_for_subepoch - len(random_order_chosen_subjects), total_number_of_subjects)
+                    max_subjects_on_gpu_for_subepoch - len(random_order_chosen_subjects), n_total_subjects)
                 random_order_chosen_subjects += (subjects_indices[:number_of_extra_subjects_to_get_to_fill_gpu])
             assert len(random_order_chosen_subjects) == max_subjects_on_gpu_for_subepoch
             
@@ -226,7 +228,7 @@ def get_random_subjects_to_train_subep(total_number_of_subjects,
     return random_order_chosen_subjects
 
 
-def get_n_samples_per_subj_in_subep(n_samples, n_subjects):
+def get_n_samples_per_subj(n_samples, n_subjects):
     # Distribute samples of each cat to subjects.
     n_samples_per_subj = np.ones([n_subjects], dtype="int32") * (n_samples // n_subjects)
     n_undistributed_samples = n_samples % n_subjects
@@ -236,34 +238,33 @@ def get_n_samples_per_subj_in_subep(n_samples, n_subjects):
     return n_samples_per_subj
 
 
-def load_subj_and_get_samples(job_idx,
-                              log,
-                              train_val_or_test,
-                              run_input_checks,
-                              cnn3d,
-                              sampling_type,
-                              paths_per_chan_per_subj,
-                              paths_to_lbls_per_subj,
-                              paths_to_masks_per_subj,
-                              paths_to_wmaps_per_sampl_cat_per_subj,
-                              # Pre-processing:
-                              pad_input_imgs,
-                              norm_prms,
-                              augm_img_prms,
-                              augm_sample_prms,
-
-                              n_subjects_for_subep,
-                              idxs_of_subjects_for_subep,
-                              n_samples_per_subj):
+def load_subj_and_sample(job_idx,
+                         log,
+                         train_val_or_test,
+                         run_input_checks,
+                         cnn3d,
+                         sampling_type,
+                         paths_per_chan_per_subj,
+                         paths_to_lbls_per_subj,
+                         paths_to_masks_per_subj,
+                         paths_to_wmaps_per_sampl_cat_per_subj,
+                         # Pre-processing:
+                         pad_input_imgs,
+                         norm_prms,
+                         augm_img_prms,
+                         augm_sample_prms,
+                         n_subjs_for_subep,
+                         idxs_of_subjs_for_subep,
+                         n_samples_per_subj):
     # train_val_or_test: 'train', 'val' or 'test'
-    # paths_per_chan_per_subj: [[ for channel-0 [ one path per subj ]], ..., [for channel-n  [ one path per subj ] ]]
+    # paths_per_chan_per_subj: [[ for chan-0 [ one path per subj ]], ..., [for chan-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
     # returns: ( channs_of_samples_per_path, lbls_predicted_part_of_samples )
     job_id = "[TRA|JOB:" + str(job_idx) + "|PID:" + str(os.getpid()) + "]" if train_val_or_test == 'train' \
         else "[VAL|JOB:" + str(job_idx) + "|PID:" + str(os.getpid()) + "]"
     
-    log.print3(job_id + " Started. (#" + str(job_idx) + "/" + str(n_subjects_for_subep) + ") sampling job. " +
-               "Load & sample from subject of index (in user's list): " + str(idxs_of_subjects_for_subep[job_idx]) )
+    log.print3(job_id + " Started. (#" + str(job_idx) + "/" + str(n_subjs_for_subep) + ") sampling job. " +
+               "Load & sample from subject of index (in user's list): " + str(idxs_of_subjs_for_subep[job_idx]) )
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
@@ -278,7 +279,7 @@ def load_subj_and_get_samples(job_idx,
      gt_lbl_img,
      roi_mask,
      wmaps_to_sample_per_cat) = load_imgs_of_subject(log, job_id,
-                                                     idxs_of_subjects_for_subep[job_idx],
+                                                     idxs_of_subjs_for_subep[job_idx],
                                                      paths_per_chan_per_subj,
                                                      paths_to_lbls_per_subj,
                                                      paths_to_wmaps_per_sampl_cat_per_subj,
@@ -549,7 +550,7 @@ def sample_idxs_of_segments(log,
     # normalize the probabilities to sum to 1, cause the function needs it as so.
     sum_sampl_map = np.sum(sampling_map_excl_near_edges)
     if np.isclose(sum_sampl_map, 0.) : # is zero
-        log.print3(id_str+" WARN: AFTER EXCLUDING NEAR EDGES, sampling map for category is just zeros! " +\
+        log.print3(job_id + " WARN: AFTER EXCLUDING NEAR EDGES, sampling map for category is just zeros! " +\
                    " No samples for category from subject!")
         return [ [[],[],[]], [[],[],[]] ]
     
