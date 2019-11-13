@@ -42,7 +42,7 @@ def get_nifti_reader(filename):
 def print_dict(item, prefix=''):
     ret = ''
     for key, value in item.items():
-        ret += "{2}{0:5d}: {1}\n".format(value, key, prefix)
+        ret += "{2}{0:10d}: {1}\n".format(value, key, prefix)
     return ret
 
 
@@ -143,7 +143,7 @@ def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32
             ret += prefix + 'More than one data type\n'
             ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
             ret += prefix + 'Data Types Count:\n'
-            ret += print_dict(dtype_count, prefix + '   ')
+            ret += print_dict(dtype_count, prefix)
     else:
         if list(dtype_count.keys())[0] == dtype:
             ret += get_html_colour('[PASSED]', 'green') + ' Data Type check\n'
