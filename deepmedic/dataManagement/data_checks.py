@@ -143,7 +143,7 @@ def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32
             ret += prefix + 'More than one data type\n'
             ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
             ret += prefix + 'Data Types Count:\n'
-            print_dict(dtype_count, prefix)
+            ret += print_dict(dtype_count, prefix)
     else:
         if list(dtype_count.keys())[0] == dtype:
             ret += get_html_colour('[PASSED]', 'green') + ' Data Type check\n'
