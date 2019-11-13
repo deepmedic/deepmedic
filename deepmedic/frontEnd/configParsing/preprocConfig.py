@@ -25,7 +25,7 @@ class PreprocConfig(Config):
                                   "'Target' (optional) - path to segmentation targets.")
 
     # ===Preprocessing Parameters===
-    config_data.set_curr_section('preproc', "Preprocessing Parameteres")
+    config_data.set_curr_section('preproc', "Preprocessing Parameters")
 
     # [REQUIRED] Output:
     OUTPUT_DIR = \
