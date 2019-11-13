@@ -3,7 +3,19 @@ from __future__ import print_function
 import glob
 import os
 from tqdm import tqdm
+import pandas as pd
 import SimpleITK as sitk
+
+
+def text_to_html(_str):
+    return '<pre><p>' + _str.replace('\n', '</p><p>') + '</p></pre>'
+
+
+def get_html_colour(_str, colour='black', html=True):
+    if html:
+        return '<font color=\"' + colour + '\">' + _str + '</font>'
+    else:
+        return _str
 
 
 def get_nifti_reader(filename):
@@ -18,8 +30,10 @@ def get_nifti_reader(filename):
 
 
 def print_dict(item, prefix=''):
+    ret = ''
     for key, value in item.items():
-        print("{2}{0:5d}: {1}".format(value, key, prefix))
+        ret += "{2}{0:5d}: {1}".format(value, key, prefix)
+    return ret
 
 
 class NiftiImage(object):
@@ -53,7 +67,7 @@ class NiftiImage(object):
 
 
 def get_image_dims_stats(image_list, do_pixs=True, do_dims=True, disable_tqdm=False,
-                         tqdm_text='Getting Pixel Dimension Stats'):
+                         tqdm_text='Getting Pixel Dimension Stats', progress=None):
     if not (do_dims or do_pixs):
         return {}, {}
     dims_count = {}
@@ -77,62 +91,85 @@ def get_image_dims_stats(image_list, do_pixs=True, do_dims=True, disable_tqdm=Fa
             else:
                 pix_dims_count[dims] = 1
 
+        if progress is not None:
+            progress.increase_value()
+
     return dims_count, pix_dims_count
 
 
-def pix_check(pix_count, verbose=True):
+def pix_check(pix_count, verbose=True, html=False):
     prefix = ' '*(len('[PASSED]') + 1)
+    ret = ''
     if len(pix_count) > 1:
-        print('[FAILED] Pixel dimensions check')
+        ret += get_html_colour('[FAILED]', 'red', html) + ' Pixel spacing check\n'
         if verbose:
-            print(prefix + 'Pixel dimensions do not match in between images')
-            print(prefix + 'We recommend resampling every image to the same pixel dimensions for every dimension '
-                  '(e.g. (1, 1, 1))')
-            print(prefix + 'pixel Sizes Count:')
-            print_dict(pix_count, prefix)
+            ret += prefix + 'Pixel dimensions do not match in between images\n'
+            ret += prefix + 'We recommend resampling every image to isotropic pixel spacing (e.g. (1, 1, 1))\n'
+            ret += prefix + 'pixel spacing Count:\n'
+            ret += print_dict(pix_count, prefix)
     else:
         pix_dims = list(pix_count.keys())[0]
         for pix_dim in pix_dims:
             if not pix_dim == pix_dims[0]:
-                print('[FAILED] Pixel dimensions check')
+                ret += get_html_colour('[FAILED]', 'red', html) + ' Pixel spacing check\n'
                 if verbose:
-                    print(prefix + 'Pixel dimensions do not match across dimensions')
-                    print(prefix + 'We recommend resampling every image to the same pixel dimensions for every dimension '
-                          '(e.g. (1, 1, 1))')
-                    print(prefix + 'Pixel Sizes Count:')
-                    print_dict(pix_count, prefix)
+                    ret += prefix + 'Pixel dimensions do not match across dimensions\n'
+                    ret += prefix + 'We recommend resampling every image to isotropic pixel spacing (e.g. (1, 1, 1))\n'
+                    ret += prefix + 'Pixel spacing Count:\n'
+                    ret += print_dict(pix_count, prefix)
                 return
 
-        print('[PASSED] Pixel dimensions check')
+        ret += get_html_colour('[PASSED]', 'green') + ' Pixel dimensions check\n'
         if verbose:
-            print(prefix + 'Pixel Dimensions: ' + str(pix_dims))
+            ret += prefix + 'Pixel Dimensions: ' + str(pix_dims)
+
+    if html:
+        ret = text_to_html(ret)
+
+    return ret
 
 
-def dims_check(dims_count, verbose=True):
+def dims_check(dims_count, verbose=True, html=False):
+    ret = ''
     prefix = ' '*(len('[PASSED]') + 1)
     if len(dims_count) > 1:
-        print('[FAILED] Images dimensions check')
+        ret += get_html_colour('[FAILED]', 'red', html) + ' Image dimensions check\n'
         if verbose:
-            print(prefix + 'Pixel dimensions do not match in between images')
-            print(prefix + 'We recommend resampling every image to the same pixel dimensions for every dimension '
-                  '(e.g. (1, 1, 1))')
-            print(prefix + 'pixel Sizes Count:')
-            print_dict(dims_count, prefix)
+            ret += prefix + 'Pixel dimensions do not match in between images\n'
+            ret += prefix + 'We recommend resampling every image to the same pixel dimensions ' \
+                            'for every dimension (e.g. (1, 1, 1))\n'
+            ret += prefix + 'pixel Sizes Count:\n'
+            ret += print_dict(dims_count, prefix)
     else:
-        print('[PASSED] Images dimensions check')
+        ret += get_html_colour('[PASSED]', 'green') + ' Image dimensions check\n'
         if verbose:
-            print(prefix + 'Image Dimensions: ' + str(list(dims_count.keys())[0]))
+            ret += prefix + 'Image Dimensions: ' + str(list(dims_count.keys())[0])
+
+    if html:
+        ret = text_to_html(ret)
+
+    return ret
 
 
-def run_checks(filelist, pixs=False, dims=False, disable_tqdm=False):
-    print('Running Checks')
-    dims_count, pix_dims_count = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs,
-                                                      disable_tqdm=disable_tqdm,
-                                                      tqdm_text='Running Image and Pixel Dimension Checks')
+def run_checks(filelist, csv=False, pixs=False, dims=False, disable_tqdm=False, html=False, progress=None):
+    if csv:
+        df = pd.read_csv(filelist)
+        filelist = df['image']
+
+    if progress is not None:
+        progress.bar.setMaximum(len(filelist))
+
+    dims_count, scaling_count = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs,
+                                                     disable_tqdm=disable_tqdm,
+                                                     tqdm_text='Running Image and Pixel Dimension Checks',
+                                                     progress=progress)
+    ret = ''
     if dims:
-        dims_check(dims_count)
+        ret += dims_check(dims_count, html=html)
     if pixs:
-        pix_check(pix_dims_count)
+        ret += pix_check(scaling_count, html=html)
+
+    return ret
 
 
 if __name__ == "__main__":

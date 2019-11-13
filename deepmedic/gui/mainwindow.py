@@ -129,6 +129,36 @@ class MainWindow(QtWidgets.QMainWindow):
         # self.process = subprocess.Popen(params)
         self.process.start('python', params)
 
+        # import string
+        # import random
+        #
+        # def unique_strings(k: int, ntokens: int,
+        #                    pool: str = string.ascii_letters) -> set:
+        #     """Generate a set of unique string tokens.
+        #
+        #     k: Length of each token
+        #     ntokens: Number of tokens
+        #     pool: Iterable of characters to choose from
+        #
+        #     For a highly optimized version:
+        #     https://stackoverflow.com/a/48421303/7954504
+        #     """
+        #
+        #     seen = set()
+        #
+        #     # An optimization for tightly-bound loops:
+        #     # Bind these methods outside of a loop
+        #     join = ''.join
+        #     add = seen.add
+        #
+        #     while len(seen) < ntokens:
+        #         token = join(random.choices(pool, k=k))
+        #         add(token)
+        #     return seen
+        #
+        # while True:
+        #     self.append(' '.join(unique_strings(10, 25)) + '.\n')
+
     def stop_deepmedic(self):
         self.process.terminate()
         self.ui.resetopt_checkbox.show()

@@ -5,18 +5,18 @@ def p(x):
     print(x)
 
 
-def file_open(parent, dest, text='Search'):
-    name, _ = QtWidgets.QFileDialog.getOpenFileName(parent, text)
+def file_open(parent, dest, text='Search', formats=None):
+    name, _ = QtWidgets.QFileDialog.getOpenFileName(parent, text, filter=formats)
     dest.setText(name)
 
 
-def files_open(parent, dest, text='Search'):
-    name, _ = QtWidgets.QFileDialog.getOpenFileNames(parent, text)
+def files_open(parent, dest, text='Search', formats=None):
+    name, _ = QtWidgets.QFileDialog.getOpenFileNames(parent, text, filter=formats)
     dest.setText(str(name))
 
 
-def folder_open(parent, dest, text='Search'):
-    name = QtWidgets.QFileDialog.getExistingDirectory(parent, text)
+def folder_open(parent, dest, text='Search', formats=None):
+    name = QtWidgets.QFileDialog.getExistingDirectory(parent, text, filter=formats)
     dest.setText(name)
 
 
@@ -28,6 +28,18 @@ def get_search_function(search_type='File'):
     if search_type == 'Folder':
         return folder_open
     return None
+
+
+def get_formats(formats):
+    if formats is None:
+        return None
+
+    if formats == 'csv':
+        return 'Comma-Separated Values - CSV (*.csv);;All Files (*)'
+
+    formats += ';;All Files (*)'
+
+    return formats
 
 
 def clear_all_texts(all_texts):

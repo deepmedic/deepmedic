@@ -6,13 +6,13 @@ from deepmedic.gui.config_utils import *
 
 
 class ConfigWindow(QtWidgets.QMainWindow):
-    def __init__(self, Config, window_type='', parent=None):
+    def __init__(self, Config, window_type='', parent=None, UiConfigClass=UiConfig):
         super(ConfigWindow, self).__init__(parent)
         self.filename = None
         self.window_type = window_type
         self.Config = Config
 
-        self.ui = UiConfig()
+        self.ui = UiConfigClass()
         self.ui.setup_ui(self, self.Config, window_type)
 
         self.ui.action_close.triggered.connect(self.close)
@@ -45,7 +45,8 @@ class ConfigWindow(QtWidgets.QMainWindow):
                         button.clicked.connect(partial(get_search_function(elem.elem_type),
                                                        self,
                                                        text_input,
-                                                       'Search ' + elem.elem_type + ' (' + elem.description + ')'))
+                                                       'Search ' + elem.elem_type + ' (' + elem.description + ')',
+                                                       get_formats(elem.options)))
 
     def connect_all_arrows(self):
         all_labels = self.findChildren(QtWidgets.QLabel)

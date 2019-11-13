@@ -330,7 +330,11 @@ class UiConfig(object):
         QtCore.QMetaObject.connectSlotsByName(model_config_create)
 
     def retranslate_ui(self, model_config_create, window_type=''):
-        model_config_create.setWindowTitle(QtWidgets.QApplication.translate("model_config_create", "Create " + window_type + " Config", None, -1))
+        if window_type in ['Train', 'Test', 'Model']:
+            window_title = "Create " + window_type + " Configuration File"
+        else:
+            window_title = window_type
+        model_config_create.setWindowTitle(QtWidgets.QApplication.translate("model_config_create", window_title, None, -1))
         self.menuFile.setTitle(QtWidgets.QApplication.translate("model_config_create", "&File", None, -1))
         self.menuEdit.setTitle(QtWidgets.QApplication.translate("model_config_create", "&Edit", None, -1))
         self.action_open.setText(QtWidgets.QApplication.translate("model_config_create", "&Open...", None, -1))

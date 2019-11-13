@@ -90,6 +90,7 @@ class Ui_DeepMedic2(object):
         self.run_button.setObjectName("run_button")
         self.gridLayout.addWidget(self.run_button, 14, 1, 1, 1)
         self.stop_button = QtWidgets.QPushButton(self.centralWidget)
+
         self.stop_button.setObjectName("stop_button")
         self.gridLayout.addWidget(self.stop_button, 14, 2, 1, 2)
         self.output_log = QtWidgets.QPlainTextEdit(self.centralWidget)
