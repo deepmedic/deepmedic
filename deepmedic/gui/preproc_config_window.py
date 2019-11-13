@@ -23,6 +23,7 @@ class PreprocConfigWindow(ConfigWindow):
                                                   UiConfigClass=UiPreprocConfig)
 
         self.ui.data_checks_button.clicked.connect(self.run_data_checks)
+        self.ui.preprocess_button.clicked.connect(self.preprocess)
         self.bar = ProgressBar(self.ui.data_checks_progress)
         self.bar.bar.hide()
 
@@ -32,3 +33,16 @@ class PreprocConfigWindow(ConfigWindow):
         check_text = run_checks(csv, csv=True, pixs=True, dims=True, dtypes=True, disable_tqdm=False, html=True,
                                 progress=self.bar)
         self.ui.data_checks_text.setText(check_text)
+
+    def preprocess(self):
+        # Get parameters from form
+
+        # Reorient
+
+        # Resample
+
+        # Get Mask
+
+        # Resize
+
+        pass
