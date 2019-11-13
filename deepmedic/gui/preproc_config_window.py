@@ -29,6 +29,6 @@ class PreprocConfigWindow(ConfigWindow):
     def run_data_checks(self):
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         self.ui.data_checks_progress.show()
-        check_text = run_checks(csv, csv=True, pixs=True, dims=True, disable_tqdm=False, html=True,
+        check_text = run_checks(csv, csv=True, pixs=True, dims=True, dtypes=True, disable_tqdm=False, html=True,
                                 progress=self.bar)
         self.ui.data_checks_text.setText(check_text)

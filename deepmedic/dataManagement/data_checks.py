@@ -6,6 +6,8 @@ from tqdm import tqdm
 import pandas as pd
 import SimpleITK as sitk
 
+from deepmedic.dataManagement.nifti_image import NiftiImage
+
 
 def text_to_html(_str):
     return '<pre><p>' + _str.replace('\n', '</p><p>') + '</p></pre>'
@@ -16,6 +18,14 @@ def get_html_colour(_str, colour='black', html=True):
         return '<font color=\"' + colour + '\">' + _str + '</font>'
     else:
         return _str
+
+
+def add_to_count_dict(key, _dict):
+    if key in _dict:
+        _dict[key] += 1
+    else:
+        _dict[key] = 1
+    return _dict
 
 
 def get_nifti_reader(filename):
@@ -36,65 +46,38 @@ def print_dict(item, prefix=''):
     return ret
 
 
-class NiftiImage(object):
-
-    def __init__(self, filename):
-        self.reader = get_nifti_reader(filename)
-
-    def get_num_dims(self):
-        return int(self.reader.GetMetaData('dim[0]'))
-
-    def get_image_dims(self, num_dims=3):
-        if num_dims is None:
-            num_dims = self.get_num_dims()
-        dims = []
-        for i in range(num_dims):
-            dims.append(int(self.reader.GetMetaData('dim[' + str(i+1) + ']')))
-
-        return tuple(dims)
-
-    def get_image_pixel_dims(self, pix_dims=3):
-        if pix_dims is None:
-            pix_dims = self.get_num_dims()
-        dims = []
-        for i in range(pix_dims):
-            dims.append(float(self.reader.GetMetaData('pixdim[' + str(i+1) + ']')))
-
-        return tuple(dims)
-
-    def get_header_keys(self):
-        return self.reader.GetMetaDataKeys()
-
-
-def get_image_dims_stats(image_list, do_pixs=True, do_dims=True, disable_tqdm=False,
-                         tqdm_text='Getting Pixel Dimension Stats', progress=None):
-    if not (do_dims or do_pixs):
-        return {}, {}
+def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=False, do_direction=False,
+                         open_image=False, disable_tqdm=False, tqdm_text='Getting Pixel Dimension Stats',
+                         progress=None):
+    if not (do_dims or do_pixs or do_dtypes or do_direction):
+        return {}, {}, {}, {}
     dims_count = {}
     pix_dims_count = {}
+    dtypes_count = {}
+    direction_count = {}
     for image_path in tqdm(image_list, desc=tqdm_text, disable=disable_tqdm):
         image = NiftiImage(image_path)
+        if open_image:
+            image.open()
 
         if do_dims:
-            dims = image.get_image_dims()
-
-            if dims in dims_count:
-                dims_count[dims] += 1
-            else:
-                dims_count[dims] = 1
+            dims_count = add_to_count_dict(image.get_size(), dims_count)
 
         if do_pixs:
-            dims = image.get_image_pixel_dims()
+            pixel_dims = image.get_pixel_dims()
+            pix_dims_count = add_to_count_dict(pixel_dims, pix_dims_count)
 
-            if dims in pix_dims_count:
-                pix_dims_count[dims] += 1
-            else:
-                pix_dims_count[dims] = 1
+        if do_dtypes:
+            dtypes_count = add_to_count_dict(image.get_pixel_type_string(), dtypes_count)
+
+        if do_direction:
+            direction = image.get_direction()
+            direction_count = add_to_count_dict(direction, direction_count)
 
         if progress is not None:
             progress.increase_value()
 
-    return dims_count, pix_dims_count
+    return dims_count, pix_dims_count, dtypes_count, direction_count
 
 
 def pix_check(pix_count, verbose=True, html=False):
@@ -151,7 +134,34 @@ def dims_check(dims_count, verbose=True, html=False):
     return ret
 
 
-def run_checks(filelist, csv=False, pixs=False, dims=False, disable_tqdm=False, html=False, progress=None):
+def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32), verbose=True, html=False):
+    prefix = ' '*(len('[PASSED]') + 1)
+    ret = ''
+    if len(dtype_count) > 1:
+        ret += get_html_colour('[FAILED]', 'red', html) + ' Data Type check\n'
+        if verbose:
+            ret += prefix + 'More than one data type\n'
+            ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
+            ret += prefix + 'Data Types Count:\n'
+            print_dict(dtype_count, prefix)
+    else:
+        if list(dtype_count.keys())[0] == dtype:
+            ret += get_html_colour('[PASSED]', 'green') + ' Data Type check\n'
+            if verbose:
+                ret += prefix + 'Data Type: ' + str(list(dtype_count.keys())[0]) + '\n'
+        else:
+            ret += get_html_colour('[FAILED]', 'red', html) + ' Data Type check\n'
+            ret += prefix + 'Sub-optimal data type. You might be using more memory than required storing your data ' \
+                            'and subsequently increasing the loading time.\n'
+            ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
+
+    if html:
+        ret = text_to_html(ret)
+
+    return ret
+
+
+def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, disable_tqdm=False, html=False, progress=None):
     if csv:
         df = pd.read_csv(filelist)
         filelist = df['image']
@@ -159,15 +169,19 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, disable_tqdm=False, 
     if progress is not None:
         progress.bar.setMaximum(len(filelist))
 
-    dims_count, scaling_count = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs,
-                                                     disable_tqdm=disable_tqdm,
-                                                     tqdm_text='Running Image and Pixel Dimension Checks',
-                                                     progress=progress)
+    (dims_count,
+     scaling_count,
+     dtype_count, _) = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs, do_dtypes=dtypes,
+                                            disable_tqdm=disable_tqdm,
+                                            tqdm_text='Running Image and Pixel Dimension Checks',
+                                            progress=progress)
     ret = ''
     if dims:
         ret += dims_check(dims_count, html=html)
     if pixs:
         ret += pix_check(scaling_count, html=html)
+    if dtypes:
+        ret += dtype_check(dtype_count, html=html)
 
     return ret
 
