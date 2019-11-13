@@ -64,7 +64,7 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
             dims_count = add_to_count_dict(image.get_size(), dims_count)
 
         if do_pixs:
-            pixel_dims = image.get_pixel_dims()
+            pixel_dims = image.get_spacing()
             pix_dims_count = add_to_count_dict(pixel_dims, pix_dims_count)
 
         if do_dtypes:
