@@ -147,6 +147,7 @@ class UiConfig(object):
         return widget
 
     def create_combobox(self, name, options):
+        print(name)
         widget = QtWidgets.QComboBox(self.scrollAreaWidgetContents)
         widget.setObjectName(name + '_combobox')
         widget.addItem("")

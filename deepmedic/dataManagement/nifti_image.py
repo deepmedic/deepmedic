@@ -136,6 +136,15 @@ class NiftiImage(object):
     def get_header_keys(self):
         return self.reader.GetMetaDataKeys()
 
+    def is_in_std_radiology_view(self):
+        dir = np.array(self.get_direction()).reshape(len(self.get_size()), -1)
+        ind = np.argmax(np.abs(dir), axis=0)
+        new_dir = dir[:, ind]
+
+        flip = np.diag(new_dir) < 0
+
+        return sum(flip) <= 0
+
     def apply_resample(self, origin, pixel_dims, direction, size, interpolator=sitk.sitkLinear):
 
         resample = sitk.ResampleImageFilter()

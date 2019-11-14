@@ -54,7 +54,7 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
     dims_count = {}
     pix_dims_count = {}
     dtypes_count = {}
-    direction_count = {}
+    direction_count = 0
     for image_path in tqdm(image_list, desc=tqdm_text, disable=disable_tqdm):
         image = NiftiImage(image_path)
         if open_image:
@@ -71,8 +71,8 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
             dtypes_count = add_to_count_dict(image.get_pixel_type_string(), dtypes_count)
 
         if do_direction:
-            direction = image.get_direction()
-            direction_count = add_to_count_dict(direction, direction_count)
+            if not image.is_in_std_radiology_view():
+                direction_count += 1
 
         if progress is not None:
             progress.increase_value()
@@ -161,7 +161,26 @@ def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32
     return ret
 
 
-def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, disable_tqdm=False, html=False, progress=None):
+def dir_check(dir_count, verbose=True, html=False):
+    prefix = ' '*(len('[PASSED]') + 1)
+    ret = ''
+    if dir_count:
+        ret += get_html_colour('[FAILED]', 'red', html) + ' Orientation check\n'
+        if verbose:
+            ret += prefix + str(dir_count) + ' images are not in Standard Radiology View\n'
+            ret += prefix + 'We recommend reorienting the images\n'
+    else:
+        ret += get_html_colour('[PASSED]', 'green') + ' Orientation check\n'
+        ret += prefix + 'All images are in standard radiology view\n'
+
+    if html:
+        ret = text_to_html(ret)
+
+    return ret
+
+
+def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=False,
+               disable_tqdm=False, html=False, progress=None):
     if csv:
         df = pd.read_csv(filelist)
         filelist = df['image']
@@ -171,10 +190,11 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, disabl
 
     (dims_count,
      scaling_count,
-     dtype_count, _) = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs, do_dtypes=dtypes,
-                                            disable_tqdm=disable_tqdm,
-                                            tqdm_text='Running Image and Pixel Dimension Checks',
-                                            progress=progress)
+     dtype_count,
+     direction_count) = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs, do_dtypes=dtypes,
+                                             disable_tqdm=disable_tqdm,
+                                             tqdm_text='Running Image and Pixel Dimension Checks',
+                                             progress=progress)
     ret = ''
     if dims:
         ret += dims_check(dims_count, html=html)
@@ -182,6 +202,8 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, disabl
         ret += pix_check(scaling_count, html=html)
     if dtypes:
         ret += dtype_check(dtype_count, html=html)
+    if dirs:
+        ret += dir_check(direction_count, html=html)
 
     return ret
 

@@ -62,5 +62,6 @@ class PreprocConfig(Config):
     IMAGE_SIZE =\
         config_data.add_elem("imgSize", description='   Image Size', parent=RESIZE,
                              info="The dimensions of the output image")
+
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)

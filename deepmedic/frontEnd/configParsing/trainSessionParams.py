@@ -176,7 +176,7 @@ class TrainSessionParameters(object):
                                                                                    cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.n_samples_per_subep_train = cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[
                                                                                     cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
-        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else errReqBatchSizeTr()
+        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is  None else errReqBatchSizeTr()
         self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 0
 
         # ~~~~~~~ Learning Rate Schedule ~~~~~~~~
