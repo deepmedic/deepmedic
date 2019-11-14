@@ -33,29 +33,6 @@ DeepMedic
 * Updated the default config in ./examples/config/deepmedic with three pathways.
 * Refactored/reorganized the code.
 
-28 Oct 2017 (v0.6.1):
-* Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
-* Refactored/reorganized the modules.
-* Updated installation process in README, requiring >= theano-0.10.
-
-26 Mar 2017 (v0.6):
-* Functionality for transfering parameters and finetuning. See Sec 3.2 below.
-* Code refactored to facilitate upcoming extension.
-* **Important**: "Optimization" related configuration parameters moved from modelConfig.cfg to trainConfig.cfg. To reuse old config files, please adjust them to the new format. This should be easy, as all parameters that were moved are under the "Optimization" tagged block of the new trainConfig.cfg.
-
-14 Nov 2016 (v0.5.4):
-* Original configuration moved to deepMedicOriginal. Updated config now in deepMedic.
-* More memory efficient testing. CNN code has been refactored. Minor fixes.
-
-10 Oct 2016 (v0.5.3):
-* Sampling refactored. Now possible to use weighted-maps to sample each class.
-
-4 Aug 2016 (v0.5.2):
-* Code in Layer-classes cleaned/commented. Residual Connections enabled. Possible to specify kernel size at FC1. 
-
-14 July 2016 (v0.5.1):
-* Master branch was updated with better monitoring of training progress and a better plotting script. This version is not backwards compatible. CPickle will fail loading previously trained models from previous versions of the code.
-* Previous version of master branch tagged as v0.5. Use this if you wish to continue working with previously trained models.
 
 ### Introduction
 
