@@ -3,6 +3,11 @@ DeepMedic
 
 ### News
 
+14 Nov 2019 (v0.8.0):
+* Logging metrics to Tensorboard.
+* Capability to internally normalize input (only z-score norm for now) if specified in train config).
+* Refactoring & aesthetics in training, testing and sampling.
+
 11 June 2019 (v0.7.4):
 * Added augmentation via affine transforms, rotation & scaling. Off by default (slows down training).
 * Redistribute samples of non-existent class & code refactoring in sampling.
@@ -207,6 +212,10 @@ You can **plot the training progress** using an accompanying script, which parse
 ```
 python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTiny.txt -d
 ```
+Moreover, by default (variable `tensorboard_log=True` in train-config) the training & validation metrics are also logged for visualisation via **TensorBoard**. Required log-files found at `examples/output/tensorboard/trainSessionWithValidTiny` (non-human readable). See [Tensorboard documentation](https://www.tensorflow.org/tensorboard/get_started) for its use. TensorBoard can be activated via the following command:
+```
+tensorboard --logdir=./examples/output/tensorboard/trainSessionWithValidTiny
+```
 
 Now lets **test** with the trained model (replace *DATE+TIME*):
 ```cshell
@@ -333,7 +342,8 @@ For each epoch {
 ```
 The validation on samples and the full segmention of the scans of validation subjects are optional.
 
-**Plotting Training Progress**
+
+**Plotting Training Progress via MatPlotLib**
 
 The progress of training can be plotted by using the accompanying `plotTrainingProgress.py` script, which parses the training logs for the reported validation and training accuracy metrics. A common usage example is:
 ```
@@ -341,6 +351,18 @@ python plotTrainingProgress.py examples/output/logs/trainSession\_1.txt examples
        -d -m 20 -c 1
 ```
 Try option `-h` for help. Here, two logs/experiments are specified, to plot metrics for both to compare. Any number is allowed. `-d` requests a *detailed* plot with more metrics. `-m 20` runs a moving average over 20 subepochs for smoothing the curves. `-c 1` requests plotting class with label=1. Note that in case of multiple labels, `-c 0` actually reports the metrics NOT for the background class (as we did not find this useful in most applications), but rather for the *whole-foreground* class, which can be imagined as if all labels except 0 (assumed background) are fused into one.
+
+Metrics logged are both from training and validation. Most are computed on *samples* (which are *sub-volumes*, aka patches). Exception is the *DSC-on-whole-scans* (aka *full-segm*), that is computed by segmenting the whole validation volumes every few epochs (if specified).
+
+
+**Plotting Training Progress via TensorBoard**
+
+Moreover, if the train-config file specifies this functionality enabled (variable `tensorboard_log=True` in the train-config-files), training metrics are also logged such that they can be visualised using Tensorflow's **TensorBoard**. See [Tensorboard documentation](https://www.tensorflow.org/tensorboard/get_started) for use. The files that keep logged metrics in the required format for TensorBoard are at `examples/output/tensorboard/name-of-training-session/`. It can be activated via the command:
+```
+tensorboard --logdir=./examples/output/tensorboard/name-of-training-session
+```
+Metrics logged for tensorboard are the same as those logged in the main log .txt file and visualised via the above described script. 
+
 
 **Resuming an Interrupted Training Session**
 
@@ -372,6 +394,7 @@ Common practice with neural networks is to take a network pre-trained on one tas
 - sessionName: The name of the session. Used to save the trained models, logs and results.
 - folderForOutput: The main output folder.
 - cnnModelFilePath: path to a saved CNN model (in case one wants to resume training. Disregarded if -load is used.).
+- tensorboard_log: Specifies (True/False) whether to log metrics for visualisation (See Section 3.2) via Tensorboard (takes space on disk).
 
 *Input for Training:*
 
@@ -409,7 +432,6 @@ Common practice with neural networks is to take a network pre-trained on one tas
 #### 3.3. Testing
 
 When a training epoch is finished, the model’s state is saved. These models can be used for segmenting previously unseen scans. A testing configuration file has to be specified. Testing can be started in two ways.
-
 
 a) A model is specified straight from the command line.
 ```
