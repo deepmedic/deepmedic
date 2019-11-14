@@ -5,7 +5,7 @@ DeepMedic
 
 14 Nov 2019 (v0.8.0):
 * Logging metrics to Tensorboard.
-* Capability to internally normalize input (only z-score norm for now) if specified in train config).
+* Capability to normalize input on-the-fly (Disabled by default). Only z-score norm for now.
 * Refactoring & aesthetics in training, testing and sampling.
 
 11 June 2019 (v0.7.4):
