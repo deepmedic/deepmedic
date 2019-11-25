@@ -113,9 +113,9 @@ class ConfigWindow(QtWidgets.QMainWindow):
             if widget:
                 widget.setEnabled(set_value)
 
-            widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_info")
-            if widget:
-                widget.setEnabled(set_value)
+            # widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_info")
+            # if widget:
+            #    widget.setEnabled(set_value)
 
             widget = self.model_config_dict[child.name]
             if widget:
