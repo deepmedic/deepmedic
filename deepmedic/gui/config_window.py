@@ -70,7 +70,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
             widget_type = elem.widget_type
 
         if not elem.widget_type == 'multiple':
-            widget = self.findChild(get_widget_type(widget_type), prefix + '_' +  widget_type)
+            widget = self.findChild(get_widget_type(widget_type), prefix + '_' + widget_type)
             hide_widget(widget, is_open)
 
         if elem.widget_type in ['multiple', 'conv_w']:
@@ -115,7 +115,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
 
             widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_info")
             if widget:
-                show_widget(widget, set_value)
+                widget.setEnabled(set_value)
 
             widget = self.model_config_dict[child.name]
             if widget:
