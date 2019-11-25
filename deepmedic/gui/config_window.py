@@ -5,6 +5,13 @@ from deepmedic.gui.ui_config_create import *
 from deepmedic.gui.config_utils import *
 
 
+def show_widget(widget, show):
+    if show:
+        widget.show()
+    else:
+        widget.hide()
+
+
 class ConfigWindow(QtWidgets.QMainWindow):
     def __init__(self, Config, window_type='', parent=None, UiConfigClass=UiConfig):
         super(ConfigWindow, self).__init__(parent)
@@ -105,6 +112,10 @@ class ConfigWindow(QtWidgets.QMainWindow):
             widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_label")
             if widget:
                 widget.setEnabled(set_value)
+
+            widget = self.findChild(QtWidgets.QLabel, child.section.name + '_' + child.name + "_info")
+            if widget:
+                show_widget(widget, set_value)
 
             widget = self.model_config_dict[child.name]
             if widget:

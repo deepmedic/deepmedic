@@ -20,9 +20,9 @@ class PreprocConfig(Config):
         config_data.add_elem("inputCsv", elem_type='File', options='csv',
                              description='Data CSV', required=True,
                              info="CSV with the input data. Columns should be as follows:\n"
-                                  "'Image' - path to images\n"
-                                  "'Mask' (optional) - path to sampling masks\n"
-                                  "'Target' (optional) - path to segmentation targets.")
+                                  "'Image'   path to images\n"
+                                  "'Mask' (optional)   path to sampling masks\n"
+                                  "'Target' (optional)   path to segmentation targets.")
 
     # ===Preprocessing Parameters===
     config_data.set_curr_section('preproc', "Preprocessing Parameters")
@@ -33,6 +33,13 @@ class PreprocConfig(Config):
                              description='Output Directory',
                              info="The main folder that the output will be placed in .")
 
+    EXTENSION = \
+        config_data.add_elem("Extension",
+                             description='File Format', elem_type='String', widget_type='combobox',
+                             options=[".nii", ".nii.gz"],
+                             info="File format to save the masks in. "
+                                  "Default is to replicate the type of the input images.")
+
     ORIENTATION = \
         config_data.add_elem("orientation", description='Orientation Correction', elem_type='Bool',
                              info="Reorient images to standard radiology view.")
@@ -41,27 +48,66 @@ class PreprocConfig(Config):
         config_data.add_elem("resample", description='Resample Images', elem_type='Bool',
                              info="Resample images to uniform scaling")
 
-    SCALING = \
-        config_data.add_elem("pixelScaling",
-                             description='   Pixel Scaling', parent=RESAMPLE,
+    SPACING = \
+        config_data.add_elem("pixelSpacing",
+                             description='     Pixel Spacing', parent=RESAMPLE,
                              info="The dimensions of each pixel. "
-                                  "For most applications we recommend isotropic pixel scaling, e.g. (1.0, 1.0, 1.0)")
+                                  "For most applications we recommend isotropic pixel spacing, e.g. (1.0, 1.0, 1.0)")
+
+    CHANGE_PIXEL_TYPE = \
+        config_data.add_elem("changePixelType", description='Change Pixel Type', elem_type='Bool',
+                             info="Save image with a certain pixel data type.")
 
     PIXEL_TYPE = \
-        config_data.add_elem("pixelType", parent=RESAMPLE,
-                             description='   Pixel Type', elem_type='String', widget_type='combobox',
+        config_data.add_elem("pixelType", parent=CHANGE_PIXEL_TYPE,
+                             description='     Pixel Type', elem_type='String', widget_type='combobox',
                              options=["uint8", "int8", "uint16", "int16", "uint32", "int32", "uint64", "int64",
                                       "float32", "float64"],
                              info="Data type the output images will be saved in "
                                   "(masks and targets will retain the original format.)")
+
+    CREATE_MASK = \
+        config_data.add_elem("createMask", description='Create Masks', elem_type='Bool',
+                             info='Create masks using thresholds.')
+
+    THRESH_LOW = \
+        config_data.add_elem("threshLow", description='     Lower Threshold', parent=CREATE_MASK,
+                             info="Low bound threshold. Leave empty if using only a high bound threshold.\n"
+                                  "[Default: None]")
+
+    THRESH_HIGH = \
+        config_data.add_elem("threshHigh", description='     Higher Threshold', parent=CREATE_MASK,
+                             info="High bound threshold. Leave empty if using only a low bound threshold.\n"
+                                  "[Default: None]")
+
+    MASK_DIR = \
+        config_data.add_elem("maskDirectory", description='     Output Directory', parent=CREATE_MASK,
+                             info="Directory in which to save the images.\n"
+                                  "Masks will be saved in the same directory as the output images by default.")
+
+    MASK_SUFFIX = \
+        config_data.add_elem("maskSuffix", description='     Suffix', parent=CREATE_MASK, default='Mask',
+                             info="What suffix to add to the image names. "
+                                  "Images will be saved as [original name]_[suffix].[extension].")
+
+    MASK_EXTENSION = \
+        config_data.add_elem("maskExtension", parent=CREATE_MASK,
+                             description='     File Format', elem_type='String', widget_type='combobox',
+                             options=[".nii", ".nii.gz"],
+                             info="File format to save the masks in. "
+                                  "Default is to replicate the type of the input images.")
 
     RESIZE = \
         config_data.add_elem("resize", description='Resize Images', elem_type='Bool',
                              info="Resize images to uniform dimensions")
 
     IMAGE_SIZE =\
-        config_data.add_elem("imgSize", description='   Image Size', parent=RESIZE,
+        config_data.add_elem("imgSize", description='     Image Size', parent=RESIZE,
                              info="The dimensions of the output image")
+
+    USE_MASK = \
+        config_data.add_elem("useMask", description='     Recentre With Mask', elem_type='Bool', parent=RESIZE,
+                             info="Recentre the cropped image around the mask (requires masks to be provided)")
 
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)

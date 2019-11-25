@@ -131,7 +131,7 @@ class NiftiImage(object):
         return sitk.GetPixelIDValueAsString(dtype)
 
     def get_resample_parameters(self):
-        return self.get_size(), self.get_pixel_dims(), self.get_direction(), self.get_origin()
+        return self.get_size(), self.get_spacing(), self.get_direction(), self.get_origin()
 
     def get_header_keys(self):
         return self.reader.GetMetaDataKeys()
@@ -145,20 +145,20 @@ class NiftiImage(object):
 
         return sum(flip) <= 0
 
-    def apply_resample(self, origin, pixel_dims, direction, size, interpolator=sitk.sitkLinear):
+    def apply_resample(self, origin, spacing, direction, size, interpolator=sitk.sitkLinear):
 
         resample = sitk.ResampleImageFilter()
         resample.SetInterpolator(interpolator)
         resample.SetOutputDirection(direction)
         resample.SetOutputOrigin(origin)
-        resample.SetOutputSpacing(pixel_dims)
+        resample.SetOutputSpacing(spacing)
         resample.SetSize((size[0], size[1], max(size[2], 1)))
 
         return resample.Execute(self.open())
 
     def reorient(self):
         needs_reorient, direction, size, spacing, origin = reorient_params(self.get_direction(), self.get_size(),
-                                                                           self.get_pixel_dims(), self.get_origin())
+                                                                           self.get_spacing(), self.get_origin())
         if needs_reorient:
             self.image = self.apply_resample(origin, spacing, direction, size)
             self.reader = self.image
@@ -177,7 +177,7 @@ class NiftiImage(object):
 
         mask_image = sitk.GetImageFromArray(mask.astype(np.uint8))
         mask_image.SetOrigin(self.get_origin())
-        mask_image.SetSpacing(self.get_pixel_dims())
+        mask_image.SetSpacing(self.get_spacing())
         mask_image.SetDirection(self.get_direction())
 
         if filename:
@@ -185,34 +185,34 @@ class NiftiImage(object):
 
         return mask_image
 
-    def resample(self, origin=None, pixel_dims=None, direction=None, size=None, standard=False,
+    def resample(self, origin=None, spacing=None, direction=None, size=None, standard=False,
                  save=False, filename=None, copy=False, ref_image=None):
         # get transformation parameters
         if ref_image:
-            size_rsp, pixel_dims_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
+            size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
             if not size:
                 size = size_rsp
-            if not pixel_dims:
-                pixel_dims = pixel_dims_rsp
+            if not spacing:
+                spacing = spacing_rsp
             if not direction:
                 direction = direction_rsp
             if not origin:
-                origin = origin_rsp  # get_new_origin(self.get_origin(), pixel_dims, self.get_pixel_dims())
+                origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
                 # origin = origin_rsp
         else:
-            if pixel_dims is None:
+            if spacing is None:
                 if standard:
-                    pixel_dims = (1., 1., 1.)
+                    spacing = (1., 1., 1.)
                 else:
-                    pixel_dims = self.get_pixel_dims()
+                    spacing = self.get_spacing()
             if size is None:
-                size = get_new_size(self.get_size(), pixel_dims, self.get_pixel_dims())
+                size = get_new_size(self.get_size(), spacing, self.get_spacing())
             num_dims = len(size)
             if origin is None:
                 if standard:
                     origin = np.zeros(num_dims)
                 else:
-                    origin = self.get_origin()  # get_new_origin(self.get_origin(), pixel_dims, self.get_pixel_dims())
+                    origin = self.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
             if direction is None:
                 if standard:
                     direction = np.identity(num_dims).flatten()
@@ -220,7 +220,7 @@ class NiftiImage(object):
                     direction = self.get_direction()
 
         # apply transformation
-        resampled = self.apply_resample(origin, pixel_dims, direction, size)
+        resampled = self.apply_resample(origin, spacing, direction, size)
 
         # save/update
         if save:
@@ -290,7 +290,7 @@ class NiftiImage(object):
                            for i in range(len(centre_mass_rev))]
         return list(map(math.floor, reversed(centre_mass_rev)))
 
-    def resize(self, size, mask=None, centre_mass=False):
+    def resize(self, size, mask=None, centre_mass=False, crop_mask=False):
         self.open()
         if centre_mass:
             centre_mass_idxs = self.get_centre_mass(mask)
@@ -318,20 +318,20 @@ class NiftiImage(object):
             min_crop = [max(int(a), 0) for a in min_i_resized]
             max_crop = [max(int(size_a - a - 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
 
-            if mask:
+            if crop_mask:
                 mask.crop(min_crop, max_crop)
             self.crop(min_crop, max_crop)
 
         if needs_padding:  # pad
             min_pad = [max(int(-a), 0) for a in min_i_resized]
             max_pad = [max(int(a - size_a + 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
-            if mask:
+            if crop_mask:
                 mask.pad_constant(0, min_pad, max_pad)
             self.pad_constant(-1000, min_pad, max_pad)
 
         self.reader = self.image
 
-        if mask:
+        if crop_mask:
             return mask
         else:
             return None

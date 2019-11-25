@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 import SimpleITK as sitk
 
-from deepmedic.dataManagement.nifti_image import NiftiImage
+from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
 
 
 def text_to_html(_str):
@@ -46,6 +46,34 @@ def print_dict(item, prefix=''):
     return ret
 
 
+class ResampleParams(object):
+    def __init__(self, ref=None, origin=None, spacing=None, direction=None, size=None,
+                 standard=False, suffix='', save_folder=None, thumbnails_folder=None, image_extension=None,
+                 params=None):
+        if params:
+            self.ref = params.ref
+            self.origin = params.origin
+            self.spacing = params.spacing
+            self.direction = params.direction
+            self.size = params.size
+            self.standard = params.standard
+            self.suffix = params.suffix
+            self.save_folder = params.save_folder
+            self.thumbnails_folder = params.thumbnails_folder
+            self.image_extension = params.image_extension
+        else:
+            self.ref = ref
+            self.origin = origin
+            self.spacing = spacing
+            self.direction = direction
+            self.size = size
+            self.standard = standard
+            self.suffix = suffix
+            self.save_folder = save_folder
+            self.thumbnails_folder = thumbnails_folder
+            self.image_extension = image_extension
+
+
 def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=False, do_direction=False,
                          open_image=False, disable_tqdm=False, tqdm_text='Getting Pixel Dimension Stats',
                          progress=None):
@@ -64,8 +92,8 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
             dims_count = add_to_count_dict(image.get_size(), dims_count)
 
         if do_pixs:
-            pixel_dims = image.get_spacing()
-            pix_dims_count = add_to_count_dict(pixel_dims, pix_dims_count)
+            spacing = image.get_spacing()
+            pix_dims_count = add_to_count_dict(spacing, pix_dims_count)
 
         if do_dtypes:
             dtypes_count = add_to_count_dict(image.get_pixel_type_string(), dtypes_count)
@@ -189,7 +217,7 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
         progress.bar.setMaximum(len(filelist))
 
     (dims_count,
-     scaling_count,
+     spacing_count,
      dtype_count,
      direction_count) = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs, do_dtypes=dtypes,
                                              disable_tqdm=disable_tqdm,
@@ -199,13 +227,77 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
     if dims:
         ret += dims_check(dims_count, html=html)
     if pixs:
-        ret += pix_check(scaling_count, html=html)
+        ret += pix_check(spacing_count, html=html)
     if dtypes:
         ret += dtype_check(dtype_count, html=html)
     if dirs:
         ret += dir_check(direction_count, html=html)
 
     return ret
+
+
+def save_thumbnails(filelist, save_folder):
+    for image_path in tqdm(filelist):
+        image = NiftiImage(image_path)
+        thumbnail_file = os.path.join(save_folder, image_path.split('/')[-1].split('.')[0])
+        image.save_thumbnail(os.path.join(thumbnail_file + '.png'))
+
+
+def resample_image_list(filelist, ref=None, origin=None, spacing=None, direction=None, size=None,
+                        standard=False, suffix='', save_folder=None, thumbnails_folder=None, image_extension=None,
+                        orientation=False, params=None):
+    if params:
+        ref = params.ref
+        origin = params.origin
+        spacing = params.spacing
+        direction = params.direction
+        size = params.size
+        standard = params.standard
+        suffix = params.suffix
+        save_folder = params.save_folder
+        thumbnails_folder = params.thumbnails_folder
+        image_extension = params.image_extension
+    if ref:
+        ref_image = NiftiImage(ref)
+    else:
+        ref_image = None
+
+    if save_folder:
+        os.makedirs(save_folder)
+
+    for image_path in filelist:
+        path_split = image_path.split('.')
+        image_name = path_split[0]
+        if save_folder:
+            image_save_name = os.path.join(save_folder, image_name.split('/')[-1])
+        else:
+            image_save_name = image_name
+        if image_extension is None:
+            image_extension = '.' + '.'.join(path_split[1:])
+        if not suffix == '':
+            suffix = '_' + suffix
+        image = NiftiImage(image_path)
+        if orientation:
+            image.reorient()
+        image.resample(ref_image=ref_image, origin=origin, spacing=spacing, direction=direction, size=size,
+                       standard=standard)
+        if save_folder:
+            save_nifti(image, image_save_name + suffix + image_extension)
+        if thumbnails_folder:
+            thumbnail_file = os.path.join(thumbnails_folder, image_name.split('/')[-1])
+            image.save_thumbnail(thumbnail_file + '.png')
+
+
+def resize_images(image_list, masks, new_size, save_path, tqdm_text='Resizing images', disable_tqdm=False):
+    for image_path, mask_path in tqdm(zip(image_list, masks), desc=tqdm_text, disable=disable_tqdm,
+                                      total=len(image_list)):
+        image = NiftiImage(image_path)
+        mask = NiftiImage(mask_path)
+
+        image.resize(new_size, mask, centre_mass=True, crop_mask=False)
+
+        image.save(os.path.join(save_path, image_path.split('/')[-1]))
+        # mask.save(os.path.join(save_path, mask_path.split('/')[-1]))
 
 
 if __name__ == "__main__":
