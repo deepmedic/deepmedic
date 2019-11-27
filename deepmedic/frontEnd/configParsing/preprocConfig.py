@@ -33,6 +33,22 @@ class PreprocConfig(Config):
                              description='Output Directory',
                              info="The main folder that the output will be placed in .")
 
+    SAVE_CSV = \
+        config_data.add_elem("saveCsv", description='Save Output CSV', elem_type='Bool',
+                             info="Save new updated CSV file with preprocessed data paths. "
+                                  "Requires at least one of the bottom two options.")
+
+    OUTPUT_CSV_DIR = \
+        config_data.add_elem("outputCsvDir",
+                             description='     Save Directory', parent=SAVE_CSV,
+                             info="Directory in which to save the output CSV file. "
+                                  "Will save the file in the same directory as the input CSV")
+
+    OUTPUT_CSV_NAME = \
+        config_data.add_elem("outputCsvName",
+                             description='     Filename', parent=SAVE_CSV,
+                             info="Name of the output CSV file. By default the name of the input file is used.")
+
     EXTENSION = \
         config_data.add_elem("Extension",
                              description='File Format', elem_type='String', widget_type='combobox',
