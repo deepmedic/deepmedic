@@ -6,9 +6,8 @@ from deepmedic.gui.config_window import enable_on_combobox_value
 from deepmedic.gui.model_config_window import ModelConfigWindow
 from deepmedic.gui.test_config_window import TestConfigWindow
 from deepmedic.gui.train_config_window import TrainConfigWindow
-from deepmedic.gui.config_utils import p, file_open
+from deepmedic.gui.config_utils import file_open
 
-import time
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):

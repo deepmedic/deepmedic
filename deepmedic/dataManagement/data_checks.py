@@ -10,12 +10,19 @@ from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
 
 
 def text_to_html(_str):
-    return '<pre><p>' + _str.replace('\n', '</p><p>') + '</p></pre>'
+    return '<font size="2"><pre><p>' + _str.replace('\n', '</p><p>') + '</p></pre></font>'
 
 
 def get_html_colour(_str, colour='black', html=True):
     if html:
         return '<font color=\"' + colour + '\">' + _str + '</font>'
+    else:
+        return _str
+
+
+def get_bold_text(_str, html=True):
+    if html:
+        return '<b>' + _str + '</b>'
     else:
         return _str
 
@@ -41,9 +48,9 @@ def get_nifti_reader(filename):
 
 def print_dict(item, prefix=''):
     ret = ''
-    for key, value in item.items():
+    for key, value in sorted(item.items(), key= lambda kv: (kv[1], kv[0]), reverse=True):
         ret += "{2}{0:10d}: {1}\n".format(value, key, prefix)
-    return ret
+    return ret[:-1]
 
 
 class ResampleParams(object):
@@ -93,6 +100,7 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
 
         if do_pixs:
             spacing = image.get_spacing()
+            spacing = tuple(map(lambda x: isinstance(x, float) and round(x, 6) or x, spacing))
             pix_dims_count = add_to_count_dict(spacing, pix_dims_count)
 
         if do_dtypes:
@@ -109,30 +117,30 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
 
 
 def pix_check(pix_count, verbose=True, html=False):
-    prefix = ' '*(len('[PASSED]') + 1)
+    prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
     if len(pix_count) > 1:
-        ret += get_html_colour('[FAILED]', 'red', html) + ' Pixel spacing check\n'
+        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Pixel Spacing Check\n')
         if verbose:
             ret += prefix + 'Pixel dimensions do not match in between images\n'
-            ret += prefix + 'We recommend resampling every image to isotropic pixel spacing (e.g. (1, 1, 1))\n'
-            ret += prefix + 'pixel spacing Count:\n'
+            ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
+            ret += prefix + 'Pixel Spacing Count:\n'
             ret += print_dict(pix_count, prefix)
     else:
         pix_dims = list(pix_count.keys())[0]
         for pix_dim in pix_dims:
             if not pix_dim == pix_dims[0]:
-                ret += get_html_colour('[FAILED]', 'red', html) + ' Pixel spacing check\n'
+                ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Pixel Spacing Check\n')
                 if verbose:
                     ret += prefix + 'Pixel dimensions do not match across dimensions\n'
-                    ret += prefix + 'We recommend resampling every image to isotropic pixel spacing (e.g. (1, 1, 1))\n'
+                    ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
                     ret += prefix + 'Pixel spacing Count:\n'
                     ret += print_dict(pix_count, prefix)
                 return
 
-        ret += get_html_colour('[PASSED]', 'green') + ' Pixel dimensions check\n'
+        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Pixel Spacing Check\n')
         if verbose:
-            ret += prefix + 'Pixel Dimensions: ' + str(pix_dims)
+            ret += prefix + 'Pixel Spacing: ' + str(pix_dims)
 
     if html:
         ret = text_to_html(ret)
@@ -142,17 +150,16 @@ def pix_check(pix_count, verbose=True, html=False):
 
 def dims_check(dims_count, verbose=True, html=False):
     ret = ''
-    prefix = ' '*(len('[PASSED]') + 1)
+    prefix = ' '*(len('[PASSED]') + 2)
     if len(dims_count) > 1:
-        ret += get_html_colour('[FAILED]', 'red', html) + ' Image dimensions check\n'
+        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Image Dimensions Check\n')
         if verbose:
-            ret += prefix + 'Pixel dimensions do not match in between images\n'
-            ret += prefix + 'We recommend resampling every image to the same pixel dimensions ' \
-                            'for every dimension (e.g. (1, 1, 1))\n'
-            ret += prefix + 'pixel Sizes Count:\n'
+            ret += prefix + 'Image dimensions do not match in between images\n'
+            ret += prefix + 'We recommend resampling every image to the same size\n'
+            ret += prefix + 'Image Dimensions Count:\n'
             ret += print_dict(dims_count, prefix)
     else:
-        ret += get_html_colour('[PASSED]', 'green') + ' Image dimensions check\n'
+        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Image Dimensions Check\n')
         if verbose:
             ret += prefix + 'Image Dimensions: ' + str(list(dims_count.keys())[0])
 
@@ -163,10 +170,10 @@ def dims_check(dims_count, verbose=True, html=False):
 
 
 def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32), verbose=True, html=False):
-    prefix = ' '*(len('[PASSED]') + 1)
+    prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
     if len(dtype_count) > 1:
-        ret += get_html_colour('[FAILED]', 'red', html) + ' Data Type check\n'
+        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Data Type Check\n')
         if verbose:
             ret += prefix + 'More than one data type\n'
             ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
@@ -174,14 +181,16 @@ def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32
             ret += print_dict(dtype_count, prefix)
     else:
         if list(dtype_count.keys())[0] == dtype:
-            ret += get_html_colour('[PASSED]', 'green') + ' Data Type check\n'
+            ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Data Type Check\n')
             if verbose:
-                ret += prefix + 'Data Type: ' + str(list(dtype_count.keys())[0]) + '\n'
+                ret += prefix + 'Data Type: ' + str(list(dtype_count.keys())[0])
         else:
-            ret += get_html_colour('[FAILED]', 'red', html) + ' Data Type check\n'
-            ret += prefix + 'Sub-optimal data type. You might be using more memory than required storing your data ' \
-                            'and subsequently increasing the loading time.\n'
-            ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
+            ret += get_bold_text(get_html_colour('[WARNING]', 'orange', html) + ' Data Type Check</b>\n')
+            ret += prefix + 'You might be using more memory than required storing your data\n'
+            ret += prefix + 'This can increase the loading time.\n'
+            ret += prefix + 'Consider resampling every image to ' + dtype + ' or smaller\n'
+            if verbose:
+                ret += prefix + 'Data Type: ' + str(list(dtype_count.keys())[0])
 
     if html:
         ret = text_to_html(ret)
@@ -190,16 +199,16 @@ def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32
 
 
 def dir_check(dir_count, verbose=True, html=False):
-    prefix = ' '*(len('[PASSED]') + 1)
+    prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
     if dir_count:
-        ret += get_html_colour('[FAILED]', 'red', html) + ' Orientation check\n'
+        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Orientation Check\n')
         if verbose:
             ret += prefix + str(dir_count) + ' images are not in Standard Radiology View\n'
-            ret += prefix + 'We recommend reorienting the images\n'
+            ret += prefix + 'We recommend reorienting the images'
     else:
-        ret += get_html_colour('[PASSED]', 'green') + ' Orientation check\n'
-        ret += prefix + 'All images are in standard radiology view\n'
+        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Orientation Check\n')
+        ret += prefix + 'All images are in standard radiology view'
 
     if html:
         ret = text_to_html(ret)
@@ -263,7 +272,7 @@ def resample_image_list(filelist, ref=None, origin=None, spacing=None, direction
         ref_image = None
 
     if save_folder:
-        os.makedirs(save_folder)
+        os.makedirs(save_folder, exist_ok=True)
 
     for image_path in filelist:
         path_split = image_path.split('.')

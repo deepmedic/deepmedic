@@ -61,7 +61,7 @@ class PreprocConfig(Config):
                              info="Reorient images to standard radiology view.")
 
     RESAMPLE = \
-        config_data.add_elem("resample", description='Resample Images', elem_type='Bool',
+        config_data.add_elem("resample", description='Change Pixel Spacing', elem_type='Bool',
                              info="Resample images to uniform scaling")
 
     SPACING = \
