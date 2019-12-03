@@ -47,7 +47,7 @@ class PreprocConfigWindow(ConfigWindow):
         self.data_checks_progress = ProgressBar(self.ui.data_checks_progress)
         self.data_checks_progress.hide()
         self.resample_progress = ProgressBar(self.ui.resample_progress, self.ui.resample_text,
-                                        'Preprocessing data...')
+                                             'Preprocessing data...')
         self.resample_progress.hide()
 
     def run_data_checks(self):
@@ -102,24 +102,27 @@ class PreprocConfigWindow(ConfigWindow):
             if not suffix == '':
                 suffix = '_' + suffix
             image = NiftiImage(image_path)
+
+            # convert type
+
+            # reorient
             if orientation_corr:
                 image.reorient()
-            image.resample(spacing=spacing)
 
+            # resample (spacing)
+            if resample_imgs:
+                image.resample(spacing=spacing)
+
+            # create mask
+            mask = None
+
+            # resize
+            if resize_imgs:
+                image.resize(size, mask, centre_mass=False, crop_mask=False)
+
+            # save image
             if output_dir:
                 save_nifti(image.image, image_save_name + suffix + image_extension)
 
             if self.resample_progress is not None:
                 self.resample_progress.increase_value()
-
-        # reorient and resample
-        # if orientation_corr or resample_imgs or change_pixel_type or resize_imgs:
-        #     self.resample_progress.show()
-        #     # Needs Data Type Conversion Code
-        #     resample_image_list(image_list, orientation=orientation_corr,
-        #                         params=ResampleParams(save_folder=output_dir,
-        #                                               spacing=spacing),
-        #                         progress=self.resample_progress)
-        # Get Mask
-
-        # Resize
