@@ -7,6 +7,26 @@ import math
 from scipy import ndimage
 
 
+pixel_type_dict = {"uint8": sitk.sitkUInt8,
+                   "int8": sitk.sitkInt8,
+                   "uint16": sitk.sitkUInt16,
+                   "int16": sitk.sitkInt16,
+                   "uint32": sitk.sitkUInt32,
+                   "int32": sitk.sitkInt32,
+                   "uint64": sitk.sitkUInt64,
+                   "int64": sitk.sitkInt64,
+                   "float32": sitk.sitkFloat32,
+                   "float64": sitk.sitkFloat64}
+
+
+def pixel_type_to_sitk(pixel_type):
+    try:
+        return pixel_type_dict[pixel_type]
+    except KeyError:
+        pass
+    return None
+
+
 def get_nifti_reader(filename):
     reader = sitk.ImageFileReader()
 
@@ -29,7 +49,7 @@ def get_new_size(size, new_pix_dims, old_pix_dims):
 
 
 def get_new_origin(origin, new_pix_dims, old_pix_dims):
-    return origin # tuple([x for x in np.array(origin) * (np.array(old_pix_dims) / np.array(new_pix_dims))])
+    return origin  # tuple([x for x in np.array(origin) * (np.array(old_pix_dims) / np.array(new_pix_dims))])
 
 
 def reorient_params(direction, size, spacing, origin):
@@ -332,3 +352,12 @@ class NiftiImage(object):
             return mask
         else:
             return None
+
+    def change_pixel_type(self, pixel_type):
+        pixel_type_sitk = pixel_type_to_sitk(pixel_type)
+        if pixel_type_sitk is None:
+            self.open()
+            return None
+        filter = sitk.CastImageFilter()
+        filter.SetOutputPixelType(pixel_type_sitk)
+        self.image = filter.Execute(self.open())

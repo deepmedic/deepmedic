@@ -104,6 +104,8 @@ class PreprocConfigWindow(ConfigWindow):
             image = NiftiImage(image_path)
 
             # convert type
+            if change_pixel_type:
+                image.change_pixel_type(pixel_type)
 
             # reorient
             if orientation_corr:
