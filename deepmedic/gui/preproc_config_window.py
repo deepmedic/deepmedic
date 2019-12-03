@@ -1,6 +1,7 @@
 from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.gui.ui_preproc_config_create import UiPreprocConfig
 from deepmedic.frontEnd.configParsing.preprocConfig import PreprocConfig
+from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
 from deepmedic.dataManagement.data_checks import run_checks, resample_image_list, ResampleParams
 from deepmedic.gui.config_utils import *
 import pandas as pd
@@ -46,14 +47,8 @@ class PreprocConfigWindow(ConfigWindow):
         self.data_checks_progress = ProgressBar(self.ui.data_checks_progress)
         self.data_checks_progress.hide()
         self.resample_progress = ProgressBar(self.ui.resample_progress, self.ui.resample_text,
-                                        'Correcting Orientation, Spacing, and Data Type...')
+                                        'Preprocessing data...')
         self.resample_progress.hide()
-        self.create_mask_progress = ProgressBar(self.ui.create_mask_progress, self.ui.create_mask_text,
-                                                'Creating Masks...')
-        self.create_mask_progress.hide()
-        self.resize_progress = ProgressBar(self.ui.resize_progress, self.ui.resize_text,
-                                           'Resizing Images...')
-        self.resize_progress.hide()
 
     def run_data_checks(self):
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
@@ -85,17 +80,46 @@ class PreprocConfigWindow(ConfigWindow):
             # Throw file not found error
             return
 
-        if not resample_imgs:
-            spacing = None
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+
+        if self.resample_progress is not None:
+            self.resample_progress.show()
+            self.resample_progress.bar.setMaximum(len(image_list))
+
+        image_extension = None
+        suffix = ''
+
+        for image_path in image_list:
+            path_split = image_path.split('.')
+            image_name = path_split[0]
+            if output_dir:
+                image_save_name = os.path.join(output_dir, image_name.split('/')[-1])
+            else:
+                image_save_name = image_name
+            if image_extension is None:
+                image_extension = '.' + '.'.join(path_split[1:])
+            if not suffix == '':
+                suffix = '_' + suffix
+            image = NiftiImage(image_path)
+            if orientation_corr:
+                image.reorient()
+            image.resample(spacing=spacing)
+
+            if output_dir:
+                save_nifti(image.image, image_save_name + suffix + image_extension)
+
+            if self.resample_progress is not None:
+                self.resample_progress.increase_value()
 
         # reorient and resample
-        if orientation_corr or resample_imgs or change_pixel_type or resize_imgs:
-            self.resample_progress.show()
-            # Needs Data Type Conversion Code
-            resample_image_list(image_list, orientation=orientation_corr,
-                                params=ResampleParams(save_folder=output_dir,
-                                                      spacing=spacing),
-                                progress=self.resample_progress)
+        # if orientation_corr or resample_imgs or change_pixel_type or resize_imgs:
+        #     self.resample_progress.show()
+        #     # Needs Data Type Conversion Code
+        #     resample_image_list(image_list, orientation=orientation_corr,
+        #                         params=ResampleParams(save_folder=output_dir,
+        #                                               spacing=spacing),
+        #                         progress=self.resample_progress)
         # Get Mask
 
         # Resize

@@ -60,20 +60,6 @@ class UiPreprocConfig(UiConfig):
         self.resample_progress.setObjectName("resample_progress")
         self.gridLayout.addWidget(self.resample_progress, widget_num + 1, LABEL_COL, 1, SAVE_BUTTON_SIZE)
         widget_num += 2
-        self.create_mask_text = QtWidgets.QLabel(self.scrollAreaWidgetContents)
-        self.create_mask_text.setObjectName("create_mask_text")
-        self.gridLayout.addWidget(self.create_mask_text, widget_num, LABEL_COL, 1, SAVE_BUTTON_SIZE)
-        self.create_mask_progress = QtWidgets.QProgressBar(self.scrollAreaWidgetContents)
-        self.create_mask_progress.setObjectName("create_mask_progress")
-        self.gridLayout.addWidget(self.create_mask_progress, widget_num + 1, LABEL_COL, 1, SAVE_BUTTON_SIZE)
-        widget_num += 2
-        self.resize_text = QtWidgets.QLabel(self.scrollAreaWidgetContents)
-        self.resize_text.setObjectName("resize_text")
-        self.gridLayout.addWidget(self.resize_text, widget_num, LABEL_COL, 1, SAVE_BUTTON_SIZE)
-        self.resize_progress = QtWidgets.QProgressBar(self.scrollAreaWidgetContents)
-        self.resize_progress.setObjectName("resize_progress")
-        self.gridLayout.addWidget(self.resize_progress, widget_num + 1, LABEL_COL, 1, SAVE_BUTTON_SIZE)
-        widget_num += 2
 
         spacerItem = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout.addItem(spacerItem, widget_num, 0, 1, 3)
