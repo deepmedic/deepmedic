@@ -161,6 +161,7 @@ def dims_check(dims_count, verbose=True, html=False):
     else:
         ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Image Dimensions Check\n')
         if verbose:
+            ret += prefix + 'All images have the same dimensions\n'
             ret += prefix + 'Image Dimensions: ' + str(list(dims_count.keys())[0])
 
     if html:
@@ -220,7 +221,7 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
                disable_tqdm=False, html=False, progress=None):
     if csv:
         df = pd.read_csv(filelist)
-        filelist = df['image']
+        filelist = df['Image']
 
     if progress is not None:
         progress.bar.setMaximum(len(filelist))
@@ -254,7 +255,7 @@ def save_thumbnails(filelist, save_folder):
 
 def resample_image_list(filelist, ref=None, origin=None, spacing=None, direction=None, size=None,
                         standard=False, suffix='', save_folder=None, thumbnails_folder=None, image_extension=None,
-                        orientation=False, params=None):
+                        orientation=False, params=None, progress=None):
     if params:
         ref = params.ref
         origin = params.origin
@@ -274,6 +275,9 @@ def resample_image_list(filelist, ref=None, origin=None, spacing=None, direction
     if save_folder:
         os.makedirs(save_folder, exist_ok=True)
 
+    if progress is not None:
+        progress.bar.setMaximum(len(filelist))
+
     for image_path in filelist:
         path_split = image_path.split('.')
         image_name = path_split[0]
@@ -291,10 +295,13 @@ def resample_image_list(filelist, ref=None, origin=None, spacing=None, direction
         image.resample(ref_image=ref_image, origin=origin, spacing=spacing, direction=direction, size=size,
                        standard=standard)
         if save_folder:
-            save_nifti(image, image_save_name + suffix + image_extension)
+            save_nifti(image.image, image_save_name + suffix + image_extension)
         if thumbnails_folder:
             thumbnail_file = os.path.join(thumbnails_folder, image_name.split('/')[-1])
             image.save_thumbnail(thumbnail_file + '.png')
+
+        if progress is not None:
+            progress.increase_value()
 
 
 def resize_images(image_list, masks, new_size, save_path, tqdm_text='Resizing images', disable_tqdm=False):

@@ -10,14 +10,30 @@ from PySide2 import QtWidgets, QtGui
 
 
 class ProgressBar(object):
-    def __init__(self, bar):
+    def __init__(self, bar, label=None, label_text=None):
         self.bar = bar
         self.bar.setMinimum(0)
         self.bar.setValue(0)
+        self.label = label
+        self.set_text(label_text)
 
     def increase_value(self):
         self.bar.setValue(self.bar.value() + 1)
         QtGui.qApp.processEvents()
+
+    def show(self):
+        self.bar.show()
+        if self.label:
+            self.label.show()
+
+    def hide(self):
+        self.bar.hide()
+        if self.label:
+            self.label.hide()
+
+    def set_text(self, label_text):
+        if self.label:
+            self.label.setText(label_text)
 
 
 class PreprocConfigWindow(ConfigWindow):
@@ -27,14 +43,23 @@ class PreprocConfigWindow(ConfigWindow):
 
         self.ui.data_checks_button.clicked.connect(self.run_data_checks)
         self.ui.preprocess_button.clicked.connect(self.preprocess)
-        self.bar = ProgressBar(self.ui.data_checks_progress)
-        self.bar.bar.hide()
+        self.data_checks_progress = ProgressBar(self.ui.data_checks_progress)
+        self.data_checks_progress.hide()
+        self.resample_progress = ProgressBar(self.ui.resample_progress, self.ui.resample_text,
+                                        'Correcting Orientation, Spacing, and Data Type...')
+        self.resample_progress.hide()
+        self.create_mask_progress = ProgressBar(self.ui.create_mask_progress, self.ui.create_mask_text,
+                                                'Creating Masks...')
+        self.create_mask_progress.hide()
+        self.resize_progress = ProgressBar(self.ui.resize_progress, self.ui.resize_text,
+                                           'Resizing Images...')
+        self.resize_progress.hide()
 
     def run_data_checks(self):
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
-        self.ui.data_checks_progress.show()
+        self.data_checks_progress.show()
         check_text = run_checks(csv, csv=True, pixs=True, dims=True, dtypes=True, dirs=True,
-                                disable_tqdm=False, html=True, progress=self.bar)
+                                disable_tqdm=False, html=True, progress=self.data_checks_progress)
         self.ui.data_checks_text.setText(check_text)
 
     def preprocess(self):
@@ -65,9 +90,12 @@ class PreprocConfigWindow(ConfigWindow):
 
         # reorient and resample
         if orientation_corr or resample_imgs or change_pixel_type or resize_imgs:
+            self.resample_progress.show()
+            # Needs Data Type Conversion Code
             resample_image_list(image_list, orientation=orientation_corr,
                                 params=ResampleParams(save_folder=output_dir,
-                                                      spacing=spacing))
+                                                      spacing=spacing),
+                                progress=self.resample_progress)
         # Get Mask
 
         # Resize

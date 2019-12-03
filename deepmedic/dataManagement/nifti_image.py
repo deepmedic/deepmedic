@@ -21,10 +21,7 @@ def get_nifti_reader(filename):
 def save_nifti(image, filename):
     writer = sitk.ImageFileWriter()
     writer.SetFileName(filename)
-    try:
-        writer.Execute(image)
-    except:
-        print(filename)
+    writer.Execute(image)
 
 
 def get_new_size(size, new_pix_dims, old_pix_dims):
@@ -227,7 +224,7 @@ class NiftiImage(object):
             save_nifti(resampled, filename)
         if not copy:
             self.image = resampled
-            self.update_reader(filename)
+            self.reader = self.image
 
         return resampled
 
