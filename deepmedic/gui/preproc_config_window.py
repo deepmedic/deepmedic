@@ -83,8 +83,16 @@ class PreprocConfigWindow(ConfigWindow):
 
         if os.path.isfile(csv):
             # check if Image is a column. Else throw error
-            image_list = pd.read_csv(csv)
-            image_list = image_list['Image']
+            input_df = pd.read_csv(csv)
+            image_list = input_df['Image']
+            try:
+                mask_list = input_df['Mask']
+            except KeyError:
+                mask_list = None
+            try:
+                target_list = input_df['Target']
+            except KeyError:
+                target_list = None
         else:
             print('File not found')
             # Throw file not found error
@@ -104,7 +112,22 @@ class PreprocConfigWindow(ConfigWindow):
         if not mask_suffix == '':
             mask_suffix = '_' + mask_suffix
 
-        for image_path in image_list:
+        for i in range(len(image_list)):
+            image_path = image_list[i]
+            image = NiftiImage(image_path)
+            if mask_list is not None:
+                mask_path = mask_list[i]
+                mask = NiftiImage(mask_path)
+            else:
+                mask_path = None
+                mask = None
+            if target_list is not None:
+                target_path = target_list[i]
+                target = NiftiImage(target_path)
+            else:
+                target_path = None
+                target = None
+
             path_split = image_path.split('.')
             image_name = path_split[0]
             if output_dir:
@@ -113,7 +136,6 @@ class PreprocConfigWindow(ConfigWindow):
                 image_save_name = image_name
             if not image_extension:
                 image_extension = '.' + '.'.join(path_split[1:])
-            image = NiftiImage(image_path)
 
             # convert type
             if change_pixel_type:
@@ -122,10 +144,18 @@ class PreprocConfigWindow(ConfigWindow):
             # reorient
             if orientation_corr:
                 image.reorient()
+                if mask:
+                    mask.reorient()
+                if target:
+                    target.reorient()
 
             # resample (spacing)
             if resample_imgs:
                 image.resample(spacing=spacing)
+                if mask:
+                    mask.resample(spacing=spacing)
+                if target:
+                    target.resample(spacing=spacing)
 
             # create mask
             if create_mask:
@@ -150,13 +180,17 @@ class PreprocConfigWindow(ConfigWindow):
                         centre_mass = True
                 else:
                     crop_mask = False
-                mask = image.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
+                image.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
+                mask = target.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
 
             # save image
             if output_dir:
                 save_nifti(image.open(), image_save_name + suffix + image_extension)
                 if mask:
                     save_nifti(mask.open(), mask_save_name + mask_suffix + mask_extension)
+                if target:
+                    pass
+                    # save_nifti(target.open(), mask_save_name + mask_suffix + mask_extension)
 
             if self.resample_progress is not None:
                 self.resample_progress.increase_value()
