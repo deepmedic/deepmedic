@@ -105,10 +105,13 @@ def greater_than(size1, size2):
 
 class NiftiImage(object):
 
-    def __init__(self, filename):
-        self.image_reader = get_nifti_reader(filename)
-        self.image = None
-        self.reader = self.image_reader
+    def __init__(self, filename=None, image=None):
+        if filename:
+            self.reader = get_nifti_reader(filename)
+            self.image = None
+        if image:
+            self.image = image
+            self.reader = image
 
     def update_reader(self, filename):
         self.reader = get_nifti_reader(filename)
@@ -348,10 +351,7 @@ class NiftiImage(object):
 
         self.reader = self.image
 
-        if crop_mask:
-            return mask
-        else:
-            return None
+        return mask
 
     def change_pixel_type(self, pixel_type):
         pixel_type_sitk = pixel_type_to_sitk(pixel_type)

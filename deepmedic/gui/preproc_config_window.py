@@ -61,13 +61,23 @@ class PreprocConfigWindow(ConfigWindow):
         # Get parameters from forms
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         output_dir = self.get_text_value('preproc_outputDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputDir_lineedit'))
+        image_extension = self.get_text_value('preproc_extension_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_extension_combobox'))
         orientation_corr = self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').isChecked()
         resample_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').isChecked()
         spacing = self.get_text_value('preproc_pixelSpacing_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_pixelSpacing_lineedit'))
         change_pixel_type = self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').isChecked()
-        pixel_type = self.get_text_value('preproc_pixelType_lineedit', self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox'))
+        pixel_type = self.get_text_value('preproc_pixelType_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox'))
+        create_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_createMask_checkbox').isChecked()
+        thresh_low = self.get_text_value('preproc_threshLow_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_threshLow_lineedit'))
+        thresh_high = self.get_text_value('preproc_threshHigh_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_threshHigh_lineedit'))
+        mask_dir = self.get_text_value('preproc_maskDirectory_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_maskDirectory_lineedit'))
+        mask_suffix = self.get_text_value('preproc_maskSuffix_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_maskSuffix_lineedit'))
+        mask_pixel_type = self.get_text_value('preproc_maskPixelType_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_maskPixelType_combobox'))
+        mask_extension = self.get_text_value('preproc_maskExtension_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_maskExtension_combobox'))
         resize_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').isChecked()
-        size = num(self.get_text_value('preproc_imgSize_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit')))
+        size = self.get_text_value('preproc_imgSize_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit'))
+        use_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_useMask_checkbox').isChecked()
+        use_centre_mass = self.findChild(QtWidgets.QCheckBox, 'preproc_centreMass_checkbox').isChecked()
 
         print(output_dir, orientation_corr, resample_imgs, spacing, change_pixel_type, pixel_type, resize_imgs, size)
 
@@ -87,8 +97,12 @@ class PreprocConfigWindow(ConfigWindow):
             self.resample_progress.show()
             self.resample_progress.bar.setMaximum(len(image_list))
 
-        image_extension = None
         suffix = ''
+        if not suffix == '':
+            suffix = '_' + suffix
+
+        if not mask_suffix == '':
+            mask_suffix = '_' + mask_suffix
 
         for image_path in image_list:
             path_split = image_path.split('.')
@@ -97,10 +111,8 @@ class PreprocConfigWindow(ConfigWindow):
                 image_save_name = os.path.join(output_dir, image_name.split('/')[-1])
             else:
                 image_save_name = image_name
-            if image_extension is None:
+            if not image_extension:
                 image_extension = '.' + '.'.join(path_split[1:])
-            if not suffix == '':
-                suffix = '_' + suffix
             image = NiftiImage(image_path)
 
             # convert type
@@ -116,15 +128,35 @@ class PreprocConfigWindow(ConfigWindow):
                 image.resample(spacing=spacing)
 
             # create mask
-            mask = None
+            if create_mask:
+                mask = NiftiImage(image=image.get_mask(thresh_low, thresh_high))
+                if mask_dir:
+                    mask_save_name = os.path.join(mask_dir, image_name.split('/')[-1])
+                else:
+                    mask_save_name = image_save_name
+                if not mask_extension:
+                    mask_extension = image_extension
+                if mask_pixel_type:
+                    mask.change_pixel_type(mask_pixel_type)
+            else:
+                mask = None
 
             # resize
             if resize_imgs:
-                image.resize(size, mask, centre_mass=False, crop_mask=False)
+                centre_mass = use_centre_mass
+                if mask:
+                    crop_mask = True
+                    if use_mask:
+                        centre_mass = True
+                else:
+                    crop_mask = False
+                mask = image.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
 
             # save image
             if output_dir:
-                save_nifti(image.image, image_save_name + suffix + image_extension)
+                save_nifti(image.open(), image_save_name + suffix + image_extension)
+                if mask:
+                    save_nifti(mask.open(), mask_save_name + mask_suffix + mask_extension)
 
             if self.resample_progress is not None:
                 self.resample_progress.increase_value()

@@ -50,10 +50,11 @@ class PreprocConfig(Config):
                              info="Name of the output CSV file. By default the name of the input file is used.")
 
     EXTENSION = \
-        config_data.add_elem("Extension",
+        config_data.add_elem("extension",
                              description='File Format', elem_type='String', widget_type='combobox',
                              options=[".nii", ".nii.gz"],
-                             info="File format to save the masks in. "
+                             info="File format to save the output images in. "
+                                  "Compressed nifti (.nii.gz) takes up less memory. "
                                   "Default is to replicate the type of the input images.")
 
     ORIENTATION = \
@@ -80,7 +81,7 @@ class PreprocConfig(Config):
                              options=["uint8", "int8", "uint16", "int16", "uint32", "int32", "uint64", "int64",
                                       "float32", "float64"],
                              info="Data type the output images will be saved in "
-                                  "(masks and targets will retain the original format.)")
+                                  "(masks and targets, if provided, will retain the original format.)")
 
     CREATE_MASK = \
         config_data.add_elem("createMask", description='Create Masks', elem_type='Bool',
@@ -102,9 +103,17 @@ class PreprocConfig(Config):
                                   "Masks will be saved in the same directory as the output images by default.")
 
     MASK_SUFFIX = \
-        config_data.add_elem("maskSuffix", description='     Suffix', parent=CREATE_MASK, default='Mask',
+        config_data.add_elem("maskSuffix", description='     Suffix', elem_type='String', parent=CREATE_MASK,
+                             default='Mask',
                              info="What suffix to add to the image names. "
                                   "Images will be saved as [original name]_[suffix].[extension].")
+
+    MASK_PIXEL_TYPE = \
+        config_data.add_elem("maskPixelType", parent=CREATE_MASK,
+                             description='     Pixel Type', elem_type='String', widget_type='combobox',
+                             options=["uint8", "int8", "uint16", "int16", "uint32", "int32", "uint64", "int64",
+                                      "float32", "float64"],
+                             info="Data type the output masks will be saved in.")
 
     MASK_EXTENSION = \
         config_data.add_elem("maskExtension", parent=CREATE_MASK,
@@ -120,6 +129,11 @@ class PreprocConfig(Config):
     IMAGE_SIZE =\
         config_data.add_elem("imgSize", description='     Image Size', parent=RESIZE,
                              info="The dimensions of the output image")
+
+    CENTRE_MASS = \
+        config_data.add_elem("centreMass", description='     Recentre on Centre of Mass', elem_type='Bool',
+                             parent=RESIZE,
+                             info="Recentre the cropped image around the image centre of mass")
 
     USE_MASK = \
         config_data.add_elem("useMask", description='     Recentre With Mask', elem_type='Bool', parent=RESIZE,

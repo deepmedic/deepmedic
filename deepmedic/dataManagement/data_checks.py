@@ -124,6 +124,8 @@ def pix_check(pix_count, verbose=True, html=False):
         if verbose:
             ret += prefix + 'Pixel dimensions do not match in between images\n'
             ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
+            ret += prefix + 'Note that resampling will change the image dimensions\n'
+            ret += prefix + 'Consider resizing in addition to resampling\n'
             ret += prefix + 'Pixel Spacing Count:\n'
             ret += print_dict(pix_count, prefix)
     else:
@@ -134,6 +136,8 @@ def pix_check(pix_count, verbose=True, html=False):
                 if verbose:
                     ret += prefix + 'Pixel dimensions do not match across dimensions\n'
                     ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
+                    ret += prefix + 'Note that resampling will change the image dimensions\n'
+                    ret += prefix + 'Consider resizing in addition to resampling\n'
                     ret += prefix + 'Pixel spacing Count:\n'
                     ret += print_dict(pix_count, prefix)
                 return
