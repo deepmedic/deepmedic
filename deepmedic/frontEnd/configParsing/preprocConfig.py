@@ -19,10 +19,10 @@ class PreprocConfig(Config):
     INPUT_CSV = \
         config_data.add_elem("inputCsv", elem_type='File', options='csv',
                              description='Data CSV', required=True,
-                             info="CSV with the input data. Columns should be as follows:\n"
-                                  "'Image'   path to images\n"
-                                  "'Mask' (optional)   path to sampling masks\n"
-                                  "'Target' (optional)   path to segmentation targets.")
+                             info="CSV with the input data. Columns should be named as follows:\n"
+                                  " - 'Image'   path to images\n"
+                                  " - 'Mask' (optional)   path to sampling masks\n"
+                                  " - 'Target' (optional)   path to segmentation targets.")
 
     # ===Preprocessing Parameters===
     config_data.set_curr_section('preproc', "Preprocessing Parameters")
@@ -31,23 +31,24 @@ class PreprocConfig(Config):
     OUTPUT_DIR = \
         config_data.add_elem("outputDir", elem_type='Folder', required=True,
                              description='Output Directory',
-                             info="The main folder that the output will be placed in .")
+                             info="The main folder that the output will be placed in.")
 
     SAVE_CSV = \
         config_data.add_elem("saveCsv", description='Save Output CSV', elem_type='Bool',
-                             info="Save new updated CSV file with preprocessed data paths. "
+                             info="Save new updated CSV file with preprocessed data paths.\n"
                                   "Requires at least one of the bottom two options.")
 
     OUTPUT_CSV_DIR = \
         config_data.add_elem("outputCsvDir",
                              description='     Save Directory', parent=SAVE_CSV,
-                             info="Directory in which to save the output CSV file. "
-                                  "Will save the file in the same directory as the input CSV")
+                             info="Directory in which to save the output CSV file.\n"
+                                  "[Default] Will save the file in the same directory as the input CSV.")
 
     OUTPUT_CSV_NAME = \
         config_data.add_elem("outputCsvName",
                              description='     Filename', parent=SAVE_CSV,
-                             info="Name of the output CSV file. By default the name of the input file is used.")
+                             info="Name of the output CSV file.\n"
+                                  "[Default] By default the name of the input file is used.")
 
     EXTENSION = \
         config_data.add_elem("extension",
@@ -133,11 +134,12 @@ class PreprocConfig(Config):
     CENTRE_MASS = \
         config_data.add_elem("centreMass", description='     Recentre on Centre of Mass', elem_type='Bool',
                              parent=RESIZE,
-                             info="Recentre the cropped image around the image centre of mass")
+                             info="Recentre the cropped image around the centre of mass of the image. "
+                                  "If masks are provided, the centre of mass of the mask will be used instead.")
 
     USE_MASK = \
         config_data.add_elem("useMask", description='     Recentre With Mask', elem_type='Bool', parent=RESIZE,
-                             info="Recentre the cropped image around the mask (requires masks to be provided)")
+                             info="Use the masks to avoid cropping parts of the image with valuable information.")
 
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)

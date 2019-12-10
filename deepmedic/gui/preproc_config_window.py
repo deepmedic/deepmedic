@@ -143,14 +143,11 @@ class PreprocConfigWindow(ConfigWindow):
 
             # resize
             if resize_imgs:
-                centre_mass = use_centre_mass
                 if mask:
                     crop_mask = True
-                    if use_mask:
-                        centre_mass = True
                 else:
                     crop_mask = False
-                mask = image.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
+                mask = image.resize(size, mask, centre_mass=use_centre_mass, crop_mask=crop_mask, use_mask=use_mask)
 
             # save image
             if output_dir:
