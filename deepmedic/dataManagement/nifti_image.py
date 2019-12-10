@@ -310,7 +310,7 @@ class NiftiImage(object):
                            for i in range(len(centre_mass_rev))]
         return list(map(math.floor, reversed(centre_mass_rev)))
 
-    def resize(self, size, mask=None, centre_mass=False, crop_mask=False):
+    def resize(self, size, mask=None, centre_mass=False, crop_mask=False, use_mask=False):
         self.open()
         if centre_mass:
             centre_mass_idxs = self.get_centre_mass(mask)
@@ -318,7 +318,7 @@ class NiftiImage(object):
             max_i_list = centre_mass_idxs
             mask_size = np.ones(len(max_i_list))
         else:
-            if mask:
+            if mask and use_mask:
                 mask.open()
                 min_i_list, max_i_list = get_min_size_idxs(mask, mask.get_num_dims(), mask.get_size())
                 mask_size = max_i_list - min_i_list
