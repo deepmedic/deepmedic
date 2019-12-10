@@ -105,13 +105,21 @@ def greater_than(size1, size2):
 
 class NiftiImage(object):
 
-    def __init__(self, filename=None, image=None):
+    def __init__(self, filename=None, image=None, mask=None, target=None):
         if filename:
             self.reader = get_nifti_reader(filename)
             self.image = None
         if image:
             self.image = image
             self.reader = image
+        if mask:
+            self.mask = NiftiImage(mask)
+        else:
+            self.mask = None
+        if target:
+            self.target = NiftiImage(target)
+        else:
+            self.target = None
 
     def update_reader(self, filename):
         self.reader = get_nifti_reader(filename)
@@ -182,8 +190,14 @@ class NiftiImage(object):
         if needs_reorient:
             self.image = self.apply_resample(origin, spacing, direction, size)
             self.reader = self.image
+            if self.mask:
+                self.mask.image = self.mask.apply_resample(origin, spacing, direction, size)
+                self.mask.reader = self.mask.image
+            if self.target:
+                self.target.image = self.target.apply_resample(origin, spacing, direction, size)
+                self.target.reader = self.target.image
 
-    def get_mask(self, min_intensity, max_intensity, filename=None):
+    def get_mask(self, min_intensity, max_intensity, inplace=True, filename=None):
         self.open()
         image = sitk.GetArrayFromImage(self.open())
         mask = np.zeros(image.shape)
@@ -202,6 +216,9 @@ class NiftiImage(object):
 
         if filename:
             save_nifti(mask_image, filename)
+
+        if inplace:
+            self.mask = NiftiImage(image=mask_image)
 
         return mask_image
 
@@ -241,6 +258,14 @@ class NiftiImage(object):
 
         # apply transformation
         resampled = self.apply_resample(origin, spacing, direction, size)
+        if self.mask:
+            resampled_mask = self.mask.apply_resample(origin, spacing, direction, size)
+        else:
+            resampled_mask = None
+        if self.target:
+            resampled_target = self.target.apply_resample(origin, spacing, direction, size)
+        else:
+            resampled_target = None
 
         # save/update
         if save:
@@ -248,8 +273,14 @@ class NiftiImage(object):
         if not copy:
             self.image = resampled
             self.reader = self.image
+            if self.mask:
+                self.mask.image = resampled_mask
+                self.mask.reader = self.mask.image
+            if self.target:
+                self.target.image = resampled_mask
+                self.target.reader = self.target.image
 
-        return resampled
+        return resampled, resampled_mask, resampled_target
 
     def save_thumbnail(self, filename, thumbnail_size=(128, 128), max_slice=False,
                        min_intensity=None, max_intensity=None):
@@ -310,17 +341,17 @@ class NiftiImage(object):
                            for i in range(len(centre_mass_rev))]
         return list(map(math.floor, reversed(centre_mass_rev)))
 
-    def resize(self, size, mask=None, centre_mass=False, crop_mask=False, use_mask=True):
+    def resize(self, size, centre_mass=False, use_mask=True, pad_val=-1000, pad_val_mask=0, pad_val_target=0):
         self.open()
         if centre_mass:
-            centre_mass_idxs = self.get_centre_mass(mask)
+            centre_mass_idxs = self.get_centre_mass(self.mask)
             min_i_list = centre_mass_idxs
             max_i_list = centre_mass_idxs
             mask_size = np.ones(len(max_i_list))
         else:
-            if mask and use_mask:
-                mask.open()
-                min_i_list, max_i_list = get_min_size_idxs(mask, mask.get_num_dims(), mask.get_size())
+            if self.mask and use_mask:
+                self.mask.open()
+                min_i_list, max_i_list = get_min_size_idxs(self.mask, self.mask.get_num_dims(), self.mask.get_size())
                 mask_size = max_i_list - min_i_list
             else:
                 mask_size = np.array(self.get_size())
@@ -338,20 +369,23 @@ class NiftiImage(object):
             min_crop = [max(int(a), 0) for a in min_i_resized]
             max_crop = [max(int(size_a - a - 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
 
-            if crop_mask:
-                mask.crop(min_crop, max_crop)
+            if self.mask:
+                self.mask.crop(min_crop, max_crop)
+            if self.target:
+                self.target.crop(min_crop, max_crop)
+
             self.crop(min_crop, max_crop)
 
         if needs_padding:  # pad
             min_pad = [max(int(-a), 0) for a in min_i_resized]
             max_pad = [max(int(a - size_a + 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
-            if crop_mask:
-                mask.pad_constant(0, min_pad, max_pad)
-            self.pad_constant(-1000, min_pad, max_pad)
+            if self.mask:
+                self.mask.pad_constant(pad_val_mask, min_pad, max_pad)
+            if self.target:
+                self.target.pad_constant(pad_val_target, min_pad, max_pad)
+            self.pad_constant(pad_val, min_pad, max_pad)
 
         self.reader = self.image
-
-        return mask
 
     def change_pixel_type(self, pixel_type):
         pixel_type_sitk = pixel_type_to_sitk(pixel_type)
