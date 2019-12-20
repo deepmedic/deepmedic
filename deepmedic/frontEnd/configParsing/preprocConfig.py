@@ -59,7 +59,7 @@ class PreprocConfig(Config):
                                   "Default is to replicate the type of the input images.")
 
     ORIENTATION = \
-        config_data.add_elem("orientation", description='Orientation Correction', elem_type='Bool',
+        config_data.add_elem("orientation", description='Orientation Normalisation', elem_type='Bool',
                              info="Reorient images to standard radiology view.")
 
     RESAMPLE = \

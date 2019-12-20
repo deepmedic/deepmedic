@@ -63,12 +63,38 @@ class PreprocConfigWindow(ConfigWindow):
                                              'Preprocessing data...')
         self.resample_progress.hide()
 
+        self.dchecks_sug = None
+        self.ui.suggested_button.clicked.connect(self.fill_in_sug)
+        self.ui.suggested_button.hide()
+
     def run_data_checks(self):
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         self.data_checks_progress.show()
-        check_text = run_checks(csv, csv=True, pixs=True, dims=True, dtypes=True, dirs=True,
-                                disable_tqdm=False, html=True, progress=self.data_checks_progress)
+        check_text, self.dchecks_sug = run_checks(csv, csv=True,
+                                                  pixs=True, dims=True, dtypes=True, dirs=True, sizes=True,
+                                                  disable_tqdm=False, html=True, progress=self.data_checks_progress)
         self.ui.data_checks_text.setText(check_text)
+        self.ui.suggested_button.show()
+
+    def fill_in_sug(self):
+        print(self.dchecks_sug)
+        if self.dchecks_sug:
+            if self.dchecks_sug['direction']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').setChecked(True)
+            if self.dchecks_sug['spacing']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').setChecked(True)
+                self.findChild(QtWidgets.QLineEdit,
+                               'preproc_pixelSpacing_lineedit').setText(str(self.dchecks_sug['spacing']))
+            if self.dchecks_sug['dimensions']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').setChecked(True)
+                self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit').\
+                    setText(str(self.dchecks_sug['dimensions']))
+            if self.dchecks_sug['dtype']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').setChecked(True)
+                combo = self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox')
+                index = combo.findText(self.dchecks_sug['dtype'], QtCore.Qt.MatchFixedString)
+                if index >= 0:
+                    combo.setCurrentIndex(index)
 
     def preprocess(self):
         # Get parameters from forms

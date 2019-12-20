@@ -18,6 +18,8 @@ pixel_type_dict = {"uint8": sitk.sitkUInt8,
                    "float32": sitk.sitkFloat32,
                    "float64": sitk.sitkFloat64}
 
+inv_pixel_type_dict = inv_map = {v: k for k, v in pixel_type_dict.items()}
+
 
 def pixel_type_to_sitk(pixel_type):
     try:

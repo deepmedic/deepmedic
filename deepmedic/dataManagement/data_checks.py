@@ -4,9 +4,10 @@ import glob
 import os
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
 import SimpleITK as sitk
 
-from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
+from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti, inv_pixel_type_dict
 
 
 def text_to_html(_str):
@@ -48,7 +49,7 @@ def get_nifti_reader(filename):
 
 def print_dict(item, prefix=''):
     ret = ''
-    for key, value in sorted(item.items(), key= lambda kv: (kv[1], kv[0]), reverse=True):
+    for key, value in sorted(item.items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
         ret += "{2}{0:10d}: {1}\n".format(value, key, prefix)
     return ret[:-1]
 
@@ -81,14 +82,15 @@ class ResampleParams(object):
             self.image_extension = image_extension
 
 
-def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=False, do_direction=False,
+def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=False, do_direction=False, do_size=False,
                          open_image=False, disable_tqdm=False, tqdm_text='Getting Pixel Dimension Stats',
                          progress=None):
-    if not (do_dims or do_pixs or do_dtypes or do_direction):
-        return {}, {}, {}, {}
+    if not (do_dims or do_pixs or do_dtypes or do_direction, do_size):
+        return {}, {}, {}, {}, {}
     dims_count = {}
     pix_dims_count = {}
     dtypes_count = {}
+    size_count = {}
     direction_count = 0
     for image_path in tqdm(image_list, desc=tqdm_text, disable=disable_tqdm):
         image = NiftiImage(image_path)
@@ -100,11 +102,15 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
 
         if do_pixs:
             spacing = image.get_spacing()
-            spacing = tuple(map(lambda x: isinstance(x, float) and round(x, 6) or x, spacing))
+            spacing = tuple(map(lambda x: isinstance(x, float) and round(x, 3) or x, spacing))
             pix_dims_count = add_to_count_dict(spacing, pix_dims_count)
 
         if do_dtypes:
             dtypes_count = add_to_count_dict(image.get_pixel_type_string(), dtypes_count)
+
+        if do_size:
+            size = tuple(int(round(sp * dm)) for sp, dm in zip(image.get_spacing(), image.get_size()))
+            size_count = add_to_count_dict(size, size_count)
 
         if do_direction:
             if not image.is_in_std_radiology_view():
@@ -113,14 +119,16 @@ def get_image_dims_stats(image_list, do_pixs=False, do_dims=False, do_dtypes=Fal
         if progress is not None:
             progress.increase_value()
 
-    return dims_count, pix_dims_count, dtypes_count, direction_count
+    return dims_count, pix_dims_count, dtypes_count, direction_count, size_count
 
 
 def pix_check(pix_count, verbose=True, html=False):
     prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
+    suggested = None
     if len(pix_count) > 1:
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Pixel Spacing Check\n')
+        suggested = (1, 1, 1)
         if verbose:
             ret += prefix + 'Pixel dimensions do not match in between images\n'
             ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
@@ -133,6 +141,7 @@ def pix_check(pix_count, verbose=True, html=False):
         for pix_dim in pix_dims:
             if not pix_dim == pix_dims[0]:
                 ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Pixel Spacing Check\n')
+                suggested = (1, 1, 1)
                 if verbose:
                     ret += prefix + 'Pixel dimensions do not match across dimensions\n'
                     ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
@@ -149,21 +158,33 @@ def pix_check(pix_count, verbose=True, html=False):
     if html:
         ret = text_to_html(ret)
 
-    return ret
+    return ret, suggested
+
+
+def get_max_dims(dims_count):
+    max_size = np.zeros(max([len(i) for i in dims_count.keys()]))
+    for size in dims_count.keys():
+        for i in range(len(size)):
+            if size[i] > max_size[i]:
+                max_size[i] = size[i]
+    return max_size
 
 
 def dims_check(dims_count, verbose=True, html=False):
     ret = ''
     prefix = ' '*(len('[PASSED]') + 2)
+    suggested = None
     if len(dims_count) > 1:
-        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Image Dimensions Check\n')
+        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Image (Pixel) Dimensions Check\n')
+        suggested = get_max_dims(dims_count)
         if verbose:
             ret += prefix + 'Image dimensions do not match in between images\n'
             ret += prefix + 'We recommend resampling every image to the same size\n'
             ret += prefix + 'Image Dimensions Count:\n'
             ret += print_dict(dims_count, prefix)
+
     else:
-        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Image Dimensions Check\n')
+        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Image (Pixel) Dimensions Check\n')
         if verbose:
             ret += prefix + 'All images have the same dimensions\n'
             ret += prefix + 'Image Dimensions: ' + str(list(dims_count.keys())[0])
@@ -171,17 +192,44 @@ def dims_check(dims_count, verbose=True, html=False):
     if html:
         ret = text_to_html(ret)
 
-    return ret
+    return ret, suggested
 
 
-def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32), verbose=True, html=False):
+def sizes_check(dims_count, verbose=True, html=False):
+    ret = ''
+    prefix = ' ' * (len('[PASSED]') + 2)
+    suggested = None
+    if len(dims_count) > 1:
+        ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Image (Actual) Dimensions Check\n')
+        suggested = get_max_dims(dims_count)
+        if verbose:
+            ret += prefix + 'Image dimensions do not match in between images\n'
+            ret += prefix + 'We recommend resampling every image to the same size\n'
+            ret += prefix + 'Image Dimensions Count (mm):\n'
+            ret += print_dict(dims_count, prefix)
+
+    else:
+        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Image (Actual) Dimensions Check\n')
+        if verbose:
+            ret += prefix + 'All images have the same dimensions\n'
+            ret += prefix + 'Image Dimensions (mm): ' + str(list(dims_count.keys())[0])
+
+    if html:
+        ret = text_to_html(ret)
+
+    return ret, suggested
+
+
+def dtype_check(dtype_count, dtype=sitk.sitkFloat32, verbose=True, html=False):
     prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
+    suggested = None
     if len(dtype_count) > 1:
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Data Type Check\n')
+        suggested = inv_pixel_type_dict[dtype]
         if verbose:
             ret += prefix + 'More than one data type\n'
-            ret += prefix + 'We recommend resampling every image to ' + dtype + '\n'
+            ret += prefix + 'We recommend resampling every image to ' + sitk.GetPixelIDValueAsString(dtype) + '\n'
             ret += prefix + 'Data Types Count:\n'
             ret += print_dict(dtype_count, prefix)
     else:
@@ -193,21 +241,24 @@ def dtype_check(dtype_count, dtype=sitk.GetPixelIDValueAsString(sitk.sitkFloat32
             ret += get_bold_text(get_html_colour('[WARNING]', 'orange', html) + ' Data Type Check</b>\n')
             ret += prefix + 'You might be using more memory than required storing your data\n'
             ret += prefix + 'This can increase the loading time.\n'
-            ret += prefix + 'Consider resampling every image to ' + dtype + ' or smaller\n'
+            ret += prefix + 'Consider resampling every image to ' + sitk.GetPixelIDValueAsString(dtype) + ' or smaller\n'
+            suggested = inv_pixel_type_dict[dtype]
             if verbose:
                 ret += prefix + 'Data Type: ' + str(list(dtype_count.keys())[0])
 
     if html:
         ret = text_to_html(ret)
 
-    return ret
+    return ret, suggested
 
 
 def dir_check(dir_count, verbose=True, html=False):
     prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
+    suggested = None
     if dir_count:
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Orientation Check\n')
+        suggested = True
         if verbose:
             ret += prefix + str(dir_count) + ' images are not in Standard Radiology View\n'
             ret += prefix + 'We recommend reorienting the images'
@@ -218,10 +269,10 @@ def dir_check(dir_count, verbose=True, html=False):
     if html:
         ret = text_to_html(ret)
 
-    return ret
+    return ret, suggested
 
 
-def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=False,
+def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=False, sizes=False,
                disable_tqdm=False, html=False, progress=None):
     if csv:
         df = pd.read_csv(filelist)
@@ -230,24 +281,37 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
     if progress is not None:
         progress.bar.setMaximum(len(filelist))
 
+    suggested = {'dimensions': None,
+                 'size': None,
+                 'spacing': None,
+                 'dtype': None,
+                 'direction': None}
+
     (dims_count,
      spacing_count,
      dtype_count,
-     direction_count) = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs, do_dtypes=dtypes,
-                                             disable_tqdm=disable_tqdm,
-                                             tqdm_text='Running Image and Pixel Dimension Checks',
-                                             progress=progress)
+     direction_count,
+     size_count) = get_image_dims_stats(filelist, do_dims=dims, do_pixs=pixs, do_dtypes=dtypes, do_size=sizes,
+                                        disable_tqdm=disable_tqdm, tqdm_text='Running Image and Pixel Dimension Checks',
+                                        progress=progress)
     ret = ''
     if dims:
-        ret += dims_check(dims_count, html=html)
+        aux_ret, suggested['dimensions'] = dims_check(dims_count, html=html)
+        ret += aux_ret
+    if sizes:
+        aux_ret, suggested['size'] = sizes_check(size_count, html=html)
+        ret += aux_ret
     if pixs:
-        ret += pix_check(spacing_count, html=html)
+        aux_ret, suggested['spacing'] = pix_check(spacing_count, html=html)
+        ret += aux_ret
     if dtypes:
-        ret += dtype_check(dtype_count, html=html)
+        aux_ret, suggested['dtype'] = dtype_check(dtype_count, html=html)
+        ret += aux_ret
     if dirs:
-        ret += dir_check(direction_count, html=html)
+        aux_ret, suggested['direction'] = dir_check(direction_count, html=html)
+        ret += aux_ret
 
-    return ret
+    return ret, suggested
 
 
 def save_thumbnails(filelist, save_folder):
