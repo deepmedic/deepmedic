@@ -45,4 +45,3 @@ class CnnWrapperForSampling(object):
     def getNumPathwaysThatRequireInput(self) :
         return self._numPathwaysThatRequireInput
     
-    

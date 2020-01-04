@@ -239,13 +239,13 @@ class Cnn3d(object):
         
         
     def _setupInputXTensors(self):
-        self._inp_x['train']['x'] = tf.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_train")
-        self._inp_x['val']['x'] = tf.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_val")
-        self._inp_x['test']['x'] = tf.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_test")
+        self._inp_x['train']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_train")
+        self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_val")
+        self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_test")
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_train")
-            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_val")
-            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_test")
+            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_train")
+            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_val")
+            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_test")
             
         
     def _setupInputXTensorsFromGivenArgs(self, givenInputTensorNormTrain, givenInputTensorNormVal, givenInputTensorNormTest,

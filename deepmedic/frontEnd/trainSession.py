@@ -107,13 +107,13 @@ class TrainSession(Session):
             with graphTf.device(sess_device):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
-                with tf.variable_scope("net"):
+                with tf.compat.v1.variable_scope("net"):
                     cnn3d.make_cnn_model(*model_params.get_args_for_arch())
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
 
             # No explicit device assignment for the rest.
             # Because trained has piecewise_constant that is only on cpu, and so is saver.
-            with tf.variable_scope("trainer"):
+            with tf.compat.v1.variable_scope("trainer"):
                 self._log.print3("=========== Building Trainer ===========\n")
                 trainer = Trainer(*(self._params.get_args_for_trainer() + [cnn3d]))
                 trainer.create_optimizer(*self._params.get_args_for_optimizer())  # Trainer and net connect here.
@@ -139,18 +139,18 @@ class TrainSession(Session):
                                             self._params.indices_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers
-            saver_all = tf.train.Saver()  # Will be used during training for saving everything.
+            saver_all = tf.compat.v1.train.Saver()  # Will be used during training for saving everything.
             # Alternative: tf.train.Saver([v for v in tf.all_variables() if v.name.startswith("net"])
-            collection_vars_net = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="net")
-            saver_net = tf.train.Saver(var_list=collection_vars_net)  # Used to load the net's parameters.
-            collection_vars_trainer = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
-            saver_trainer = tf.train.Saver(var_list=collection_vars_trainer)  # Used to load the trainer's parameters.
+            collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
+            saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net)  # Used to load the net's parameters.
+            collection_vars_trainer = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
+            saver_trainer = tf.compat.v1.train.Saver(var_list=collection_vars_trainer)  # Used to load the trainer's parameters.
 
         # self._print_vars_in_collection(collection_vars_net, "net")
         # self._print_vars_in_collection(collection_vars_trainer, "trainer")
 
-        with tf.Session(graph=graphTf,
-                        config=tf.ConfigProto(log_device_placement=False,
+        with tf.compat.v1.Session(graph=graphTf,
+                        config=tf.compat.v1.ConfigProto(log_device_placement=False,
                                               device_count={'CPU': 999, 'GPU': 99})) as sessionTf:
             # Load or initialize parameters
             file_to_load_params_from = self._params.get_path_to_load_model_from()
@@ -172,15 +172,15 @@ class TrainSession(Session):
                     self._log.print3("Trainer parameters were loaded.")
                 else:
                     self._log.print3("Reset of trainer parameters was requested. Re-initializing them...")
-                    tf.variables_initializer(var_list=collection_vars_trainer).run()
+                    tf.compat.v1.variables_initializer(var_list=collection_vars_trainer).run()
                     self._log.print3("Trainer parameters re-initialized.")
             else:
                 self._log.print3("=========== Initializing network and trainer variables  ===============")
                 # Initializes all.
                 # tf.variables_initializer(var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) ).run()
                 # Initialize separate as below, so that in case I miss a variable, I will get an error and I will know.
-                tf.variables_initializer(var_list=collection_vars_net).run()
-                tf.variables_initializer(var_list=collection_vars_trainer).run()
+                tf.compat.v1.variables_initializer(var_list=collection_vars_net).run()
+                tf.compat.v1.variables_initializer(var_list=collection_vars_trainer).run()
                 self._log.print3("All variables were initialized.")
 
                 filename_to_save_with = self._params.filepath_to_save_models + ".initial." + datetime_now_str()

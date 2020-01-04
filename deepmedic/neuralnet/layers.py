@@ -61,7 +61,7 @@ class Block(object):
         self._sharedNewVar_B = None
         self._newMu_B = None # last value tensor, to update the corresponding shared.
         self._newVar_B = None
-        self._tf_plchld_int32 = tf.placeholder( dtype="int32", name="tf_plchld_int32") # convenience for tf.assign
+        self._tf_plchld_int32 = tf.compat.v1.placeholder( dtype="int32", name="tf_plchld_int32") # convenience for tf.assign
         self._op_update_mtrx_bn_inf_mu = None
         self._op_update_mtrx_bn_inf_var = None
         
@@ -130,8 +130,8 @@ class Block(object):
     def getUpdatesForBnRollingAverage(self) :
         # This function or something similar should stay, even if I clean the BN rolling average.
         if self._appliedBnInLayer :
-            return [ tf.assign( ref=self._sharedNewMu_B, value=self._newMu_B, validate_shape=True ),
-                    tf.assign( ref=self._sharedNewVar_B, value=self._newVar_B, validate_shape=True ) ]
+            return [ tf.compat.v1.assign( ref=self._sharedNewMu_B, value=self._newMu_B, validate_shape=True ),
+                    tf.compat.v1.assign( ref=self._sharedNewVar_B, value=self._newVar_B, validate_shape=True ) ]
         else :
             return []
         
@@ -178,8 +178,8 @@ class ConvLayer(Block):
             ) = applyBn( movingAvForBnOverXBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain)
             self.params = self.params + [self._gBn, self._b]
             # Create ops for updating the matrices with the bn inference stats.
-            self._op_update_mtrx_bn_inf_mu = tf.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
-            self._op_update_mtrx_bn_inf_var = tf.assign( self._varBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewVar_B )
+            self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
+            self._op_update_mtrx_bn_inf_var = tf.compat.v1.assign( self._varBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewVar_B )
     
         else : #Not using batch normalization
             self._appliedBnInLayer = False
@@ -305,9 +305,9 @@ class ConvLayer(Block):
         
     # Override parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
-        return tf.reduce_sum(tf.abs(self._W))
+        return tf.reduce_sum(input_tensor=tf.abs(self._W))
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
-        return tf.reduce_sum(self._W ** 2)
+        return tf.reduce_sum(input_tensor=self._W ** 2)
     
     
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
@@ -391,11 +391,11 @@ class LowRankConvLayer(ConvLayer):
     # Implement parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
         l1Cost = 0
-        for wOfSubconv in self._WperSubconv : l1Cost += tf.reduce_sum( tf.abs(wOfSubconv) )
+        for wOfSubconv in self._WperSubconv : l1Cost += tf.reduce_sum( input_tensor=tf.abs(wOfSubconv) )
         return l1Cost
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
         l2Cost = 0
-        for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum( wOfSubconv ** 2 )
+        for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum( input_tensor=wOfSubconv ** 2 )
         return l2Cost
     def getW(self):
         print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
@@ -444,11 +444,11 @@ class SoftmaxLayer(TargetLayer):
         
         # ============ Softmax ==============
         self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)
-        self.y_pred_train = tf.argmax(self.p_y_given_x_train, axis=1)
+        self.y_pred_train = tf.argmax(input=self.p_y_given_x_train, axis=1)
         self.p_y_given_x_val = tf.nn.softmax(logits_val/t, axis=1)
-        self.y_pred_val = tf.argmax(self.p_y_given_x_val, axis=1)
+        self.y_pred_val = tf.argmax(input=self.p_y_given_x_val, axis=1)
         self.p_y_given_x_test = tf.nn.softmax(logits_test/t, axis=1)
-        self.y_pred_test = tf.argmax(self.p_y_given_x_test, axis=1)
+        self.y_pred_test = tf.argmax(input=self.p_y_given_x_test, axis=1)
     
         self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShape["train"], self.inputShape["val"], self.inputShape["test"])
         
@@ -456,8 +456,8 @@ class SoftmaxLayer(TargetLayer):
         
     def get_output_gt_tensor_feed(self):
         # Input. Dimensions of y labels: [batchSize, r, c, z]
-        y_gt_train = tf.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
-        y_gt_val = tf.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
+        y_gt_train = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
+        y_gt_val = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
         return (y_gt_train, y_gt_val)
         
     def meanErrorTraining(self, y):
@@ -466,7 +466,7 @@ class SoftmaxLayer(TargetLayer):
         
         #Mean error of the training batch.
         tneq = tf.logical_not( tf.equal(self.y_pred_train, y) )
-        meanError = tf.reduce_mean(tneq)
+        meanError = tf.reduce_mean(input_tensor=tneq)
         return meanError
     
     def meanErrorValidation(self, y):
@@ -477,7 +477,7 @@ class SoftmaxLayer(TargetLayer):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
             tneq = tf.logical_not( tf.equal(self.y_pred_val, y) )
-            meanError = tf.reduce_mean(tneq)
+            meanError = tf.reduce_mean(input_tensor=tneq)
             return meanError #The percentage of the predictions that is not the correct class.
         else:
             raise NotImplementedError("Not implemented behaviour for y.dtype different than int.")
@@ -501,10 +501,10 @@ class SoftmaxLayer(TargetLayer):
             tensorOneAtTruePos = tf.logical_and(tensorOneAtRealPos,tensorOneAtPredictedPos)
             tensorOneAtTrueNeg = tf.logical_and(tensorOneAtRealNeg,tensorOneAtPredictedNeg)
                     
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtRealPos, dtype="int32")) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtRealNeg, dtype="int32")) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtTruePos, dtype="int32")) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( tf.cast(tensorOneAtTrueNeg, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtRealPos, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtRealNeg, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtTruePos, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtTrueNeg, dtype="int32")) )
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
     

@@ -29,7 +29,7 @@ def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputVal, inputT
         keep_prob = (1-dropoutRate)
         
         random_tensor = keep_prob
-        random_tensor += tf.random_uniform(shape=tf.shape(inputTrain), minval=0., maxval=1., seed=rng.randint(999999), dtype="float32")
+        random_tensor += tf.random.uniform(shape=tf.shape(input=inputTrain), minval=0., maxval=1., seed=rng.randint(999999), dtype="float32")
         # 0. if [keep_prob, 1.0) and 1. if [1.0, 1.0 + keep_prob)
         dropoutMask = tf.floor(random_tensor)
     
@@ -60,12 +60,12 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
     
     e1 = np.finfo(np.float32).tiny 
     
-    mu_B, var_B = tf.nn.moments(inputTrain, axes=[0,2,3,4])
+    mu_B, var_B = tf.nn.moments(x=inputTrain, axes=[0,2,3,4])
     
     #---computing mu and var for inference from rolling average---
-    mu_MoveAv = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
+    mu_MoveAv = tf.reduce_mean(input_tensor=muBnsArrayForRollingAverage, axis=0)
     mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,numOfChanns,1,1,1])
-    var_MoveAv = tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
+    var_MoveAv = tf.reduce_mean(input_tensor=varBnsArrayForRollingAverage, axis=0)
     var_MoveAv = var_MoveAv + e1
     var_MoveAv = tf.reshape(var_MoveAv, shape=[1,numOfChanns,1,1,1])
     
@@ -167,38 +167,38 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
     # Input signal given in shape [BatchSize, Channels, R, C, Z]
     
     # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
-    wReshapedForConv = tf.transpose( W, perm=[4,3,2,1,0] )
+    wReshapedForConv = tf.transpose( a=W, perm=[4,3,2,1,0] )
     
     # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
-    inputToConvReshapedTrain = tf.transpose( inputToConvTrain, perm=[0,4,3,2,1] )
+    inputToConvReshapedTrain = tf.transpose( a=inputToConvTrain, perm=[0,4,3,2,1] )
     outputOfConvTrain = tf.nn.conv3d(input = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
-                                  filter = wReshapedForConv, # TF: Depth, Height, Wight, Chans_in, Chans_out
+                                  filters = wReshapedForConv, # TF: Depth, Height, Wight, Chans_in, Chans_out
                                   strides = [1,1,1,1,1],
                                   padding = "VALID",
                                   data_format = "NDHWC"
                                   )
     #Output is in the shape of the input image (signals_shape).
-    outputTrain = tf.transpose( outputOfConvTrain, perm=[0,4,3,2,1] ) #reshape the result, back to the shape of the input image.
+    outputTrain = tf.transpose( a=outputOfConvTrain, perm=[0,4,3,2,1] ) #reshape the result, back to the shape of the input image.
     
     #Validation
-    inputToConvReshapedVal = tf.transpose( inputToConvVal, perm=[0,4,3,2,1] )
+    inputToConvReshapedVal = tf.transpose( a=inputToConvVal, perm=[0,4,3,2,1] )
     outputOfConvVal = tf.nn.conv3d(input = inputToConvReshapedVal,
-                                  filter = wReshapedForConv,
+                                  filters = wReshapedForConv,
                                   strides = [1,1,1,1,1],
                                   padding = "VALID",
                                   data_format = "NDHWC"
                                   )
-    outputVal = tf.transpose( outputOfConvVal, perm=[0,4,3,2,1] )
+    outputVal = tf.transpose( a=outputOfConvVal, perm=[0,4,3,2,1] )
     
     #Testing
-    inputToConvReshapedTest = tf.transpose( inputToConvTest, perm=[0,4,3,2,1] )
+    inputToConvReshapedTest = tf.transpose( a=inputToConvTest, perm=[0,4,3,2,1] )
     outputOfConvTest = tf.nn.conv3d(input = inputToConvReshapedTest,
-                                  filter = wReshapedForConv,
+                                  filters = wReshapedForConv,
                                   strides = [1,1,1,1,1],
                                   padding = "VALID",
                                   data_format = "NDHWC"
                                   )
-    outputTest = tf.transpose( outputOfConvTest, perm=[0,4,3,2,1] )
+    outputTest = tf.transpose( a=outputOfConvTest, perm=[0,4,3,2,1] )
     
     outputShapeTrain = [inputToConvShapeTrain[0],
                         filterShape[0],
@@ -240,13 +240,13 @@ def pool3dMirrorPad(image3dBC012, image3dBC012Shape, poolParams) :
     
     image3dBC012WithMirrorPad = mirrorFinalBordersOfImage(image3dBC012, poolParams[2])
     
-    pooled_out = tf.nn.pool( input = tf.transpose( image3dBC012WithMirrorPad, perm=[0,4,3,2,1] ),
+    pooled_out = tf.nn.pool( input = tf.transpose( a=image3dBC012WithMirrorPad, perm=[0,4,3,2,1] ),
                             window_shape=ws,
                             strides=stride,
                             padding="VALID", # SAME or VALID
                             pooling_type=mode1,
                             data_format="NDHWC") # AVG or MAX
-    pooled_out = tf.transpose( pooled_out, perm=[0,4,3,2,1] )
+    pooled_out = tf.transpose( a=pooled_out, perm=[0,4,3,2,1] )
     
     #calculate the shape of the image after the max pooling.
     #This calculation is for ignore_border=True! Pooling should only be done in full areas in the mirror-padded image.

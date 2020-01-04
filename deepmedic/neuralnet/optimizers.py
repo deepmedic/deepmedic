@@ -26,7 +26,7 @@ class Optimizer(object):
     # No need to use. Compute outside, and pass to _get_update_ops
     def get_grads_for_params_responsible(self, cost):
         # create a list of gradients for all parameters that this is optimizing
-        return tf.gradients(cost, self._params_to_opt)
+        return tf.gradients(ys=cost, xs=self._params_to_opt)
     
     def get_update_ops_given_cost(self, cost) :
         grads = self.get_grads_for_params_responsible(cost)
@@ -71,8 +71,8 @@ class SgdOptimizer(Optimizer):
             else :  # Nesterov
                 updateToParam = self._momentum * newVelocity - stepToGradientDirection
                 
-            updates.append( tf.assign(ref=v, value=newVelocity, validate_shape=True) )  # I can do (1-mom)*learnRate*grad.
-            updates.append( tf.assign(ref=param, value=param+updateToParam, validate_shape=True) )
+            updates.append( tf.compat.v1.assign(ref=v, value=newVelocity, validate_shape=True) )  # I can do (1-mom)*learnRate*grad.
+            updates.append( tf.compat.v1.assign(ref=param, value=param+updateToParam, validate_shape=True) )
             
         return updates
     
@@ -123,10 +123,10 @@ class AdamOptimizer(Optimizer):
             grad_t = m_t / (tf.sqrt(v_t) + self._eps)
             param_t = param - (lr_t * grad_t)
             
-            updates.append( tf.assign(ref=m, value=m_t, validate_shape=True) )
-            updates.append( tf.assign(ref=v, value=v_t, validate_shape=True) )
-            updates.append( tf.assign(ref=param, value=param_t, validate_shape=True) )
-        updates.append( tf.assign(ref=i, value=i_t, validate_shape=True) )
+            updates.append( tf.compat.v1.assign(ref=m, value=m_t, validate_shape=True) )
+            updates.append( tf.compat.v1.assign(ref=v, value=v_t, validate_shape=True) )
+            updates.append( tf.compat.v1.assign(ref=param, value=param_t, validate_shape=True) )
+        updates.append( tf.compat.v1.assign(ref=i, value=i_t, validate_shape=True) )
         
         return updates
     
@@ -177,9 +177,9 @@ class RmsPropOptimizer(Optimizer):
             else :  # Nesterov
                 updateToParam = self._momentum * newVelocity - stepToGradientDirection
                 
-            updates.append( tf.assign(ref=accu, value=accu_new, validate_shape=True) )
-            updates.append( tf.assign(ref=v, value=newVelocity, validate_shape=True) )  # I can do (1-mom)*learnRate*grad.
-            updates.append( tf.assign(ref=param, value=param+updateToParam, validate_shape=True) )
+            updates.append( tf.compat.v1.assign(ref=accu, value=accu_new, validate_shape=True) )
+            updates.append( tf.compat.v1.assign(ref=v, value=newVelocity, validate_shape=True) )  # I can do (1-mom)*learnRate*grad.
+            updates.append( tf.compat.v1.assign(ref=param, value=param+updateToParam, validate_shape=True) )
             
         return updates
     

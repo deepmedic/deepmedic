@@ -38,18 +38,18 @@ def repeatRcz5DimArrayByFactor(array5Dim, factor3Dim):
     #expandedRC = expandedR.repeat(factor3Dim[1], axis=3)
     #expandedRCZ = expandedRC.repeat(factor3Dim[2], axis=4)
     res = array5Dim
-    res_shape = tf.shape(array5Dim) # Dynamic. For batch and r,c,z dimensions. (unknown prior to runtime)
+    res_shape = tf.shape(input=array5Dim) # Dynamic. For batch and r,c,z dimensions. (unknown prior to runtime)
     n_fms = array5Dim.get_shape()[1] # Static via get_shape(). Known. For reshape to return tensor with *known* shape[1].
     # If tf.shape()[1] is used, reshape changes res.get_shape()[1] to (?).
     
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1]*res_shape[2], 1, res_shape[3], res_shape[4]] ),
                                multiples=[1, 1, factor3Dim[0], 1, 1] ),
                     shape=[res_shape[0], n_fms, res_shape[2]*factor3Dim[0], res_shape[3], res_shape[4]] )
-    res_shape = tf.shape(res)
+    res_shape = tf.shape(input=res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2]*res_shape[3], 1, res_shape[4]] ),
                                multiples=[1, 1, 1, factor3Dim[1], 1] ),
                     shape=[res_shape[0], n_fms, res_shape[2], res_shape[3]*factor3Dim[1], res_shape[4]] )
-    res_shape = tf.shape(res)
+    res_shape = tf.shape(input=res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*res_shape[4], 1] ),
                                multiples=[1, 1, 1, 1, factor3Dim[2]] ),
                     shape=[res_shape[0], n_fms, res_shape[2], res_shape[3], res_shape[4]*factor3Dim[2]] )
@@ -77,7 +77,7 @@ def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
 def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
     # fms: a 5D tensor, [batch, fms, r, c, z]
     # listOfNumberOfCentralVoxelsToGetPerDimension: list of 3 scalars or Tensorflow 1D tensor (eg from tf.shape(x)). [r, c, z]
-    fmsShape = tf.shape(fms) #fms.shape works too.
+    fmsShape = tf.shape(input=fms) #fms.shape works too.
     # if part is of even width, one voxel to the left is the centre.
     rCentreOfPartIndex = (fmsShape[2] - 1) // 2
     rIndexToStartGettingCentralVoxels = rCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[0] - 1) // 2
@@ -98,8 +98,8 @@ def makeResidualConnection(log, deeperLOut, earlierLOut) :
     # Add the outputs of the two layers and return the output, as well as its dimensions.
     # deeperLOut & earlierLOut: 5D tensors [batchsize, chans, x, y, z], outputs of deepest and earliest layer of the Res.Conn.
     # Result: Shape of result should be exactly the same as the output of Deeper layer.
-    deeperLOutShape = tf.shape(deeperLOut)
-    earlierLOutShape = tf.shape(earlierLOut)
+    deeperLOutShape = tf.shape(input=deeperLOut)
+    earlierLOutShape = tf.shape(input=earlierLOut)
     # Get part of the earlier layer that is of the same dimensions as the FMs of the deeper:
     partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLOut, deeperLOutShape[2:])
     # Add the FMs, after taking care of zero padding if the deeper layer has more FMs.

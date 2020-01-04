@@ -88,7 +88,7 @@ class TestSession(Session):
             with graphTf.device(sess_device): # Throws an error if GPU is specified but not available.
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
-                with tf.variable_scope("net"):
+                with tf.compat.v1.variable_scope("net"):
                     cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
                     
             self._log.print3("=========== Compiling the Testing Function ============")
@@ -97,9 +97,9 @@ class TestSession(Session):
             cnn3d.setup_ops_n_feeds_to_test( self._log,
                                              self._params.indices_fms_per_pathtype_per_layer_to_save )
             # Create the saver
-            saver_all = tf.train.Saver() # saver_net would suffice
+            saver_all = tf.compat.v1.train.Saver() # saver_net would suffice
             
-        with tf.Session( graph=graphTf, config=tf.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
+        with tf.compat.v1.Session( graph=graphTf, config=tf.compat.v1.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
             file_to_load_params_from = self._params.get_path_to_load_model_from()
             if file_to_load_params_from is not None: # Load params
                 self._log.print3("=========== Loading parameters from specified saved model ===============")
@@ -114,7 +114,7 @@ class TestSession(Session):
                 self._ask_user_if_test_with_random() # Asks user whether to continue with randomly initialized model. It exits if no is given.
                 self._log.print3("")
                 self._log.print3("=========== Initializing network variables  ===============")
-                tf.variables_initializer( var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="net") ).run()
+                tf.compat.v1.variables_initializer( var_list = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net") ).run()
                 self._log.print3("Model variables were initialized.")
                 
                 
