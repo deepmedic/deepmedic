@@ -26,7 +26,7 @@ class Optimizer(object):
     # No need to use. Compute outside, and pass to _get_update_ops
     def get_grads_for_params_responsible(self, cost):
         # create a list of gradients for all parameters that this is optimizing
-        return tf.gradients(ys=cost, xs=self._params_to_opt)
+        return tf.gradients(cost, self._params_to_opt)
     
     def get_update_ops_given_cost(self, cost) :
         grads = self.get_grads_for_params_responsible(cost)
