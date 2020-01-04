@@ -444,11 +444,11 @@ class SoftmaxLayer(TargetLayer):
         
         # ============ Softmax ==============
         self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)
-        self.y_pred_train = tf.argmax(input=self.p_y_given_x_train, axis=1)
+        self.y_pred_train = tf.argmax(self.p_y_given_x_train, axis=1)
         self.p_y_given_x_val = tf.nn.softmax(logits_val/t, axis=1)
-        self.y_pred_val = tf.argmax(input=self.p_y_given_x_val, axis=1)
+        self.y_pred_val = tf.argmax(self.p_y_given_x_val, axis=1)
         self.p_y_given_x_test = tf.nn.softmax(logits_test/t, axis=1)
-        self.y_pred_test = tf.argmax(input=self.p_y_given_x_test, axis=1)
+        self.y_pred_test = tf.argmax(self.p_y_given_x_test, axis=1)
     
         self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShape["train"], self.inputShape["val"], self.inputShape["test"])
         
