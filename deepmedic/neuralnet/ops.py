@@ -29,7 +29,7 @@ def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputVal, inputT
         keep_prob = (1-dropoutRate)
         
         random_tensor = keep_prob
-        random_tensor += tf.random.uniform(shape=tf.shape(input=inputTrain), minval=0., maxval=1., seed=rng.randint(999999), dtype="float32")
+        random_tensor += tf.random.uniform(shape=tf.shape(inputTrain), minval=0., maxval=1., seed=rng.randint(999999), dtype="float32")
         # 0. if [keep_prob, 1.0) and 1. if [1.0, 1.0 + keep_prob)
         dropoutMask = tf.floor(random_tensor)
     
