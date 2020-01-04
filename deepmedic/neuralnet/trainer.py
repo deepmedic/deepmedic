@@ -212,7 +212,7 @@ class Trainer(object):
             
             if self._reweight_classes_in_cost["type"] == "freq":
                 # Frequency re-weighting
-                num_lbls_in_ygt = tf.cast( tf.reduce_prod(input_tensor=tf.shape(y_gt)), dtype="float32" )
+                num_lbls_in_ygt = tf.cast( tf.reduce_prod(tf.shape(y_gt)), dtype="float32" )
                 num_lbls_in_ygt_per_c = tf.math.bincount( arr = y_gt, minlength=num_classes, maxlength=num_classes, dtype="float32" ) # without the min/max, length of vector can change.
                 y1 = (1./(num_lbls_in_ygt_per_c + eps)) * (num_lbls_in_ygt / num_classes)
                 

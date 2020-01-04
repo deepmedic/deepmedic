@@ -63,9 +63,9 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
     mu_B, var_B = tf.nn.moments(x=inputTrain, axes=[0,2,3,4])
     
     #---computing mu and var for inference from rolling average---
-    mu_MoveAv = tf.reduce_mean(input_tensor=muBnsArrayForRollingAverage, axis=0)
+    mu_MoveAv = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
     mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,numOfChanns,1,1,1])
-    var_MoveAv = tf.reduce_mean(input_tensor=varBnsArrayForRollingAverage, axis=0)
+    var_MoveAv = tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
     var_MoveAv = var_MoveAv + e1
     var_MoveAv = tf.reshape(var_MoveAv, shape=[1,numOfChanns,1,1,1])
     

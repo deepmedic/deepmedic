@@ -305,9 +305,9 @@ class ConvLayer(Block):
         
     # Override parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
-        return tf.reduce_sum(input_tensor=tf.abs(self._W))
+        return tf.reduce_sum(tf.abs(self._W))
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
-        return tf.reduce_sum(input_tensor=self._W ** 2)
+        return tf.reduce_sum(self._W ** 2)
     
     
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
@@ -391,11 +391,11 @@ class LowRankConvLayer(ConvLayer):
     # Implement parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
         l1Cost = 0
-        for wOfSubconv in self._WperSubconv : l1Cost += tf.reduce_sum( input_tensor=tf.abs(wOfSubconv) )
+        for wOfSubconv in self._WperSubconv : l1Cost += tf.reduce_sum(tf.abs(wOfSubconv))
         return l1Cost
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
         l2Cost = 0
-        for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum( input_tensor=wOfSubconv ** 2 )
+        for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum(wOfSubconv ** 2)
         return l2Cost
     def getW(self):
         print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
@@ -466,7 +466,7 @@ class SoftmaxLayer(TargetLayer):
         
         #Mean error of the training batch.
         tneq = tf.logical_not( tf.equal(self.y_pred_train, y) )
-        meanError = tf.reduce_mean(input_tensor=tneq)
+        meanError = tf.reduce_mean(tneq)
         return meanError
     
     def meanErrorValidation(self, y):
@@ -477,7 +477,7 @@ class SoftmaxLayer(TargetLayer):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
             tneq = tf.logical_not( tf.equal(self.y_pred_val, y) )
-            meanError = tf.reduce_mean(input_tensor=tneq)
+            meanError = tf.reduce_mean(tneq)
             return meanError #The percentage of the predictions that is not the correct class.
         else:
             raise NotImplementedError("Not implemented behaviour for y.dtype different than int.")
@@ -501,10 +501,10 @@ class SoftmaxLayer(TargetLayer):
             tensorOneAtTruePos = tf.logical_and(tensorOneAtRealPos,tensorOneAtPredictedPos)
             tensorOneAtTrueNeg = tf.logical_and(tensorOneAtRealNeg,tensorOneAtPredictedNeg)
                     
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtRealPos, dtype="int32")) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtRealNeg, dtype="int32")) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtTruePos, dtype="int32")) )
-            returnedListWithNumberOfRpRnTpTnForEachClass.append( tf.reduce_sum( input_tensor=tf.cast(tensorOneAtTrueNeg, dtype="int32")) )
+            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtRealPos, dtype="int32")))
+            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtRealNeg, dtype="int32")))
+            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTruePos, dtype="int32")))
+            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTrueNeg, dtype="int32")))
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
     

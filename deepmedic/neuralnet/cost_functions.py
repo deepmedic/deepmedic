@@ -23,9 +23,9 @@ def x_entr( p_y_given_x_train, y_gt, weightPerClass, eps=1e-6 ):
     
     y_one_hot = tf.one_hot( indices=y_gt, depth=tf.shape(p_y_given_x_train)[1], axis=1, dtype="float32" )
     
-    num_samples = tf.cast( tf.reduce_prod( input_tensor=tf.shape(y_gt) ), "float32")
+    num_samples = tf.cast( tf.reduce_prod( tf.shape(y_gt) ), "float32")
     
-    return - (1./ num_samples) * tf.reduce_sum( input_tensor=weighted_log_p_y_given_x_train * y_one_hot )
+    return - (1./ num_samples) * tf.reduce_sum( weighted_log_p_y_given_x_train * y_one_hot )
 
 
 def iou(p_y_given_x_train, y_gt, eps=1e-5):
@@ -36,10 +36,10 @@ def iou(p_y_given_x_train, y_gt, eps=1e-5):
     # y: T.itensor4('y'). Dimensions [batchSize, r, c, z]
     y_one_hot = tf.one_hot( indices=y_gt, depth=tf.shape(p_y_given_x_train)[1], axis=1, dtype="float32" )
     ones_at_real_negs = tf.cast( tf.less(y_one_hot, 0.0001), dtype="float32") # tf.equal(y_one_hot,0), but less may be more stable with floats.
-    numer = tf.reduce_sum(input_tensor=p_y_given_x_train * y_one_hot, axis=(0,2,3,4)) # 2 * TP
-    denom = tf.reduce_sum(input_tensor=p_y_given_x_train * ones_at_real_negs, axis=(0,2,3,4)) + tf.reduce_sum(input_tensor=y_one_hot, axis=(0,2,3,4)) # Pred + RP
+    numer = tf.reduce_sum(p_y_given_x_train * y_one_hot, axis=(0,2,3,4)) # 2 * TP
+    denom = tf.reduce_sum(p_y_given_x_train * ones_at_real_negs, axis=(0,2,3,4)) + tf.reduce_sum(y_one_hot, axis=(0,2,3,4)) # Pred + RP
     iou = (numer + eps) / (denom + eps) # eps in both num/den => dsc=1 when class missing.
-    av_class_iou = tf.reduce_mean(input_tensor=iou) # Along the class-axis. Mean DSC of classes. 
+    av_class_iou = tf.reduce_mean(iou) # Along the class-axis. Mean DSC of classes. 
     cost = 1. - av_class_iou
     return cost
 
@@ -48,10 +48,10 @@ def dsc(p_y_given_x_train, y_gt, eps=1e-5):
     # Similar to Intersection-Over-Union / Jaccard above.
     # Dice coefficient: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
     y_one_hot = tf.one_hot( indices=y_gt, depth=tf.shape(p_y_given_x_train)[1], axis=1, dtype="float32" )
-    numer = 2. * tf.reduce_sum(input_tensor=p_y_given_x_train * y_one_hot, axis=(0,2,3,4)) # 2 * TP
-    denom = tf.reduce_sum(input_tensor=p_y_given_x_train, axis=(0,2,3,4)) + tf.reduce_sum(input_tensor=y_one_hot, axis=(0,2,3,4)) # Pred + RP
+    numer = 2. * tf.reduce_sum(p_y_given_x_train * y_one_hot, axis=(0,2,3,4)) # 2 * TP
+    denom = tf.reduce_sum(p_y_given_x_train, axis=(0,2,3,4)) + tf.reduce_sum(y_one_hot, axis=(0,2,3,4)) # Pred + RP
     dsc = (numer + eps) / (denom + eps) # eps in both num/den => dsc=1 when class missing.
-    av_class_dsc = tf.reduce_mean(input_tensor=dsc) # Along the class-axis. Mean DSC of classes. 
+    av_class_dsc = tf.reduce_mean(dsc) # Along the class-axis. Mean DSC of classes. 
     cost = 1. - av_class_dsc
     return cost
 
