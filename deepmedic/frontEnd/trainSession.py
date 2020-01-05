@@ -30,6 +30,7 @@ class TrainSession(Session):
         self._out_folder_models = None
         self._out_folder_preds = None
         self._out_folder_fms = None
+        self._out_folder_tensorboard = None
         self._params = None  # Compiled from cfg. Required for run()
         Session.__init__(self, cfg)
 
@@ -43,20 +44,18 @@ class TrainSession(Session):
         [self._log_folder_abs,
          self._out_folder_models,
          self._out_folder_preds,
-         self._out_folder_fms] = makeFoldersNeededForTrainingSession(self._main_out_folder_abs, self._sess_name)
+         self._out_folder_fms,
+         self._out_folder_tensorboard] = makeFoldersNeededForTrainingSession(self._main_out_folder_abs, self._sess_name)
 
     def create_tensorboard_loggers(self, logger_types, tf_graph, create_log=False):
         tensorboard_loggers = {}
-
         self._log.print3("----------- Creating Tensorboard Loggers -----------")
-
         if create_log:
             for logger_type in logger_types:
-                tensorboard_loggers[logger_type] = TensorboardLogger(os.path.join(self._main_out_folder_abs,
-                                                                                  "tensorboard",
-                                                                                  self._sess_name,
-                                                                                  logger_type),
-                                                                     tf_graph)
+                tb_log_path = os.path.join(self._out_folder_tensorboard, logger_type)
+                if not os.path.exists(tb_log_path):
+                    os.mkdir(tb_log_path) # Separate folders for train / val metrics.
+                tensorboard_loggers[logger_type] = TensorboardLogger(tb_log_path, tf_graph)
             self._log.print3("Loggers created successfully")
         else:
             for logger_type in logger_types:

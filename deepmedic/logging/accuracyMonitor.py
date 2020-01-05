@@ -175,9 +175,9 @@ class AccuracyMonitorForEpSegm(object):
         
         self.log.print3('Logging ' + self.trainOrValString + ' metrics')
         self.log.print3('Epoch: ' + str(self.epoch) +
-                        ' | Subepoch ' + str(currSubep) + '/' + str(self.numberOfSubepochsPerEpoch - 1))
+                        ' | Subepoch ' + str(currSubep))
         step_num = currSubep + (self.epoch * (self.numberOfSubepochsPerEpoch))
-        self.log.print3('Step number: ' + str(step_num))
+        self.log.print3('Step number (index of subepoch since start): ' + str(step_num))
 
         # During training, also report the mean value of the Cost Function:
         if self.training0orValidation1 == 0 and self.tensorboard_logger is not None:
@@ -229,7 +229,7 @@ class AccuracyMonitorForEpSegm(object):
         self.log.print3('Logging validation metrics from segmentation of whole validation volumes.')
         self.log.print3('Epoch: ' + str(self.epoch))
         step_num = self.numberOfSubepochsPerEpoch - 1 + (self.epoch * self.numberOfSubepochsPerEpoch)
-        self.log.print3('Step number: ' + str(step_num))
+        self.log.print3('Step number (index of subepoch since start): ' + str(step_num))
 
         # Report mean metrics for each class_i:
         for class_i in range(self.numberOfClasses):
