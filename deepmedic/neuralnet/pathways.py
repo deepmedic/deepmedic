@@ -273,7 +273,6 @@ class Pathway(object):
     def getStringType(self) : raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
     # Will be overriden for lower-resolution pathways.
     def getOutputAtNormalRes(self): return self.getOutput()
-    def getShapeOfOutputAtNormalRes(self): return self.getShapeOfOutput()
     
 class NormalPathway(Pathway):
     def __init__(self, pName=None) :
@@ -323,11 +322,7 @@ class SubsampledPathway(Pathway):
     def getOutputAtNormalRes(self):
         # upsampleOutputToNormalRes() must be called first once.
         return [ self._outputNormRes["train"], self._outputNormRes["val"], self._outputNormRes["test"] ]
-        
-    def getShapeOfOutputAtNormalRes(self):
-        # upsampleOutputToNormalRes() must be called first once.
-        return [ self._outputNormRes["train"].shape, self._outputNormRes["val"].shape, self._outputNormRes["test"].shape ]
-        
+            
              
 class FcPathway(Pathway):
     def __init__(self, pName=None) :
