@@ -103,7 +103,7 @@ class TrainSession(Session):
 
         with graphTf.as_default():
             # Explicit device assignment, throws an error if GPU is specified but not available.
-            with graphTf.device(sess_device):
+            with tf.device(sess_device):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
                 with tf.compat.v1.variable_scope("net"):
@@ -144,7 +144,16 @@ class TrainSession(Session):
             saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net)  # Used to load the net's parameters.
             collection_vars_trainer = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
             saver_trainer = tf.compat.v1.train.Saver(var_list=collection_vars_trainer)  # Used to load the trainer's parameters.
-
+            
+            dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(collection_vars_net)}
+            dict_vars_trainer = {'trainer_var'+str(i): v for i, v in enumerate(collection_vars_trainer)}
+            dict_vars_all = dict_vars_net.copy()
+            for key in dict_vars_trainer:
+                dict_vars_all[key] = dict_vars_trainer[key]
+            ckpt_all = tf.train.Checkpoint(**dict_vars_all)
+            ckpt_net = tf.train.Checkpoint(**dict_vars_net)
+            ckpt_trainer = tf.train.Checkpoint(**dict_vars_trainer)
+            
         # self._print_vars_in_collection(collection_vars_net, "net")
         # self._print_vars_in_collection(collection_vars_trainer, "trainer")
 
@@ -160,14 +169,17 @@ class TrainSession(Session):
                 self._log.print3("Loading checkpoint file:" + str(chkpt_fname))
                 self._log.print3("Loading network parameters...")
                 try:
-                    saver_net.restore(sessionTf, chkpt_fname)
+                    #saver_net.restore(sessionTf, chkpt_fname)
+                    status = ckpt_net.restore(chkpt_fname); #status.assert_consumed() # Passes if ckpt and program vars match exactly.
+                
                     self._log.print3("Network parameters were loaded.")
                 except Exception as e:
                     handle_exception_tf_restore(self._log, e)
 
                 if not reset_trainer:
                     self._log.print3("Loading trainer parameters...")
-                    saver_trainer.restore(sessionTf, chkpt_fname)
+                    #saver_trainer.restore(sessionTf, chkpt_fname)
+                    status = ckpt_trainer.restore(chkpt_fname); #status.assert_consumed() # Passes if ckpt and program vars match exactly.
                     self._log.print3("Trainer parameters were loaded.")
                 else:
                     self._log.print3("Reset of trainer parameters was requested. Re-initializing them...")
@@ -185,6 +197,10 @@ class TrainSession(Session):
                 filename_to_save_with = self._params.filepath_to_save_models + ".initial." + datetime_now_str()
                 self._log.print3("Saving the initial model at:" + str(filename_to_save_with))
                 saver_all.save(sessionTf, filename_to_save_with+".model.ckpt", write_meta_graph=False)
+                ckpt_all.save(file_prefix = filename_to_save_with+".all.ckpt2")
+                ckpt_net.save(file_prefix = filename_to_save_with+".net.ckpt2")
+                ckpt_trainer.save(file_prefix = filename_to_save_with+".trainer.ckpt2")
+                
                 # tf.train.write_graph( graph_or_graph_def=sessionTf.graph.as_graph_def(),
                 # logdir="", name=filename_to_save_with+".graph.pb", as_text=False)
 
@@ -195,6 +211,10 @@ class TrainSession(Session):
 
             do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] + self._params.get_args_for_train_routine()))
 
+            ckpt_all.save(file_prefix = filename_to_save_with+".all.FINAL.ckpt2")
+            ckpt_net.save(file_prefix = filename_to_save_with+".net.FINAL.ckpt2")
+            ckpt_trainer.save(file_prefix = filename_to_save_with+".trainer.FINAL.ckpt2")
+            
         self._log.print3("\n=======================================================")
         self._log.print3("=========== Training session finished =================")
         self._log.print3("=======================================================")
