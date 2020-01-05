@@ -263,8 +263,6 @@ class Pathway(object):
         return [ self._output["train"], self._output["val"], self._output["test"] ]
     def getShapeOfOutput(self):
         return [ self._output["train"].shape, self._output["val"].shape, self._output["test"].shape ]
-    def getShapeOfInput(self):
-        return [ self._input["train"].shape, self._input["val"].shape, self._input["test"].shape ]
     def getShapeOfInput(self, train_val_test_str):
         assert train_val_test_str in ["train", "val", "test"]
         return self._input[train_val_test_str].shape
