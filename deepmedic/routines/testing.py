@@ -228,7 +228,7 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
     half_rec_field = [(cnn3d.recFieldCnn[i] - 1) // 2 for i in range(len(cnn3d.recFieldCnn))]
     # For tiling the volume: Stride is how much I move in each dimension to get the next tile.
     # I stride exactly the number of voxels that are predicted per forward pass.
-    n_voxels_predicted = cnn3d.finalTargetLayer.outputShape["test"][2:]
+    n_voxels_predicted = cnn3d.finalTargetLayer.output["test"].shape[2:]
     stride_of_tiling = n_voxels_predicted # [str-x, str-y, str-z]
     # Find the total number of feature maps that will be created:
     # NOTE: save_fms_flag should contain an entry per pathwayType, even if just [].

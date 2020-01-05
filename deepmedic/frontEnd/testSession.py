@@ -110,8 +110,8 @@ class TestSession(Session):
                 self._log.print3("Loading parameters from:" + str(chkpt_fname))
                 try:
                     #tf.compat.v1.variables_initializer( var_list = collection_vars_net ).run()
-                    #saver_net.restore(sessionTf, chkpt_fname)
-                    ckpt_net.restore(chkpt_fname)
+                    saver_net.restore(sessionTf, chkpt_fname)
+                    #ckpt_net.restore(chkpt_fname)
                     self._log.print3("Parameters were loaded.")
                 except Exception as e: handle_exception_tf_restore(self._log, e)
                 

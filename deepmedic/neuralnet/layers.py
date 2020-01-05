@@ -12,7 +12,7 @@ import random
 import tensorflow as tf
 
 from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
-from deepmedic.neuralnet.ops import applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
+from deepmedic.neuralnet.ops import initBn, applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
     from sys import maxint as MAX_INT
@@ -34,7 +34,6 @@ class Block(object):
     def __init__(self) :
         # === Input to the layer ===
         self.input= {"train": None, "val": None, "test": None}
-        self.inputShape = {"train": None, "val": None, "test": None}
         
         # === Basic architecture parameters === 
         self._numberOfFeatureMaps = None
@@ -67,7 +66,6 @@ class Block(object):
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
-        self.outputShape = {"train": None, "val": None, "test": None}
         # New and probably temporary, for the residual connections to be "visible".
         self.outputAfterResidualConnIfAnyAtOutp = {"train": None, "val": None, "test": None}
         
@@ -75,26 +73,20 @@ class Block(object):
         self.targetBlock = None
         
     # Setters
-    def _setBlocksInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest) :
+    def _setBlocksInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest) :
         self.input["train"] = inputToLayerTrain
         self.input["val"] = inputToLayerVal
         self.input["test"] = inputToLayerTest
-        self.inputShape["train"] = inputToLayerShapeTrain
-        self.inputShape["val"] = inputToLayerShapeVal
-        self.inputShape["test"] = inputToLayerShapeTest
         
     def _setBlocksArchitectureAttributes(self, filterShape, poolingParameters) :
         self._numberOfFeatureMaps = filterShape[0] # Of the output! Used in trainValidationVisualise.py. Not of the input!
-        assert self.inputShape["train"][1] == filterShape[1]
+        assert self.input["train"].shape[1] == filterShape[1]
         self._poolingParameters = poolingParameters
         
-    def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest) :
+    def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest) :
         self.output["train"] = outputTrain
         self.output["val"] = outputVal
         self.output["test"] = outputTest
-        self.outputShape["train"] = outputShapeTrain
-        self.outputShape["val"] = outputShapeVal
-        self.outputShape["test"] = outputShapeTest
         # New and probably temporary, for the residual connections to be "visible".
         self.outputAfterResidualConnIfAnyAtOutp["train"] = self.output["train"]
         self.outputAfterResidualConnIfAnyAtOutp["val"] = self.output["val"]
@@ -146,9 +138,6 @@ class ConvLayer(Block):
                 inputToLayerTrain,
                 inputToLayerVal,
                 inputToLayerTest,
-                inputToLayerShapeTrain,
-                inputToLayerShapeVal,
-                inputToLayerShapeTest,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc,
@@ -163,6 +152,16 @@ class ConvLayer(Block):
         if useBnFlag and movingAvForBnOverXBatches > 0 :
             self._appliedBnInLayer = True
             self._movingAvForBnOverXBatches = movingAvForBnOverXBatches
+            """
+            (self._gBn,
+            self._b,
+            # For rolling average :
+            self._muBnsArrayForRollingAverage,
+            self._varBnsArrayForRollingAverage,
+            self._sharedNewMu_B,
+            self._sharedNewVar_B
+            ) = initBn(n_channels=inputToLayerTrain.shape[1])
+            """
             (inputToNonLinearityTrain,
             inputToNonLinearityVal,
             inputToNonLinearityTest,
@@ -175,7 +174,7 @@ class ConvLayer(Block):
             self._sharedNewVar_B,
             self._newMu_B,
             self._newVar_B
-            ) = applyBn( movingAvForBnOverXBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain)
+            ) = applyBn( movingAvForBnOverXBatches, inputToLayerTrain, inputToLayerVal, inputToLayerTest, numOfChanns=inputToLayerTrain.shape[1])
             self.params = self.params + [self._gBn, self._b]
             # Create ops for updating the matrices with the bn inference stats.
             self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
@@ -184,12 +183,11 @@ class ConvLayer(Block):
         else : #Not using batch normalization
             self._appliedBnInLayer = False
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
-            numberOfInputChannels = inputToLayerShapeTrain[1]
             
             (self._b,
             inputToNonLinearityTrain,
             inputToNonLinearityVal,
-            inputToNonLinearityTest) = makeBiasParamsAndApplyToFms( inputToLayerTrain, inputToLayerVal, inputToLayerTest, numberOfInputChannels )
+            inputToNonLinearityTest) = makeBiasParamsAndApplyToFms(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
             self.params = self.params + [self._b]
             
         #--------------------------------------------------------
@@ -201,8 +199,7 @@ class ConvLayer(Block):
         elif self._activationFunctionType == "relu" :
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyRelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
         elif self._activationFunctionType == "prelu" :
-            numberOfInputChannels = inputToLayerShapeTrain[1]
-            ( self._aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest, numberOfInputChannels)
+            ( self._aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
             self.params = self.params + [self._aPrelu]
         elif self._activationFunctionType == "elu" :
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyElu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
@@ -212,7 +209,7 @@ class ConvLayer(Block):
         #------------------------------------
         #------------- Dropout --------------
         #------------------------------------
-        (inputToPoolTrain, inputToPoolVal, inputToPoolTest) = applyDropout(rng, dropoutRate, inputToLayerShapeTrain, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest)
+        (inputToPoolTrain, inputToPoolVal, inputToPoolTest) = applyDropout(rng, dropoutRate, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest)
         
         #-------------------------------------------------------
         #-----------  Pooling ----------------------------------
@@ -221,21 +218,15 @@ class ConvLayer(Block):
             inputToConvTrain = inputToPoolTrain
             inputToConvVal = inputToPoolVal
             inputToConvTest = inputToPoolTest
-            
-            inputToConvShapeTrain = inputToLayerShapeTrain
-            inputToConvShapeVal = inputToLayerShapeVal
-            inputToConvShapeTest = inputToLayerShapeTest
         else : #Max pooling is actually happening here...
-            (inputToConvTrain, inputToConvShapeTrain) = pool3dMirrorPad(inputToPoolTrain, inputToLayerShapeTrain, self._poolingParameters)
-            (inputToConvVal, inputToConvShapeVal) = pool3dMirrorPad(inputToPoolVal, inputToLayerShapeVal, self._poolingParameters)
-            (inputToConvTest, inputToConvShapeTest) = pool3dMirrorPad(inputToPoolTest, inputToLayerShapeTest, self._poolingParameters)
+            inputToConvTrain = pool3dMirrorPad(inputToPoolTrain, self._poolingParameters)
+            inputToConvVal = pool3dMirrorPad(inputToPoolVal, self._poolingParameters)
+            inputToConvTest = pool3dMirrorPad(inputToPoolTest, self._poolingParameters)
             
-        return (inputToConvTrain, inputToConvVal, inputToConvTest,
-                inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest )
+        return (inputToConvTrain, inputToConvVal, inputToConvTest)
         
     def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
-                                        inputToConvTrain, inputToConvVal, inputToConvTest,
-                                        inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
+                                        inputToConvTrain, inputToConvVal, inputToConvTest):
         #-----------------------------------------------
         #------------------ Convolution ----------------
         #-----------------------------------------------
@@ -245,9 +236,9 @@ class ConvLayer(Block):
         self.params = [self._W] + self.params
         
         #---------- Convolve --------------
-        tupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(self._W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+        (out_train, out_val, out_test) = convolveWithGivenWeightMatrix(self._W, inputToConvTrain, inputToConvVal, inputToConvTest)
         
-        return tupleWithOuputAndShapeTrValTest
+        return (out_train, out_val, out_test)
     
     # The main function that builds this.
     def makeLayer(self,
@@ -255,9 +246,6 @@ class ConvLayer(Block):
                 inputToLayerTrain,
                 inputToLayerVal,
                 inputToLayerTest,
-                inputToLayerShapeTrain,
-                inputToLayerShapeVal,
-                inputToLayerShapeTest,
                 filterShape,
                 poolingParameters, # Can be []
                 convWInitMethod,
@@ -280,28 +268,23 @@ class ConvLayer(Block):
         param inputToLayerShape: (batch size, num input feature maps,
                             image height, image width, filter depth)
         """
-        self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest, inputToLayerShapeTrain, inputToLayerShapeVal, inputToLayerShapeTest)
+        self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
         self._setBlocksArchitectureAttributes(filterShape, poolingParameters)
         
         # Apply all the straightforward operations on the input, such as BN, activation function, dropout, pooling        
-        (inputToConvTrain, inputToConvVal, inputToConvTest,
-        inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) = self._processInputWithBnNonLinearityDropoutPooling( rng,
+        (inputToConvTrain, inputToConvVal, inputToConvTest) = self._processInputWithBnNonLinearityDropoutPooling( rng,
                                                                                         inputToLayerTrain,
                                                                                         inputToLayerVal,
                                                                                         inputToLayerTest,
-                                                                                        inputToLayerShapeTrain,
-                                                                                        inputToLayerShapeVal,
-                                                                                        inputToLayerShapeTest,
                                                                                         useBnFlag,
                                                                                         movingAvForBnOverXBatches,
                                                                                         activationFunc,
                                                                                         dropoutRate)
         
-        tupleWithOuputAndShapeTrValTest = self._createWeightsTensorAndConvolve( rng, filterShape, convWInitMethod, 
-                                                                                inputToConvTrain, inputToConvVal, inputToConvTest,
-                                                                                inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+        tupleWithOuputsTrValTest = self._createWeightsTensorAndConvolve(rng, filterShape, convWInitMethod, 
+                                                                        inputToConvTrain, inputToConvVal, inputToConvTest)
         
-        self._setBlocksOutputAttributes(*tupleWithOuputAndShapeTrValTest)
+        self._setBlocksOutputAttributes(*tupleWithOuputsTrValTest)
         
     # Override parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
@@ -320,18 +303,18 @@ class LowRankConvLayer(ConvLayer):
         self._rank = rank # 1 or 2 dimensions
         
     def _cropSubconvOutputsToSameDimsAndConcatenateFms( self,
-                                                        rSubconvOutput, rSubconvOutputShape,
-                                                        cSubconvOutput, cSubconvOutputShape,
-                                                        zSubconvOutput, zSubconvOutputShape,
+                                                        rSubconvOutput,
+                                                        cSubconvOutput,
+                                                        zSubconvOutput,
                                                         filterShape) :
-        assert (rSubconvOutputShape[0] == cSubconvOutputShape[0]) and (cSubconvOutputShape[0] == zSubconvOutputShape[0]) # same batch size.
+        assert (rSubconvOutput.shape[0] == cSubconvOutput.shape[0]) and (cSubconvOutput.shape[0] == zSubconvOutput.shape[0]) # same batch size.
         
-        concatOutputShape = [ rSubconvOutputShape[0],
-                                rSubconvOutputShape[1] + cSubconvOutputShape[1] + zSubconvOutputShape[1],
-                                rSubconvOutputShape[2],
-                                cSubconvOutputShape[3],
-                                zSubconvOutputShape[4]
-                                ]
+        concatOutputShape = [rSubconvOutput.shape[0],
+                             rSubconvOutput.shape[1] + cSubconvOutput.shape[1] + zSubconvOutput.shape[1],
+                             rSubconvOutput.shape[2],
+                             cSubconvOutput.shape[3],
+                             zSubconvOutput.shape[4]
+                            ]
         rCropSlice = slice( (filterShape[2]-1)//2, (filterShape[2]-1)//2 + concatOutputShape[2] )
         cCropSlice = slice( (filterShape[3]-1)//2, (filterShape[3]-1)//2 + concatOutputShape[3] )
         zCropSlice = slice( (filterShape[4]-1)//2, (filterShape[4]-1)//2 + concatOutputShape[4] )
@@ -340,12 +323,11 @@ class LowRankConvLayer(ConvLayer):
         zSubconvOutputCropped = zSubconvOutput[:,:, rCropSlice if self._rank == 1 else slice(0, MAX_INT), cCropSlice, : ]
         concatSubconvOutputs = tf.concat([rSubconvOutputCropped, cSubconvOutputCropped, zSubconvOutputCropped], axis=1) #concatenate the FMs
         
-        return (concatSubconvOutputs, concatOutputShape)
+        return concatSubconvOutputs
     
     # Overload the ConvLayer's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.        
     def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
-                                        inputToConvTrain, inputToConvVal, inputToConvTest,
-                                        inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
+                                        inputToConvTrain, inputToConvVal, inputToConvTest) :
         # Behaviour: Create W, set self._W, set self.params, convolve, return ouput and outputShape.
         # The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
         # If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
@@ -356,36 +338,36 @@ class LowRankConvLayer(ConvLayer):
         
         rSubconvFilterShape = [ filterShape[0]//3, filterShape[1], filterShape[2], 1 if self._rank == 1 else filterShape[3], 1 ]
         rSubconvW = createAndInitializeWeightsTensor(rSubconvFilterShape, convWInitMethod, rng)
-        rSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(rSubconvW, rSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+        rSubconvTupleWithOuputs = convolveWithGivenWeightMatrix(rSubconvW, inputToConvTrain, inputToConvVal, inputToConvTest)
         
         cSubconvFilterShape = [ filterShape[0]//3, filterShape[1], 1, filterShape[3], 1 if self._rank == 1 else filterShape[4] ]
         cSubconvW = createAndInitializeWeightsTensor(cSubconvFilterShape, convWInitMethod, rng)
-        cSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(cSubconvW, cSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+        cSubconvTupleWithOuputs = convolveWithGivenWeightMatrix(cSubconvW, inputToConvTrain, inputToConvVal, inputToConvTest)
         
         numberOfFmsForTotalToBeExact = filterShape[0] - 2*(filterShape[0]//3) # Cause of possibly inexact integer division.
         zSubconvFilterShape = [ numberOfFmsForTotalToBeExact, filterShape[1], 1 if self._rank == 1 else filterShape[2], 1, filterShape[4] ]
         zSubconvW = createAndInitializeWeightsTensor(zSubconvFilterShape, convWInitMethod, rng)
-        zSubconvTupleWithOuputAndShapeTrValTest = convolveWithGivenWeightMatrix(zSubconvW, zSubconvFilterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest)
+        zSubconvTupleWithOuputs = convolveWithGivenWeightMatrix(zSubconvW, inputToConvTrain, inputToConvVal, inputToConvTest)
         
         # Set the W attribute and trainable parameters.
         self._WperSubconv = [rSubconvW, cSubconvW, zSubconvW] # Bear in mind that these sub tensors have different shapes! Treat carefully.
         self.params = self._WperSubconv + self.params
         
         # concatenate together.
-        (concatSubconvOutputsTrain, concatOutputShapeTrain) = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputAndShapeTrValTest[0], rSubconvTupleWithOuputAndShapeTrValTest[3],
-                                                                                                        cSubconvTupleWithOuputAndShapeTrValTest[0], cSubconvTupleWithOuputAndShapeTrValTest[3],
-                                                                                                        zSubconvTupleWithOuputAndShapeTrValTest[0], zSubconvTupleWithOuputAndShapeTrValTest[3],
-                                                                                                        filterShape)
-        (concatSubconvOutputsVal, concatOutputShapeVal) = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputAndShapeTrValTest[1], rSubconvTupleWithOuputAndShapeTrValTest[4],
-                                                                                                        cSubconvTupleWithOuputAndShapeTrValTest[1], cSubconvTupleWithOuputAndShapeTrValTest[4],
-                                                                                                        zSubconvTupleWithOuputAndShapeTrValTest[1], zSubconvTupleWithOuputAndShapeTrValTest[4],
-                                                                                                        filterShape)
-        (concatSubconvOutputsTest, concatOutputShapeTest) = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputAndShapeTrValTest[2], rSubconvTupleWithOuputAndShapeTrValTest[5],
-                                                                                                        cSubconvTupleWithOuputAndShapeTrValTest[2], cSubconvTupleWithOuputAndShapeTrValTest[5],
-                                                                                                        zSubconvTupleWithOuputAndShapeTrValTest[2], zSubconvTupleWithOuputAndShapeTrValTest[5],
-                                                                                                        filterShape)
+        concatSubconvOutputsTrain = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[0],
+                                                                                        cSubconvTupleWithOuputs[0],
+                                                                                        zSubconvTupleWithOuputs[0],
+                                                                                        filterShape)
+        concatSubconvOutputsVal = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[1],
+                                                                                      cSubconvTupleWithOuputs[1],
+                                                                                      zSubconvTupleWithOuputs[1],
+                                                                                      filterShape)
+        concatSubconvOutputsTest = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[2],
+                                                                                       cSubconvTupleWithOuputs[2],
+                                                                                       zSubconvTupleWithOuputs[2],
+                                                                                       filterShape)
         
-        return (concatSubconvOutputsTrain, concatSubconvOutputsVal, concatSubconvOutputsTest, concatOutputShapeTrain, concatOutputShapeVal, concatOutputShapeTest)
+        return (concatSubconvOutputsTrain, concatSubconvOutputsVal, concatSubconvOutputsTest)
         
         
     # Implement parent's abstract classes.
@@ -430,8 +412,7 @@ class SoftmaxLayer(TargetLayer):
         self._numberOfOutputClasses = layerConnected.getNumberOfFeatureMaps()
         self._temperature = t
         
-        self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"],
-                                        layerConnected.outputShape["train"], layerConnected.outputShape["val"], layerConnected.outputShape["test"])
+        self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"])
         
         # At this last classification layer, the conv output needs to have bias added before the softmax.
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
@@ -439,7 +420,7 @@ class SoftmaxLayer(TargetLayer):
         (self._b,
         logits_train,
         logits_val,
-        logits_test) = makeBiasParamsAndApplyToFms( self.input["train"], self.input["val"], self.input["test"], self._numberOfOutputClasses )
+        logits_test) = makeBiasParamsAndApplyToFms(self.input["train"], self.input["val"], self.input["test"])
         self.params = self.params + [self._b]
         
         # ============ Softmax ==============
@@ -450,7 +431,7 @@ class SoftmaxLayer(TargetLayer):
         self.p_y_given_x_test = tf.nn.softmax(logits_test/t, axis=1)
         self.y_pred_test = tf.argmax(self.p_y_given_x_test, axis=1)
     
-        self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test, self.inputShape["train"], self.inputShape["val"], self.inputShape["test"])
+        self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test)
         
         layerConnected.setTargetBlock(self)
         

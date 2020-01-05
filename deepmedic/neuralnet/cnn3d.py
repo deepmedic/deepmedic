@@ -238,14 +238,15 @@ class Cnn3d(object):
         log.print3("Done.")
         
         
-    def _setupInputXTensors(self):
-        self._inp_x['train']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_train")
-        self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_val")
-        self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_test")
+    def _setupInputXTensors(self, in_shape_train, in_shape_val, in_shape_test):
+        # in_shape_train/val/test: list with 3 elements. The shape of the input patch/segment. [x, y, z]
+        self._inp_x['train']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_train, name="inp_x_train")
+        self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_val, name="inp_x_val")
+        self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_test, name="inp_x_test")
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_train")
-            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_val")
-            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, None, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_test")
+            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+in_shape_train, name="inp_x_sub_"+str(subpath_i)+"_train")
+            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+in_shape_val, name="inp_x_sub_"+str(subpath_i)+"_val")
+            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+in_shape_test, name="inp_x_sub_"+str(subpath_i)+"_test")
             
         
     def _setupInputXTensorsFromGivenArgs(self, givenInputTensorNormTrain, givenInputTensorNormVal, givenInputTensorNormTest,
@@ -350,7 +351,7 @@ class Cnn3d(object):
         # >>> I should have an input argument. Which, if given None, the below placeholders are created.
         
         if True: # Not given input tensors as arguments
-            self._setupInputXTensors()
+            self._setupInputXTensors(imagePartDimensionsTraining, imagePartDimensionsValidation, imagePartDimensionsTesting)
         else: # Inputs given as argument tensors. Eg in adv from discr or from batcher.
             self._setupInputXTensorsFromGivenArgs(1,2,3,4,5,6) # Placeholder. Todo: Replace with normal arguments, when input tensor is given. Eg adversarial G.
 
@@ -363,9 +364,6 @@ class Cnn3d(object):
         inputToPathwayTrain = self._inp_x['train']['x']
         inputToPathwayVal = self._inp_x['val']['x']
         inputToPathwayTest = self._inp_x['test']['x']
-        inputToPathwayShapeTrain = [None, numberOfImageChannelsPath1] + imagePartDimensionsTraining
-        inputToPathwayShapeVal = [None, numberOfImageChannelsPath1] + imagePartDimensionsValidation
-        inputToPathwayShapeTest = [None, numberOfImageChannelsPath1] + imagePartDimensionsTesting
         
         thisPathWayNKerns = nkerns
         thisPathWayKernelDimensions = kernelDimensions
@@ -382,9 +380,6 @@ class Cnn3d(object):
                                                                          inputToPathwayTrain,
                                                                          inputToPathwayVal,
                                                                          inputToPathwayTest,
-                                                                         inputToPathwayShapeTrain,
-                                                                         inputToPathwayShapeVal,
-                                                                         inputToPathwayShapeTest,
                                                                          
                                                                          thisPathWayNKerns,
                                                                          thisPathWayKernelDimensions,
@@ -424,18 +419,11 @@ class Cnn3d(object):
             thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
             thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
             
-            inputToPathwayShapeTrain = [None, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayTrain);
-            inputToPathwayShapeVal = [None, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayVal)
-            inputToPathwayShapeTest = [None, numberOfImageChannelsPath2] + thisPathway.calcInputRczDimsToProduceOutputFmsOfCompatibleDims(thisPathWayKernelDimensions, dimsOfOutputFrom1stPathwayTest)
-            
             thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
                                                                      rng,
                                                                      inputToPathwayTrain,
                                                                      inputToPathwayVal,
                                                                      inputToPathwayTest,
-                                                                     inputToPathwayShapeTrain,
-                                                                     inputToPathwayShapeVal,
-                                                                     inputToPathwayShapeTest,
                                                                      thisPathWayNKerns,
                                                                      thisPathWayKernelDimensions,
                                                                      
@@ -488,13 +476,6 @@ class Cnn3d(object):
         inputToPathwayTrain = padImageWithMirroring(inputToFirstFcLayerTrain, voxelsToPadPerDim)
         inputToPathwayVal = padImageWithMirroring(inputToFirstFcLayerVal, voxelsToPadPerDim)
         inputToPathwayTest = padImageWithMirroring(inputToFirstFcLayerTest, voxelsToPadPerDim)
-        inputToPathwayShapeTrain = [None, numberOfFmsOfInputToFirstFcLayer] + dimsOfOutputFrom1stPathwayTrain[2:5]
-        inputToPathwayShapeVal = [None, numberOfFmsOfInputToFirstFcLayer] + dimsOfOutputFrom1stPathwayVal[2:5]
-        inputToPathwayShapeTest = [None, numberOfFmsOfInputToFirstFcLayer] + dimsOfOutputFrom1stPathwayTest[2:5]
-        for rcz_i in range(3) : 
-            inputToPathwayShapeTrain[2+rcz_i] += voxelsToPadPerDim[rcz_i]
-            inputToPathwayShapeVal[2+rcz_i] += voxelsToPadPerDim[rcz_i]
-            inputToPathwayShapeTest[2+rcz_i] += voxelsToPadPerDim[rcz_i]
         
         thisPathWayNKerns = fcLayersFMs + [self.num_classes]
         thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
@@ -511,9 +492,6 @@ class Cnn3d(object):
                                                                          inputToPathwayTrain,
                                                                          inputToPathwayVal,
                                                                          inputToPathwayTest,
-                                                                         inputToPathwayShapeTrain,
-                                                                         inputToPathwayShapeVal,
-                                                                         inputToPathwayShapeTest,
                                                                          
                                                                          thisPathWayNKerns,
                                                                          thisPathWayKernelDimensions,

@@ -24,7 +24,7 @@ except ImportError:
 # Functions used by layers but do not change Layer Attributes #
 ###############################################################
 
-def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputVal, inputTest) :
+def applyDropout(rng, dropoutRate, inputTrain, inputVal, inputTest) :
     if dropoutRate > 0.001 : #Below 0.001 I take it as if there is no dropout at all. (To avoid float problems with == 0.0. Although my tries show it actually works fine.)
         keep_prob = (1-dropoutRate)
         
@@ -44,13 +44,26 @@ def applyDropout(rng, dropoutRate, inputTrainShape, inputTrain, inputVal, inputT
     return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
 
 
-def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, inputVal, inputTest, inputShapeTrain) :
-    numOfChanns = inputShapeTrain[1]
+def initBn(n_channels):
+    gBn = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
+    bBn = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="bBn" )
     
+    #for rolling average:
+    muBnsArrayForRollingAverage = tf.Variable( np.zeros( (rollingAverageForBatchNormalizationOverThatManyBatches, n_channels), dtype='float32' ), name="muBnsForRollingAverage" )
+    varBnsArrayForRollingAverage = tf.Variable( np.ones( (rollingAverageForBatchNormalizationOverThatManyBatches, n_channels), dtype='float32' ), name="varBnsForRollingAverage" )        
+    sharedNewMu_B = tf.Variable(np.zeros( (n_channels), dtype='float32'), name="sharedNewMu_B")
+    sharedNewVar_B = tf.Variable(np.ones( (n_channels), dtype='float32'), name="sharedNewVar_B")
+    return (gBn,
+            bBn,
+            # For rolling average
+            muBnsArrayForRollingAverage,
+            varBnsArrayForRollingAverage,
+            sharedNewMu_B,
+            sharedNewVar_B )
+
+def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, inputVal, inputTest, numOfChanns):
     gBn = tf.Variable( np.ones( (numOfChanns), dtype='float32'), name="gBn" )
     bBn = tf.Variable( np.zeros( (numOfChanns), dtype='float32'), name="bBn" )
-    gBn_resh = tf.reshape(gBn, shape=[1,numOfChanns,1,1,1])
-    bBn_resh = tf.reshape(bBn, shape=[1,numOfChanns,1,1,1])
     
     #for rolling average:
     muBnsArrayForRollingAverage = tf.Variable( np.zeros( (rollingAverageForBatchNormalizationOverThatManyBatches, numOfChanns), dtype='float32' ), name="muBnsForRollingAverage" )
@@ -60,8 +73,6 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
     
     e1 = np.finfo(np.float32).tiny 
     
-    mu_B, var_B = tf.nn.moments(inputTrain, axes=[0,2,3,4])
-    
     #---computing mu and var for inference from rolling average---
     mu_MoveAv = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
     mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,numOfChanns,1,1,1])
@@ -70,6 +81,10 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
     var_MoveAv = tf.reshape(var_MoveAv, shape=[1,numOfChanns,1,1,1])
     
     #OUTPUT FOR TRAINING
+    gBn_resh = tf.reshape(gBn, shape=[1,numOfChanns,1,1,1])
+    bBn_resh = tf.reshape(bBn, shape=[1,numOfChanns,1,1,1])
+    
+    mu_B, var_B = tf.nn.moments(inputTrain, axes=[0,2,3,4])
     mu_B_resh = tf.reshape(mu_B, shape=[1,numOfChanns,1,1,1])
     var_B_resh = tf.reshape(var_B, shape=[1,numOfChanns,1,1,1])
     normXi_train = (inputTrain - mu_B_resh ) /  tf.sqrt(var_B_resh + e1) # e1 should come OUT of the sqrt! 
@@ -96,7 +111,8 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
             )
     
     
-def makeBiasParamsAndApplyToFms( fmsTrain, fmsVal, fmsTest, numberOfFms ) :
+def makeBiasParamsAndApplyToFms(fmsTrain, fmsVal, fmsTest) :
+    numberOfFms = fmsTrain.shape[1]
     b_values = np.zeros( (numberOfFms), dtype = 'float32')
     b = tf.Variable(b_values, name="b")
     b_resh = tf.reshape(b, shape=[1,numberOfFms,1,1,1])
@@ -112,11 +128,12 @@ def applyRelu(inputTrain, inputVal, inputTest):
     outputTest = tf.maximum(0., inputTest)
     return ( outputTrain, outputVal, outputTest )
 
-def applyPrelu( inputTrain, inputVal, inputTest, numberOfInputChannels ) :
+def applyPrelu(inputTrain, inputVal, inputTest) :
+    n_channels = inputTrain.shape[1]
     #input is a tensor of shape (batchSize, FMs, r, c, z)
-    aPreluValues = np.ones( (numberOfInputChannels), dtype = 'float32' ) * 0.01 #"Delving deep into rectifiers" initializes it like this. LeakyRelus are at 0.01
+    aPreluValues = np.ones( (n_channels), dtype = 'float32' ) * 0.01 #"Delving deep into rectifiers" initializes it like this. LeakyRelus are at 0.01
     aPrelu = tf.Variable(aPreluValues, name="aPrelu") #One separate a (activation) per feature map.
-    aPrelu5D = tf.reshape(aPrelu, shape=[1, numberOfInputChannels, 1, 1, 1] )
+    aPrelu5D = tf.reshape(aPrelu, shape=[1, n_channels, 1, 1, 1] )
     
     posTrain = tf.maximum(0., inputTrain)
     negTrain = aPrelu5D * (inputTrain - abs(inputTrain)) * 0.5
@@ -161,9 +178,8 @@ def createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng) :
     # W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
     return W
 
-def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvVal, inputToConvTest, inputToConvShapeTrain, inputToConvShapeVal, inputToConvShapeTest) :
-    # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ] == filterShape
-    # filterShape is the shape of W.
+def convolveWithGivenWeightMatrix(W, inputToConvTrain, inputToConvVal, inputToConvTest):
+    # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ]
     # Input signal given in shape [BatchSize, Channels, R, C, Z]
     
     # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
@@ -200,23 +216,7 @@ def convolveWithGivenWeightMatrix(W, filterShape, inputToConvTrain, inputToConvV
                                   )
     outputTest = tf.transpose(outputOfConvTest, perm=[0,4,3,2,1])
     
-    outputShapeTrain = [inputToConvShapeTrain[0],
-                        filterShape[0],
-                        inputToConvShapeTrain[2]-filterShape[2]+1,
-                        inputToConvShapeTrain[3]-filterShape[3]+1,
-                        inputToConvShapeTrain[4]-filterShape[4]+1]
-    outputShapeVal = [  inputToConvShapeVal[0],
-                        filterShape[0],
-                        inputToConvShapeVal[2]-filterShape[2]+1,
-                        inputToConvShapeVal[3]-filterShape[3]+1,
-                        inputToConvShapeVal[4]-filterShape[4]+1]
-    outputShapeTest = [ inputToConvShapeTest[0],
-                        filterShape[0],
-                        inputToConvShapeTest[2]-filterShape[2]+1,
-                        inputToConvShapeTest[3]-filterShape[3]+1,
-                        inputToConvShapeTest[4]-filterShape[4]+1]
-    
-    return (outputTrain, outputVal, outputTest, outputShapeTrain, outputShapeVal, outputShapeTest)
+    return (outputTrain, outputVal, outputTest)
 
 
 # Currently only used for pooling3d
@@ -231,7 +231,7 @@ def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
     return image3dBC012WithMirrorPad
 
 
-def pool3dMirrorPad(image3dBC012, image3dBC012Shape, poolParams) :
+def pool3dMirrorPad(image3dBC012, poolParams) :
     # image3dBC012 dimensions: (batch, fms, r, c, z)
     # poolParams: [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode]
     ws = poolParams[0] # window size
@@ -248,13 +248,5 @@ def pool3dMirrorPad(image3dBC012, image3dBC012Shape, poolParams) :
                             data_format="NDHWC") # AVG or MAX
     pooled_out = tf.transpose(pooled_out, perm=[0,4,3,2,1])
     
-    #calculate the shape of the image after the max pooling.
-    #This calculation is for ignore_border=True! Pooling should only be done in full areas in the mirror-padded image.
-    imgShapeAfterPoolAndPad = [ image3dBC012Shape[0],
-                                image3dBC012Shape[1],
-                                int(ceil( (image3dBC012Shape[2] + poolParams[2][0] - ds[0] + 1) / (1.0*stride[0])) ),
-                                int(ceil( (image3dBC012Shape[3] + poolParams[2][1] - ds[1] + 1) / (1.0*stride[1])) ),
-                                int(ceil( (image3dBC012Shape[4] + poolParams[2][2] - ds[2] + 1) / (1.0*stride[2])) )
-                            ]
-    return (pooled_out, imgShapeAfterPoolAndPad)
+    return pooled_out
 
