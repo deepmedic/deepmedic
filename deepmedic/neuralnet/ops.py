@@ -63,40 +63,32 @@ def initBn(movingAvgOverXBatches, n_channels):
 
 def applyBn(g, b, muBnsArrayForRollingAverage, varBnsArrayForRollingAverage,
             sharedNewMu_B, sharedNewVar_B,
-            inputTrain, inputVal, inputTest, e1 = np.finfo(np.float32).tiny):
+            input, mode, e1 = np.finfo(np.float32).tiny):
+    # mode: String in ["train", "infer"]
+    n_channs = input.shape[1]
     
-    n_channs = inputTrain.shape[1]
+    if mode == "train":
+        mu_batch, var_batch = tf.nn.moments(input, axes=[0,2,3,4])
+        mu = mu_batch
+        var = var_batch
+    elif mode == "infer":
+        mu_batch = None; var_batch = None
+        mu = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
+        var = tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
+    else:
+        raise NotImplementedError()
     
-    #---computing mu and var for inference from rolling average---
-    mu_MoveAv = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
-    mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,n_channs,1,1,1])
-    var_MoveAv = tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
-    var_MoveAv = var_MoveAv + e1
-    var_MoveAv = tf.reshape(var_MoveAv, shape=[1,n_channs,1,1,1])
+    # Reshape for broadcast.
+    g_resh = tf.reshape(g, shape=[1,n_channs,1,1,1])
+    b_resh = tf.reshape(b, shape=[1,n_channs,1,1,1])
+    mu     = tf.reshape(mu, shape=[1,n_channs,1,1,1])
+    var    = tf.reshape(var, shape=[1,n_channs,1,1,1])
+    # Normalize
+    norm_inp = (input - mu ) /  tf.sqrt(var + e1) # e1 should come OUT of the sqrt! 
+    norm_inp = g_resh * norm_inp + b_resh
     
-    #OUTPUT FOR TRAINING
-    gBn_resh = tf.reshape(g, shape=[1,n_channs,1,1,1])
-    bBn_resh = tf.reshape(b, shape=[1,n_channs,1,1,1])
-    
-    mu_B, var_B = tf.nn.moments(inputTrain, axes=[0,2,3,4])
-    mu_B_resh = tf.reshape(mu_B, shape=[1,n_channs,1,1,1])
-    var_B_resh = tf.reshape(var_B, shape=[1,n_channs,1,1,1])
-    normXi_train = (inputTrain - mu_B_resh ) /  tf.sqrt(var_B_resh + e1) # e1 should come OUT of the sqrt! 
-    normYi_train = gBn_resh * normXi_train + bBn_resh
-    #OUTPUT FOR VALIDATION
-    normXi_val = (inputVal - mu_MoveAv) /  tf.sqrt(var_MoveAv) 
-    normYi_val = gBn_resh * normXi_val + bBn_resh
-    #OUTPUT FOR TESTING
-    normXi_test = (inputTest - mu_MoveAv) /  tf.sqrt(var_MoveAv) 
-    normYi_test = gBn_resh * normXi_test + bBn_resh
-    
-    return (normYi_train,
-            normYi_val,
-            normYi_test,
-            # For rolling average
-            mu_B, # this is the current value of muB calculated in this training iteration, for updating "sharedNewMu_B" for rolling avg.
-            var_B
-            )
+    # Returns mu_batch, var_batch to update the moving average afterwards (during training)
+    return (norm_inp, mu_batch, var_batch)
     
     
 def makeBiasParamsAndApplyToFms(fmsTrain, fmsVal, fmsTest) :

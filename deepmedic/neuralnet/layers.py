@@ -161,16 +161,30 @@ class ConvLayer(Block):
             self._sharedNewMu_B,
             self._sharedNewVar_B
             ) = initBn(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])
+            self.params = self.params + [self._gBn, self._b]
             
             (inputToNonLinearityTrain,
-            inputToNonLinearityVal,
-            inputToNonLinearityTest,
             self._newMu_B,
             self._newVar_B
             ) = applyBn( self._gBn, self._b, self._muBnsArrayForRollingAverage, self._varBnsArrayForRollingAverage,
                          self._sharedNewMu_B, self._sharedNewVar_B,
-                         inputToLayerTrain, inputToLayerVal, inputToLayerTest)
-            self.params = self.params + [self._gBn, self._b]
+                         inputToLayerTrain, mode="train")
+            
+            (inputToNonLinearityVal,
+            _,
+            _
+            ) = applyBn( self._gBn, self._b, self._muBnsArrayForRollingAverage, self._varBnsArrayForRollingAverage,
+                         self._sharedNewMu_B, self._sharedNewVar_B,
+                         inputToLayerVal, mode="infer")
+            
+            (inputToNonLinearityTest,
+            _,
+            _
+            ) = applyBn( self._gBn, self._b, self._muBnsArrayForRollingAverage, self._varBnsArrayForRollingAverage,
+                         self._sharedNewMu_B, self._sharedNewVar_B,
+                         inputToLayerTest, mode="infer")
+            
+
             # Create ops for updating the matrices with the bn inference stats.
             self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
             self._op_update_mtrx_bn_inf_var = tf.compat.v1.assign( self._varBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewVar_B )
