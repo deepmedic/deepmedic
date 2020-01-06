@@ -298,7 +298,7 @@ class Cnn3d(object):
                         convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
                         
                         #===Size of Image Segments ===
-                        imagePartDimensionsTraining ,
+                        imagePartDimensionsTraining,
                         imagePartDimensionsValidation,
                         imagePartDimensionsTesting,
                         

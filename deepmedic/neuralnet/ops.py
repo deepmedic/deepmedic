@@ -44,49 +44,43 @@ def applyDropout(rng, dropoutRate, inputTrain, inputVal, inputTest) :
     return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
 
 
-def initBn(n_channels):
-    gBn = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
-    bBn = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="bBn" )
+def initBn(movingAvgOverXBatches, n_channels):
+    g = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
+    b = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="bBn" )
     
     #for rolling average:
-    muBnsArrayForRollingAverage = tf.Variable( np.zeros( (rollingAverageForBatchNormalizationOverThatManyBatches, n_channels), dtype='float32' ), name="muBnsForRollingAverage" )
-    varBnsArrayForRollingAverage = tf.Variable( np.ones( (rollingAverageForBatchNormalizationOverThatManyBatches, n_channels), dtype='float32' ), name="varBnsForRollingAverage" )        
+    muBnsArrayForRollingAverage = tf.Variable( np.zeros( (movingAvgOverXBatches, n_channels), dtype='float32' ), name="muBnsForRollingAverage" )
+    varBnsArrayForRollingAverage = tf.Variable( np.ones( (movingAvgOverXBatches, n_channels), dtype='float32' ), name="varBnsForRollingAverage" )        
     sharedNewMu_B = tf.Variable(np.zeros( (n_channels), dtype='float32'), name="sharedNewMu_B")
     sharedNewVar_B = tf.Variable(np.ones( (n_channels), dtype='float32'), name="sharedNewVar_B")
-    return (gBn,
-            bBn,
+    return (g,
+            b,
             # For rolling average
             muBnsArrayForRollingAverage,
             varBnsArrayForRollingAverage,
             sharedNewMu_B,
             sharedNewVar_B )
 
-def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, inputVal, inputTest, numOfChanns):
-    gBn = tf.Variable( np.ones( (numOfChanns), dtype='float32'), name="gBn" )
-    bBn = tf.Variable( np.zeros( (numOfChanns), dtype='float32'), name="bBn" )
+def applyBn(g, b, muBnsArrayForRollingAverage, varBnsArrayForRollingAverage,
+            sharedNewMu_B, sharedNewVar_B,
+            inputTrain, inputVal, inputTest, e1 = np.finfo(np.float32).tiny):
     
-    #for rolling average:
-    muBnsArrayForRollingAverage = tf.Variable( np.zeros( (rollingAverageForBatchNormalizationOverThatManyBatches, numOfChanns), dtype='float32' ), name="muBnsForRollingAverage" )
-    varBnsArrayForRollingAverage = tf.Variable( np.ones( (rollingAverageForBatchNormalizationOverThatManyBatches, numOfChanns), dtype='float32' ), name="varBnsForRollingAverage" )        
-    sharedNewMu_B = tf.Variable(np.zeros( (numOfChanns), dtype='float32'), name="sharedNewMu_B")
-    sharedNewVar_B = tf.Variable(np.ones( (numOfChanns), dtype='float32'), name="sharedNewVar_B")
-    
-    e1 = np.finfo(np.float32).tiny 
+    n_channs = inputTrain.shape[1]
     
     #---computing mu and var for inference from rolling average---
     mu_MoveAv = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
-    mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,numOfChanns,1,1,1])
+    mu_MoveAv = tf.reshape(mu_MoveAv, shape=[1,n_channs,1,1,1])
     var_MoveAv = tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
     var_MoveAv = var_MoveAv + e1
-    var_MoveAv = tf.reshape(var_MoveAv, shape=[1,numOfChanns,1,1,1])
+    var_MoveAv = tf.reshape(var_MoveAv, shape=[1,n_channs,1,1,1])
     
     #OUTPUT FOR TRAINING
-    gBn_resh = tf.reshape(gBn, shape=[1,numOfChanns,1,1,1])
-    bBn_resh = tf.reshape(bBn, shape=[1,numOfChanns,1,1,1])
+    gBn_resh = tf.reshape(g, shape=[1,n_channs,1,1,1])
+    bBn_resh = tf.reshape(b, shape=[1,n_channs,1,1,1])
     
     mu_B, var_B = tf.nn.moments(inputTrain, axes=[0,2,3,4])
-    mu_B_resh = tf.reshape(mu_B, shape=[1,numOfChanns,1,1,1])
-    var_B_resh = tf.reshape(var_B, shape=[1,numOfChanns,1,1,1])
+    mu_B_resh = tf.reshape(mu_B, shape=[1,n_channs,1,1,1])
+    var_B_resh = tf.reshape(var_B, shape=[1,n_channs,1,1,1])
     normXi_train = (inputTrain - mu_B_resh ) /  tf.sqrt(var_B_resh + e1) # e1 should come OUT of the sqrt! 
     normYi_train = gBn_resh * normXi_train + bBn_resh
     #OUTPUT FOR VALIDATION
@@ -99,14 +93,8 @@ def applyBn(rollingAverageForBatchNormalizationOverThatManyBatches, inputTrain, 
     return (normYi_train,
             normYi_val,
             normYi_test,
-            gBn,
-            bBn,
             # For rolling average
-            muBnsArrayForRollingAverage,
-            varBnsArrayForRollingAverage,
-            sharedNewMu_B,
-            sharedNewVar_B,
-            mu_B, # this is the current value of muB calculated in this training iteration. It will be saved in the "sharedNewMu_B" (update), in order to be used for updating the rolling average. Something could be simplified here.
+            mu_B, # this is the current value of muB calculated in this training iteration, for updating "sharedNewMu_B" for rolling avg.
             var_B
             )
     
