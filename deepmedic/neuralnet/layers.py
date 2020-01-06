@@ -12,7 +12,7 @@ import random
 import tensorflow as tf
 
 from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
-from deepmedic.neuralnet.ops import initBn, applyBn, createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
+from deepmedic.neuralnet.ops import createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
     from sys import maxint as MAX_INT
@@ -29,6 +29,68 @@ except ImportError:
 # Block -> ConvLayer -> LowRankConvLayer
 #                L-----> ConvLayerWithSoftmax
 
+class BatchNormLayer(object):
+    # Order of functions:
+    # __init__ -> apply(train) --> get_update_ops_for_bn_moving_avg -> update_arrays_of_bn_moving_avg -> apply(infer)
+    def __init__(self, moving_avg_length, n_channels):
+        self._moving_avg_length = moving_avg_length # integer. The number of iterations (batches) over which to compute a moving average.
+        self._g = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
+        self._b = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="bBn" )
+        #for moving average:
+        self._array_mus_for_moving_avg = tf.Variable( np.zeros( (moving_avg_length, n_channels), dtype='float32' ), name="muBnsForRollingAverage" )
+        self._array_vars_for_moving_avg = tf.Variable( np.ones( (moving_avg_length, n_channels), dtype='float32' ), name="varBnsForRollingAverage" )        
+        self._new_mu_batch = tf.Variable(np.zeros( (n_channels), dtype='float32'), name="sharedNewMu_B") # Value will be assigned every training-iteration.
+        self._new_var_batch = tf.Variable(np.ones( (n_channels), dtype='float32'), name="sharedNewVar_B")
+        # Create ops for updating the matrices with the bn inference stats.
+        self._tf_plchld_int32 = tf.compat.v1.placeholder( dtype="int32", name="tf_plchld_int32") # convenience for tf.assign
+        self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._array_mus_for_moving_avg[self._tf_plchld_int32], self._new_mu_batch ) # Cant it just take tensor? self._latest_mu_batch?
+        self._op_update_mtrx_bn_inf_var = tf.compat.v1.assign( self._array_vars_for_moving_avg[self._tf_plchld_int32], self._new_var_batch )
+        
+        self._latest_mu_batch = None # I think this is useless
+        self._latest_var_batch = None # I think this is useless
+        
+        self._idx_where_moving_avg_is = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
+
+        
+    def trainable_params(self):
+        return [self._g, self._b]
+    
+    def apply(self, input, mode, e1 = np.finfo(np.float32).tiny):
+        # mode: String in ["train", "infer"]
+        n_channs = input.shape[1]
+        
+        if mode == "train":
+            self._new_mu_batch_t, self._new_var_batch_t = tf.nn.moments(input, axes=[0,2,3,4])
+            mu = self._new_mu_batch_t
+            var = self._new_var_batch_t
+        elif mode == "infer":
+            mu = tf.reduce_mean(self._array_mus_for_moving_avg, axis=0)
+            var = tf.reduce_mean(self._array_vars_for_moving_avg, axis=0)
+        else:
+            raise NotImplementedError()
+        
+        # Reshape for broadcast.
+        g_resh = tf.reshape(self._g, shape=[1,n_channs,1,1,1])
+        b_resh = tf.reshape(self._b, shape=[1,n_channs,1,1,1])
+        mu     = tf.reshape(mu, shape=[1,n_channs,1,1,1])
+        var    = tf.reshape(var, shape=[1,n_channs,1,1,1])
+        # Normalize
+        norm_inp = (input - mu ) /  tf.sqrt(var + e1) # e1 should come OUT of the sqrt! 
+        norm_inp = g_resh * norm_inp + b_resh
+        
+        # Returns mu_batch, var_batch to update the moving average afterwards (during training)
+        return norm_inp
+        
+    def get_update_ops_for_bn_moving_avg(self) : # I think this is utterly useless.
+        # This function or something similar should stay, even if I clean the BN rolling average.
+        return [ tf.compat.v1.assign( ref=self._new_mu_batch, value=self._new_mu_batch_t, validate_shape=True ),
+                tf.compat.v1.assign( ref=self._new_var_batch, value=self._new_var_batch_t, validate_shape=True ) ]
+        
+    def update_arrays_of_bn_moving_avg(self, sessionTf):
+            sessionTf.run( fetches=self._op_update_mtrx_bn_inf_mu, feed_dict={self._tf_plchld_int32: self._idx_where_moving_avg_is} )
+            sessionTf.run( fetches=self._op_update_mtrx_bn_inf_var, feed_dict={self._tf_plchld_int32: self._idx_where_moving_avg_is} )
+            self._idx_where_moving_avg_is = (self._idx_where_moving_avg_is + 1) % self._moving_avg_length
+            
 class Block(object):
     
     def __init__(self) :
@@ -40,7 +102,7 @@ class Block(object):
         self._poolingParameters = None
         
         #=== All Trainable Parameters of the Block ===
-        self._appliedBnInLayer = None # This flag is a combination of rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
+        self._bn_layer = None # instance of BatchNormLayer. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
         
         # All trainable parameters
         # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.transferParameters.transferParametersBetweenLayers.
@@ -48,21 +110,7 @@ class Block(object):
         self.params = [] # W, (gbn), b, (aPrelu)
         self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
         self._b = None # shape: a vector with one value per FM of the input
-        self._gBn = None # ONLY WHEN BN is applied
         self._aPrelu = None # ONLY WHEN PreLu
-        
-        # ONLY WHEN BN! All of these are for the rolling average! If I fix this, only 2 will remain!
-        self._muBnsArrayForRollingAverage = None # Array
-        self._varBnsArrayForRollingAverage = None # Arrays
-        self._movingAvForBnOverXBatches = None
-        self._indexWhereRollingAverageIs = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
-        self._sharedNewMu_B = None # last value shared, to update the rolling average array.
-        self._sharedNewVar_B = None
-        self._newMu_B = None # last value tensor, to update the corresponding shared.
-        self._newVar_B = None
-        self._tf_plchld_int32 = tf.compat.v1.placeholder( dtype="int32", name="tf_plchld_int32") # convenience for tf.assign
-        self._op_update_mtrx_bn_inf_mu = None
-        self._op_update_mtrx_bn_inf_var = None
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
@@ -114,18 +162,11 @@ class Block(object):
         
     def updateMatricesOfBnMovingAvForInference(self, sessionTf):
         # This function should be erazed when I reimplement the Rolling average.
-        if self._appliedBnInLayer :
-            sessionTf.run( fetches=self._op_update_mtrx_bn_inf_mu, feed_dict={self._tf_plchld_int32: self._indexWhereRollingAverageIs} )
-            sessionTf.run( fetches=self._op_update_mtrx_bn_inf_var, feed_dict={self._tf_plchld_int32: self._indexWhereRollingAverageIs} )
-            self._indexWhereRollingAverageIs = (self._indexWhereRollingAverageIs + 1) % self._movingAvForBnOverXBatches
+        if self._bn_layer is not None :
+            self._bn_layer.update_arrays_of_bn_moving_avg(sessionTf)
             
-    def getUpdatesForBnRollingAverage(self) :
-        # This function or something similar should stay, even if I clean the BN rolling average.
-        if self._appliedBnInLayer :
-            return [ tf.compat.v1.assign( ref=self._sharedNewMu_B, value=self._newMu_B, validate_shape=True ),
-                    tf.compat.v1.assign( ref=self._sharedNewVar_B, value=self._newVar_B, validate_shape=True ) ]
-        else :
-            return []
+    def get_update_ops_for_bn_moving_avg(self) :
+        return self._bn_layer.get_update_ops_for_bn_moving_avg() if self._bn_layer is not None else []
         
 class ConvLayer(Block):
     
@@ -150,49 +191,15 @@ class ConvLayer(Block):
         #------------------ Batch Normalization ------------------
         #---------------------------------------------------------
         if useBnFlag and movingAvForBnOverXBatches > 0 :
-            self._appliedBnInLayer = True
-            self._movingAvForBnOverXBatches = movingAvForBnOverXBatches
+            self._bn_layer = BatchNormLayer(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])            
+            self.params = self.params + self._bn_layer.trainable_params()
             
-            (self._gBn,
-            self._b,
-            # For rolling average :
-            self._muBnsArrayForRollingAverage,
-            self._varBnsArrayForRollingAverage,
-            self._sharedNewMu_B,
-            self._sharedNewVar_B
-            ) = initBn(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])
-            self.params = self.params + [self._gBn, self._b]
+            inputToNonLinearityTrain = self._bn_layer.apply(inputToLayerTrain, mode="train")
+            inputToNonLinearityVal = self._bn_layer.apply(inputToLayerVal, mode="infer")
+            inputToNonLinearityTest = self._bn_layer.apply(inputToLayerTest, mode="infer")
             
-            (inputToNonLinearityTrain,
-            self._newMu_B,
-            self._newVar_B
-            ) = applyBn( self._gBn, self._b, self._muBnsArrayForRollingAverage, self._varBnsArrayForRollingAverage,
-                         self._sharedNewMu_B, self._sharedNewVar_B,
-                         inputToLayerTrain, mode="train")
-            
-            (inputToNonLinearityVal,
-            _,
-            _
-            ) = applyBn( self._gBn, self._b, self._muBnsArrayForRollingAverage, self._varBnsArrayForRollingAverage,
-                         self._sharedNewMu_B, self._sharedNewVar_B,
-                         inputToLayerVal, mode="infer")
-            
-            (inputToNonLinearityTest,
-            _,
-            _
-            ) = applyBn( self._gBn, self._b, self._muBnsArrayForRollingAverage, self._varBnsArrayForRollingAverage,
-                         self._sharedNewMu_B, self._sharedNewVar_B,
-                         inputToLayerTest, mode="infer")
-            
-
-            # Create ops for updating the matrices with the bn inference stats.
-            self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._muBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewMu_B )
-            self._op_update_mtrx_bn_inf_var = tf.compat.v1.assign( self._varBnsArrayForRollingAverage[self._tf_plchld_int32], self._sharedNewVar_B )
-    
         else : #Not using batch normalization
-            self._appliedBnInLayer = False
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
-            
             (self._b,
             inputToNonLinearityTrain,
             inputToNonLinearityVal,

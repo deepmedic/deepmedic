@@ -126,13 +126,13 @@ class Cnn3d(object):
             for layer in pathway.getLayers() :
                 layer.updateMatricesOfBnMovingAvForInference(sessionTf)  # Will do nothing if no BN.
                     
-    def _getUpdatesForBnRollingAverage(self) :
+    def _get_update_ops_for_bn_moving_avg(self) :
         # These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
         # ... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
         updatesForBnRollingAverage = []
         for pathway in self.pathways :
             for layer in pathway.getLayers() :
-                updatesForBnRollingAverage.extend(layer.getUpdatesForBnRollingAverage())
+                updatesForBnRollingAverage.extend(layer.get_update_ops_for_bn_moving_avg())
         return updatesForBnRollingAverage
     
     def get_trainable_params(self, log, indicesOfLayersPerPathwayTypeToFreeze):
@@ -174,7 +174,7 @@ class Cnn3d(object):
         y_gt = self._output_gt_tensor_feeds['train']['y_gt']
         
         #================BATCH NORMALIZATION ROLLING AVERAGE UPDATES======================
-        updates = updates_of_params_wrt_total_cost + self._getUpdatesForBnRollingAverage()
+        updates = updates_of_params_wrt_total_cost + self._get_update_ops_for_bn_moving_avg()
         updates_grouped_op = tf.group( *updates ) # this op returns no output when run.
         
         #======================== Collecting ops and feeds =================

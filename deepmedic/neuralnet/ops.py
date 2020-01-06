@@ -43,52 +43,6 @@ def applyDropout(rng, dropoutRate, inputTrain, inputVal, inputTest) :
         inputImgAfterDropoutTest = inputTest
     return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
 
-
-def initBn(movingAvgOverXBatches, n_channels):
-    g = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
-    b = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="bBn" )
-    
-    #for rolling average:
-    muBnsArrayForRollingAverage = tf.Variable( np.zeros( (movingAvgOverXBatches, n_channels), dtype='float32' ), name="muBnsForRollingAverage" )
-    varBnsArrayForRollingAverage = tf.Variable( np.ones( (movingAvgOverXBatches, n_channels), dtype='float32' ), name="varBnsForRollingAverage" )        
-    sharedNewMu_B = tf.Variable(np.zeros( (n_channels), dtype='float32'), name="sharedNewMu_B")
-    sharedNewVar_B = tf.Variable(np.ones( (n_channels), dtype='float32'), name="sharedNewVar_B")
-    return (g,
-            b,
-            # For rolling average
-            muBnsArrayForRollingAverage,
-            varBnsArrayForRollingAverage,
-            sharedNewMu_B,
-            sharedNewVar_B )
-
-def applyBn(g, b, muBnsArrayForRollingAverage, varBnsArrayForRollingAverage,
-            sharedNewMu_B, sharedNewVar_B,
-            input, mode, e1 = np.finfo(np.float32).tiny):
-    # mode: String in ["train", "infer"]
-    n_channs = input.shape[1]
-    
-    if mode == "train":
-        mu_batch, var_batch = tf.nn.moments(input, axes=[0,2,3,4])
-        mu = mu_batch
-        var = var_batch
-    elif mode == "infer":
-        mu_batch = None; var_batch = None
-        mu = tf.reduce_mean(muBnsArrayForRollingAverage, axis=0)
-        var = tf.reduce_mean(varBnsArrayForRollingAverage, axis=0)
-    else:
-        raise NotImplementedError()
-    
-    # Reshape for broadcast.
-    g_resh = tf.reshape(g, shape=[1,n_channs,1,1,1])
-    b_resh = tf.reshape(b, shape=[1,n_channs,1,1,1])
-    mu     = tf.reshape(mu, shape=[1,n_channs,1,1,1])
-    var    = tf.reshape(var, shape=[1,n_channs,1,1,1])
-    # Normalize
-    norm_inp = (input - mu ) /  tf.sqrt(var + e1) # e1 should come OUT of the sqrt! 
-    norm_inp = g_resh * norm_inp + b_resh
-    
-    # Returns mu_batch, var_batch to update the moving average afterwards (during training)
-    return (norm_inp, mu_batch, var_batch)
     
     
 def makeBiasParamsAndApplyToFms(fmsTrain, fmsVal, fmsTest) :
