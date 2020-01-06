@@ -64,7 +64,7 @@ def process_in_batches(log,
             # Training step. Returns a list containing the results of fetched ops.
             results_of_run = sessionTf.run(fetches=list_of_ops, feed_dict=feeds_dict)
 
-            cnn3d.updateMatricesOfBnMovingAvForInference(sessionTf)  # I should put this inside the model.
+            cnn3d.update_arrays_of_bn_moving_avg(sessionTf)  # I should put this inside the model.
 
             cost_this_batch = results_of_run[0]
             list_RpRnPpPn_per_class = results_of_run[1:-1]  # [-1] is from updates_grouped_op, returns nothing

@@ -155,12 +155,12 @@ class Block(object):
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
         raise NotImplementedMethod()
     def getTrainableParams(self):
-        if self.targetBlock == None :
+        if self.targetBlock is None :
             return self.params
         else :
             return self.params + self.targetBlock.getTrainableParams()
         
-    def updateMatricesOfBnMovingAvForInference(self, sessionTf):
+    def update_arrays_of_bn_moving_avg(self, sessionTf):
         # This function should be erazed when I reimplement the Rolling average.
         if self._bn_layer is not None :
             self._bn_layer.update_arrays_of_bn_moving_avg(sessionTf)

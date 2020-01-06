@@ -117,14 +117,13 @@ class Cnn3d(object):
     
 
         
-    # for inference with batch-normalization. Every training batch, this is called to update an internal matrix of each layer, with the last mus and vars, so that I can compute the rolling average for inference.
-    def updateMatricesOfBnMovingAvForInference(self, sessionTf) :
-        self._updateMatricesOfBnMovingAvForInference(sessionTf)
-        
-    def _updateMatricesOfBnMovingAvForInference(self, sessionTf):
+    # for inference with batch-normalization.
+    # Every training batch, this is called to update an internal matrix of each layer, with the last mus and vars,
+    # so that I can compute the rolling average for inference.
+    def update_arrays_of_bn_moving_avg(self, sessionTf):
         for pathway in self.pathways :
             for layer in pathway.getLayers() :
-                layer.updateMatricesOfBnMovingAvForInference(sessionTf)  # Will do nothing if no BN.
+                layer.update_arrays_of_bn_moving_avg(sessionTf)  # Will do nothing if no BN.
                     
     def _get_update_ops_for_bn_moving_avg(self) :
         # These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
