@@ -51,7 +51,6 @@ class BatchNormLayer(object):
         
         self._idx_where_moving_avg_is = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
 
-        
     def trainable_params(self):
         return [self._g, self._b]
     
@@ -107,7 +106,7 @@ class Block(object):
         # All trainable parameters
         # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.transferParameters.transferParametersBetweenLayers.
         # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
-        self.params = [] # W, (gbn), b, (aPrelu)
+        self._params = [] # W, (gbn), b, (aPrelu)
         self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
         self._b = None # shape: a vector with one value per FM of the input
         self._aPrelu = None # ONLY WHEN PreLu
@@ -154,11 +153,11 @@ class Block(object):
         raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
         raise NotImplementedMethod()
-    def getTrainableParams(self):
+    def trainable_params(self):
         if self.targetBlock is None :
-            return self.params
+            return self._params
         else :
-            return self.params + self.targetBlock.getTrainableParams()
+            return self._params + self.targetBlock.trainable_params()
         
     def update_arrays_of_bn_moving_avg(self, sessionTf):
         # This function should be erazed when I reimplement the Rolling average.
@@ -192,7 +191,7 @@ class ConvLayer(Block):
         #---------------------------------------------------------
         if useBnFlag and movingAvForBnOverXBatches > 0 :
             self._bn_layer = BatchNormLayer(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])            
-            self.params = self.params + self._bn_layer.trainable_params()
+            self._params = self._params + self._bn_layer.trainable_params()
             
             inputToNonLinearityTrain = self._bn_layer.apply(inputToLayerTrain, mode="train")
             inputToNonLinearityVal = self._bn_layer.apply(inputToLayerVal, mode="infer")
@@ -204,7 +203,7 @@ class ConvLayer(Block):
             inputToNonLinearityTrain,
             inputToNonLinearityVal,
             inputToNonLinearityTest) = makeBiasParamsAndApplyToFms(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
-            self.params = self.params + [self._b]
+            self._params = self._params + [self._b]
             
         #--------------------------------------------------------
         #------------ Apply Activation/ non-linearity -----------
@@ -216,7 +215,7 @@ class ConvLayer(Block):
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyRelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
         elif self._activationFunctionType == "prelu" :
             ( self._aPrelu, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyPrelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
-            self.params = self.params + [self._aPrelu]
+            self._params = self._params + [self._aPrelu]
         elif self._activationFunctionType == "elu" :
             ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyElu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
         elif self._activationFunctionType == "selu" :
@@ -249,7 +248,7 @@ class ConvLayer(Block):
         #----- Initialise the weights -----
         # W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
         self._W = createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng)
-        self.params = [self._W] + self.params
+        self._params = [self._W] + self._params
         
         #---------- Convolve --------------
         (out_train, out_val, out_test) = convolveWithGivenWeightMatrix(self._W, inputToConvTrain, inputToConvVal, inputToConvTest)
@@ -344,7 +343,7 @@ class LowRankConvLayer(ConvLayer):
     # Overload the ConvLayer's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.        
     def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
                                         inputToConvTrain, inputToConvVal, inputToConvTest) :
-        # Behaviour: Create W, set self._W, set self.params, convolve, return ouput and outputShape.
+        # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
         # The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
         # If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
         # If 2-dim: rSubconv is the input convolved with the RC-2D filter, cSubconv with CZ-2D filter, zSubconv with ZR-2D filter. 
@@ -367,7 +366,7 @@ class LowRankConvLayer(ConvLayer):
         
         # Set the W attribute and trainable parameters.
         self._WperSubconv = [rSubconvW, cSubconvW, zSubconvW] # Bear in mind that these sub tensors have different shapes! Treat carefully.
-        self.params = self._WperSubconv + self.params
+        self._params = self._WperSubconv + self._params
         
         # concatenate together.
         concatSubconvOutputsTrain = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[0],
@@ -437,7 +436,7 @@ class SoftmaxLayer(TargetLayer):
         logits_train,
         logits_val,
         logits_test) = makeBiasParamsAndApplyToFms(self.input["train"], self.input["val"], self.input["test"])
-        self.params = self.params + [self._b]
+        self._params = self._params + [self._b]
         
         # ============ Softmax ==============
         self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)

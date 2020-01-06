@@ -140,7 +140,7 @@ class Cnn3d(object):
         for pathway in self.pathways :
             for layer_i in range(0, len(pathway.getLayers())) :
                 if layer_i not in indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
-                    paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).getTrainableParams()
+                    paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).trainable_params()
                 else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
                     log.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(layer_i)+"] will NOT be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
