@@ -12,7 +12,6 @@ import random
 import tensorflow as tf
 
 import deepmedic.neuralnet.ops as ops
-from deepmedic.neuralnet.ops import applyDropout
 from deepmedic.neuralnet.ops import createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
@@ -30,7 +29,39 @@ except ImportError:
 # Block -> ConvLayer -> LowRankConvLayer
 #                L-----> ConvLayerWithSoftmax
 
-class BiasLayer(object):
+class Layer(object):
+    def apply(self, input):
+        # mode: "train" or "infer"
+        raise NotImplementedError()
+    def trainable_params(self):
+        raise NotImplementedError()
+    
+class DropoutLayer(Layer):
+    def __init__(self, dropout_rate, rng):
+        self._keep_prob = 1 - dropout_rate
+        self._rng = rng
+        
+    def apply(self, input, mode):
+        if self._keep_prob > 0.999: #Dropout below 0.001 I take it as if there is no dropout. To avoid float problems with drop == 0.0
+            return input
+        
+        if mode == "train":
+            random_tensor = self._keep_prob
+            random_tensor += tf.random.uniform(shape=tf.shape(input), minval=0., maxval=1., seed=self._rng.randint(999999), dtype="float32")
+            # 0. if [keep_prob, 1.0) and 1. if [1.0, 1.0 + keep_prob)
+            dropout_mask = tf.floor(random_tensor)
+            output = input * dropout_mask
+        elif mode == "infer":
+            output = input * self._keep_prob
+        else:
+            raise NotImplementedError()
+        
+        return output
+    
+    def trainable_params(self):
+        return []
+    
+class BiasLayer(Layer):
     def __init__(self, n_channels):
         self._b = tf.reshape(tf.Variable(np.zeros((n_channels), dtype = 'float32'), name="b"), shape=[1,n_channels,1,1,1])
         
@@ -40,18 +71,7 @@ class BiasLayer(object):
     def trainable_params(self):
         return [self._b]
     
-class PreluLayer(object):
-    def __init__(self, n_channels, alpha=0.01):
-        self._a = tf.reshape(tf.Variable(np.ones((n_channels), dtype='float32')*alpha, name="aPrelu"), shape=[1, n_channels, 1, 1, 1] )
-
-    def apply(self, input):
-        # input is a tensor of shape (batchSize, FMs, r, c, z)
-        return ops.prelu(input, self._a)
-    
-    def trainable_params(self):
-        return [self._a]
-    
-class BatchNormLayer(object):
+class BatchNormLayer(Layer):
     # Order of functions:
     # __init__ -> apply(train) --> get_update_ops_for_bn_moving_avg -> update_arrays_of_bn_moving_avg -> apply(infer)
     def __init__(self, moving_avg_length, n_channels):
@@ -112,6 +132,17 @@ class BatchNormLayer(object):
             sessionTf.run( fetches=self._op_update_mtrx_bn_inf_var, feed_dict={self._tf_plchld_int32: self._idx_where_moving_avg_is} )
             self._idx_where_moving_avg_is = (self._idx_where_moving_avg_is + 1) % self._moving_avg_length
             
+class PreluLayer(Layer):
+    def __init__(self, n_channels, alpha=0.01):
+        self._a = tf.reshape(tf.Variable(np.ones((n_channels), dtype='float32')*alpha, name="aPrelu"), shape=[1, n_channels, 1, 1, 1] )
+
+    def apply(self, input):
+        # input is a tensor of shape (batchSize, FMs, r, c, z)
+        return ops.prelu(input, self._a)
+    
+    def trainable_params(self):
+        return [self._a]
+    
 class Block(object):
     
     def __init__(self) :
@@ -256,7 +287,10 @@ class ConvLayer(Block):
         #------------------------------------
         #------------- Dropout --------------
         #------------------------------------
-        (inputToPoolTrain, inputToPoolVal, inputToPoolTest) = applyDropout(rng, dropoutRate, inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest)
+        dropout_layer = DropoutLayer(dropoutRate, rng)
+        inputToPoolTrain = dropout_layer.apply(inputToDropoutTrain, mode="train")
+        inputToPoolVal = dropout_layer.apply(inputToDropoutVal, mode="infer")
+        inputToPoolTest = dropout_layer.apply(inputToDropoutTest, mode="infer")
         
         #-------------------------------------------------------
         #-----------  Pooling ----------------------------------

@@ -24,26 +24,6 @@ except ImportError:
 # Functions used by layers but do not change Layer Attributes #
 ###############################################################
 
-def applyDropout(rng, dropoutRate, inputTrain, inputVal, inputTest) :
-    if dropoutRate > 0.001 : #Below 0.001 I take it as if there is no dropout at all. (To avoid float problems with == 0.0. Although my tries show it actually works fine.)
-        keep_prob = (1-dropoutRate)
-        
-        random_tensor = keep_prob
-        random_tensor += tf.random.uniform(shape=tf.shape(inputTrain), minval=0., maxval=1., seed=rng.randint(999999), dtype="float32")
-        # 0. if [keep_prob, 1.0) and 1. if [1.0, 1.0 + keep_prob)
-        dropoutMask = tf.floor(random_tensor)
-    
-        # tf.nn.dropout(x, keep_prob) scales kept values UP, so that at inference you dont need to scale then. 
-        inputImgAfterDropoutTrain = inputTrain * dropoutMask
-        inputImgAfterDropoutVal = inputVal * keep_prob
-        inputImgAfterDropoutTest = inputTest * keep_prob
-    else :
-        inputImgAfterDropoutTrain = inputTrain
-        inputImgAfterDropoutVal = inputVal
-        inputImgAfterDropoutTest = inputTest
-    return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
-
-
 def relu(input):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
     return tf.maximum(0., input)
