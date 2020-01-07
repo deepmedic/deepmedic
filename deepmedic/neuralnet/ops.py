@@ -51,24 +51,11 @@ def applyRelu(inputTrain, inputVal, inputTest):
     outputTest = tf.maximum(0., inputTest)
     return ( outputTrain, outputVal, outputTest )
 
-def applyPrelu(inputTrain, inputVal, inputTest) :
-    n_channels = inputTrain.shape[1]
-    #input is a tensor of shape (batchSize, FMs, r, c, z)
-    aPreluValues = np.ones( (n_channels), dtype = 'float32' ) * 0.01 #"Delving deep into rectifiers" initializes it like this. LeakyRelus are at 0.01
-    aPrelu = tf.Variable(aPreluValues, name="aPrelu") #One separate a (activation) per feature map.
-    aPrelu5D = tf.reshape(aPrelu, shape=[1, n_channels, 1, 1, 1] )
-    
-    posTrain = tf.maximum(0., inputTrain)
-    negTrain = aPrelu5D * (inputTrain - abs(inputTrain)) * 0.5
-    outputTrain = posTrain + negTrain
-    posVal = tf.maximum(0., inputVal)
-    negVal = aPrelu5D * (inputVal - abs(inputVal)) * 0.5
-    outputVal = posVal + negVal
-    posTest = tf.maximum(0., inputTest)
-    negTest = aPrelu5D * (inputTest - abs(inputTest)) * 0.5
-    outputTest = posTest + negTest
-    
-    return ( aPrelu, outputTrain, outputVal, outputTest )
+def prelu(input, a):
+    # a = float (tf or np)
+    pos = tf.maximum(0., input)
+    neg = a * (input - abs(input)) * 0.5
+    return pos + neg
 
 def applyElu(inputTrain, inputVal, inputTest):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
