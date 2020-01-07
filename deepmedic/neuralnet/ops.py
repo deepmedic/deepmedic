@@ -44,12 +44,9 @@ def applyDropout(rng, dropoutRate, inputTrain, inputVal, inputTest) :
     return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
 
 
-def applyRelu(inputTrain, inputVal, inputTest):
+def relu(input):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
-    outputTrain= tf.maximum(0., inputTrain)
-    outputVal = tf.maximum(0., inputVal)
-    outputTest = tf.maximum(0., inputTest)
-    return ( outputTrain, outputVal, outputTest )
+    return tf.maximum(0., input)
 
 def prelu(input, a):
     # a = float (tf or np)
@@ -57,23 +54,16 @@ def prelu(input, a):
     neg = a * (input - abs(input)) * 0.5
     return pos + neg
 
-def applyElu(inputTrain, inputVal, inputTest):
+def elu(input):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
-    outputTrain = tf.nn.elu(inputTrain)
-    outputVal = tf.nn.elu(inputVal)
-    outputTest = tf.nn.elu(inputTest)
-    return ( outputTrain, outputVal, outputTest )
+    return tf.nn.elu(input)
 
-def applySelu(inputTrain, inputVal, inputTest):
+def selu(input):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
     lambda01 = 1.0507 # calc in p4 of paper.
-    alpha01 = 1.6733
-    
-    outputTrain = lambda01 * tf.nn.elu(inputTrain)
-    outputVal = lambda01 *  tf.nn.elu(inputVal)
-    outputTest = lambda01 * tf.nn.elu(inputTest)
-    
-    return ( outputTrain, outputVal, outputTest )
+    alpha01 = 1.6733 # WHERE IS THIS USED? I AM DOING SOMETHING WRONG I THINK.
+    raise NotImplementedError()
+    return lambda01 * tf.nn.elu(input)
 
 def createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng) :
     # filterShape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]

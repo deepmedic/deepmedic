@@ -12,7 +12,7 @@ import random
 import tensorflow as tf
 
 import deepmedic.neuralnet.ops as ops
-from deepmedic.neuralnet.ops import applyDropout, applyRelu, applyElu, applySelu, pool3dMirrorPad
+from deepmedic.neuralnet.ops import applyDropout
 from deepmedic.neuralnet.ops import createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
@@ -192,7 +192,6 @@ class ConvLayer(Block):
     
     def __init__(self) :
         Block.__init__(self)
-        self._activationFunctionType = "" #linear, relu or prelu
         
     def _processInputWithBnNonLinearityDropoutPooling(self,
                 rng,
@@ -236,9 +235,9 @@ class ConvLayer(Block):
             inputToDropoutVal = inputToNonLinearityVal
             inputToDropoutTest = inputToNonLinearityTest
         elif self._activationFunctionType == "relu" :
-            inputToDropoutTrain = applyRelu(inputToNonLinearityTrain)
-            inputToDropoutVal = inapplyRelu(putToNonLinearityVal)
-            inputToDropoutTest = applyRelu(inputToNonLinearityTest)
+            inputToDropoutTrain = ops.relu(inputToNonLinearityTrain)
+            inputToDropoutVal = ops.relu(putToNonLinearityVal)
+            inputToDropoutTest = ops.relu(inputToNonLinearityTest)
         elif self._activationFunctionType == "prelu" :
             prelu_layer = PreluLayer(inputToNonLinearityTrain.shape[1])
             inputToDropoutTrain = prelu_layer.apply(inputToNonLinearityTrain)
@@ -246,9 +245,13 @@ class ConvLayer(Block):
             inputToDropoutTest = prelu_layer.apply(inputToNonLinearityTest)
             self._params = self._params + prelu_layer.trainable_params()
         elif self._activationFunctionType == "elu" :
-            ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applyElu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
+            inputToDropoutTrain = ops.elu(inputToNonLinearityTrain)
+            inputToDropoutVal = ops.elu(inputToNonLinearityVal)
+            inputToDropoutTest = ops.elu(inputToNonLinearityTest)
         elif self._activationFunctionType == "selu" :
-            ( inputToDropoutTrain, inputToDropoutVal, inputToDropoutTest ) = applySelu(inputToNonLinearityTrain, inputToNonLinearityVal, inputToNonLinearityTest)
+            inputToDropoutTrain = ops.selu(inputToNonLinearityTrain)
+            inputToDropoutVal = ops.selu(inputToNonLinearityVal)
+            inputToDropoutTest = ops.selu(inputToNonLinearityTest)
             
         #------------------------------------
         #------------- Dropout --------------
