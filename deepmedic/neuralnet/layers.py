@@ -11,7 +11,7 @@ import random
 
 import tensorflow as tf
 
-from deepmedic.neuralnet.ops import applyDropout, makeBiasParamsAndApplyToFms, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
+from deepmedic.neuralnet.ops import applyDropout, applyRelu, applyPrelu, applyElu, applySelu, pool3dMirrorPad
 from deepmedic.neuralnet.ops import createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
@@ -29,6 +29,16 @@ except ImportError:
 # Block -> ConvLayer -> LowRankConvLayer
 #                L-----> ConvLayerWithSoftmax
 
+class BiasLayer(object):
+    def __init__(self, n_channels):
+        self._b = tf.reshape(tf.Variable(np.zeros((n_channels), dtype = 'float32'), name="b"), shape=[1,n_channels,1,1,1])
+        
+    def apply(self, input):
+        return input + self._b
+    
+    def trainable_params(self):
+        return [self._b]
+    
 class BatchNormLayer(object):
     # Order of functions:
     # __init__ -> apply(train) --> get_update_ops_for_bn_moving_avg -> update_arrays_of_bn_moving_avg -> apply(infer)
@@ -101,14 +111,13 @@ class Block(object):
         self._poolingParameters = None
         
         #=== All Trainable Parameters of the Block ===
-        self._bn_layer = None # instance of BatchNormLayer. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
+        self._bn_layer = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
         
         # All trainable parameters
         # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.transferParameters.transferParametersBetweenLayers.
         # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
         self._params = [] # W, (gbn), b, (aPrelu)
         self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
-        self._b = None # shape: a vector with one value per FM of the input
         self._aPrelu = None # ONLY WHEN PreLu
         
         # === Output of the block ===
@@ -199,11 +208,12 @@ class ConvLayer(Block):
             
         else : #Not using batch normalization
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
-            (self._b,
-            inputToNonLinearityTrain,
-            inputToNonLinearityVal,
-            inputToNonLinearityTest) = makeBiasParamsAndApplyToFms(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
-            self._params = self._params + [self._b]
+            bias_layer = BiasLayer(inputToLayerTrain.shape[1])
+            inputToNonLinearityTrain = bias_layer.apply(inputToLayerTrain)
+            inputToNonLinearityVal = bias_layer.apply(inputToLayerVal)
+            inputToNonLinearityTest = bias_layer.apply(inputToLayerTest)
+            self._params = self._params + bias_layer.trainable_params()
+            
             
         #--------------------------------------------------------
         #------------ Apply Activation/ non-linearity -----------
@@ -415,7 +425,6 @@ class SoftmaxLayer(TargetLayer):
     def __init__(self):
         TargetLayer.__init__(self)
         self._numberOfOutputClasses = None
-        #self._b = None # The only type of trainable parameter that a softmax layer has.
         self._temperature = None
         
     def makeLayer(  self,
@@ -432,11 +441,13 @@ class SoftmaxLayer(TargetLayer):
         # At this last classification layer, the conv output needs to have bias added before the softmax.
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
         # and this self._bClassLayer that is added only to this final output before the softmax.
-        (self._b,
-        logits_train,
-        logits_val,
-        logits_test) = makeBiasParamsAndApplyToFms(self.input["train"], self.input["val"], self.input["test"])
-        self._params = self._params + [self._b]
+        
+        bias_layer = BiasLayer(self.input["train"].shape[1])
+        logits_train = bias_layer.apply(self.input["train"])
+        logits_val = bias_layer.apply(self.input["val"])
+        logits_test = bias_layer.apply(self.input["test"])
+        self._params = self._params + bias_layer.trainable_params()
+        
         
         # ============ Softmax ==============
         self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)

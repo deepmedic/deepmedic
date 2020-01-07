@@ -43,17 +43,6 @@ def applyDropout(rng, dropoutRate, inputTrain, inputVal, inputTest) :
         inputImgAfterDropoutTest = inputTest
     return (inputImgAfterDropoutTrain, inputImgAfterDropoutVal, inputImgAfterDropoutTest)
 
-    
-    
-def makeBiasParamsAndApplyToFms(fmsTrain, fmsVal, fmsTest) :
-    numberOfFms = fmsTrain.shape[1]
-    b_values = np.zeros( (numberOfFms), dtype = 'float32')
-    b = tf.Variable(b_values, name="b")
-    b_resh = tf.reshape(b, shape=[1,numberOfFms,1,1,1])
-    fmsWithBiasAppliedTrain = fmsTrain + b_resh
-    fmsWithBiasAppliedVal = fmsVal + b_resh
-    fmsWithBiasAppliedTest = fmsTest + b_resh
-    return (b, fmsWithBiasAppliedTrain, fmsWithBiasAppliedVal, fmsWithBiasAppliedTest)
 
 def applyRelu(inputTrain, inputVal, inputTest):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
