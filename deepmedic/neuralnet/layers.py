@@ -12,7 +12,6 @@ import random
 import tensorflow as tf
 
 import deepmedic.neuralnet.ops as ops
-from deepmedic.neuralnet.ops import createAndInitializeWeightsTensor, convolveWithGivenWeightMatrix
 
 try:
     from sys import maxint as MAX_INT
@@ -35,6 +34,38 @@ class Layer(object):
         raise NotImplementedError()
     def trainable_params(self):
         raise NotImplementedError()
+    
+class ConvolutionalLayer(Layer):
+    def __init__(self, filter_shape, init_method, rng) :
+        # filter_shape of dimensions: list/np.array: [#FMs in this layer, #FMs in input, kern-dim-x, kern-dim-y, kern-dim-z]
+        if init_method[0] == "normal" :
+            std_init = init_method[1] # commonly 0.01 from Krizhevski
+        elif init_method[0] == "fanIn" :
+            var_scale = init_method[1] # 2 for init ala Delving into Rectifier, 1 for SNN.
+            std_init = np.sqrt( var_scale / np.prod(filter_shape[1:]))
+        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=filter_shape), dtype='float32')
+        self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
+        
+    def apply(self, input):
+        # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ]
+        # Input signal given in shape [BatchSize, Channels, R, C, Z]
+        
+        # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
+        w_resh = tf.transpose(self._w, perm=[4,3,2,1,0])
+        # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
+        input_resh = tf.transpose(input, perm=[0,4,3,2,1])
+        output = tf.nn.conv3d(input = input_resh, # batch_size, time, num_of_input_channels, rows, columns
+                              filters = w_resh, # TF: Depth, Height, Wight, Chans_in, Chans_out
+                              strides = [1,1,1,1,1],
+                              padding = "VALID",
+                              data_format = "NDHWC"
+                              )
+        #Output is in the shape of the input image (signals_shape).
+        output = tf.transpose(output, perm=[0,4,3,2,1]) #reshape the result, back to the shape of the input image.
+        return output
+
+    def trainable_params(self):
+        return [self._w]
     
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):
@@ -177,7 +208,8 @@ class Block(object):
         # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.transferParameters.transferParametersBetweenLayers.
         # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
         self._params = [] # W, (gbn), b, (aPrelu)
-        self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
+        self._params_for_L1_L2_reg = []
+        # self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
@@ -321,12 +353,12 @@ class ConvLayer(Block):
         #------------------ Convolution ----------------
         #-----------------------------------------------
         #----- Initialise the weights -----
-        # W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
-        self._W = createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng)
-        self._params = [self._W] + self._params
-        
-        #---------- Convolve --------------
-        (out_train, out_val, out_test) = convolveWithGivenWeightMatrix(self._W, inputToConvTrain, inputToConvVal, inputToConvTest)
+        conv_l = ConvolutionalLayer(filterShape, convWInitMethod, rng)
+        out_train = conv_l.apply(inputToConvTrain)
+        out_val = conv_l.apply(inputToConvVal)
+        out_test = conv_l.apply(inputToConvTest)
+        self._params = conv_l.trainable_params() + self._params
+        self._params_for_L1_L2_reg = self._params_for_L1_L2_reg + conv_l.trainable_params()
         
         return (out_train, out_val, out_test)
     
@@ -378,9 +410,16 @@ class ConvLayer(Block):
         
     # Override parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
-        return tf.reduce_sum(tf.abs(self._W))
+        cost = 0
+        for prm in self._params_for_L1_L2_reg:
+            cost += tf.reduce_sum(tf.abs(prm))
+        return cost
+    
     def _get_L2_cost(self) : #Called for L2 weigths regularisation
-        return tf.reduce_sum(self._W ** 2)
+        cost = 0
+        for prm in self._params_for_L1_L2_reg:
+            cost += tf.reduce_sum(prm ** 2)
+        return cost
     
     
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.

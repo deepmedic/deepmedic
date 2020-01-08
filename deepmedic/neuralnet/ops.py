@@ -45,59 +45,6 @@ def selu(input):
     raise NotImplementedError()
     return lambda01 * tf.nn.elu(input)
 
-def createAndInitializeWeightsTensor(filterShape, convWInitMethod, rng) :
-    # filterShape of dimensions: [#FMs in this layer, #FMs in input, rKernelDim, cKernelDim, zKernelDim]
-    if convWInitMethod[0] == "normal" :
-        stdForInit = convWInitMethod[1] # commonly 0.01 from Krizhevski
-    elif convWInitMethod[0] == "fanIn" :
-        varianceScale = convWInitMethod[1] # 2 for init ala Delving into Rectifier, 1 for SNN.
-        stdForInit = np.sqrt( varianceScale / (filterShape[1] * filterShape[2] * filterShape[3] * filterShape[4]) )
-        
-    wInitNpArray = np.asarray( rng.normal(loc=0.0, scale=stdForInit, size=(filterShape[0],filterShape[1],filterShape[2],filterShape[3],filterShape[4])), dtype='float32' )
-    W = tf.Variable( wInitNpArray, dtype="float32", name="W")
-    # W shape: [#FMs of this layer, #FMs of Input, rKernFims, cKernDims, zKernDims]
-    return W
-
-def convolveWithGivenWeightMatrix(W, inputToConvTrain, inputToConvVal, inputToConvTest):
-    # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ]
-    # Input signal given in shape [BatchSize, Channels, R, C, Z]
-    
-    # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
-    wReshapedForConv = tf.transpose(W, perm=[4,3,2,1,0])
-    
-    # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
-    inputToConvReshapedTrain = tf.transpose(inputToConvTrain, perm=[0,4,3,2,1])
-    outputOfConvTrain = tf.nn.conv3d(input = inputToConvReshapedTrain, # batch_size, time, num_of_input_channels, rows, columns
-                                  filters = wReshapedForConv, # TF: Depth, Height, Wight, Chans_in, Chans_out
-                                  strides = [1,1,1,1,1],
-                                  padding = "VALID",
-                                  data_format = "NDHWC"
-                                  )
-    #Output is in the shape of the input image (signals_shape).
-    outputTrain = tf.transpose(outputOfConvTrain, perm=[0,4,3,2,1]) #reshape the result, back to the shape of the input image.
-    
-    #Validation
-    inputToConvReshapedVal = tf.transpose(inputToConvVal, perm=[0,4,3,2,1])
-    outputOfConvVal = tf.nn.conv3d(input = inputToConvReshapedVal,
-                                  filters = wReshapedForConv,
-                                  strides = [1,1,1,1,1],
-                                  padding = "VALID",
-                                  data_format = "NDHWC"
-                                  )
-    outputVal = tf.transpose(outputOfConvVal, perm=[0,4,3,2,1])
-    
-    #Testing
-    inputToConvReshapedTest = tf.transpose(inputToConvTest, perm=[0,4,3,2,1])
-    outputOfConvTest = tf.nn.conv3d(input = inputToConvReshapedTest,
-                                  filters = wReshapedForConv,
-                                  strides = [1,1,1,1,1],
-                                  padding = "VALID",
-                                  data_format = "NDHWC"
-                                  )
-    outputTest = tf.transpose(outputOfConvTest, perm=[0,4,3,2,1])
-    
-    return (outputTrain, outputVal, outputTest)
-
 
 # Currently only used for pooling3d
 def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
