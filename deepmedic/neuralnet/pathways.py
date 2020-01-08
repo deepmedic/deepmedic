@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
-from deepmedic.neuralnet.layers import ConvLayer, LowRankConvLayer
+from deepmedic.neuralnet.layers import ConvBlock, LowRankConvBlock
 
 
 #################################################################
@@ -184,9 +184,9 @@ class Pathway(object):
                             ", (Val) " + str(inputToNextLayerVal.shape) + ", (Test) " + str(inputToNextLayerTest.shape))
             
             if layer_i in indicesOfLowerRankLayersForPathway :
-                layer = LowRankConvLayer(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
+                layer = LowRankConvBlock(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
             else : # normal conv layer
-                layer = ConvLayer()
+                layer = ConvBlock()
             layer.makeLayer(rng,
                             inputToLayerTrain=inputToNextLayerTrain,
                             inputToLayerVal=inputToNextLayerVal,

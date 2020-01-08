@@ -25,8 +25,8 @@ except ImportError:
 #                         Layer Types                           #
 #################################################################
 # Inheritance:
-# Block -> ConvLayer -> LowRankConvLayer
-#                L-----> ConvLayerWithSoftmax
+# Block -> ConvBlock -> LowRankConvBlock
+#                L-----> ConvBlockWithSoftmax
 
 class Layer(object):
     def apply(self, input):
@@ -267,7 +267,7 @@ class Block(object):
     def get_update_ops_for_bn_moving_avg(self) :
         return self._bn_l.get_update_ops_for_bn_moving_avg() if self._bn_l is not None else []
         
-class ConvLayer(Block):
+class ConvBlock(Block):
     
     def __init__(self) :
         Block.__init__(self)
@@ -352,7 +352,6 @@ class ConvLayer(Block):
         #-----------------------------------------------
         #------------------ Convolution ----------------
         #-----------------------------------------------
-        #----- Initialise the weights -----
         conv_l = ConvolutionalLayer(filterShape, convWInitMethod, rng)
         out_train = conv_l.apply(inputToConvTrain)
         out_val = conv_l.apply(inputToConvVal)
@@ -423,9 +422,9 @@ class ConvLayer(Block):
     
     
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
-class LowRankConvLayer(ConvLayer):
+class LowRankConvBlock(ConvBlock):
     def __init__(self, rank=2) :
-        ConvLayer.__init__(self)
+        ConvBlock.__init__(self)
         
         self._WperSubconv = None # List of ._W tensors. One per low-rank subconv. Treat carefully. 
         del(self._W) # The ._W of the Block parent is not used.
@@ -454,7 +453,7 @@ class LowRankConvLayer(ConvLayer):
         
         return concatSubconvOutputs
     
-    # Overload the ConvLayer's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.        
+    # Overload the ConvBlock's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.        
     def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
                                         inputToConvTrain, inputToConvVal, inputToConvTest) :
         # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
@@ -509,7 +508,7 @@ class LowRankConvLayer(ConvLayer):
         for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum(wOfSubconv ** 2)
         return l2Cost
     def getW(self):
-        print("ERROR: For LowRankConvLayer, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
+        print("ERROR: For LowRankConvBlock, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
         
         
 class TargetLayer(Block):
@@ -524,7 +523,7 @@ class TargetLayer(Block):
     
     
 class SoftmaxLayer(TargetLayer):
-    """ Softmax for classification. Note, this is simply the softmax function, after adding bias. Not a ConvLayer """
+    """ Softmax for classification. Note, this is simply the softmax function, after adding bias. Not a ConvBlock """
     
     def __init__(self):
         TargetLayer.__init__(self)
