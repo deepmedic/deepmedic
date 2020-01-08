@@ -29,7 +29,7 @@ def relu(input):
     return tf.maximum(0., input)
 
 def prelu(input, a):
-    # a = float (tf or np)
+    # a = tensor of floats, [1, n_channels, 1, 1, 1]
     pos = tf.maximum(0., input)
     neg = a * (input - abs(input)) * 0.5
     return pos + neg

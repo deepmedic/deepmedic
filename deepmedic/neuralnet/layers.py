@@ -63,10 +63,11 @@ class DropoutLayer(Layer):
     
 class BiasLayer(Layer):
     def __init__(self, n_channels):
-        self._b = tf.reshape(tf.Variable(np.zeros((n_channels), dtype = 'float32'), name="b"), shape=[1,n_channels,1,1,1])
+        self._b = tf.Variable(np.zeros((n_channels), dtype = 'float32'), name="b")
         
     def apply(self, input):
-        return input + self._b
+        # self._b.shape[0] should already be input.shape[1] number of input channels.
+        return input + tf.reshape(self._b, shape=[1,input.shape[1],1,1,1])
     
     def trainable_params(self):
         return [self._b]
@@ -134,14 +135,30 @@ class BatchNormLayer(Layer):
             
 class PreluLayer(Layer):
     def __init__(self, n_channels, alpha=0.01):
-        self._a = tf.reshape(tf.Variable(np.ones((n_channels), dtype='float32')*alpha, name="aPrelu"), shape=[1, n_channels, 1, 1, 1] )
+        self._a = tf.Variable(np.ones((n_channels), dtype='float32')*alpha, name="aPrelu")
 
     def apply(self, input):
         # input is a tensor of shape (batchSize, FMs, r, c, z)
-        return ops.prelu(input, self._a)
+        return ops.prelu(input, tf.reshape(self._a, shape=[1,input.shape[1],1,1,1]) )
     
     def trainable_params(self):
         return [self._a]
+    
+class IdentityLayer(Layer):
+    def apply(self, input): return input
+    def trainable_params(self): return []
+    
+class ReluLayer(Layer):
+    def apply(self, input): return ops.relu(input)
+    def trainable_params(self): return []
+
+class EluLayer(Layer):
+    def apply(self, input): return ops.elu(input)
+    def trainable_params(self): return []
+    
+class SeluLayer(Layer):
+    def apply(self, input): return ops.selu(input)
+    def trainable_params(self): return []
     
 class Block(object):
     
@@ -154,14 +171,13 @@ class Block(object):
         self._poolingParameters = None
         
         #=== All Trainable Parameters of the Block ===
-        self._bn_layer = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
+        self._bn_l = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
         
         # All trainable parameters
         # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.transferParameters.transferParametersBetweenLayers.
         # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
         self._params = [] # W, (gbn), b, (aPrelu)
         self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
-        self._aPrelu = None # ONLY WHEN PreLu
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
@@ -213,11 +229,11 @@ class Block(object):
         
     def update_arrays_of_bn_moving_avg(self, sessionTf):
         # This function should be erazed when I reimplement the Rolling average.
-        if self._bn_layer is not None :
-            self._bn_layer.update_arrays_of_bn_moving_avg(sessionTf)
+        if self._bn_l is not None :
+            self._bn_l.update_arrays_of_bn_moving_avg(sessionTf)
             
     def get_update_ops_for_bn_moving_avg(self) :
-        return self._bn_layer.get_update_ops_for_bn_moving_avg() if self._bn_layer is not None else []
+        return self._bn_l.get_update_ops_for_bn_moving_avg() if self._bn_l is not None else []
         
 class ConvLayer(Block):
     
@@ -241,56 +257,49 @@ class ConvLayer(Block):
         #------------------ Batch Normalization ------------------
         #---------------------------------------------------------
         if useBnFlag and movingAvForBnOverXBatches > 0 :
-            self._bn_layer = BatchNormLayer(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])            
-            self._params = self._params + self._bn_layer.trainable_params()
+            self._bn_l = BatchNormLayer(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])            
+            self._params = self._params + self._bn_l.trainable_params()
             
-            inputToNonLinearityTrain = self._bn_layer.apply(inputToLayerTrain, mode="train")
-            inputToNonLinearityVal = self._bn_layer.apply(inputToLayerVal, mode="infer")
-            inputToNonLinearityTest = self._bn_layer.apply(inputToLayerTest, mode="infer")
+            inputToNonLinearityTrain = self._bn_l.apply(inputToLayerTrain, mode="train")
+            inputToNonLinearityVal = self._bn_l.apply(inputToLayerVal, mode="infer")
+            inputToNonLinearityTest = self._bn_l.apply(inputToLayerTest, mode="infer")
             
         else : #Not using batch normalization
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
-            bias_layer = BiasLayer(inputToLayerTrain.shape[1])
-            inputToNonLinearityTrain = bias_layer.apply(inputToLayerTrain)
-            inputToNonLinearityVal = bias_layer.apply(inputToLayerVal)
-            inputToNonLinearityTest = bias_layer.apply(inputToLayerTest)
-            self._params = self._params + bias_layer.trainable_params()
+            bias_l = BiasLayer(inputToLayerTrain.shape[1])
+            inputToNonLinearityTrain = bias_l.apply(inputToLayerTrain)
+            inputToNonLinearityVal = bias_l.apply(inputToLayerVal)
+            inputToNonLinearityTest = bias_l.apply(inputToLayerTest)
+            self._params = self._params + bias_l.trainable_params()
             
             
         #--------------------------------------------------------
         #------------ Apply Activation/ non-linearity -----------
         #--------------------------------------------------------
-        self._activationFunctionType = activationFunc
-        if self._activationFunctionType == "linear" : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
-            inputToDropoutTrain = inputToNonLinearityTrain
-            inputToDropoutVal = inputToNonLinearityVal
-            inputToDropoutTest = inputToNonLinearityTest
-        elif self._activationFunctionType == "relu" :
-            inputToDropoutTrain = ops.relu(inputToNonLinearityTrain)
-            inputToDropoutVal = ops.relu(putToNonLinearityVal)
-            inputToDropoutTest = ops.relu(inputToNonLinearityTest)
-        elif self._activationFunctionType == "prelu" :
-            prelu_layer = PreluLayer(inputToNonLinearityTrain.shape[1])
-            inputToDropoutTrain = prelu_layer.apply(inputToNonLinearityTrain)
-            inputToDropoutVal = prelu_layer.apply(inputToNonLinearityVal)
-            inputToDropoutTest = prelu_layer.apply(inputToNonLinearityTest)
-            self._params = self._params + prelu_layer.trainable_params()
-        elif self._activationFunctionType == "elu" :
-            inputToDropoutTrain = ops.elu(inputToNonLinearityTrain)
-            inputToDropoutVal = ops.elu(inputToNonLinearityVal)
-            inputToDropoutTest = ops.elu(inputToNonLinearityTest)
-        elif self._activationFunctionType == "selu" :
-            inputToDropoutTrain = ops.selu(inputToNonLinearityTrain)
-            inputToDropoutVal = ops.selu(inputToNonLinearityVal)
-            inputToDropoutTest = ops.selu(inputToNonLinearityTest)
+        if activationFunc == "linear" : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
+            act_l = IdentityLayer()
+        elif activationFunc == "relu" :
+            act_l = ReluLayer()
+        elif activationFunc == "prelu" :
+            act_l = PreluLayer(inputToNonLinearityTrain.shape[1])
             
+        elif activationFunc == "elu" :
+            act_l = EluLayer()
+        elif activationFunc == "selu" :
+            act_l = SeluLayer()
+        inputToDropoutTrain = act_l.apply(inputToNonLinearityTrain)
+        inputToDropoutVal = act_l.apply(inputToNonLinearityVal)
+        inputToDropoutTest = act_l.apply(inputToNonLinearityTest)
+        self._params = self._params + act_l.trainable_params()
+        
         #------------------------------------
         #------------- Dropout --------------
         #------------------------------------
-        dropout_layer = DropoutLayer(dropoutRate, rng)
-        inputToPoolTrain = dropout_layer.apply(inputToDropoutTrain, mode="train")
-        inputToPoolVal = dropout_layer.apply(inputToDropoutVal, mode="infer")
-        inputToPoolTest = dropout_layer.apply(inputToDropoutTest, mode="infer")
+        dropout_l = DropoutLayer(dropoutRate, rng)
+        inputToPoolTrain = dropout_l.apply(inputToDropoutTrain, mode="train")
+        inputToPoolVal = dropout_l.apply(inputToDropoutVal, mode="infer")
+        inputToPoolTest = dropout_l.apply(inputToDropoutTest, mode="infer")
+        self._params = self._params + dropout_l.trainable_params()
         
         #-------------------------------------------------------
         #-----------  Pooling ----------------------------------
@@ -498,11 +507,11 @@ class SoftmaxLayer(TargetLayer):
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
         # and this self._bClassLayer that is added only to this final output before the softmax.
         
-        bias_layer = BiasLayer(self.input["train"].shape[1])
-        logits_train = bias_layer.apply(self.input["train"])
-        logits_val = bias_layer.apply(self.input["val"])
-        logits_test = bias_layer.apply(self.input["test"])
-        self._params = self._params + bias_layer.trainable_params()
+        bias_l = BiasLayer(self.input["train"].shape[1])
+        logits_train = bias_l.apply(self.input["train"])
+        logits_val = bias_l.apply(self.input["val"])
+        logits_test = bias_l.apply(self.input["test"])
+        self._params = self._params + bias_l.trainable_params()
         
         
         # ============ Softmax ==============
