@@ -32,7 +32,7 @@ class Block(object):
         self.input= {"train": None, "val": None, "test": None}
         
         # === Basic architecture parameters === 
-        self._numberOfFeatureMaps = None
+        self._n_fms_out = None
         
         #=== All layers that the block applies ===
         self._layers = []
@@ -60,17 +60,25 @@ class Block(object):
         self.outputAfterResidualConnIfAnyAtOutp["train"] = self.output["train"]
         self.outputAfterResidualConnIfAnyAtOutp["val"] = self.output["val"]
         self.outputAfterResidualConnIfAnyAtOutp["test"] = self.output["test"]
-        
-    def connect_target_block(self, new_target_block_instance):
-        # new_target_block_instance : eg softmax layer. Future: Regression layer, or other auxiliary classifiers.
-        self._target_blocks += [new_target_block_instance]
+            
     # Getters
-    def getNumberOfFeatureMaps(self):
-        return self._numberOfFeatureMaps
+    def get_number_fms_out(self):
+        return self._n_fms_out
+    
     def fmsActivations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
         return self.output["test"][:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
         
-    # Other API
+    # Main functionality
+    def apply(self, input):
+        signal = input
+        for layer in self._layers:
+            signal = layer.apply(signal)
+        return signal
+    
+    def connect_target_block(self, new_target_block_instance):
+        # new_target_block_instance : eg softmax layer. Future: Regression layer, or other auxiliary classifiers.
+        self._target_blocks += [new_target_block_instance]
+    
     def trainable_params(self):
         total_params = []
         for layer in self._layers:
@@ -107,6 +115,7 @@ class ConvBlock(Block):
                 inputToLayerTrain,
                 inputToLayerVal,
                 inputToLayerTest,
+                n_fms_in,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc,
@@ -120,20 +129,19 @@ class ConvBlock(Block):
         #------------------ Batch Normalization ------------------
         #---------------------------------------------------------
         if useBnFlag and movingAvForBnOverXBatches > 0 :
-            self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])            
+            self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=n_fms_in)
             self._layers.append(self._bn_l)
             inputToNonLinearityTrain = self._bn_l.apply(inputToLayerTrain, mode="train")
             inputToNonLinearityVal = self._bn_l.apply(inputToLayerVal, mode="infer")
             inputToNonLinearityTest = self._bn_l.apply(inputToLayerTest, mode="infer")
-            
         else : #Not using batch normalization
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
-            bias_l = dm_layers.BiasLayer(inputToLayerTrain.shape[1])
+            bias_l = dm_layers.BiasLayer(n_fms_in)
             self._layers.append(bias_l)
             inputToNonLinearityTrain = bias_l.apply(inputToLayerTrain)
             inputToNonLinearityVal = bias_l.apply(inputToLayerVal)
             inputToNonLinearityTest = bias_l.apply(inputToLayerTest)
-            
+        
         #--------------------------------------------------------
         #------------ Apply Activation/ non-linearity -----------
         #--------------------------------------------------------
@@ -142,7 +150,7 @@ class ConvBlock(Block):
         elif activationFunc == "relu" :
             act_l = dm_layers.ReluLayer()
         elif activationFunc == "prelu" :
-            act_l = dm_layers.PreluLayer(inputToNonLinearityTrain.shape[1])
+            act_l = dm_layers.PreluLayer(n_fms_in)
             
         elif activationFunc == "elu" :
             act_l = dm_layers.EluLayer()
@@ -178,8 +186,8 @@ class ConvBlock(Block):
         
         return (inputToConvTrain, inputToConvVal, inputToConvTest)
         
-    def _createConvLayer(self, filter_shape, init_method, rng):
-        return dm_layers.ConvolutionalLayer(filter_shape, init_method, rng)
+    def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
+        return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
     
     # The main function that builds this.
     def makeLayer(self,
@@ -187,7 +195,10 @@ class ConvBlock(Block):
                 inputToLayerTrain,
                 inputToLayerVal,
                 inputToLayerTest,
-                filterShape,
+                
+                n_fms_in,
+                n_fms_out,
+                conv_kernel_dims,
                 poolingParameters, # Can be []
                 convWInitMethod,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
@@ -209,21 +220,22 @@ class ConvBlock(Block):
         param inputToLayerShape: (batch size, num input feature maps,
                             image height, image width, filter depth)
         """
+        
         self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
-        self._numberOfFeatureMaps = filterShape[0]
+        self._n_fms_out = n_fms_out
         
         # Apply all the straightforward operations on the input, such as BN, activation function, dropout, pooling        
-        (inputToConvTrain, inputToConvVal, inputToConvTest) = self._processInputWithBnNonLinearityDropoutPooling( rng,
+        (inputToConvTrain, inputToConvVal, inputToConvTest) = self._processInputWithBnNonLinearityDropoutPooling(rng,
                                                                                         inputToLayerTrain,
                                                                                         inputToLayerVal,
                                                                                         inputToLayerTest,
+                                                                                        n_fms_in,
                                                                                         useBnFlag,
                                                                                         movingAvForBnOverXBatches,
                                                                                         activationFunc,
                                                                                         dropoutRate,
                                                                                         poolingParameters)
-        
-        conv_l = self._createConvLayer(filterShape, convWInitMethod, rng)
+        conv_l = self._createConvLayer(n_fms_in, n_fms_out, conv_kernel_dims, convWInitMethod, rng)
         self._layers.append(conv_l)
         out_train = conv_l.apply(inputToConvTrain)
         out_val = conv_l.apply(inputToConvVal)
@@ -241,15 +253,15 @@ class LowRankConvBlock(ConvBlock):
         self._rank = rank # 1 or 2 dimensions
             
     # Overload the ConvBlock's function. Called from makeLayer. The only different behaviour.        
-    def _createConvLayer(self, filter_shape, init_method, rng):
-        return dm_layers.LowRankConvolutionalLayer(filter_shape, init_method, rng)
+    def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
+        return dm_layers.LowRankConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
     
     
 class SoftmaxBlock(Block):
     """ Softmax for classification. Note, this is simply the softmax function, after adding bias. Not a ConvBlock """
     def __init__(self):
         Block.__init__(self)
-        self._numberOfOutputClasses = None
+        self._n_fms = None
         self._temperature = None
         
     def makeLayer(self,
@@ -258,7 +270,7 @@ class SoftmaxBlock(Block):
                   t = 1):
         # t: temperature. Scalar
         
-        self._numberOfOutputClasses = layerConnected.getNumberOfFeatureMaps()
+        self._n_fms = layerConnected.get_number_fms_out()
         self._temperature = t
         
         self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"])
@@ -267,7 +279,7 @@ class SoftmaxBlock(Block):
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
         # and this self._bClassLayer that is added only to this final output before the softmax.
         
-        bias_l = dm_layers.BiasLayer(self.input["train"].shape[1])
+        bias_l = dm_layers.BiasLayer(self._n_fms)
         self._layers.append(bias_l)
         logits_train = bias_l.apply(self.input["train"])
         logits_val = bias_l.apply(self.input["val"])
@@ -317,7 +329,7 @@ class SoftmaxBlock(Block):
         
         returnedListWithNumberOfRpRnTpTnForEachClass = []
         
-        for class_i in range(0, self._numberOfOutputClasses) :
+        for class_i in range(0, self._n_fms) :
             #Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
             tensorOneAtRealPos = tf.equal(y, class_i)
             tensorOneAtRealNeg = tf.logical_not(tensorOneAtRealPos)

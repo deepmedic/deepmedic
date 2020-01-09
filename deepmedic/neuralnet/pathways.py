@@ -179,8 +179,9 @@ class Pathway(object):
             
             thisLayerPoolingParameters = poolingParamsStructureForThisPathwayType[layer_i]
             
-            log.print3("\t[Conv.Layer_" + str(layer_i) + "], Filter Shape: " + str(thisLayerFilterShape))
-            log.print3("\t[Conv.Layer_" + str(layer_i) + "], Input's Shape: (Train) " + str(inputToNextLayerTrain.shape) + \
+            log.print3("\t[Conv.Layer_" + str(layer_i) + "], FMs-In: " + str(inputToNextLayerTrain.shape[1]) +\
+                       ", FMs-Out: " + str(numKernsPerLayer[layer_i]) + ", Conv Filter dimensions: " + str(kernelDimsPerLayer[layer_i]))
+            log.print3("\t[Conv.Layer_" + str(layer_i) + "], Input's Shape: (Train) " + str(inputToNextLayerTrain.shape) +\
                             ", (Val) " + str(inputToNextLayerVal.shape) + ", (Test) " + str(inputToNextLayerTest.shape))
             
             if layer_i in indicesOfLowerRankLayersForPathway :
@@ -192,14 +193,16 @@ class Pathway(object):
                             inputToLayerVal=inputToNextLayerVal,
                             inputToLayerTest=inputToNextLayerTest,
                             
-                            filterShape=thisLayerFilterShape,
+                            n_fms_in=inputToNextLayerTrain.shape[1],
+                            n_fms_out=numKernsPerLayer[layer_i],
+                            conv_kernel_dims=kernelDimsPerLayer[layer_i],
                             poolingParameters=thisLayerPoolingParameters,
                             convWInitMethod=convWInitMethod,
                             useBnFlag = thisLayerUseBn,
                             movingAvForBnOverXBatches=movingAvForBnOverXBatches,
                             activationFunc=thisLayerActivFunc,
                             dropoutRate=thisLayerDropoutRate
-                            ) 
+                            )
             self._blocks_in_pathway.append(block)
             
             if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here

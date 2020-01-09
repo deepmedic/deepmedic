@@ -55,18 +55,18 @@ class PoolingLayer(Layer):
         return []
     
 class ConvolutionalLayer(Layer):
-    def __init__(self, filter_shape, init_method, rng) :
+    def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
         # filter_shape of dimensions: list/np.array: [#FMs in this layer, #FMs in input, kern-dim-x, kern-dim-y, kern-dim-z]
-        std_init = self._get_std_init(init_method, filter_shape)
-        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=filter_shape), dtype='float32')
+        std_init = self._get_std_init(init_method, fms_in, fms_out, conv_kernel_dims)
+        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=[fms_out, fms_in] + conv_kernel_dims), dtype='float32')
         self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
         
-    def _get_std_init(self, init_method, filter_shape):
+    def _get_std_init(self, init_method, fms_in, fms_out, conv_kernel_dims):
         if init_method[0] == "normal" :
             std_init = init_method[1] # commonly 0.01 from Krizhevski
         elif init_method[0] == "fanIn" :
             var_scale = init_method[1] # 2 for init ala Delving into Rectifier, 1 for SNN.
-            std_init = np.sqrt( var_scale / np.prod(filter_shape[1:]))
+            std_init = np.sqrt(var_scale/np.prod([fms_in] + conv_kernel_dims))
         return std_init
     
     def apply(self, input):
@@ -84,20 +84,20 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         # If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
         # If 2-dim: rSubconv is the input convolved with the RC-2D filter, cSubconv with CZ-2D filter, zSubconv with ZR-2D filter. 
 
-    def __init__(self, filter_shape, init_method, rng) :
-        self._filter_shape = filter_shape # For _crop_sub_outputs_same_dims_and_concat(). Could be done differently?
-        std_init = self._get_std_init(init_method, filter_shape)
+    def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng) :
+        self._conv_kernel_dims = conv_kernel_dims # For _crop_sub_outputs_same_dims_and_concat(). Could be done differently?
+        std_init = self._get_std_init(init_method, fms_in, fms_out, conv_kernel_dims)
                 
-        x_subfilter_shape = [filter_shape[0]//3, filter_shape[1], filter_shape[2], 1 if self._rank == 1 else filter_shape[3], 1]
+        x_subfilter_shape = [fms_out//3, fms_in, conv_kernel_dims[0], 1 if self._rank == 1 else conv_kernel_dims[1], 1]
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=x_subfilter_shape), dtype='float32')
         self._w_x = tf.Variable(w_init, dtype="float32", name="w_x")
         
-        y_subfilter_shape = [filter_shape[0]//3, filter_shape[1], 1, filter_shape[3], 1 if self._rank == 1 else filter_shape[4]]
+        y_subfilter_shape = [fms_out//3, fms_in, 1, conv_kernel_dims[1], 1 if self._rank == 1 else conv_kernel_dims[2]]
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=y_subfilter_shape), dtype='float32')
         self._w_y = tf.Variable(w_init, dtype="float32", name="w_y")
         
-        n_fms_left = filter_shape[0] - 2*(filter_shape[0]//3) # Cause of possibly inexact integer division.
-        z_subfilter_shape = [n_fms_left, filter_shape[1], 1 if self._rank == 1 else filter_shape[2], 1, filter_shape[4]]
+        n_fms_left = fms_out - 2*(fms_out//3) # Cause of possibly inexact integer division.
+        z_subfilter_shape = [n_fms_left, fms_in, 1 if self._rank == 1 else conv_kernel_dims[0], 1, conv_kernel_dims[2]]
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=z_subfilter_shape), dtype='float32')
         self._w_z = tf.Variable(w_init, dtype="float32", name="w_z")
 
@@ -123,9 +123,9 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
                            tens_y.shape[3],
                            tens_z.shape[4]
                            ]
-        x_crop_slice = slice( (self._filter_shape[2]-1)//2, (self._filter_shape[2]-1)//2 + conv_tens_shape[2] )
-        y_crop_slice = slice( (self._filter_shape[3]-1)//2, (self._filter_shape[3]-1)//2 + conv_tens_shape[3] )
-        z_crop_slice = slice( (self._filter_shape[4]-1)//2, (self._filter_shape[4]-1)//2 + conv_tens_shape[4] )
+        x_crop_slice = slice( (self._conv_kernel_dims[0]-1)//2, (self._conv_kernel_dims[0]-1)//2 + conv_tens_shape[2] )
+        y_crop_slice = slice( (self._conv_kernel_dims[1]-1)//2, (self._conv_kernel_dims[1]-1)//2 + conv_tens_shape[3] )
+        z_crop_slice = slice( (self._conv_kernel_dims[2]-1)//2, (self._conv_kernel_dims[2]-1)//2 + conv_tens_shape[4] )
         tens_x_crop = tens_x[:,:, :, y_crop_slice if self._rank == 1 else slice(0, MAX_INT), z_crop_slice  ]
         tens_y_crop = tens_y[:,:, x_crop_slice, :, z_crop_slice if self._rank == 1 else slice(0, MAX_INT) ]
         tens_z_crop = tens_z[:,:, x_crop_slice if self._rank == 1 else slice(0, MAX_INT), y_crop_slice, : ]
