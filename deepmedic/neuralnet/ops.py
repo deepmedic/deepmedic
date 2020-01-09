@@ -24,6 +24,24 @@ except ImportError:
 # Functions used by layers but do not change Layer Attributes #
 ###############################################################
 
+def conv_3d(input, w, padding="VALID"):
+    # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ]
+    # Input signal given in shape [BatchSize, Channels, R, C, Z]
+    
+    # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
+    w_resh = tf.transpose(w, perm=[4,3,2,1,0])
+    # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
+    input_resh = tf.transpose(input, perm=[0,4,3,2,1])
+    output = tf.nn.conv3d(input = input_resh, # batch_size, time, num_of_input_channels, rows, columns
+                          filters = w_resh, # TF: Depth, Height, Wight, Chans_in, Chans_out
+                          strides = [1,1,1,1,1],
+                          padding = padding,
+                          data_format = "NDHWC"
+                          )
+    #Output is in the shape of the input image (signals_shape).
+    output = tf.transpose(output, perm=[0,4,3,2,1]) #reshape the result, back to the shape of the input image.
+    return output
+
 def relu(input):
     #input is a tensor of shape (batchSize, FMs, r, c, z)
     return tf.maximum(0., input)

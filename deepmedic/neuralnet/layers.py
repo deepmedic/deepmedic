@@ -38,35 +38,77 @@ class Layer(object):
 class ConvolutionalLayer(Layer):
     def __init__(self, filter_shape, init_method, rng) :
         # filter_shape of dimensions: list/np.array: [#FMs in this layer, #FMs in input, kern-dim-x, kern-dim-y, kern-dim-z]
+        std_init = self._get_std_init(init_method, filter_shape)
+        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=filter_shape), dtype='float32')
+        self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
+        
+    def _get_std_init(self, init_method, filter_shape):
         if init_method[0] == "normal" :
             std_init = init_method[1] # commonly 0.01 from Krizhevski
         elif init_method[0] == "fanIn" :
             var_scale = init_method[1] # 2 for init ala Delving into Rectifier, 1 for SNN.
             std_init = np.sqrt( var_scale / np.prod(filter_shape[1:]))
-        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=filter_shape), dtype='float32')
-        self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
-        
+        return std_init
+    
     def apply(self, input):
-        # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ]
-        # Input signal given in shape [BatchSize, Channels, R, C, Z]
-        
-        # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
-        w_resh = tf.transpose(self._w, perm=[4,3,2,1,0])
-        # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
-        input_resh = tf.transpose(input, perm=[0,4,3,2,1])
-        output = tf.nn.conv3d(input = input_resh, # batch_size, time, num_of_input_channels, rows, columns
-                              filters = w_resh, # TF: Depth, Height, Wight, Chans_in, Chans_out
-                              strides = [1,1,1,1,1],
-                              padding = "VALID",
-                              data_format = "NDHWC"
-                              )
-        #Output is in the shape of the input image (signals_shape).
-        output = tf.transpose(output, perm=[0,4,3,2,1]) #reshape the result, back to the shape of the input image.
-        return output
+        return ops.conv_3d(input, self._w)
 
     def trainable_params(self):
         return [self._w]
     
+
+class LowRankConvolutionalLayer(ConvolutionalLayer):
+        # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
+        # The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
+        # If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
+        # If 2-dim: rSubconv is the input convolved with the RC-2D filter, cSubconv with CZ-2D filter, zSubconv with ZR-2D filter. 
+
+    def __init__(self, filter_shape, init_method, rng) :
+        self._filter_shape = filter_shape # For _crop_sub_outputs_same_dims_and_concat(). Could be done differently?
+        std_init = self._get_std_init(init_method, filter_shape)
+                
+        x_subfilter_shape = [filter_shape[0]//3, filter_shape[1], filter_shape[2], 1 if self._rank == 1 else filter_shape[3], 1]
+        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=x_subfilter_shape), dtype='float32')
+        self._w_x = tf.Variable(w_init, dtype="float32", name="w_x")
+        
+        y_subfilter_shape = [filter_shape[0]//3, filter_shape[1], 1, filter_shape[3], 1 if self._rank == 1 else filter_shape[4]]
+        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=y_subfilter_shape), dtype='float32')
+        self._w_y = tf.Variable(w_init, dtype="float32", name="w_y")
+        
+        n_fms_left = filter_shape[0] - 2*(filter_shape[0]//3) # Cause of possibly inexact integer division.
+        z_subfilter_shape = [n_fms_left, filter_shape[1], 1 if self._rank == 1 else filter_shape[2], 1, filter_shape[4]]
+        w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=z_subfilter_shape), dtype='float32')
+        self._w_z = tf.Variable(w_init, dtype="float32", name="w_z")
+
+    def trainable_params(self):
+        return [self._w_x, self._w_y, self._w_z] # Note: these tensors have different shapes! Treat carefully.
+    
+    def apply(self, input):
+        out_x = ops.conv_3d(input, self._w_x)
+        out_y = ops.conv_3d(input, self._w_y)
+        out_z = ops.conv_3d(input, self._w_z)
+        # concatenate together.
+        out = self._crop_sub_outputs_same_dims_and_concat(out_x, out_y, out_z)
+        return out
+        
+    def _crop_sub_outputs_same_dims_and_concat(self, tens_x, tens_y, tens_z):
+        assert (tens_x.shape[0] == tens_y.shape[0]) and (tens_y.shape[0] == tens_z.shape[0]) # batch-size
+        conv_tens_shape = [tens_x.shape[0],
+                           tens_x.shape[1] + tens_y.shape[1] + tens_z.shape[1],
+                           tens_x.shape[2],
+                           tens_y.shape[3],
+                           tens_z.shape[4]
+                           ]
+        x_crop_slice = slice( (self._filter_shape[2]-1)//2, (self._filter_shape[2]-1)//2 + conv_tens_shape[2] )
+        y_crop_slice = slice( (self._filter_shape[3]-1)//2, (self._filter_shape[3]-1)//2 + conv_tens_shape[3] )
+        z_crop_slice = slice( (self._filter_shape[4]-1)//2, (self._filter_shape[4]-1)//2 + conv_tens_shape[4] )
+        tens_x_crop = tens_x[:,:, :, y_crop_slice if self._rank == 1 else slice(0, MAX_INT), z_crop_slice  ]
+        tens_y_crop = tens_y[:,:, x_crop_slice, :, z_crop_slice if self._rank == 1 else slice(0, MAX_INT) ]
+        tens_z_crop = tens_z[:,:, x_crop_slice if self._rank == 1 else slice(0, MAX_INT), y_crop_slice, : ]
+        conc_tens = tf.concat([tens_x_crop, tens_y_crop, tens_z_crop], axis=1) #concatenate the FMs
+        return conc_tens
+    
+
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):
         self._keep_prob = 1 - dropout_rate
@@ -347,19 +389,8 @@ class ConvBlock(Block):
             
         return (inputToConvTrain, inputToConvVal, inputToConvTest)
         
-    def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
-                                        inputToConvTrain, inputToConvVal, inputToConvTest):
-        #-----------------------------------------------
-        #------------------ Convolution ----------------
-        #-----------------------------------------------
-        conv_l = ConvolutionalLayer(filterShape, convWInitMethod, rng)
-        out_train = conv_l.apply(inputToConvTrain)
-        out_val = conv_l.apply(inputToConvVal)
-        out_test = conv_l.apply(inputToConvTest)
-        self._params = conv_l.trainable_params() + self._params
-        self._params_for_L1_L2_reg = self._params_for_L1_L2_reg + conv_l.trainable_params()
-        
-        return (out_train, out_val, out_test)
+    def _createConvLayer(self, filter_shape, init_method, rng):
+        return ConvolutionalLayer(filter_shape, init_method, rng)
     
     # The main function that builds this.
     def makeLayer(self,
@@ -402,10 +433,17 @@ class ConvBlock(Block):
                                                                                         activationFunc,
                                                                                         dropoutRate)
         
-        tupleWithOuputsTrValTest = self._createWeightsTensorAndConvolve(rng, filterShape, convWInitMethod, 
-                                                                        inputToConvTrain, inputToConvVal, inputToConvTest)
+        conv_l = self._createConvLayer(filterShape, convWInitMethod, rng)
+        out_train = conv_l.apply(inputToConvTrain)
+        out_val = conv_l.apply(inputToConvVal)
+        out_test = conv_l.apply(inputToConvTest)
+        self._params = conv_l.trainable_params() + self._params
+        self._params_for_L1_L2_reg = self._params_for_L1_L2_reg + conv_l.trainable_params()
         
-        self._setBlocksOutputAttributes(*tupleWithOuputsTrValTest)
+        self._setBlocksOutputAttributes(out_train, out_val, out_test)
+        
+        return (out_train, out_val, out_test)
+    
         
     # Override parent's abstract classes.
     def _get_L1_cost(self) : #Called for L1 weigths regularisation
@@ -425,91 +463,13 @@ class ConvBlock(Block):
 class LowRankConvBlock(ConvBlock):
     def __init__(self, rank=2) :
         ConvBlock.__init__(self)
-        
-        self._WperSubconv = None # List of ._W tensors. One per low-rank subconv. Treat carefully. 
-        del(self._W) # The ._W of the Block parent is not used.
         self._rank = rank # 1 or 2 dimensions
+            
+    # Overload the ConvBlock's function. Called from makeLayer. The only different behaviour.        
+    def _createConvLayer(self, filter_shape, init_method, rng):
+        return LowRankConvolutionalLayer(filter_shape, init_method, rng)
         
-    def _cropSubconvOutputsToSameDimsAndConcatenateFms( self,
-                                                        rSubconvOutput,
-                                                        cSubconvOutput,
-                                                        zSubconvOutput,
-                                                        filterShape) :
-        assert (rSubconvOutput.shape[0] == cSubconvOutput.shape[0]) and (cSubconvOutput.shape[0] == zSubconvOutput.shape[0]) # same batch size.
-        
-        concatOutputShape = [rSubconvOutput.shape[0],
-                             rSubconvOutput.shape[1] + cSubconvOutput.shape[1] + zSubconvOutput.shape[1],
-                             rSubconvOutput.shape[2],
-                             cSubconvOutput.shape[3],
-                             zSubconvOutput.shape[4]
-                            ]
-        rCropSlice = slice( (filterShape[2]-1)//2, (filterShape[2]-1)//2 + concatOutputShape[2] )
-        cCropSlice = slice( (filterShape[3]-1)//2, (filterShape[3]-1)//2 + concatOutputShape[3] )
-        zCropSlice = slice( (filterShape[4]-1)//2, (filterShape[4]-1)//2 + concatOutputShape[4] )
-        rSubconvOutputCropped = rSubconvOutput[:,:, :, cCropSlice if self._rank == 1 else slice(0, MAX_INT), zCropSlice  ]
-        cSubconvOutputCropped = cSubconvOutput[:,:, rCropSlice, :, zCropSlice if self._rank == 1 else slice(0, MAX_INT) ]
-        zSubconvOutputCropped = zSubconvOutput[:,:, rCropSlice if self._rank == 1 else slice(0, MAX_INT), cCropSlice, : ]
-        concatSubconvOutputs = tf.concat([rSubconvOutputCropped, cSubconvOutputCropped, zSubconvOutputCropped], axis=1) #concatenate the FMs
-        
-        return concatSubconvOutputs
-    
-    # Overload the ConvBlock's function. Called from makeLayer. The only different behaviour, because BN, ActivationFunc, DropOut and Pooling are done on a per-FM fashion.        
-    def _createWeightsTensorAndConvolve(self, rng, filterShape, convWInitMethod, 
-                                        inputToConvTrain, inputToConvVal, inputToConvTest) :
-        # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
-        # The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
-        # If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
-        # If 2-dim: rSubconv is the input convolved with the RC-2D filter, cSubconv with CZ-2D filter, zSubconv with ZR-2D filter. 
-        
-        #----- Initialise the weights and Convolve for 3 separate, low rank filters, R,C,Z. -----
-        # W shape: [#FMs of this layer, #FMs of Input, rKernDim, cKernDim, zKernDim]
-        
-        rSubconvFilterShape = [ filterShape[0]//3, filterShape[1], filterShape[2], 1 if self._rank == 1 else filterShape[3], 1 ]
-        rSubconvW = createAndInitializeWeightsTensor(rSubconvFilterShape, convWInitMethod, rng)
-        rSubconvTupleWithOuputs = convolveWithGivenWeightMatrix(rSubconvW, inputToConvTrain, inputToConvVal, inputToConvTest)
-        
-        cSubconvFilterShape = [ filterShape[0]//3, filterShape[1], 1, filterShape[3], 1 if self._rank == 1 else filterShape[4] ]
-        cSubconvW = createAndInitializeWeightsTensor(cSubconvFilterShape, convWInitMethod, rng)
-        cSubconvTupleWithOuputs = convolveWithGivenWeightMatrix(cSubconvW, inputToConvTrain, inputToConvVal, inputToConvTest)
-        
-        numberOfFmsForTotalToBeExact = filterShape[0] - 2*(filterShape[0]//3) # Cause of possibly inexact integer division.
-        zSubconvFilterShape = [ numberOfFmsForTotalToBeExact, filterShape[1], 1 if self._rank == 1 else filterShape[2], 1, filterShape[4] ]
-        zSubconvW = createAndInitializeWeightsTensor(zSubconvFilterShape, convWInitMethod, rng)
-        zSubconvTupleWithOuputs = convolveWithGivenWeightMatrix(zSubconvW, inputToConvTrain, inputToConvVal, inputToConvTest)
-        
-        # Set the W attribute and trainable parameters.
-        self._WperSubconv = [rSubconvW, cSubconvW, zSubconvW] # Bear in mind that these sub tensors have different shapes! Treat carefully.
-        self._params = self._WperSubconv + self._params
-        
-        # concatenate together.
-        concatSubconvOutputsTrain = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[0],
-                                                                                        cSubconvTupleWithOuputs[0],
-                                                                                        zSubconvTupleWithOuputs[0],
-                                                                                        filterShape)
-        concatSubconvOutputsVal = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[1],
-                                                                                      cSubconvTupleWithOuputs[1],
-                                                                                      zSubconvTupleWithOuputs[1],
-                                                                                      filterShape)
-        concatSubconvOutputsTest = self._cropSubconvOutputsToSameDimsAndConcatenateFms(rSubconvTupleWithOuputs[2],
-                                                                                       cSubconvTupleWithOuputs[2],
-                                                                                       zSubconvTupleWithOuputs[2],
-                                                                                       filterShape)
-        
-        return (concatSubconvOutputsTrain, concatSubconvOutputsVal, concatSubconvOutputsTest)
-        
-        
-    # Implement parent's abstract classes.
-    def _get_L1_cost(self) : #Called for L1 weigths regularisation
-        l1Cost = 0
-        for wOfSubconv in self._WperSubconv : l1Cost += tf.reduce_sum(tf.abs(wOfSubconv))
-        return l1Cost
-    def _get_L2_cost(self) : #Called for L2 weigths regularisation
-        l2Cost = 0
-        for wOfSubconv in self._WperSubconv : l2Cost += tf.reduce_sum(wOfSubconv ** 2)
-        return l2Cost
-    def getW(self):
-        print("ERROR: For LowRankConvBlock, the ._W is not used! Use ._WperSubconv instead and treat carefully!! Exiting!"); exit(1)
-        
+            
         
 class TargetLayer(Block):
     # Mother class of all layers the output of which will be "trained".
