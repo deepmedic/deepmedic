@@ -122,33 +122,33 @@ class Cnn3d(object):
     # so that I can compute the rolling average for inference.
     def update_arrays_of_bn_moving_avg(self, sessionTf):
         for pathway in self.pathways :
-            for layer in pathway.getLayers() :
-                layer.update_arrays_of_bn_moving_avg(sessionTf)  # Will do nothing if no BN.
+            for block in pathway.get_blocks() :
+                block.update_arrays_of_bn_moving_avg(sessionTf)  # Will do nothing if no BN.
                     
     def _get_update_ops_for_bn_moving_avg(self) :
         # These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
         # ... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
         updatesForBnRollingAverage = []
         for pathway in self.pathways :
-            for layer in pathway.getLayers() :
-                updatesForBnRollingAverage.extend(layer.get_update_ops_for_bn_moving_avg())
+            for block in pathway.get_blocks() :
+                updatesForBnRollingAverage.extend(block.get_update_ops_for_bn_moving_avg())
         return updatesForBnRollingAverage
     
     def get_trainable_params(self, log, indicesOfLayersPerPathwayTypeToFreeze):
         # Called from Trainer.
         paramsToOptDuringTraining = []  # Ws and Bs
         for pathway in self.pathways :
-            for layer_i in range(0, len(pathway.getLayers())) :
-                if layer_i not in indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
-                    paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(layer_i).trainable_params()
+            for block_i in range(len(pathway.get_blocks())) :
+                if block_i not in indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
+                    paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(block_i).trainable_params()
                 else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
-                    log.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(layer_i)+"] will NOT be trained as specified (index, first layer is 0).")
+                    log.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(block_i)+"] will NOT be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
     
     def params_for_L1_L2_reg(self):
         total_params = []
         for pathway in self.pathways:
-            for block in pathway.getLayers():
+            for block in pathway.get_blocks():
                 total_params += block.params_for_L1_L2_reg()
         return total_params
     
@@ -210,11 +210,11 @@ class Cnn3d(object):
             for pathway in self.pathways :
                 indicesOfFmsToVisualisePerLayerOfCertainPathway = indices_fms_per_pathtype_per_layer_to_save[ pathway.pType() ]
                 if indicesOfFmsToVisualisePerLayerOfCertainPathway != [] :
-                    layers = pathway.getLayers()
-                    for layer_i in range(len(layers)) :  # each layer that this pathway/fc has.
-                        indicesOfFmsToExtractFromThisLayer = indicesOfFmsToVisualisePerLayerOfCertainPathway[layer_i]
+                    blocks = pathway.get_blocks()
+                    for block_i in range(len(blocks)) :  # each layer that this pathway/fc has.
+                        indicesOfFmsToExtractFromThisLayer = indicesOfFmsToVisualisePerLayerOfCertainPathway[block_i]
                         if len(indicesOfFmsToExtractFromThisLayer) > 0: #if no FMs are to be taken, this should be []
-                            listToReturnWithAllTheFmActivationsPerLayer.append( layers[layer_i].fmsActivations(indicesOfFmsToExtractFromThisLayer) )
+                            listToReturnWithAllTheFmActivationsPerLayer.append( blocks[block_i].fmsActivations(indicesOfFmsToExtractFromThisLayer) )
         
         log.print3("...Collecting ops and feeds for testing...")
         

@@ -29,7 +29,7 @@ def calc_num_fms_to_save(cnn_pathways, fm_idxs):
     for pathway in cnn_pathways:
         fm_idxs_pathway = fm_idxs[pathway.pType()]
         if fm_idxs_pathway:
-            for layer_i in range(len(pathway.getLayers())):
+            for layer_i in range(len(pathway.get_blocks())):
                 fm_idxs_layer_pathway = fm_idxs_pathway[layer_i]
                 if fm_idxs_layer_pathway:
                     # If the user specifies to grab more feature maps than exist (eg 9999),
@@ -95,7 +95,7 @@ def stitch_predicted_to_fms(array_fms_to_save, idx_next_tile_in_fm_vols,
     layer_idx = 0
 
     for pathway in cnn_pathways:
-        for layer_i in range(len(pathway.getLayers())):
+        for layer_i in range(len(pathway.get_blocks())):
             if idxs_fms_to_save[pathway.pType()] == [] or idxs_fms_to_save[pathway.pType()][layer_i] == []:
                 continue
             fms_to_extract_idxs = idxs_fms_to_save[pathway.pType()][layer_i]
@@ -375,7 +375,7 @@ def save_fms_individual(save_flag, multidim_fm_array, cnn_pathways, fm_idxs, fms
         pathway = cnn_pathways[pathway_i]
         fms_idx_pathway = fm_idxs[pathway.pType()]
         if fms_idx_pathway:
-            for layer_i in range(len(pathway.getLayers())):
+            for layer_i in range(len(pathway.get_blocks())):
                 fms_idx_layer_pathway = fms_idx_pathway[layer_i]
                 if fms_idx_layer_pathway:
                     for fmActualNumber in range(fms_idx_layer_pathway[0], fms_idx_layer_pathway[1]):

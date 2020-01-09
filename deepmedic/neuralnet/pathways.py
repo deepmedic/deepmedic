@@ -131,7 +131,7 @@ class Pathway(object):
         self._input = {"train": None, "val": None, "test": None}
         
         # === Basic architecture parameters === 
-        self._layersInPathway = []
+        self._blocks_in_pathway = []
         self._subsFactor = [1,1,1]
         self._recField = None # At the end of pathway
         
@@ -184,10 +184,10 @@ class Pathway(object):
                             ", (Val) " + str(inputToNextLayerVal.shape) + ", (Test) " + str(inputToNextLayerTest.shape))
             
             if layer_i in indicesOfLowerRankLayersForPathway :
-                layer = LowRankConvBlock(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
-            else : # normal conv layer
-                layer = ConvBlock()
-            layer.makeLayer(rng,
+                block = LowRankConvBlock(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
+            else : # normal conv block
+                block = ConvBlock()
+            block.makeLayer(rng,
                             inputToLayerTrain=inputToNextLayerTrain,
                             inputToLayerVal=inputToNextLayerVal,
                             inputToLayerTest=inputToNextLayerTest,
@@ -200,23 +200,23 @@ class Pathway(object):
                             activationFunc=thisLayerActivFunc,
                             dropoutRate=thisLayerDropoutRate
                             ) 
-            self._layersInPathway.append(layer)
+            self._blocks_in_pathway.append(block)
             
             if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here
-                inputToNextLayerTrain = layer.output["train"]
-                inputToNextLayerVal = layer.output["val"]
-                inputToNextLayerTest = layer.output["test"]
+                inputToNextLayerTrain = block.output["train"]
+                inputToNextLayerVal = block.output["val"]
+                inputToNextLayerTest = block.output["test"]
             else : #make residual connection
-                log.print3("\t[Pathway_"+str(self.getStringType())+"]: making Residual Connection between output of [Layer_"+str(layer_i)+"] to input of previous layer.")
-                assert layer_i > 0 # The very first layer (index 0), should never be provided for now. Cause I am connecting 2 layers back.
-                earlierLayer = self._layersInPathway[layer_i-1]
+                log.print3("\t[Pathway_"+str(self.getStringType())+"]: making Residual Connection between output of [Layer_"+str(layer_i)+"] to input of previous block.")
+                assert layer_i > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
+                earlier_block = self._blocks_in_pathway[layer_i-1]
                 
-                inputToNextLayerTrain = makeResidualConnection(log, layer.output["train"], earlierLayer.input["train"])
-                inputToNextLayerVal = makeResidualConnection(log, layer.output["val"], earlierLayer.input["val"])
-                inputToNextLayerTest = makeResidualConnection(log, layer.output["test"], earlierLayer.input["test"])
-                layer.outputAfterResidualConnIfAnyAtOutp["train"] = inputToNextLayerTrain
-                layer.outputAfterResidualConnIfAnyAtOutp["val"] = inputToNextLayerVal
-                layer.outputAfterResidualConnIfAnyAtOutp["test"] = inputToNextLayerTest
+                inputToNextLayerTrain = makeResidualConnection(log, block.output["train"], earlier_block.input["train"])
+                inputToNextLayerVal = makeResidualConnection(log, block.output["val"], earlier_block.input["val"])
+                inputToNextLayerTest = makeResidualConnection(log, block.output["test"], earlier_block.input["test"])
+                block.outputAfterResidualConnIfAnyAtOutp["train"] = inputToNextLayerTrain
+                block.outputAfterResidualConnIfAnyAtOutp["val"] = inputToNextLayerVal
+                block.outputAfterResidualConnIfAnyAtOutp["test"] = inputToNextLayerTest
         
         self._setOutputAttributes(inputToNextLayerTrain, inputToNextLayerVal, inputToNextLayerTest)
         
@@ -226,7 +226,7 @@ class Pathway(object):
         log.print3("[Pathway_" + str(self.getStringType()) + "] done.")
         
         
-    # The below should be updated, and calculated in here properly with private function and per layer.
+    # The below should be updated, and calculated in here properly with private function and per block.
     def calcRecFieldOfPathway(self, kernelDimsPerLayer) :
         return calcRecFieldFromKernDimListPerLayerWhenStrides1(kernelDimsPerLayer)
         
@@ -253,10 +253,10 @@ class Pathway(object):
         return self._pName
     def pType(self):
         return self._pType
-    def getLayers(self):
-        return self._layersInPathway
+    def get_blocks(self):
+        return self._blocks_in_pathway
     def getLayer(self, index):
-        return self._layersInPathway[index]
+        return self._blocks_in_pathway[index]
     def subsFactor(self):
         return self._subsFactor
     def getOutput(self):
