@@ -120,8 +120,8 @@ class Trainer(object):
             log.print3("COST: Using dsc loss with weight: " +str(self._losses_and_weights["dsc"]))
             cost += self._losses_and_weights["dsc"] * cfs.dsc( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
             
-        cost_L1_reg = self._L1_reg_weight * self._net._get_L1_cost()
-        cost_L2_reg = self._L2_reg_weight * self._net._get_L2_cost()        
+        cost_L1_reg = self._L1_reg_weight * cfs.cost_L1(self._net.params_for_L1_L2_reg())
+        cost_L2_reg = self._L2_reg_weight * cfs.cost_L2(self._net.params_for_L1_L2_reg())
         cost = cost + cost_L1_reg + cost_L2_reg
         
         self._total_cost = cost

@@ -55,5 +55,18 @@ def dsc(p_y_given_x_train, y_gt, eps=1e-5):
     cost = 1. - av_class_dsc
     return cost
 
+def cost_L1(prms):
+    # prms: list of tensors
+    cost = 0
+    for prm in prms:
+        cost += tf.reduce_sum(tf.abs(prm))
+    return cost
 
+def cost_L2(prms) : #Called for L2 weigths regularisation
+    # prms: list of tensors
+    cost = 0
+    for prm in prms:
+        cost += tf.reduce_sum(prm ** 2)
+    return cost
+    
 

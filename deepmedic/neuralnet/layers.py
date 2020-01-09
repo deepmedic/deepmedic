@@ -24,9 +24,8 @@ except ImportError:
 #################################################################
 #                         Layer Types                           #
 #################################################################
-# Inheritance:
-# Block -> ConvBlock -> LowRankConvBlock
-#                L-----> ConvBlockWithSoftmax
+# >> Any operation that has "trainable" parameters is a layer. 
+#
 
 class Layer(object):
     def apply(self, input):
@@ -34,6 +33,26 @@ class Layer(object):
         raise NotImplementedError()
     def trainable_params(self):
         raise NotImplementedError()
+    def params_for_L1_L2_reg(self):
+        return []
+    
+class PoolingLayer(Layer):
+    def __init__(self, window_size, strides, mirror_pad, mode):
+        # window_size: [wx, wy, wz]
+        # strides: [sx, sy, sz]
+        # mode: 'MAX' or 'AVG'
+        # mirror_pad: [mirrorPad-x,-y,-z]
+        self._window_size = window_size
+        self._strides = strides
+        self._mirror_pad = mirror_pad
+        self._mode = mode
+        
+    def apply(self, input):
+        # input dimensions: (batch, fms, r, c, z)
+        return ops.pool3dMirrorPad(input, self._window_size, self._strides, self._mirror_pad, self._mode)
+    
+    def trainable_params(self):
+        return []
     
 class ConvolutionalLayer(Layer):
     def __init__(self, filter_shape, init_method, rng) :
@@ -56,7 +75,9 @@ class ConvolutionalLayer(Layer):
     def trainable_params(self):
         return [self._w]
     
-
+    def params_for_L1_L2_reg(self):
+        return self.trainable_params()
+    
 class LowRankConvolutionalLayer(ConvolutionalLayer):
         # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
         # The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
@@ -82,6 +103,9 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
 
     def trainable_params(self):
         return [self._w_x, self._w_y, self._w_z] # Note: these tensors have different shapes! Treat carefully.
+    
+    def params_for_L1_L2_reg(self):
+        return self.trainable_params()
     
     def apply(self, input):
         out_x = ops.conv_3d(input, self._w_x)

@@ -23,6 +23,9 @@ except ImportError:
 #################################################################
 #                         Block Types                           #
 #################################################################
+# Blocks are sequences of layers.
+# Blocks dont create new trainable parameters.
+# Anything that adds new trainable parameters is a layer, added to the block/sequence.
 # Inheritance:
 # Block -> ConvBlock -> LowRankConvBlock
 #                L-----> ConvBlockWithSoftmax
@@ -37,17 +40,10 @@ class Block(object):
         
         # === Basic architecture parameters === 
         self._numberOfFeatureMaps = None
-        self._poolingParameters = None
         
-        #=== All Trainable Parameters of the Block ===
+        #=== All layers that the block applies ===
+        self._layers = []
         self._bn_l = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
-        
-        # All trainable parameters
-        # NOTE: VIOLATED _HIDDEN ENCAPSULATION BY THE FUNCTION THAT TRANSFERS PRETRAINED WEIGHTS deepmed.neuralnet.transferParameters.transferParametersBetweenLayers.
-        # TEMPORARY TILL THE API GETS FIXED (AFTER DA)!
-        self._params = [] # W, (gbn), b, (aPrelu)
-        self._params_for_L1_L2_reg = []
-        # self._W = None # Careful. LowRank does not set this. Uses ._WperSubconv
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
@@ -62,12 +58,7 @@ class Block(object):
         self.input["train"] = inputToLayerTrain
         self.input["val"] = inputToLayerVal
         self.input["test"] = inputToLayerTest
-        
-    def _setBlocksArchitectureAttributes(self, filterShape, poolingParameters) :
-        self._numberOfFeatureMaps = filterShape[0] # Of the output! Used in trainValidationVisualise.py. Not of the input!
-        assert self.input["train"].shape[1] == filterShape[1]
-        self._poolingParameters = poolingParameters
-        
+            
     def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest) :
         self.output["train"] = outputTrain
         self.output["val"] = outputVal
@@ -85,17 +76,22 @@ class Block(object):
         return self._numberOfFeatureMaps
     def fmsActivations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
         return self.output["test"][:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
-    
+        
     # Other API
-    def _get_L1_cost(self) : #Called for L1 weigths regularisation
-        raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
-    def _get_L2_cost(self) : #Called for L2 weigths regularisation
-        raise NotImplementedMethod()
-    
     def trainable_params(self):
-        total_params = self._params # list
+        total_params = []
+        for layer in self._layers:
+            total_params += layer.trainable_params() # concat lists
         for block in self._target_blocks:
             total_params += block.trainable_params() # concat lists
+        return total_params
+    
+    def params_for_L1_L2_reg(self):
+        total_params = []
+        for layer in self._layers:
+            total_params += layer.params_for_L1_L2_reg()
+        for block in self._target_blocks:
+            total_params += block.params_for_L1_L2_reg()
         return total_params
     
     def update_arrays_of_bn_moving_avg(self, sessionTf):
@@ -121,7 +117,8 @@ class ConvBlock(Block):
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc,
-                dropoutRate) :
+                dropoutRate,
+                pool_prms) :
         # ---------------- Order of what is applied -----------------
         #  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ] # ala He et al "Identity Mappings in Deep Residual Networks" 2016
         # -----------------------------------------------------------
@@ -131,8 +128,7 @@ class ConvBlock(Block):
         #---------------------------------------------------------
         if useBnFlag and movingAvForBnOverXBatches > 0 :
             self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=inputToLayerTrain.shape[1])            
-            self._params = self._params + self._bn_l.trainable_params()
-            
+            self._layers.append(self._bn_l)
             inputToNonLinearityTrain = self._bn_l.apply(inputToLayerTrain, mode="train")
             inputToNonLinearityVal = self._bn_l.apply(inputToLayerVal, mode="infer")
             inputToNonLinearityTest = self._bn_l.apply(inputToLayerTest, mode="infer")
@@ -140,11 +136,10 @@ class ConvBlock(Block):
         else : #Not using batch normalization
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
             bias_l = dm_layers.BiasLayer(inputToLayerTrain.shape[1])
+            self._layers.append(bias_l)
             inputToNonLinearityTrain = bias_l.apply(inputToLayerTrain)
             inputToNonLinearityVal = bias_l.apply(inputToLayerVal)
             inputToNonLinearityTest = bias_l.apply(inputToLayerTest)
-            self._params = self._params + bias_l.trainable_params()
-            
             
         #--------------------------------------------------------
         #------------ Apply Activation/ non-linearity -----------
@@ -160,32 +155,34 @@ class ConvBlock(Block):
             act_l = dm_layers.EluLayer()
         elif activationFunc == "selu" :
             act_l = dm_layers.SeluLayer()
+        self._layers.append(act_l)
         inputToDropoutTrain = act_l.apply(inputToNonLinearityTrain)
         inputToDropoutVal = act_l.apply(inputToNonLinearityVal)
         inputToDropoutTest = act_l.apply(inputToNonLinearityTest)
-        self._params = self._params + act_l.trainable_params()
         
         #------------------------------------
         #------------- Dropout --------------
         #------------------------------------
         dropout_l = dm_layers.DropoutLayer(dropoutRate, rng)
+        self._layers.append(dropout_l)
         inputToPoolTrain = dropout_l.apply(inputToDropoutTrain, mode="train")
         inputToPoolVal = dropout_l.apply(inputToDropoutVal, mode="infer")
         inputToPoolTest = dropout_l.apply(inputToDropoutTest, mode="infer")
-        self._params = self._params + dropout_l.trainable_params()
         
         #-------------------------------------------------------
         #-----------  Pooling ----------------------------------
         #-------------------------------------------------------
-        if self._poolingParameters == [] : #no max pooling before this conv
+        if pool_prms == [] : #no max pooling before this conv
             inputToConvTrain = inputToPoolTrain
             inputToConvVal = inputToPoolVal
             inputToConvTest = inputToPoolTest
         else : #Max pooling is actually happening here...
-            inputToConvTrain = ops.pool3dMirrorPad(inputToPoolTrain, self._poolingParameters)
-            inputToConvVal = ops.pool3dMirrorPad(inputToPoolVal, self._poolingParameters)
-            inputToConvTest = ops.pool3dMirrorPad(inputToPoolTest, self._poolingParameters)
-            
+            pooling_l = PoolingLayer(pool_prms[0], pool_prms[1], pool_prms[2], pool_prms[3])
+            self._layers.append(pooling_l)
+            inputToConvTrain = pooling_l.apply(inputToPoolTrain)
+            inputToConvVal = pooling_l.apply(inputToPoolVal)
+            inputToConvTest = pooling_l.apply(inputToPoolTest)
+        
         return (inputToConvTrain, inputToConvVal, inputToConvTest)
         
     def _createConvLayer(self, filter_shape, init_method, rng):
@@ -220,7 +217,7 @@ class ConvBlock(Block):
                             image height, image width, filter depth)
         """
         self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
-        self._setBlocksArchitectureAttributes(filterShape, poolingParameters)
+        self._numberOfFeatureMaps = filterShape[0]
         
         # Apply all the straightforward operations on the input, such as BN, activation function, dropout, pooling        
         (inputToConvTrain, inputToConvVal, inputToConvTest) = self._processInputWithBnNonLinearityDropoutPooling( rng,
@@ -230,32 +227,18 @@ class ConvBlock(Block):
                                                                                         useBnFlag,
                                                                                         movingAvForBnOverXBatches,
                                                                                         activationFunc,
-                                                                                        dropoutRate)
+                                                                                        dropoutRate,
+                                                                                        poolingParameters)
         
         conv_l = self._createConvLayer(filterShape, convWInitMethod, rng)
+        self._layers.append(conv_l)
         out_train = conv_l.apply(inputToConvTrain)
         out_val = conv_l.apply(inputToConvVal)
         out_test = conv_l.apply(inputToConvTest)
-        self._params = conv_l.trainable_params() + self._params
-        self._params_for_L1_L2_reg = self._params_for_L1_L2_reg + conv_l.trainable_params()
         
         self._setBlocksOutputAttributes(out_train, out_val, out_test)
         
         return (out_train, out_val, out_test)
-    
-        
-    # Override parent's abstract classes.
-    def _get_L1_cost(self) : #Called for L1 weigths regularisation
-        cost = 0
-        for prm in self._params_for_L1_L2_reg:
-            cost += tf.reduce_sum(tf.abs(prm))
-        return cost
-    
-    def _get_L2_cost(self) : #Called for L2 weigths regularisation
-        cost = 0
-        for prm in self._params_for_L1_L2_reg:
-            cost += tf.reduce_sum(prm ** 2)
-        return cost
     
     
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
@@ -292,10 +275,10 @@ class SoftmaxBlock(Block):
         # and this self._bClassLayer that is added only to this final output before the softmax.
         
         bias_l = dm_layers.BiasLayer(self.input["train"].shape[1])
+        self._layers.append(bias_l)
         logits_train = bias_l.apply(self.input["train"])
         logits_val = bias_l.apply(self.input["val"])
         logits_test = bias_l.apply(self.input["test"])
-        self._params = self._params + bias_l.trainable_params()
         
         # ============ Softmax ==============
         self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)

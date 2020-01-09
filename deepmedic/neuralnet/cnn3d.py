@@ -16,6 +16,7 @@ import tensorflow as tf
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
+from deepmedic.neuralnet.cost_functions import cost_L1, cost_L2
 
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
@@ -145,19 +146,12 @@ class Cnn3d(object):
                     log.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(layer_i)+"] will NOT be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
     
-    def _get_L1_cost(self) :
-        L1 = 0
-        for pathway in self.pathways :
-            for layer in pathway.getLayers() :
-                L1 += layer._get_L1_cost()
-        return L1
-    
-    def _get_L2_cost(self) :
-        L2_sqr = 0
-        for pathway in self.pathways :
-            for layer in pathway.getLayers() :    
-                L2_sqr += layer._get_L2_cost()
-        return L2_sqr
+    def params_for_L1_L2_reg(self):
+        total_params = []
+        for pathway in self.pathways:
+            for block in pathway.getLayers():
+                total_params += block.params_for_L1_L2_reg()
+        return total_params
     
     def get_main_ops(self, str_train_val_test):
      # str_train_val_test: "train", "val" or "test"

@@ -67,29 +67,26 @@ def selu(input):
 # Currently only used for pooling3d
 def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
     image3dBC012WithMirrorPad = image3dBC012
-    for time_i in range(0, mirrorFinalBordersForThatMuch[0]) :
+    for time_i in range(0, mirrorFinalBordersForThatMuch[0]):
         image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,-1:,:,:] ], axis=2)
-    for time_i in range(0, mirrorFinalBordersForThatMuch[1]) :
+    for time_i in range(0, mirrorFinalBordersForThatMuch[1]):
         image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,-1:,:] ], axis=3)
-    for time_i in range(0, mirrorFinalBordersForThatMuch[2]) :
+    for time_i in range(0, mirrorFinalBordersForThatMuch[2]):
         image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,:,-1:] ], axis=4)
     return image3dBC012WithMirrorPad
 
 
-def pool3dMirrorPad(image3dBC012, poolParams) :
+def pool3dMirrorPad(image3dBC012, window_size, strides, mirror_pad, mode) :
     # image3dBC012 dimensions: (batch, fms, r, c, z)
     # poolParams: [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode]
-    ws = poolParams[0] # window size
-    stride = poolParams[1] # stride
-    mode1 = poolParams[3] # MAX or AVG
-    
-    image3dBC012WithMirrorPad = mirrorFinalBordersOfImage(image3dBC012, poolParams[2])
-    
-    pooled_out = tf.nn.pool( input = tf.transpose(image3dBC012WithMirrorPad, perm=[0,4,3,2,1]),
-                            window_shape=ws,
-                            strides=stride,
+    # mode: 'Max' or 'AVG'
+    image3dBC012WithMirrorPad = mirrorFinalBordersOfImage(image3dBC012, mirror_pad)
+    inp_resh = tf.transpose(image3dBC012WithMirrorPad, perm=[0,4,3,2,1]) # Channels last.
+    pooled_out = tf.nn.pool(input = inp_resh,
+                            window_shape=window_size,
+                            strides=strides,
                             padding="VALID", # SAME or VALID
-                            pooling_type=mode1,
+                            pooling_type=mode,
                             data_format="NDHWC") # AVG or MAX
     pooled_out = tf.transpose(pooled_out, perm=[0,4,3,2,1])
     
