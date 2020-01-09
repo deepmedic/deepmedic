@@ -13,13 +13,6 @@ import tensorflow as tf
 
 import deepmedic.neuralnet.layers as dm_layers
 
-try:
-    from sys import maxint as MAX_INT
-except ImportError:
-    # python3 compatibility
-    from sys import maxsize as MAX_INT
-    
-    
 #################################################################
 #                         Block Types                           #
 #################################################################
