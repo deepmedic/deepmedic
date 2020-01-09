@@ -16,7 +16,6 @@ import tensorflow as tf
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
-from deepmedic.neuralnet.cost_functions import cost_L1, cost_L2
 
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
