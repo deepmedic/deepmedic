@@ -501,6 +501,7 @@ class Cnn3d(object):
         
         self.finalTargetLayer = SoftmaxBlock()
         self.finalTargetLayer.makeLayer(rng, self.getFcPathway().getLayer(-1), softmaxTemperature)
+        self.finalTargetLayer.TEMPORARY_RUN()
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
     

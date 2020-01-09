@@ -112,13 +112,13 @@ class Trainer(object):
         if "xentr" in self._losses_and_weights and self._losses_and_weights["xentr"] is not None:
             log.print3("COST: Using cross entropy with weight: " +str(self._losses_and_weights["xentr"]))
             w_per_cl_vec = self._compute_w_per_class_vector_for_xentr( self._net.num_classes, y_gt )
-            cost += self._losses_and_weights["xentr"] * cfs.x_entr( self._net.finalTargetLayer.p_y_given_x_train, y_gt, w_per_cl_vec )
+            cost += self._losses_and_weights["xentr"] * cfs.x_entr( self._net.finalTargetLayer.output["train"], y_gt, w_per_cl_vec )
         if "iou" in self._losses_and_weights and self._losses_and_weights["iou"] is not None:
             log.print3("COST: Using iou loss with weight: " +str(self._losses_and_weights["iou"]))
-            cost += self._losses_and_weights["iou"] * cfs.iou( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
+            cost += self._losses_and_weights["iou"] * cfs.iou( self._net.finalTargetLayer.output["train"], y_gt )
         if "dsc" in self._losses_and_weights and self._losses_and_weights["dsc"] is not None:
             log.print3("COST: Using dsc loss with weight: " +str(self._losses_and_weights["dsc"]))
-            cost += self._losses_and_weights["dsc"] * cfs.dsc( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
+            cost += self._losses_and_weights["dsc"] * cfs.dsc( self._net.finalTargetLayer.output["train"], y_gt )
             
         cost_L1_reg = self._L1_reg_weight * cfs.cost_L1(self._net.params_for_L1_L2_reg())
         cost_L2_reg = self._L2_reg_weight * cfs.cost_L2(self._net.params_for_L1_L2_reg())

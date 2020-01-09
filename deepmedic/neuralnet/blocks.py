@@ -272,69 +272,46 @@ class SoftmaxBlock(Block):
         
         self._n_fms = layerConnected.get_number_fms_out()
         self._temperature = t
+        layerConnected.connect_target_block(self)
         
         self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"])
         
+        self._bias_l = dm_layers.BiasLayer(self._n_fms)
+        self._layers.append(self._bias_l)
+        
+    def apply(self, input):
         # At this last classification layer, the conv output needs to have bias added before the softmax.
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
-        # and this self._bClassLayer that is added only to this final output before the softmax.
-        
-        bias_l = dm_layers.BiasLayer(self._n_fms)
-        self._layers.append(bias_l)
-        logits_train = bias_l.apply(self.input["train"])
-        logits_val = bias_l.apply(self.input["val"])
-        logits_test = bias_l.apply(self.input["test"])
-        
-        # ============ Softmax ==============
-        self.p_y_given_x_train = tf.nn.softmax(logits_train/t, axis=1)
-        self.y_pred_train = tf.argmax(self.p_y_given_x_train, axis=1)
-        self.p_y_given_x_val = tf.nn.softmax(logits_val/t, axis=1)
-        self.y_pred_val = tf.argmax(self.p_y_given_x_val, axis=1)
-        self.p_y_given_x_test = tf.nn.softmax(logits_test/t, axis=1)
-        self.y_pred_test = tf.argmax(self.p_y_given_x_test, axis=1)
+        # and this self._bClassLayer that is added only to this final output before the softmax.       
+        logits = self._bias_l.apply(input)
+        p_y_given_x = tf.nn.softmax(logits/self._temperature, axis=1)
+        return p_y_given_x
     
-        self._setBlocksOutputAttributes(self.p_y_given_x_train, self.p_y_given_x_val, self.p_y_given_x_test)
+    def TEMPORARY_RUN(self):
+        p_y_given_x_train = self.apply(self.input["train"])
+        p_y_given_x_val = self.apply(self.input["val"])
+        p_y_given_x_test = self.apply(self.input["test"])
+            
+        self._setBlocksOutputAttributes(p_y_given_x_train, p_y_given_x_val, p_y_given_x_test)
         
-        layerConnected.connect_target_block(self)
         
-        
-    def meanErrorTraining(self, y):
-        # Returns float = number of errors / number of examples of the minibatch ; [0., 1.]
-        # param y: y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-        
-        #Mean error of the training batch.
-        tneq = tf.logical_not( tf.equal(self.y_pred_train, y) )
-        meanError = tf.reduce_mean(tneq)
-        return meanError
-    
-    def meanErrorValidation(self, y):
-        # y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-        
-        # check if y is of the correct datatype
-        if y.dtype.startswith('int'):
-            # the T.neq operator returns a vector of 0s and 1s, where 1
-            # represents a mistake in prediction
-            tneq = tf.logical_not( tf.equal(self.y_pred_val, y) )
-            meanError = tf.reduce_mean(tneq)
-            return meanError #The percentage of the predictions that is not the correct class.
-        else:
-            raise NotImplementedError("Not implemented behaviour for y.dtype different than int.")
-        
-    def getRpRnTpTnForTrain0OrVal1(self, y, training0OrValidation1):
+    def getRpRnTpTnForTrain0OrVal1(self, y_gt, training0OrValidation1):
         # The returned list has (numberOfClasses)x4 integers: >numberOfRealPositives, numberOfRealNegatives, numberOfTruePredictedPositives, numberOfTruePredictedNegatives< for each class (incl background).
         # Order in the list is the natural order of the classes (ie class-0 RP,RN,TPP,TPN, class-1 RP,RN,TPP,TPN, class-2 RP,RN,TPP,TPN ...)
-        # param y: y = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-        
-        yPredToUse = self.y_pred_train if  training0OrValidation1 == 0 else self.y_pred_val
+        # param y_gt: y_gt = T.itensor4('y'). Dimensions [batchSize, r, c, z]
+        if training0OrValidation1 == 0:
+            y_pred = tf.argmax(self.output['train'], axis=1)
+        else:
+            y_pred = tf.argmax(self.output['val'], axis=1)
         
         returnedListWithNumberOfRpRnTpTnForEachClass = []
         
         for class_i in range(0, self._n_fms) :
             #Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
-            tensorOneAtRealPos = tf.equal(y, class_i)
+            tensorOneAtRealPos = tf.equal(y_gt, class_i)
             tensorOneAtRealNeg = tf.logical_not(tensorOneAtRealPos)
 
-            tensorOneAtPredictedPos = tf.equal(yPredToUse, class_i)
+            tensorOneAtPredictedPos = tf.equal(y_pred, class_i)
             tensorOneAtPredictedNeg = tf.logical_not(tensorOneAtPredictedPos)
             tensorOneAtTruePos = tf.logical_and(tensorOneAtRealPos,tensorOneAtPredictedPos)
             tensorOneAtTrueNeg = tf.logical_and(tensorOneAtRealNeg,tensorOneAtPredictedNeg)
@@ -347,6 +324,21 @@ class SoftmaxBlock(Block):
         return returnedListWithNumberOfRpRnTpTnForEachClass
     
     def predictionProbabilities(self) :
-        return self.p_y_given_x_test
+        return self.output["test"]
 
+
+    # Not used.
+    def mean_error(self, y_pred, y_gt):
+        # Returns float = number of errors / number of examples of the minibatch ; [0., 1.]
+        # y_gt = T.itensor4('y'). Dimensions [batchSize, r, c, z]
+        
+        # check if y is of the correct datatype
+        if y_gt.dtype.startswith('int'):
+            # the T.neq operator returns a vector of 0s and 1s, where 1
+            # represents a mistake in prediction
+            tneq = tf.logical_not( tf.equal(y_pred, y_gt) )
+            meanError = tf.reduce_mean(tneq)
+            return meanError #The percentage of the predictions that is not the correct class.
+        else:
+            raise NotImplementedError("Not implemented behaviour for y_gt.dtype different than int.")
 
