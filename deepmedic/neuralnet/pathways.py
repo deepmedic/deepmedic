@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
-from deepmedic.neuralnet.layers import ConvBlock, LowRankConvBlock
+from deepmedic.neuralnet.blocks import ConvBlock, LowRankConvBlock
 
 
 #################################################################

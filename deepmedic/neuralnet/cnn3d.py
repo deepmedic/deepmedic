@@ -15,7 +15,7 @@ import tensorflow as tf
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
-from deepmedic.neuralnet.layers import SoftmaxLayer
+from deepmedic.neuralnet.blocks import SoftmaxBlock
 
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 
@@ -86,7 +86,7 @@ class Cnn3d(object):
         
         
         #======= Output tensors Y_GT ========
-        # For each targetLayer, I should be placing a y_gt placeholder/feed, by calls to finalTargetLayer.get_output_gt_tensor_feed()
+        # For each targetLayer, I should be placing a y_gt placeholder/feed.
         self._output_gt_tensor_feeds = {'train': {},
                                    'val': {} }
         
@@ -258,9 +258,6 @@ class Cnn3d(object):
             self._inp_x['val']['x_sub_'+str(subpath_i)] = givenListInputTensorPerSubsVal[subpath_i]
             self._inp_x['test']['x_sub_'+str(subpath_i)] = givenListInputTensorPerSubsTest[subpath_i]
         
-        
-    def _getClassificationLayer(self):
-        return SoftmaxLayer()
         
         
     def make_cnn_model( self,
@@ -507,13 +504,13 @@ class Cnn3d(object):
                                                                          )
         
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
-        log.print3("Adding the final Softmax Target layer...")
+        log.print3("Adding the final Softmax layer...")
         
-        self.finalTargetLayer = self._getClassificationLayer()
+        self.finalTargetLayer = SoftmaxBlock()
         self.finalTargetLayer.makeLayer(rng, self.getFcPathway().getLayer(-1), softmaxTemperature)
-        (self._output_gt_tensor_feeds['train']['y_gt'],
-         self._output_gt_tensor_feeds['val']['y_gt']) = self.finalTargetLayer.get_output_gt_tensor_feed()
-        
+        self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
+        self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
+    
         log.print3("Finished building the CNN's model.")
         
         
