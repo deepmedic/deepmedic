@@ -196,7 +196,7 @@ class Pathway(object):
                             n_fms_in=inputToNextLayerTrain.shape[1],
                             n_fms_out=numKernsPerLayer[layer_i],
                             conv_kernel_dims=kernelDimsPerLayer[layer_i],
-                            poolingParameters=thisLayerPoolingParameters,
+                            pool_prms=thisLayerPoolingParameters,
                             convWInitMethod=convWInitMethod,
                             useBnFlag = thisLayerUseBn,
                             movingAvForBnOverXBatches=movingAvForBnOverXBatches,
@@ -204,6 +204,7 @@ class Pathway(object):
                             dropoutRate=thisLayerDropoutRate
                             )
             self._blocks_in_pathway.append(block)
+            block.TEMPORARY_RUN(inputToNextLayerTrain, inputToNextLayerVal, inputToNextLayerTest)
             
             if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here
                 inputToNextLayerTrain = block.output["train"]

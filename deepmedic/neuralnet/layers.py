@@ -28,7 +28,7 @@ except ImportError:
 #
 
 class Layer(object):
-    def apply(self, input):
+    def apply(self, input, mode):
         # mode: "train" or "infer"
         raise NotImplementedError()
     def trainable_params(self):
@@ -37,7 +37,7 @@ class Layer(object):
         return []
     
 class PoolingLayer(Layer):
-    def __init__(self, window_size, strides, mirror_pad, mode):
+    def __init__(self, window_size, strides, mirror_pad, pool_mode):
         # window_size: [wx, wy, wz]
         # strides: [sx, sy, sz]
         # mode: 'MAX' or 'AVG'
@@ -45,11 +45,11 @@ class PoolingLayer(Layer):
         self._window_size = window_size
         self._strides = strides
         self._mirror_pad = mirror_pad
-        self._mode = mode
+        self._pool_mode = pool_mode
         
-    def apply(self, input):
+    def apply(self, input, _):
         # input dimensions: (batch, fms, r, c, z)
-        return ops.pool3dMirrorPad(input, self._window_size, self._strides, self._mirror_pad, self._mode)
+        return ops.pool3dMirrorPad(input, self._window_size, self._strides, self._mirror_pad, self._pool_mode)
     
     def trainable_params(self):
         return []
@@ -69,7 +69,7 @@ class ConvolutionalLayer(Layer):
             std_init = np.sqrt(var_scale/np.prod([fms_in] + conv_kernel_dims))
         return std_init
     
-    def apply(self, input):
+    def apply(self, input, mode):
         return ops.conv_3d(input, self._w)
 
     def trainable_params(self):
@@ -107,7 +107,7 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
     def params_for_L1_L2_reg(self):
         return self.trainable_params()
     
-    def apply(self, input):
+    def apply(self, input, mode):
         out_x = ops.conv_3d(input, self._w_x)
         out_y = ops.conv_3d(input, self._w_y)
         out_z = ops.conv_3d(input, self._w_z)
@@ -162,7 +162,8 @@ class BiasLayer(Layer):
     def __init__(self, n_channels):
         self._b = tf.Variable(np.zeros((n_channels), dtype = 'float32'), name="b")
         
-    def apply(self, input):
+
+    def apply(self, input, _):
         # self._b.shape[0] should already be input.shape[1] number of input channels.
         return input + tf.reshape(self._b, shape=[1,input.shape[1],1,1,1])
     
@@ -230,11 +231,24 @@ class BatchNormLayer(Layer):
             sessionTf.run( fetches=self._op_update_mtrx_bn_inf_var, feed_dict={self._tf_plchld_int32: self._idx_where_moving_avg_is} )
             self._idx_where_moving_avg_is = (self._idx_where_moving_avg_is + 1) % self._moving_avg_length
             
+
+def get_act_layer(act_str, n_fms_in):
+    if act_str == "linear" : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
+        return IdentityLayer()
+    elif act_str == "relu" :
+        return ReluLayer()
+    elif act_str == "prelu" :
+        return PreluLayer(n_fms_in)
+    elif act_str == "elu" :
+        return EluLayer()
+    elif act_str == "selu" :
+        return SeluLayer()
+
 class PreluLayer(Layer):
     def __init__(self, n_channels, alpha=0.01):
         self._a = tf.Variable(np.ones((n_channels), dtype='float32')*alpha, name="aPrelu")
 
-    def apply(self, input):
+    def apply(self, input, _):
         # input is a tensor of shape (batchSize, FMs, r, c, z)
         return ops.prelu(input, tf.reshape(self._a, shape=[1,input.shape[1],1,1,1]) )
     
@@ -242,19 +256,19 @@ class PreluLayer(Layer):
         return [self._a]
     
 class IdentityLayer(Layer):
-    def apply(self, input): return input
+    def apply(self, input, _): return input
     def trainable_params(self): return []
     
 class ReluLayer(Layer):
-    def apply(self, input): return ops.relu(input)
+    def apply(self, input, _): return ops.relu(input)
     def trainable_params(self): return []
 
 class EluLayer(Layer):
-    def apply(self, input): return ops.elu(input)
+    def apply(self, input, _): return ops.elu(input)
     def trainable_params(self): return []
     
 class SeluLayer(Layer):
-    def apply(self, input): return ops.selu(input)
+    def apply(self, input, _): return ops.selu(input)
     def trainable_params(self): return []
     
 

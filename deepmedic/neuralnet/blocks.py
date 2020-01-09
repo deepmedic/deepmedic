@@ -69,10 +69,11 @@ class Block(object):
         return self.output["test"][:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
         
     # Main functionality
-    def apply(self, input):
+    def apply(self, input, mode):
+        # mode: 'train' or 'infer'
         signal = input
         for layer in self._layers:
-            signal = layer.apply(signal)
+            signal = layer.apply(signal, mode)
         return signal
     
     def connect_target_block(self, new_target_block_instance):
@@ -109,86 +110,7 @@ class ConvBlock(Block):
     
     def __init__(self) :
         Block.__init__(self)
-        
-    def _processInputWithBnNonLinearityDropoutPooling(self,
-                rng,
-                inputToLayerTrain,
-                inputToLayerVal,
-                inputToLayerTest,
-                n_fms_in,
-                useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
-                movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-                activationFunc,
-                dropoutRate,
-                pool_prms) :
-        # ---------------- Order of what is applied -----------------
-        #  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ] # ala He et al "Identity Mappings in Deep Residual Networks" 2016
-        # -----------------------------------------------------------
-        
-        #---------------------------------------------------------
-        #------------------ Batch Normalization ------------------
-        #---------------------------------------------------------
-        if useBnFlag and movingAvForBnOverXBatches > 0 :
-            self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=n_fms_in)
-            self._layers.append(self._bn_l)
-            inputToNonLinearityTrain = self._bn_l.apply(inputToLayerTrain, mode="train")
-            inputToNonLinearityVal = self._bn_l.apply(inputToLayerVal, mode="infer")
-            inputToNonLinearityTest = self._bn_l.apply(inputToLayerTest, mode="infer")
-        else : #Not using batch normalization
-            #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
-            bias_l = dm_layers.BiasLayer(n_fms_in)
-            self._layers.append(bias_l)
-            inputToNonLinearityTrain = bias_l.apply(inputToLayerTrain)
-            inputToNonLinearityVal = bias_l.apply(inputToLayerVal)
-            inputToNonLinearityTest = bias_l.apply(inputToLayerTest)
-        
-        #--------------------------------------------------------
-        #------------ Apply Activation/ non-linearity -----------
-        #--------------------------------------------------------
-        if activationFunc == "linear" : # -1 stands for "no nonlinearity". Used for input layers of the pathway.
-            act_l = dm_layers.IdentityLayer()
-        elif activationFunc == "relu" :
-            act_l = dm_layers.ReluLayer()
-        elif activationFunc == "prelu" :
-            act_l = dm_layers.PreluLayer(n_fms_in)
             
-        elif activationFunc == "elu" :
-            act_l = dm_layers.EluLayer()
-        elif activationFunc == "selu" :
-            act_l = dm_layers.SeluLayer()
-        self._layers.append(act_l)
-        inputToDropoutTrain = act_l.apply(inputToNonLinearityTrain)
-        inputToDropoutVal = act_l.apply(inputToNonLinearityVal)
-        inputToDropoutTest = act_l.apply(inputToNonLinearityTest)
-        
-        #------------------------------------
-        #------------- Dropout --------------
-        #------------------------------------
-        dropout_l = dm_layers.DropoutLayer(dropoutRate, rng)
-        self._layers.append(dropout_l)
-        inputToPoolTrain = dropout_l.apply(inputToDropoutTrain, mode="train")
-        inputToPoolVal = dropout_l.apply(inputToDropoutVal, mode="infer")
-        inputToPoolTest = dropout_l.apply(inputToDropoutTest, mode="infer")
-        
-        #-------------------------------------------------------
-        #-----------  Pooling ----------------------------------
-        #-------------------------------------------------------
-        if pool_prms == [] : #no max pooling before this conv
-            inputToConvTrain = inputToPoolTrain
-            inputToConvVal = inputToPoolVal
-            inputToConvTest = inputToPoolTest
-        else : #Max pooling is actually happening here...
-            pooling_l = PoolingLayer(pool_prms[0], pool_prms[1], pool_prms[2], pool_prms[3])
-            self._layers.append(pooling_l)
-            inputToConvTrain = pooling_l.apply(inputToPoolTrain)
-            inputToConvVal = pooling_l.apply(inputToPoolVal)
-            inputToConvTest = pooling_l.apply(inputToPoolTest)
-        
-        return (inputToConvTrain, inputToConvVal, inputToConvTest)
-        
-    def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
-        return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
-    
     # The main function that builds this.
     def makeLayer(self,
                 rng,
@@ -199,53 +121,62 @@ class ConvBlock(Block):
                 n_fms_in,
                 n_fms_out,
                 conv_kernel_dims,
-                poolingParameters, # Can be []
+                pool_prms, # Can be []
                 convWInitMethod,
                 useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
                 movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
                 activationFunc="relu",
                 dropoutRate=0.0):
         """
-        type rng: numpy.random.RandomState
-        param rng: a random number generator used to initialize weights
-        
-        type inputToLayer:  tensor5
-        param inputToLayer: symbolic image tensor, of shape inputToLayerShape
-        
-        type filterShape: tuple or list of length 5
+        param rng: numpy.random.RandomState used to initialize weights
+        param inputToLayer: tensor5 of shape inputToLayerShape
         param filterShape: (number of filters, num input feature maps,
                             filter height, filter width, filter depth)
-                            
-        type inputToLayerShape: tuple or list of length 5
         param inputToLayerShape: (batch size, num input feature maps,
                             image height, image width, filter depth)
         """
-        
         self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
         self._n_fms_out = n_fms_out
         
-        # Apply all the straightforward operations on the input, such as BN, activation function, dropout, pooling        
-        (inputToConvTrain, inputToConvVal, inputToConvTest) = self._processInputWithBnNonLinearityDropoutPooling(rng,
-                                                                                        inputToLayerTrain,
-                                                                                        inputToLayerVal,
-                                                                                        inputToLayerTest,
-                                                                                        n_fms_in,
-                                                                                        useBnFlag,
-                                                                                        movingAvForBnOverXBatches,
-                                                                                        activationFunc,
-                                                                                        dropoutRate,
-                                                                                        poolingParameters)
+        #  Order of what is applied, ala He et al "Identity Mappings in Deep Residual Networks" 2016
+        #  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ]
+        
+        #------------------ Batch Normalization ------------------
+        if useBnFlag and movingAvForBnOverXBatches > 0 :
+            self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=n_fms_in)
+            self._layers.append(self._bn_l)
+        else : #Not using batch normalization
+            #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
+            bias_l = dm_layers.BiasLayer(n_fms_in)
+            self._layers.append(bias_l)
+        
+        #------------ Apply Activation/ non-linearity -----------
+        act_l = dm_layers.get_act_layer(activationFunc, n_fms_in)
+        self._layers.append(act_l)
+        
+        #------------- Dropout --------------
+        dropout_l = dm_layers.DropoutLayer(dropoutRate, rng)
+        self._layers.append(dropout_l)
+        
+        #-----------  Pooling ----------------------------------
+        if len(pool_prms) > 0 : #Max pooling is actually happening here...
+            # if len == 0, pool_prms == [], no max pooling before this conv.
+            pooling_l = PoolingLayer(pool_prms[0], pool_prms[1], pool_prms[2], pool_prms[3])
+            self._layers.append(pooling_l)
+        
+        # --------- Convolution ---------------------------------
         conv_l = self._createConvLayer(n_fms_in, n_fms_out, conv_kernel_dims, convWInitMethod, rng)
         self._layers.append(conv_l)
-        out_train = conv_l.apply(inputToConvTrain)
-        out_val = conv_l.apply(inputToConvVal)
-        out_test = conv_l.apply(inputToConvTest)
-        
+    
+    def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
+        return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
+
+    def TEMPORARY_RUN(self, inputToNextLayerTrain, inputToNextLayerVal, inputToNextLayerTest):
+        out_train = self.apply(inputToNextLayerTrain, mode="train")
+        out_val = self.apply(inputToNextLayerVal, mode="infer")
+        out_test = self.apply(inputToNextLayerTest, mode="infer")
         self._setBlocksOutputAttributes(out_train, out_val, out_test)
         
-        return (out_train, out_val, out_test)
-    
-    
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
 class LowRankConvBlock(ConvBlock):
     def __init__(self, rank=2) :
@@ -279,18 +210,18 @@ class SoftmaxBlock(Block):
         self._bias_l = dm_layers.BiasLayer(self._n_fms)
         self._layers.append(self._bias_l)
         
-    def apply(self, input):
+    def apply(self, input, mode):
         # At this last classification layer, the conv output needs to have bias added before the softmax.
         # NOTE: So, two biases are associated with this layer. self.b which is added in the ouput of the previous layer's output of conv,
         # and this self._bClassLayer that is added only to this final output before the softmax.       
-        logits = self._bias_l.apply(input)
+        logits = self._bias_l.apply(input, mode)
         p_y_given_x = tf.nn.softmax(logits/self._temperature, axis=1)
         return p_y_given_x
     
     def TEMPORARY_RUN(self):
-        p_y_given_x_train = self.apply(self.input["train"])
-        p_y_given_x_val = self.apply(self.input["val"])
-        p_y_given_x_test = self.apply(self.input["test"])
+        p_y_given_x_train = self.apply(self.input["train"], mode='train')
+        p_y_given_x_val = self.apply(self.input["val"], mode='infer')
+        p_y_given_x_test = self.apply(self.input["test"], mode='infer')
             
         self._setBlocksOutputAttributes(p_y_given_x_train, p_y_given_x_val, p_y_given_x_test)
         
@@ -322,6 +253,7 @@ class SoftmaxBlock(Block):
             returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTrueNeg, dtype="int32")))
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
+    
     
     def predictionProbabilities(self) :
         return self.output["test"]
