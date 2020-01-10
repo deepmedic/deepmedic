@@ -37,8 +37,6 @@ class Block(object):
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
-        # New and probably temporary, for the residual connections to be "visible".
-        self.outputAfterResidualConnIfAnyAtOutp = {"train": None, "val": None, "test": None}
         
         # ==== Target Block Connected to that layer (softmax, regression, auxiliary loss etc), if any ======
         self._target_blocks = []
@@ -48,10 +46,6 @@ class Block(object):
         self.output["train"] = outputTrain
         self.output["val"] = outputVal
         self.output["test"] = outputTest
-        # New and probably temporary, for the residual connections to be "visible".
-        self.outputAfterResidualConnIfAnyAtOutp["train"] = self.output["train"]
-        self.outputAfterResidualConnIfAnyAtOutp["val"] = self.output["val"]
-        self.outputAfterResidualConnIfAnyAtOutp["test"] = self.output["test"]
             
     # Getters
     def get_number_fms_out(self):

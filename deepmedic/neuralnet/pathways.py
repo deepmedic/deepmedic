@@ -217,14 +217,9 @@ class Pathway(object):
             else : #make residual connection
                 log.print3("\t[Pathway_"+str(self.getStringType())+"]: making Residual Connection between output of [Layer_"+str(layer_i)+"] to input of previous block.")
                 assert layer_i > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
-                earlier_block = self._blocks_in_pathway[layer_i-1]
-                
                 inputToNextLayerTrain = makeResidualConnection(log, out_train, input_to_prev_layer_train)
                 inputToNextLayerVal = makeResidualConnection(log, out_val, input_to_prev_layer_val)
                 inputToNextLayerTest = makeResidualConnection(log, out_test, input_to_prev_layer_test)
-                block.outputAfterResidualConnIfAnyAtOutp["train"] = inputToNextLayerTrain
-                block.outputAfterResidualConnIfAnyAtOutp["val"] = inputToNextLayerVal
-                block.outputAfterResidualConnIfAnyAtOutp["test"] = inputToNextLayerTest
         
         self._setOutputAttributes(inputToNextLayerTrain, inputToNextLayerVal, inputToNextLayerTest)
         
