@@ -179,7 +179,7 @@ class ConfigWindow(QtWidgets.QMainWindow):
         for sub_name, sub_value in value.items():
             self.set_text_value(sub_name, sub_value, cfg_value[sub_name])
 
-    def get_text_value(self, name, value):
+    def get_text_value(self, name, value, elem_type=None):
         value_text = None
         if hasattr(self.Config, 'CONV_W_INIT') and name == self.Config.CONV_W_INIT:
             print(value)

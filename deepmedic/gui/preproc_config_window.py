@@ -85,10 +85,11 @@ class PreprocConfigWindow(ConfigWindow):
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit,
                                'preproc_pixelSpacing_lineedit').setText(str(self.dchecks_sug['spacing']))
-            if self.dchecks_sug['dimensions']:
+            if self.dchecks_sug['size']:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit').\
-                    setText(str(self.dchecks_sug['dimensions']))
+                    setText(str(self.dchecks_sug['size']))
+                self.findChild(QtWidgets.QComboBox, 'preproc_imgSize_combobox').setCurrentIndex(2)
             if self.dchecks_sug['dtype']:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').setChecked(True)
                 combo = self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox')
@@ -118,10 +119,14 @@ class PreprocConfigWindow(ConfigWindow):
         mask_extension = self.get_text_value('preproc_maskExtension_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_maskExtension_combobox'))
         resize_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').isChecked()
         size = self.get_text_value('preproc_imgSize_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit'))
+        size_units = self.get_text_value('preproc_imgSize_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_imgSize_combobox'), elem_type='Units')
         use_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_useMask_checkbox').isChecked()
         use_centre_mass = self.findChild(QtWidgets.QCheckBox, 'preproc_centreMass_checkbox').isChecked()
 
-        print(output_dir, orientation_corr, resample_imgs, spacing, change_pixel_type, pixel_type, resize_imgs, size)
+        print(output_dir, orientation_corr, resample_imgs, spacing, change_pixel_type, pixel_type, resize_imgs, size, size_units)
+
+        if resize_imgs and spacing and size_units == 'mm':
+            size = tuple([int(a * b) for a, b in zip(spacing, size)])
 
         if os.path.isfile(csv):
             # check if Image is a column. Else throw error
@@ -201,7 +206,11 @@ class PreprocConfigWindow(ConfigWindow):
 
             # resize
             if resize_imgs:
-                image.resize(size, centre_mass=use_centre_mass, use_mask=use_mask)
+                if not spacing and size_units == 'mm':
+                    this_size = tuple([int(a * b) for a, b in zip(image.get_spacing(), size)])
+                else:
+                    this_size = size
+                image.resize(this_size, centre_mass=use_centre_mass, use_mask=use_mask)
 
             # save image
             if output_dir:

@@ -204,7 +204,7 @@ def sizes_check(dims_count, verbose=True, html=False):
     suggested = None
     if len(dims_count) > 1:
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Image (Actual) Dimensions Check\n')
-        suggested = get_max_dims(dims_count)
+        suggested = tuple(get_max_dims(dims_count))
         if verbose:
             ret += prefix + 'Image dimensions do not match in between images\n'
             ret += prefix + 'We recommend resampling every image to the same size\n'
@@ -381,7 +381,7 @@ def resize_images(image_list, masks, new_size, save_path, tqdm_text='Resizing im
         image = NiftiImage(image_path)
         mask = NiftiImage(mask_path)
 
-        image.resize(new_size, mask, centre_mass=True, crop_mask=False)
+        image.resize(new_size, mask, centre_mass=True)
 
         image.save(os.path.join(save_path, image_path.split('/')[-1]))
         # mask.save(os.path.join(save_path, mask_path.split('/')[-1]))
