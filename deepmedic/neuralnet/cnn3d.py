@@ -500,8 +500,13 @@ class Cnn3d(object):
         log.print3("Adding the final Softmax layer...")
         
         self.finalTargetLayer = SoftmaxBlock()
-        self.finalTargetLayer.makeLayer(rng, self.getFcPathway().getLayer(-1), softmaxTemperature)
-        self.finalTargetLayer.TEMPORARY_RUN()
+        self.finalTargetLayer.makeLayer(rng, self.getFcPathway().getLayer(-1).get_number_fms_out(), softmaxTemperature)
+        self.getFcPathway().getLayer(-1).connect_target_block(self.finalTargetLayer)
+        p_y_given_x_train = self.finalTargetLayer.apply(self.getFcPathway()._output["train"], mode='train')
+        p_y_given_x_val = self.finalTargetLayer.apply(self.getFcPathway()._output["val"], mode='infer')
+        p_y_given_x_test = self.finalTargetLayer.apply(self.getFcPathway()._output["test"], mode='infer')    
+        self.finalTargetLayer._setBlocksOutputAttributes(p_y_given_x_train, p_y_given_x_val, p_y_given_x_test)
+        
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
     

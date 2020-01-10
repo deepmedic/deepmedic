@@ -28,9 +28,6 @@ import deepmedic.neuralnet.layers as dm_layers
 class Block(object):
     
     def __init__(self) :
-        # === Input to the layer ===
-        self.input= {"train": None, "val": None, "test": None}
-        
         # === Basic architecture parameters === 
         self._n_fms_out = None
         
@@ -47,11 +44,6 @@ class Block(object):
         self._target_blocks = []
         
     # Setters
-    def _setBlocksInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest) :
-        self.input["train"] = inputToLayerTrain
-        self.input["val"] = inputToLayerVal
-        self.input["test"] = inputToLayerTest
-            
     def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest) :
         self.output["train"] = outputTrain
         self.output["val"] = outputVal
@@ -114,10 +106,6 @@ class ConvBlock(Block):
     # The main function that builds this.
     def makeLayer(self,
                 rng,
-                inputToLayerTrain,
-                inputToLayerVal,
-                inputToLayerTest,
-                
                 n_fms_in,
                 n_fms_out,
                 conv_kernel_dims,
@@ -135,7 +123,6 @@ class ConvBlock(Block):
         param inputToLayerShape: (batch size, num input feature maps,
                             image height, image width, filter depth)
         """
-        self._setBlocksInputAttributes(inputToLayerTrain, inputToLayerVal, inputToLayerTest)
         self._n_fms_out = n_fms_out
         
         #  Order of what is applied, ala He et al "Identity Mappings in Deep Residual Networks" 2016
@@ -171,11 +158,6 @@ class ConvBlock(Block):
     def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
         return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
 
-    def TEMPORARY_RUN(self, inputToNextLayerTrain, inputToNextLayerVal, inputToNextLayerTest):
-        out_train = self.apply(inputToNextLayerTrain, mode="train")
-        out_val = self.apply(inputToNextLayerVal, mode="infer")
-        out_test = self.apply(inputToNextLayerTest, mode="infer")
-        self._setBlocksOutputAttributes(out_train, out_val, out_test)
         
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
 class LowRankConvBlock(ConvBlock):
@@ -197,15 +179,12 @@ class SoftmaxBlock(Block):
         
     def makeLayer(self,
                   rng,
-                  layerConnected, # the basic layer, at the output of which to connect this softmax.
+                  n_fms,
                   t = 1):
         # t: temperature. Scalar
         
-        self._n_fms = layerConnected.get_number_fms_out()
+        self._n_fms = n_fms
         self._temperature = t
-        layerConnected.connect_target_block(self)
-        
-        self._setBlocksInputAttributes(layerConnected.output["train"], layerConnected.output["val"], layerConnected.output["test"])
         
         self._bias_l = dm_layers.BiasLayer(self._n_fms)
         self._layers.append(self._bias_l)
@@ -217,13 +196,6 @@ class SoftmaxBlock(Block):
         logits = self._bias_l.apply(input, mode)
         p_y_given_x = tf.nn.softmax(logits/self._temperature, axis=1)
         return p_y_given_x
-    
-    def TEMPORARY_RUN(self):
-        p_y_given_x_train = self.apply(self.input["train"], mode='train')
-        p_y_given_x_val = self.apply(self.input["val"], mode='infer')
-        p_y_given_x_test = self.apply(self.input["test"], mode='infer')
-            
-        self._setBlocksOutputAttributes(p_y_given_x_train, p_y_given_x_val, p_y_given_x_test)
         
         
     def getRpRnTpTnForTrain0OrVal1(self, y_gt, training0OrValidation1):
@@ -253,7 +225,6 @@ class SoftmaxBlock(Block):
             returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTrueNeg, dtype="int32")))
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
-    
     
     def predictionProbabilities(self) :
         return self.output["test"]
