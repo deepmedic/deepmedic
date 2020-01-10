@@ -126,6 +126,7 @@ def pix_check(pix_count, verbose=True, html=False):
     prefix = ' '*(len('[PASSED]') + 2)
     ret = ''
     suggested = None
+    passed = True
     if len(pix_count) > 1:
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Pixel Spacing Check\n')
         suggested = (1, 1, 1)
@@ -152,11 +153,12 @@ def pix_check(pix_count, verbose=True, html=False):
                     ret += prefix + 'Recommended:\n'
                     ret += prefix + 'Pixel spacing Count (mm):\n'
                     ret += print_dict(pix_count, prefix)
-                return
+                passed = False
 
-        ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Pixel Spacing Check\n')
-        if verbose:
-            ret += prefix + 'Pixel Spacing (mm): ' + str(pix_dims)
+        if passed:
+            ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Pixel Spacing Check\n')
+            if verbose:
+                ret += prefix + 'Pixel Spacing (mm): ' + str(pix_dims)
 
     if html:
         ret = text_to_html(ret)
@@ -236,7 +238,7 @@ def dtype_check(dtype_count, dtype=sitk.sitkFloat32, verbose=True, html=False):
             ret += prefix + 'Data Types Count:\n'
             ret += print_dict(dtype_count, prefix)
     else:
-        if list(dtype_count.keys())[0] == dtype:
+        if list(dtype_count.keys())[0] == sitk.GetPixelIDValueAsString(dtype):
             ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Data Type Check\n')
             if verbose:
                 ret += prefix + 'Data Type: ' + str(list(dtype_count.keys())[0])
