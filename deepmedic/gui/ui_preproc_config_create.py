@@ -47,7 +47,11 @@ class UiPreprocConfig(UiConfig):
                     self.data_checks_button.setObjectName("data_checks_button")
                     self.data_checks_button.setText('Run Data Checks')
                     self.gridLayout.addWidget(self.data_checks_button, widget_num + 2, LABEL_COL, 1, SAVE_BUTTON_SIZE)
-                    widget_num += 3
+                    self.suggested_button = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
+                    self.suggested_button.setObjectName("suggested_button")
+                    self.suggested_button.setText('Fill Form With Suggested Values')
+                    self.gridLayout.addWidget(self.suggested_button, widget_num + 3, LABEL_COL, 1, SAVE_BUTTON_SIZE)
+                    widget_num += 4
 
         spacerItem = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.gridLayout.addItem(spacerItem, widget_num, 0, 1, 3)

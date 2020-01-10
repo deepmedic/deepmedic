@@ -10,6 +10,7 @@
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
+
 class Ui_model_config_create(object):
     def add_title(self, name, text, widget_num):
 

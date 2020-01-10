@@ -10,6 +10,19 @@ import os
 from PySide2 import QtWidgets, QtGui
 
 
+def get_save_name(image_path, output_dir, image_extension):
+    path_split = image_path.split('.')
+    image_name = path_split[0]
+    if output_dir:
+        image_save_name = os.path.join(output_dir, image_name.split('/')[-1])
+    else:
+        image_save_name = image_name
+    if not image_extension:
+        image_extension = '.' + '.'.join(path_split[1:])
+
+    return image_name, image_save_name, image_extension
+
+
 class ProgressBar(object):
     def __init__(self, bar, label=None, label_text=None):
         self.bar = bar
@@ -50,17 +63,46 @@ class PreprocConfigWindow(ConfigWindow):
                                              'Preprocessing data...')
         self.resample_progress.hide()
 
+        self.dchecks_sug = None
+        self.ui.suggested_button.clicked.connect(self.fill_in_sug)
+        self.ui.suggested_button.hide()
+
     def run_data_checks(self):
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         self.data_checks_progress.show()
-        check_text = run_checks(csv, csv=True, pixs=True, dims=True, dtypes=True, dirs=True,
-                                disable_tqdm=False, html=True, progress=self.data_checks_progress)
+        check_text, self.dchecks_sug = run_checks(csv, csv=True,
+                                                  pixs=True, dims=True, dtypes=True, dirs=True, sizes=True,
+                                                  disable_tqdm=False, html=True, progress=self.data_checks_progress)
         self.ui.data_checks_text.setText(check_text)
+        self.ui.suggested_button.show()
+
+    def fill_in_sug(self):
+        print(self.dchecks_sug)
+        if self.dchecks_sug:
+            if self.dchecks_sug['direction']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').setChecked(True)
+            if self.dchecks_sug['spacing']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').setChecked(True)
+                self.findChild(QtWidgets.QLineEdit,
+                               'preproc_pixelSpacing_lineedit').setText(str(self.dchecks_sug['spacing']))
+            if self.dchecks_sug['dimensions']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').setChecked(True)
+                self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit').\
+                    setText(str(self.dchecks_sug['dimensions']))
+            if self.dchecks_sug['dtype']:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').setChecked(True)
+                combo = self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox')
+                index = combo.findText(self.dchecks_sug['dtype'], QtCore.Qt.MatchFixedString)
+                if index >= 0:
+                    combo.setCurrentIndex(index)
 
     def preprocess(self):
         # Get parameters from forms
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         output_dir = self.get_text_value('preproc_outputDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputDir_lineedit'))
+        save_csv = self.findChild(QtWidgets.QCheckBox, 'preproc_saveCsv_checkbox').isChecked()
+        out_csv_dir = self.get_text_value('preproc_outputCsvDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputCsvDir_lineedit'))
+        out_csv_name = self.get_text_value('preproc_outputCsvName_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputCsvName_lineedit'))
         image_extension = self.get_text_value('preproc_extension_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_extension_combobox'))
         orientation_corr = self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').isChecked()
         resample_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').isChecked()
@@ -83,16 +125,7 @@ class PreprocConfigWindow(ConfigWindow):
 
         if os.path.isfile(csv):
             # check if Image is a column. Else throw error
-            input_df = pd.read_csv(csv)
-            image_list = input_df['Image']
-            try:
-                mask_list = input_df['Mask']
-            except KeyError:
-                mask_list = None
-            try:
-                target_list = input_df['Target']
-            except KeyError:
-                target_list = None
+            image_list = pd.read_csv(csv)
         else:
             print('File not found')
             # Throw file not found error
@@ -109,33 +142,38 @@ class PreprocConfigWindow(ConfigWindow):
         if not suffix == '':
             suffix = '_' + suffix
 
+        if not create_mask:
+            mask_suffix = ''
         if not mask_suffix == '':
             mask_suffix = '_' + mask_suffix
 
-        for i in range(len(image_list)):
-            image_path = image_list[i]
-            image = NiftiImage(image_path)
-            if mask_list is not None:
-                mask_path = mask_list[i]
-                mask = NiftiImage(mask_path)
-            else:
-                mask_path = None
-                mask = None
-            if target_list is not None:
-                target_path = target_list[i]
-                target = NiftiImage(target_path)
-            else:
-                target_path = None
-                target = None
+        for i, row in image_list.iterrows():
 
-            path_split = image_path.split('.')
-            image_name = path_split[0]
-            if output_dir:
-                image_save_name = os.path.join(output_dir, image_name.split('/')[-1])
-            else:
-                image_save_name = image_name
-            if not image_extension:
-                image_extension = '.' + '.'.join(path_split[1:])
+            image_path = row['Image']
+            try:
+                mask_path = row['Mask']
+            except KeyError:
+                mask_path = None
+            try:
+                target_path = row['Target']
+            except KeyError:
+                target_path = None
+
+            image = NiftiImage(image_path, mask_path, target_path)
+
+            (image_name,
+             image_save_name,
+             image_extension) = get_save_name(image_path, output_dir, image_extension)
+
+            if mask_path:
+                (mask_name,
+                 mask_save_name,
+                 mask_extension) = get_save_name(mask_path, output_dir, None)
+
+            if target_path:
+                (target_name,
+                 target_save_name,
+                 target_extension) = get_save_name(target_path, output_dir, None)
 
             # convert type
             if change_pixel_type:
@@ -159,7 +197,7 @@ class PreprocConfigWindow(ConfigWindow):
 
             # create mask
             if create_mask:
-                mask = NiftiImage(image=image.get_mask(thresh_low, thresh_high))
+                image.get_mask(thresh_low, thresh_high)
                 if mask_dir:
                     mask_save_name = os.path.join(mask_dir, image_name.split('/')[-1])
                 else:
@@ -167,30 +205,34 @@ class PreprocConfigWindow(ConfigWindow):
                 if not mask_extension:
                     mask_extension = image_extension
                 if mask_pixel_type:
-                    mask.change_pixel_type(mask_pixel_type)
-            else:
-                mask = None
+                    image.mask.change_pixel_type(mask_pixel_type)
 
             # resize
             if resize_imgs:
-                centre_mass = use_centre_mass
-                if mask:
-                    crop_mask = True
-                    if use_mask:
-                        centre_mass = True
-                else:
-                    crop_mask = False
-                image.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
-                mask = target.resize(size, mask, centre_mass=centre_mass, crop_mask=crop_mask)
+                image.resize(size, centre_mass=use_centre_mass, use_mask=use_mask)
 
             # save image
             if output_dir:
-                save_nifti(image.open(), image_save_name + suffix + image_extension)
-                if mask:
-                    save_nifti(mask.open(), mask_save_name + mask_suffix + mask_extension)
-                if target:
-                    pass
-                    # save_nifti(target.open(), mask_save_name + mask_suffix + mask_extension)
+                new_image_name = image_save_name + suffix + image_extension
+                save_nifti(image.open(), new_image_name)
+                image_list.at[i, 'Image'] = new_image_name
+                if image.mask:
+                    new_mask_name = mask_save_name + mask_suffix + mask_extension
+                    save_nifti(image.mask.open(), new_mask_name)
+                    image_list.at[i, 'Mask'] = new_mask_name
+                if image.target:
+                    new_target_name = target_save_name + target_extension
+                    save_nifti(image.target.open(), new_target_name)
+                    image_list.at[i, 'Target'] = new_target_name
 
             if self.resample_progress is not None:
                 self.resample_progress.increase_value()
+
+        if save_csv:
+            if not out_csv_dir:
+                out_csv_dir = os.path.dirname(csv)
+            if not out_csv_name:
+                out_csv_name = os.path.basename(csv)
+
+            os.makedirs(out_csv_dir, exist_ok=True)
+            image_list.to_csv(os.path.join(out_csv_dir, out_csv_name))
