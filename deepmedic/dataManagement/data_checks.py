@@ -134,7 +134,7 @@ def pix_check(pix_count, verbose=True, html=False):
             ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
             ret += prefix + 'Note that resampling will change the image dimensions\n'
             ret += prefix + 'Consider resizing in addition to resampling\n'
-            ret += prefix + 'Pixel Spacing Count:\n'
+            ret += prefix + 'Pixel Spacing Count (mm):\n'
             ret += print_dict(pix_count, prefix)
     else:
         pix_dims = list(pix_count.keys())[0]
@@ -147,13 +147,16 @@ def pix_check(pix_count, verbose=True, html=False):
                     ret += prefix + 'Consider resampling to isotropic pixel spacing (e.g. (1, 1, 1))\n'
                     ret += prefix + 'Note that resampling will change the image dimensions\n'
                     ret += prefix + 'Consider resizing in addition to resampling\n'
-                    ret += prefix + 'Pixel spacing Count:\n'
+                    ret += prefix + 'Recommended values for the form:\n'
+                    ret += prefix + '\t"Pixel Spacing"\n'
+                    ret += prefix + 'Recommended:\n'
+                    ret += prefix + 'Pixel spacing Count (mm):\n'
                     ret += print_dict(pix_count, prefix)
                 return
 
         ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Pixel Spacing Check\n')
         if verbose:
-            ret += prefix + 'Pixel Spacing: ' + str(pix_dims)
+            ret += prefix + 'Pixel Spacing (mm): ' + str(pix_dims)
 
     if html:
         ret = text_to_html(ret)
