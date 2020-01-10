@@ -182,18 +182,10 @@ class PreprocConfigWindow(ConfigWindow):
             # reorient
             if orientation_corr:
                 image.reorient()
-                if mask:
-                    mask.reorient()
-                if target:
-                    target.reorient()
 
             # resample (spacing)
             if resample_imgs:
                 image.resample(spacing=spacing)
-                if mask:
-                    mask.resample(spacing=spacing)
-                if target:
-                    target.resample(spacing=spacing)
 
             # create mask
             if create_mask:

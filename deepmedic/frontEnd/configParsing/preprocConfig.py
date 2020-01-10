@@ -84,6 +84,25 @@ class PreprocConfig(Config):
                              info="Data type the output images will be saved in "
                                   "(masks and targets, if provided, will retain the original format.)")
 
+    RESIZE = \
+        config_data.add_elem("resize", description='Resize Images', elem_type='Bool',
+                             info="Resize images to uniform dimensions")
+
+    IMAGE_SIZE =\
+        config_data.add_elem("imgSize", description='     Image Size', parent=RESIZE, elem_type='Units',
+                             options=['pixels', 'mm'],
+                             info="The dimensions of the output image")
+
+    CENTRE_MASS = \
+        config_data.add_elem("centreMass", description='     Recentre on Centre of Mass', elem_type='Bool',
+                             parent=RESIZE,
+                             info="Recentre the cropped image around the centre of mass of the image. "
+                                  "If masks are provided, the centre of mass of the mask will be used instead.")
+
+    USE_MASK = \
+        config_data.add_elem("useMask", description='     Recentre With Mask', elem_type='Bool', parent=RESIZE,
+                             info="Use the masks to avoid cropping parts of the image with valuable information.")
+
     CREATE_MASK = \
         config_data.add_elem("createMask", description='Create Masks', elem_type='Bool',
                              info='Create masks using thresholds.')
@@ -123,23 +142,6 @@ class PreprocConfig(Config):
                              info="File format to save the masks in. "
                                   "Default is to replicate the type of the input images.")
 
-    RESIZE = \
-        config_data.add_elem("resize", description='Resize Images', elem_type='Bool',
-                             info="Resize images to uniform dimensions")
-
-    IMAGE_SIZE =\
-        config_data.add_elem("imgSize", description='     Image Size', parent=RESIZE,
-                             info="The dimensions of the output image")
-
-    CENTRE_MASS = \
-        config_data.add_elem("centreMass", description='     Recentre on Centre of Mass', elem_type='Bool',
-                             parent=RESIZE,
-                             info="Recentre the cropped image around the centre of mass of the image. "
-                                  "If masks are provided, the centre of mass of the mask will be used instead.")
-
-    USE_MASK = \
-        config_data.add_elem("useMask", description='     Recentre With Mask', elem_type='Bool', parent=RESIZE,
-                             info="Use the masks to avoid cropping parts of the image with valuable information.")
 
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)

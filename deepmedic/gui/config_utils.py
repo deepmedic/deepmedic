@@ -61,7 +61,7 @@ def enable_on_combobox_value(combobox, text, to_enable):
 
 
 def get_widget_type(elem_type):
-    if elem_type == 'lineedit':
+    if elem_type in ['lineedit']:
         return QtWidgets.QLineEdit
     if elem_type == 'checkbox':
         return QtWidgets.QCheckBox

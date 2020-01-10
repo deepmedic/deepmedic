@@ -147,7 +147,6 @@ class UiConfig(object):
         return widget
 
     def create_combobox(self, name, options):
-        print(name)
         widget = QtWidgets.QComboBox(self.scrollAreaWidgetContents)
         widget.setObjectName(name + '_combobox')
         widget.addItem("")
@@ -218,6 +217,11 @@ class UiConfig(object):
     def add_search_button(self, name, widget_num):
         self.add_widget(self.create_button(name, 'Search'), widget_num, SEARCH_COL)
 
+    def add_unit_combobox(self, name, widget_num, options):
+        combobox = self.create_combobox(name, options)
+        self.add_widget(combobox, widget_num, SEARCH_COL)
+        combobox.setCurrentIndex(1)
+
     def add_grid_row(self, name, widget_num, elem, widget_type=None, text=None, options=None, info=None, default=None,
                      prefix=''):
 
@@ -242,13 +246,15 @@ class UiConfig(object):
             if elem.elem_type in ['File', 'Folder', 'Files']:
                 self.add_search_button(name, widget_num)
                 col_span = SEARCH_SPAN
+            if elem.elem_type == 'Units':
+                self.add_unit_combobox(name, widget_num, options)
+                col_span = SEARCH_SPAN
 
             if widget_type == 'conv_w':
                 widget_num = self.add_conv_w(name, widget_num, options, info=info, default=default)
             else:
                 self.add_input_field(name, widget_type, widget_num, INPUT_COL,
                                      info=info, default=default, options=options, col_span=col_span)
-
         return widget_num + 1
 
     def setup_ui(self, model_config_create, Config, window_type=''):

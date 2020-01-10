@@ -77,6 +77,10 @@ class ConfigWindow(QtWidgets.QMainWindow):
             for sub_elem in elem.options.values():
                 self.hide_widgets(sub_elem, is_open, prefix=prefix + '_' + sub_elem.name)
 
+        if elem.elem_type == 'Units':
+            widget = self.findChild(QtWidgets.QComboBox, prefix + '_combobox')
+            hide_widget(widget, is_open)
+
         widget = self.findChild(QtWidgets.QLabel, prefix + '_label')
         hide_widget(widget, is_open)
         widget = self.findChild(QtWidgets.QLabel, prefix + '_info')
@@ -124,6 +128,10 @@ class ConfigWindow(QtWidgets.QMainWindow):
                     grandchildren = self.Config.config_data.get_children(child.name)
                     if grandchildren:
                         self.enable_children(widget, grandchildren)
+                if child.elem_type == 'Units':
+                    widget = self.findChild(QtWidgets.QComboBox, child.section.name + '_' + child.name + "_combobox")
+                    if widget:
+                        widget.setEnabled(set_value)
 
             widget = self.findChild(QtWidgets.QPushButton, child.section.name + '_' + child.name + "_button")
             if widget:
