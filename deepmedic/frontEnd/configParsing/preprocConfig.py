@@ -40,7 +40,7 @@ class PreprocConfig(Config):
 
     OUTPUT_CSV_DIR = \
         config_data.add_elem("outputCsvDir",
-                             description='     Save Directory', parent=SAVE_CSV,
+                             description='     Save Directory', parent=SAVE_CSV, elem_type='Folder',
                              info="Directory in which to save the output CSV file.\n"
                                   "[Default] Will save the file in the same directory as the input CSV.")
 
@@ -119,6 +119,7 @@ class PreprocConfig(Config):
 
     MASK_DIR = \
         config_data.add_elem("maskDirectory", description='     Output Directory', parent=CREATE_MASK,
+                             elem_type='Folder',
                              info="Directory in which to save the images.\n"
                                   "Masks will be saved in the same directory as the output images by default.")
 
@@ -141,7 +142,6 @@ class PreprocConfig(Config):
                              options=[".nii", ".nii.gz"],
                              info="File format to save the masks in. "
                                   "Default is to replicate the type of the input images.")
-
 
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)
