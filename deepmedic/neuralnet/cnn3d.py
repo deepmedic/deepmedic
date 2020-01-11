@@ -140,7 +140,7 @@ class Cnn3d(object):
         for pathway in self.pathways :
             for block_i in range(len(pathway.get_blocks())) :
                 if block_i not in indicesOfLayersPerPathwayTypeToFreeze[ pathway.pType() ] :
-                    paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.getLayer(block_i).trainable_params()
+                    paramsToOptDuringTraining = paramsToOptDuringTraining + pathway.get_block(block_i).trainable_params()
                 else : # Layer will be held fixed. Notice that Batch Norm parameters are still learnt.
                     log.print3("WARN: [Pathway_" + str(pathway.getStringType()) + "] The weights of [Layer-"+str(block_i)+"] will NOT be trained as specified (index, first layer is 0).")
         return paramsToOptDuringTraining
@@ -504,8 +504,8 @@ class Cnn3d(object):
         log.print3("Adding the final Softmax layer...")
         
         self.finalTargetLayer = SoftmaxBlock()
-        self.finalTargetLayer.build(rng, self.getFcPathway().getLayer(-1).get_number_fms_out(), softmaxTemperature)
-        self.getFcPathway().getLayer(-1).connect_target_block(self.finalTargetLayer)
+        self.finalTargetLayer.build(rng, self.getFcPathway().get_block(-1).get_number_fms_out(), softmaxTemperature)
+        self.getFcPathway().get_block(-1).connect_target_block(self.finalTargetLayer)
         p_y_given_x_train = self.finalTargetLayer.apply(self.getFcPathway()._output["train"], mode='train')
         p_y_given_x_val = self.finalTargetLayer.apply(self.getFcPathway()._output["val"], mode='infer')
         p_y_given_x_test = self.finalTargetLayer.apply(self.getFcPathway()._output["test"], mode='infer')    

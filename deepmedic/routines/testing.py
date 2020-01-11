@@ -34,7 +34,7 @@ def calc_num_fms_to_save(cnn_pathways, fm_idxs):
                 if fm_idxs_layer_pathway:
                     # If the user specifies to grab more feature maps than exist (eg 9999),
                     # correct it, replacing it with the number of FMs in the layer.
-                    fm_this_layer_num = pathway.getLayer(layer_i).get_number_fms_out()
+                    fm_this_layer_num = pathway.get_block(layer_i).get_number_fms_out()
                     fm_idxs_layer_pathway[1] = min(fm_idxs_layer_pathway[1], fm_this_layer_num)
                     fm_num += fm_idxs_layer_pathway[1] - fm_idxs_layer_pathway[0]
     return fm_num

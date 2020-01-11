@@ -131,7 +131,7 @@ class Pathway(object):
         self._input = {"train": None, "val": None, "test": None}
         self._n_fms_in = None
         # === Basic architecture parameters === 
-        self._blocks_in_pathway = []
+        self._blocks = []
         self._subsFactor = [1,1,1]
         self._recField = None # At the end of pathway
         
@@ -145,6 +145,14 @@ class Pathway(object):
     def get_number_fms_out(self):
         return self._n_fms_out
     
+    def apply(self, input, mode):
+        # mode: 'train' / 'infer'
+        signal = input
+        for block in self._layers:
+            signal = layer.apply(signal, mode)
+        return signal
+    
+        
     def build(self,
               log,
               rng,
@@ -211,7 +219,7 @@ class Pathway(object):
                         activ_func=thisLayerActivFunc,
                         dropout_rate=thisLayerDropoutRate
                         )
-            self._blocks_in_pathway.append(block)
+            self._blocks.append(block)
             #block.TEMPORARY_RUN(input_to_next_layer_train, input_to_next_layer_val, input_to_next_layer_test)
             out_train = block.apply(input_to_next_layer_train, mode="train")
             out_val = block.apply(input_to_next_layer_val, mode="infer")
@@ -281,9 +289,9 @@ class Pathway(object):
     def pType(self):
         return self._pType
     def get_blocks(self):
-        return self._blocks_in_pathway
-    def getLayer(self, index):
-        return self._blocks_in_pathway[index]
+        return self._blocks
+    def get_block(self, index):
+        return self._blocks[index]
     def subsFactor(self):
         return self._subsFactor
     def getOutput(self):
