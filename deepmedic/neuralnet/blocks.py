@@ -29,6 +29,7 @@ class Block(object):
     
     def __init__(self) :
         # === Basic architecture parameters === 
+        self._n_fms_in = None
         self._n_fms_out = None
         
         #=== All layers that the block applies ===
@@ -48,6 +49,8 @@ class Block(object):
         self.output["test"] = outputTest
             
     # Getters
+    def get_number_fms_in(self):
+        return self._n_fms_in
     def get_number_fms_out(self):
         return self._n_fms_out
     
@@ -118,6 +121,7 @@ class ConvBlock(Block):
                             image height, image width, filter depth)
         use_bn: True of False. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
         """
+        self._n_fms_in = n_fms_in
         self._n_fms_out = n_fms_out
         
         #  Order of what is applied, ala He et al "Identity Mappings in Deep Residual Networks" 2016
@@ -169,7 +173,6 @@ class SoftmaxBlock(Block):
     """ Softmax for classification. Note, this is simply the softmax function, after adding bias. Not a ConvBlock """
     def __init__(self):
         Block.__init__(self)
-        self._n_fms = None
         self._temperature = None
         
     def build(self,
@@ -178,10 +181,11 @@ class SoftmaxBlock(Block):
               t = 1):
         # t: temperature. Scalar
         
-        self._n_fms = n_fms
+        self._n_fms_in = n_fms
+        self._n_fms_out = n_fms
         self._temperature = t
         
-        self._bias_l = dm_layers.BiasLayer(self._n_fms)
+        self._bias_l = dm_layers.BiasLayer(n_fms)
         self._layers.append(self._bias_l)
         
     def apply(self, input, mode):
@@ -202,7 +206,7 @@ class SoftmaxBlock(Block):
         
         list_num_rp_rn_tp_tn_per_class = []
         
-        for class_i in range(0, self._n_fms) :
+        for class_i in range(0, self._n_fms_out) :
             #Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
             is_rp = tf.equal(y_gt, class_i)
             is_rn = tf.logical_not(is_rp)

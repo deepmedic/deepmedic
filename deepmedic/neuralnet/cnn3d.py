@@ -364,27 +364,28 @@ class Cnn3d(object):
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
-        thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
-                                                                         rng,
-                                                                         inputToPathwayTrain,
-                                                                         inputToPathwayVal,
-                                                                         inputToPathwayTest,
-                                                                         
-                                                                         thisPathWayNKerns,
-                                                                         thisPathWayKernelDimensions,
-                                                                         
-                                                                         convWInitMethod,
-                                                                         thisPathwayUseBnPerLayer,
-                                                                         movingAvForBnOverXBatches,
-                                                                         thisPathwayActivFuncPerLayer,
-                                                                         dropoutRatesForAllPathways[thisPathwayType],
-                                                                         
-                                                                         maxPoolingParamsStructure[thisPathwayType],
-                                                                         
-                                                                         indicesOfLowerRankLayersPerPathway[thisPathwayType],
-                                                                         ranksOfLowerRankLayersForEachPathway[thisPathwayType],
-                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
-                                                                         )
+        thisPathway.build(log,
+                          rng,
+                          inputToPathwayTrain,
+                          inputToPathwayVal,
+                          inputToPathwayTest,
+                          
+                          self.numberOfImageChannelsPath1,
+                          thisPathWayNKerns,
+                          thisPathWayKernelDimensions,
+                          
+                          convWInitMethod,
+                          thisPathwayUseBnPerLayer,
+                          movingAvForBnOverXBatches,
+                          thisPathwayActivFuncPerLayer,
+                          dropoutRatesForAllPathways[thisPathwayType],
+                          
+                          maxPoolingParamsStructure[thisPathwayType],
+                          
+                          indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                          ranksOfLowerRankLayersForEachPathway[thisPathwayType],
+                          indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
+                          )
         
         [dimsOfOutputFrom1stPathwayTrain, dimsOfOutputFrom1stPathwayVal, dimsOfOutputFrom1stPathwayTest] = thisPathway.getShapeOfOutput()
         
@@ -408,26 +409,27 @@ class Cnn3d(object):
             thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
             thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
             
-            thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
-                                                                     rng,
-                                                                     inputToPathwayTrain,
-                                                                     inputToPathwayVal,
-                                                                     inputToPathwayTest,
-                                                                     thisPathWayNKerns,
-                                                                     thisPathWayKernelDimensions,
-                                                                     
-                                                                     convWInitMethod,
-                                                                     thisPathwayUseBnPerLayer,
-                                                                     movingAvForBnOverXBatches,
-                                                                     thisPathwayActivFuncPerLayer,
-                                                                     dropoutRatesForAllPathways[thisPathwayType],
-                                                                     
-                                                                     maxPoolingParamsStructure[thisPathwayType],
-                                                                     
-                                                                     indicesOfLowerRankLayersPerPathway[thisPathwayType],
-                                                                     ranksOfLowerRankLayersForEachPathway[thisPathwayType],
-                                                                     indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
-                                                                     )
+            thisPathway.build(log,
+                              rng,
+                              inputToPathwayTrain,
+                              inputToPathwayVal,
+                              inputToPathwayTest,
+                              
+                              self.numberOfImageChannelsPath2,
+                              thisPathWayNKerns,
+                              thisPathWayKernelDimensions,
+                              convWInitMethod,
+                              thisPathwayUseBnPerLayer,
+                              movingAvForBnOverXBatches,
+                              thisPathwayActivFuncPerLayer,
+                              dropoutRatesForAllPathways[thisPathwayType],
+                              
+                              maxPoolingParamsStructure[thisPathwayType],
+                              
+                              indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                              ranksOfLowerRankLayersForEachPathway[thisPathwayType],
+                              indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
+                              )
             
             
             # this creates essentially the "upsampling layer"
@@ -438,13 +440,14 @@ class Cnn3d(object):
             
             
         #====================================CONCATENATE the output of the 2 cnn-pathways=============================
-        inputToFirstFcLayerTrain = None; inputToFirstFcLayerVal = None; inputToFirstFcLayerTest = None; numberOfFmsOfInputToFirstFcLayer = 0
+        inputToFirstFcLayerTrain = None; inputToFirstFcLayerVal = None; inputToFirstFcLayerTest = None; n_fms_inp_to_fc_path = 0
         for path_i in range(len(self.pathways)) :
             [outputNormResOfPathTrain, outputNormResOfPathVal, outputNormResOfPathTest] = self.pathways[path_i].getOutputAtNormalRes()
             
             inputToFirstFcLayerTrain =  tf.concat([inputToFirstFcLayerTrain, outputNormResOfPathTrain], axis=1) if path_i != 0 else outputNormResOfPathTrain
             inputToFirstFcLayerVal = tf.concat([inputToFirstFcLayerVal, outputNormResOfPathVal], axis=1) if path_i != 0 else outputNormResOfPathVal
             inputToFirstFcLayerTest = tf.concat([inputToFirstFcLayerTest, outputNormResOfPathTest], axis=1) if path_i != 0 else outputNormResOfPathTest
+            n_fms_inp_to_fc_path += self.pathways[path_i].get_number_fms_out()
             
         #======================= Make the Fully Connected Layers =======================
         thisPathway = FcPathway()
@@ -474,27 +477,28 @@ class Cnn3d(object):
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
-        thisPathway.makeLayersOfThisPathwayAndReturnDimensionsOfOutputFM(log,
-                                                                         rng,
-                                                                         inputToPathwayTrain,
-                                                                         inputToPathwayVal,
-                                                                         inputToPathwayTest,
-                                                                         
-                                                                         thisPathWayNKerns,
-                                                                         thisPathWayKernelDimensions,
-                                                                         
-                                                                         convWInitMethod,
-                                                                         thisPathwayUseBnPerLayer,
-                                                                         movingAvForBnOverXBatches,
-                                                                         thisPathwayActivFuncPerLayer,
-                                                                         dropoutRatesForAllPathways[thisPathwayType],
-                                                                         
-                                                                         maxPoolingParamsStructure[thisPathwayType],
-                                                                         
-                                                                         indicesOfLowerRankLayersPerPathway[thisPathwayType],
-                                                                         ranksOfLowerRankLayersForEachPathway[thisPathwayType],
-                                                                         indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
-                                                                         )
+        thisPathway.build(log,
+                          rng,
+                          inputToPathwayTrain,
+                          inputToPathwayVal,
+                          inputToPathwayTest,
+                          
+                          n_fms_inp_to_fc_path,
+                          thisPathWayNKerns,
+                          thisPathWayKernelDimensions,
+                          
+                          convWInitMethod,
+                          thisPathwayUseBnPerLayer,
+                          movingAvForBnOverXBatches,
+                          thisPathwayActivFuncPerLayer,
+                          dropoutRatesForAllPathways[thisPathwayType],
+                          
+                          maxPoolingParamsStructure[thisPathwayType],
+                          
+                          indicesOfLowerRankLayersPerPathway[thisPathwayType],
+                          ranksOfLowerRankLayersForEachPathway[thisPathwayType],
+                          indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
+                          )
         
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
         log.print3("Adding the final Softmax layer...")
