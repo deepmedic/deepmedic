@@ -173,7 +173,7 @@ class Cnn3d(object):
         log.print3("...Collecting ops and feeds for training...")
         
         self._ops_main['train']['cost'] = total_cost
-        self._ops_main['train']['list_rp_rn_tp_tn'] = self.finalTargetLayer.getRpRnTpTnForTrain0OrVal1(y_gt, 0)
+        self._ops_main['train']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['train'], y_gt)
         self._ops_main['train']['updates_grouped_op'] = updates_grouped_op
         
         self._feeds_main['train']['x'] = self._inp_x['train']['x']
@@ -183,7 +183,7 @@ class Cnn3d(object):
         
         log.print3("Done.")
         
-    def setup_ops_n_feeds_to_val(self, log) :
+    def setup_ops_n_feeds_to_val(self, log):
         log.print3("...Building the validation function...")
         
         y_gt = self._output_gt_tensor_feeds['val']['y_gt']
@@ -191,7 +191,7 @@ class Cnn3d(object):
         log.print3("...Collecting ops and feeds for validation...")
         
         self._ops_main['val'] = {}
-        self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.getRpRnTpTnForTrain0OrVal1(y_gt, 1)
+        self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['infer'], y_gt)
         
         self._feeds_main['val'] = {}
         self._feeds_main['val']['x'] = self._inp_x['val']['x']
@@ -220,7 +220,7 @@ class Cnn3d(object):
         
         self._ops_main['test'] = {}
         self._ops_main['test']['list_of_fms_per_layer'] = listToReturnWithAllTheFmActivationsPerLayer
-        self._ops_main['test']['pred_probs'] = self.finalTargetLayer.predictionProbabilities()
+        self._ops_main['test']['pred_probs'] = self.finalTargetLayer.output["test"]
         
         self._feeds_main['test'] = {}
         self._feeds_main['test']['x'] = self._inp_x['test']['x']

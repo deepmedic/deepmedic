@@ -192,14 +192,12 @@ class SoftmaxBlock(Block):
         return p_y_given_x
         
         
-    def getRpRnTpTnForTrain0OrVal1(self, y_gt, training0OrValidation1):
+    def get_rp_rn_tp_tn(self, p_y_given_x, y_gt):
         # The returned list has (numberOfClasses)x4 integers: >numberOfRealPositives, numberOfRealNegatives, numberOfTruePredictedPositives, numberOfTruePredictedNegatives< for each class (incl background).
         # Order in the list is the natural order of the classes (ie class-0 RP,RN,TPP,TPN, class-1 RP,RN,TPP,TPN, class-2 RP,RN,TPP,TPN ...)
         # param y_gt: y_gt = T.itensor4('y'). Dimensions [batchSize, r, c, z]
-        if training0OrValidation1 == 0:
-            y_pred = tf.argmax(self.output['train'], axis=1)
-        else:
-            y_pred = tf.argmax(self.output['val'], axis=1)
+        # mode: 'train' or 'infer'
+        y_pred = tf.argmax(p_y_given_x, axis=1)
         
         returnedListWithNumberOfRpRnTpTnForEachClass = []
         
@@ -219,10 +217,6 @@ class SoftmaxBlock(Block):
             returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTrueNeg, dtype="int32")))
             
         return returnedListWithNumberOfRpRnTpTnForEachClass
-    
-    def predictionProbabilities(self) :
-        return self.output["test"]
-
 
     # Not used.
     def mean_error(self, y_pred, y_gt):
