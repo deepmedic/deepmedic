@@ -33,7 +33,7 @@ class Block(object):
         
         #=== All layers that the block applies ===
         self._layers = []
-        self._bn_l = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND useBnFlag, with the latter used for the 1st layers of pathways (on image).
+        self._bn_l = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND use_bn, with the latter used for the 1st layers of pathways (on image).
         
         # === Output of the block ===
         self.output = {"train": None, "val": None, "test": None}
@@ -51,7 +51,7 @@ class Block(object):
     def get_number_fms_out(self):
         return self._n_fms_out
     
-    def fmsActivations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
+    def fm_activations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :
         return self.output["test"][:, indices_of_fms_in_layer_to_visualise_from_to_exclusive[0] : indices_of_fms_in_layer_to_visualise_from_to_exclusive[1], :, :, :]
         
     # Main functionality
@@ -98,17 +98,17 @@ class ConvBlock(Block):
         Block.__init__(self)
             
     # The main function that builds this.
-    def makeLayer(self,
-                rng,
-                n_fms_in,
-                n_fms_out,
-                conv_kernel_dims,
-                pool_prms, # Can be []
-                convWInitMethod,
-                useBnFlag, # Must be true to do BN. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
-                movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
-                activationFunc="relu",
-                dropoutRate=0.0):
+    def build(self,
+              rng,
+              n_fms_in,
+              n_fms_out,
+              conv_kernel_dims,
+              pool_prms, # Can be []
+              convWInitMethod,
+              use_bn,
+              movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
+              activ_func="relu",
+              dropout_rate=0.0):
         """
         param rng: numpy.random.RandomState used to initialize weights
         param inputToLayer: tensor5 of shape inputToLayerShape
@@ -116,6 +116,7 @@ class ConvBlock(Block):
                             filter height, filter width, filter depth)
         param inputToLayerShape: (batch size, num input feature maps,
                             image height, image width, filter depth)
+        use_bn: True of False. Used to not allow doing BN on first layers straight on image, even if rollingAvForBnOverThayManyBatches > 0.
         """
         self._n_fms_out = n_fms_out
         
@@ -123,7 +124,7 @@ class ConvBlock(Block):
         #  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ]
         
         #------------------ Batch Normalization ------------------
-        if useBnFlag and movingAvForBnOverXBatches > 0 :
+        if use_bn and movingAvForBnOverXBatches > 0 :
             self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=n_fms_in)
             self._layers.append(self._bn_l)
         else : #Not using batch normalization
@@ -132,11 +133,11 @@ class ConvBlock(Block):
             self._layers.append(bias_l)
         
         #------------ Apply Activation/ non-linearity -----------
-        act_l = dm_layers.get_act_layer(activationFunc, n_fms_in)
+        act_l = dm_layers.get_act_layer(activ_func, n_fms_in)
         self._layers.append(act_l)
         
         #------------- Dropout --------------
-        dropout_l = dm_layers.DropoutLayer(dropoutRate, rng)
+        dropout_l = dm_layers.DropoutLayer(dropout_rate, rng)
         self._layers.append(dropout_l)
         
         #-----------  Pooling ----------------------------------
@@ -146,10 +147,10 @@ class ConvBlock(Block):
             self._layers.append(pooling_l)
         
         # --------- Convolution ---------------------------------
-        conv_l = self._createConvLayer(n_fms_in, n_fms_out, conv_kernel_dims, convWInitMethod, rng)
+        conv_l = self._create_conv_layer(n_fms_in, n_fms_out, conv_kernel_dims, convWInitMethod, rng)
         self._layers.append(conv_l)
     
-    def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
+    def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
         return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
 
         
@@ -159,8 +160,8 @@ class LowRankConvBlock(ConvBlock):
         ConvBlock.__init__(self)
         self._rank = rank # 1 or 2 dimensions
             
-    # Overload the ConvBlock's function. Called from makeLayer. The only different behaviour.        
-    def _createConvLayer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
+    # Overload the ConvBlock's function. Called from build. The only different behaviour.        
+    def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
         return dm_layers.LowRankConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
     
     
@@ -171,10 +172,10 @@ class SoftmaxBlock(Block):
         self._n_fms = None
         self._temperature = None
         
-    def makeLayer(self,
-                  rng,
-                  n_fms,
-                  t = 1):
+    def build(self,
+              rng,
+              n_fms,
+              t = 1):
         # t: temperature. Scalar
         
         self._n_fms = n_fms
@@ -228,8 +229,8 @@ class SoftmaxBlock(Block):
             # the T.neq operator returns a vector of 0s and 1s, where 1
             # represents a mistake in prediction
             tneq = tf.logical_not( tf.equal(y_pred, y_gt) )
-            meanError = tf.reduce_mean(tneq)
-            return meanError #The percentage of the predictions that is not the correct class.
+            mean_error = tf.reduce_mean(tneq)
+            return mean_error #The percentage of the predictions that is not the correct class.
         else:
             raise NotImplementedError("Not implemented behaviour for y_gt.dtype different than int.")
 

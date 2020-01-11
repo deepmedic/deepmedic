@@ -189,17 +189,17 @@ class Pathway(object):
                 block = LowRankConvBlock(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
             else : # normal conv block
                 block = ConvBlock()
-            block.makeLayer(rng,
-                            n_fms_in=inputToNextLayerTrain.shape[1],
-                            n_fms_out=numKernsPerLayer[layer_i],
-                            conv_kernel_dims=kernelDimsPerLayer[layer_i],
-                            pool_prms=thisLayerPoolingParameters,
-                            convWInitMethod=convWInitMethod,
-                            useBnFlag = thisLayerUseBn,
-                            movingAvForBnOverXBatches=movingAvForBnOverXBatches,
-                            activationFunc=thisLayerActivFunc,
-                            dropoutRate=thisLayerDropoutRate
-                            )
+            block.build(rng,
+                        n_fms_in=inputToNextLayerTrain.shape[1],
+                        n_fms_out=numKernsPerLayer[layer_i],
+                        conv_kernel_dims=kernelDimsPerLayer[layer_i],
+                        pool_prms=thisLayerPoolingParameters,
+                        convWInitMethod=convWInitMethod,
+                        use_bn = thisLayerUseBn,
+                        movingAvForBnOverXBatches=movingAvForBnOverXBatches,
+                        activ_func=thisLayerActivFunc,
+                        dropout_rate=thisLayerDropoutRate
+                        )
             self._blocks_in_pathway.append(block)
             #block.TEMPORARY_RUN(inputToNextLayerTrain, inputToNextLayerVal, inputToNextLayerTest)
             out_train = block.apply(inputToNextLayerTrain, mode="train")

@@ -191,7 +191,7 @@ class Cnn3d(object):
         log.print3("...Collecting ops and feeds for validation...")
         
         self._ops_main['val'] = {}
-        self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['infer'], y_gt)
+        self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['val'], y_gt)
         
         self._feeds_main['val'] = {}
         self._feeds_main['val']['x'] = self._inp_x['val']['x']
@@ -214,7 +214,7 @@ class Cnn3d(object):
                     for block_i in range(len(blocks)) :  # each layer that this pathway/fc has.
                         indicesOfFmsToExtractFromThisLayer = indicesOfFmsToVisualisePerLayerOfCertainPathway[block_i]
                         if len(indicesOfFmsToExtractFromThisLayer) > 0: #if no FMs are to be taken, this should be []
-                            listToReturnWithAllTheFmActivationsPerLayer.append( blocks[block_i].fmsActivations(indicesOfFmsToExtractFromThisLayer) )
+                            listToReturnWithAllTheFmActivationsPerLayer.append( blocks[block_i].fm_activations(indicesOfFmsToExtractFromThisLayer) )
         
         log.print3("...Collecting ops and feeds for testing...")
         
@@ -500,7 +500,7 @@ class Cnn3d(object):
         log.print3("Adding the final Softmax layer...")
         
         self.finalTargetLayer = SoftmaxBlock()
-        self.finalTargetLayer.makeLayer(rng, self.getFcPathway().getLayer(-1).get_number_fms_out(), softmaxTemperature)
+        self.finalTargetLayer.build(rng, self.getFcPathway().getLayer(-1).get_number_fms_out(), softmaxTemperature)
         self.getFcPathway().getLayer(-1).connect_target_block(self.finalTargetLayer)
         p_y_given_x_train = self.finalTargetLayer.apply(self.getFcPathway()._output["train"], mode='train')
         p_y_given_x_val = self.finalTargetLayer.apply(self.getFcPathway()._output["val"], mode='infer')
