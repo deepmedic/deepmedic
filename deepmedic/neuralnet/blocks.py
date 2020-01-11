@@ -200,24 +200,24 @@ class SoftmaxBlock(Block):
         # mode: 'train' or 'infer'
         y_pred = tf.argmax(p_y_given_x, axis=1)
         
-        returnedListWithNumberOfRpRnTpTnForEachClass = []
+        list_num_rp_rn_tp_tn_per_class = []
         
         for class_i in range(0, self._n_fms) :
             #Number of Real Positive, Real Negatives, True Predicted Positives and True Predicted Negatives are reported PER CLASS (first for WHOLE).
-            tensorOneAtRealPos = tf.equal(y_gt, class_i)
-            tensorOneAtRealNeg = tf.logical_not(tensorOneAtRealPos)
+            is_rp = tf.equal(y_gt, class_i)
+            is_rn = tf.logical_not(is_rp)
 
-            tensorOneAtPredictedPos = tf.equal(y_pred, class_i)
-            tensorOneAtPredictedNeg = tf.logical_not(tensorOneAtPredictedPos)
-            tensorOneAtTruePos = tf.logical_and(tensorOneAtRealPos,tensorOneAtPredictedPos)
-            tensorOneAtTrueNeg = tf.logical_and(tensorOneAtRealNeg,tensorOneAtPredictedNeg)
+            is_predicted_pos = tf.equal(y_pred, class_i)
+            is_predicted_neg = tf.logical_not(is_predicted_pos)
+            is_tp = tf.logical_and(is_rp,is_predicted_pos)
+            is_tn = tf.logical_and(is_rn,is_predicted_neg)
                     
-            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtRealPos, dtype="int32")))
-            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtRealNeg, dtype="int32")))
-            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTruePos, dtype="int32")))
-            returnedListWithNumberOfRpRnTpTnForEachClass.append(tf.reduce_sum(tf.cast(tensorOneAtTrueNeg, dtype="int32")))
+            list_num_rp_rn_tp_tn_per_class.append(tf.reduce_sum(tf.cast(is_rp, dtype="int32")))
+            list_num_rp_rn_tp_tn_per_class.append(tf.reduce_sum(tf.cast(is_rn, dtype="int32")))
+            list_num_rp_rn_tp_tn_per_class.append(tf.reduce_sum(tf.cast(is_tp, dtype="int32")))
+            list_num_rp_rn_tp_tn_per_class.append(tf.reduce_sum(tf.cast(is_tn, dtype="int32")))
             
-        return returnedListWithNumberOfRpRnTpTnForEachClass
+        return list_num_rp_rn_tp_tn_per_class
 
     # Not used.
     def mean_error(self, y_pred, y_gt):
