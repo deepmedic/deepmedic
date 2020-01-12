@@ -94,7 +94,7 @@ def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
                 zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
 
         
-def makeResidualConnection(log, deeperLOut, earlierLOut) :
+def make_residual_connection(log, deeperLOut, earlierLOut) :
     # Add the outputs of the two layers and return the output, as well as its dimensions.
     # deeperLOut & earlierLOut: 5D tensors [batchsize, chans, x, y, z], outputs of deepest and earliest layer of the Res.Conn.
     # Result: Shape of result should be exactly the same as the output of Deeper layer.
@@ -128,15 +128,15 @@ class Pathway(object):
         self._pType = None # Pathway Type.
         
         # === Input to the pathway ===
-        self._input = {"train": None, "val": None, "test": None}
+        self._input_shape = {"train": None, "val": None, "test": None}
         self._n_fms_in = None
         # === Basic architecture parameters === 
         self._blocks = []
-        self._subsFactor = [1,1,1]
+        self._subs_factor = [1,1,1]
         self._recField = None # At the end of pathway
+        self._inds_of_blocks_for_res_conns_at_out = None
         
         # === Output of the block ===
-        self._output = {"train": None, "val": None, "test": None}
         self._n_fms_out = None
         
     # Getters
@@ -145,125 +145,102 @@ class Pathway(object):
     def get_number_fms_out(self):
         return self._n_fms_out
     
-    def apply(self, input, mode):
+    def apply(self, input, mode, train_val_test, verbose=False, log=None):
         # mode: 'train' / 'infer'
-        signal = input
-        for block in self._layers:
-            signal = layer.apply(signal, mode)
-        return signal
-    
+        if verbose:
+            log.print3("\tPathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Input's Shape: " + str(input.shape))
+            
+        input_to_prev_layer = None
+        input_to_next_layer = input
         
+        for idx, block in enumerate(self._blocks):
+            if verbose:
+                log.print3("\tBlock [" + str(idx) + "], Mode: [" + mode + "], Input's Shape: " + str(input_to_next_layer.shape))
+            
+            out = block.apply(input_to_next_layer, mode)
+            block.output[train_val_test] = out # HACK TEMPORARY
+            
+            if idx not in self._inds_of_blocks_for_res_conns_at_out: #not a residual connecting here
+                input_to_prev_layer = input_to_next_layer
+                input_to_next_layer = out
+            else : #make residual connection
+                assert layer_i > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
+                out_res = make_residual_connection(log, out, input_to_prev_layer)
+                input_to_prev_layer = input_to_next_layer
+                input_to_next_layer = out_res
+                
+        if verbose:
+            log.print3("\tPathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Output's Shape: " + str(input_to_next_layer.shape))
+            log.print3("Pathway [" + str(self.getStringType()) + "] done.")
+        
+        return input_to_next_layer
+    
+
+
     def build(self,
               log,
               rng,
-              inputTrain,
-              inputVal,
-              inputTest,
-              
               n_input_channels,
-              numKernsPerLayer,
-              kernelDimsPerLayer,
-              
-              convWInitMethod,
-              useBnPerLayer, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
-              movingAvForBnOverXBatches,
-              activFuncPerLayer,
-              dropoutRatesPerLayer=[],
-              
-              poolingParamsStructureForThisPathwayType = [],
-              
-              indicesOfLowerRankLayersForPathway=[],
-              ranksOfLowerRankLayersForPathway = [],
-              indicesOfLayersToConnectResidualsInOutputForPathway=[]
+              num_kerns_per_layer,
+              conv_kernel_dims_per_layer,
+              conv_w_init_method,
+              use_bn_per_layer, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
+              moving_avg_length,
+              activ_func_per_layer,
+              dropout_rate_per_layer=[],
+              pool_prms_for_path = [],
+              inds_of_lower_rank_convs=[],
+              ranks_of_lower_rank_convs = [],
+              inds_of_blocks_for_res_conns_at_out=[]
               ):
         log.print3("[Pathway_" + str(self.getStringType()) + "] is being built...")
-        
+
         self._n_fms_in = n_input_channels
-        self._recField = self.calcRecFieldOfPathway(kernelDimsPerLayer)
+        self._recField = self.calcRecFieldOfPathway(conv_kernel_dims_per_layer)
+        self._inds_of_blocks_for_res_conns_at_out = inds_of_blocks_for_res_conns_at_out
         
-        self._setInputAttributes(inputTrain, inputVal, inputTest)                
-        log.print3("\t[Pathway_"+str(self.getStringType())+"]: Input's Shape: (Train) " + str(self._input["train"].shape) + \
-                ", (Val) " + str(self._input["val"].shape) + ", (Test) " + str(self._input["test"].shape))
-        
-        input_to_prev_layer_train = None; input_to_prev_layer_val = None; input_to_prev_layer_test = None;
         n_fms_input_to_prev_layer = None
-        input_to_next_layer_train = self._input["train"]; input_to_next_layer_val = self._input["val"]; input_to_next_layer_test = self._input["test"]
         n_fms_input_to_next_layer = n_input_channels
-        numOfLayers = len(numKernsPerLayer)
-        for layer_i in range(0, numOfLayers) :
-            thisLayerFilterShape = [numKernsPerLayer[layer_i], input_to_next_layer_train.shape[1]] + kernelDimsPerLayer[layer_i]
-            
-            thisLayerUseBn = useBnPerLayer[layer_i]
-            thisLayerActivFunc = activFuncPerLayer[layer_i]
-            thisLayerDropoutRate = dropoutRatesPerLayer[layer_i] if dropoutRatesPerLayer else 0
-            
-            thisLayerPoolingParameters = poolingParamsStructureForThisPathwayType[layer_i]
-            
-            log.print3("\t[Conv.Layer_" + str(layer_i) + "], FMs-In: " + str(input_to_next_layer_train.shape[1]) +\
-                       ", FMs-Out: " + str(numKernsPerLayer[layer_i]) + ", Conv Filter dimensions: " + str(kernelDimsPerLayer[layer_i]))
-            log.print3("\t[Conv.Layer_" + str(layer_i) + "], Input's Shape: (Train) " + str(input_to_next_layer_train.shape) +\
-                            ", (Val) " + str(input_to_next_layer_val.shape) + ", (Test) " + str(input_to_next_layer_test.shape))
-            
-            if layer_i in indicesOfLowerRankLayersForPathway :
-                block = LowRankConvBlock(ranksOfLowerRankLayersForPathway[ indicesOfLowerRankLayersForPathway.index(layer_i) ])
+        n_blocks = len(num_kerns_per_layer)
+        for layer_i in range(0, n_blocks) :
+
+            if layer_i in inds_of_lower_rank_convs :
+                block = LowRankConvBlock(ranks_of_lower_rank_convs[ inds_of_lower_rank_convs.index(layer_i) ])
             else : # normal conv block
                 block = ConvBlock()
+                
+            log.print3("\tBlock [" + str(layer_i) + "], FMs-In: " + str(n_fms_input_to_next_layer) +\
+                                               ", FMs-Out: " + str(num_kerns_per_layer[layer_i]) +\
+                                               ", Conv Filter dimensions: " + str(conv_kernel_dims_per_layer[layer_i]))
             block.build(rng,
                         n_fms_in=n_fms_input_to_next_layer,
-                        n_fms_out=numKernsPerLayer[layer_i],
-                        conv_kernel_dims=kernelDimsPerLayer[layer_i],
-                        pool_prms=thisLayerPoolingParameters,
-                        convWInitMethod=convWInitMethod,
-                        use_bn = thisLayerUseBn,
-                        movingAvForBnOverXBatches=movingAvForBnOverXBatches,
-                        activ_func=thisLayerActivFunc,
-                        dropout_rate=thisLayerDropoutRate
+                        n_fms_out=num_kerns_per_layer[layer_i],
+                        conv_kernel_dims=conv_kernel_dims_per_layer[layer_i],
+                        pool_prms=pool_prms_for_path[layer_i],
+                        conv_w_init_method=conv_w_init_method,
+                        use_bn = use_bn_per_layer[layer_i],
+                        moving_avg_length=moving_avg_length,
+                        activ_func=activ_func_per_layer[layer_i],
+                        dropout_rate=dropout_rate_per_layer[layer_i] if len(dropout_rate_per_layer) > 0 else 0
                         )
             self._blocks.append(block)
-            #block.TEMPORARY_RUN(input_to_next_layer_train, input_to_next_layer_val, input_to_next_layer_test)
-            out_train = block.apply(input_to_next_layer_train, mode="train")
-            out_val = block.apply(input_to_next_layer_val, mode="infer")
-            out_test = block.apply(input_to_next_layer_test, mode="infer")
-            block._setBlocksOutputAttributes(out_train, out_val, out_test)
             
-            if layer_i not in indicesOfLayersToConnectResidualsInOutputForPathway : #not a residual connecting here
+            if layer_i not in inds_of_blocks_for_res_conns_at_out: #not a residual connecting here
                 n_fms_input_to_prev_layer = n_fms_input_to_next_layer
-                input_to_prev_layer_train = input_to_next_layer_train
-                input_to_prev_layer_val = input_to_next_layer_val
-                input_to_prev_layer_test = input_to_next_layer_test
-                
-                n_fms_input_to_next_layer = numKernsPerLayer[layer_i]
-                input_to_next_layer_train = out_train
-                input_to_next_layer_val = out_val
-                input_to_next_layer_test = out_test
+                n_fms_input_to_next_layer = num_kerns_per_layer[layer_i]
             else : #make residual connection
                 log.print3("\t[Pathway_"+str(self.getStringType())+"]: making Residual Connection between output of [Layer_"+str(layer_i)+"] to input of previous block.")
                 assert layer_i > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
+                n_fms_res_out = max(num_kerns_per_layer[layer_i], n_fms_input_to_prev_layer)
+                n_fms_input_to_prev_layer = n_fms_input_to_next_layer
+                n_fms_input_to_next_layer = n_fms_res_out
                 
-                n_fms_temp = n_fms_input_to_next_layer
-                inp_temp_train = input_to_next_layer_train
-                inp_temp_val = input_to_next_layer_val
-                inp_temp_test = input_to_next_layer_test
-                n_fms_input_to_next_layer = max(numKernsPerLayer[layer_i], n_fms_input_to_prev_layer)
-                input_to_next_layer_train = makeResidualConnection(log, out_train, input_to_prev_layer_train)
-                input_to_next_layer_val = makeResidualConnection(log, out_val, input_to_prev_layer_val)
-                input_to_next_layer_test = makeResidualConnection(log, out_test, input_to_prev_layer_test)
-                n_fms_input_to_prev_layer = n_fms_temp
-                input_to_prev_layer_train = inp_temp_train
-                input_to_prev_layer_val = inp_temp_val
-                input_to_prev_layer_test = inp_temp_test
-                
-        self._setOutputAttributes(input_to_next_layer_train, input_to_next_layer_val, input_to_next_layer_test)
         self._n_fms_out = n_fms_input_to_next_layer
-        
-        log.print3("\t[Pathway_"+str(self.getStringType())+"]: Output's Shape: (Train) " + str(self._output["train"].shape) + \
-                 		", (Val) " + str(self._output["val"].shape) + ", (Test) " + str(self._output["test"].shape))
-        log.print3("[Pathway_" + str(self.getStringType()) + "] done.")
-        
+                
         
     # The below should be updated, and calculated in here properly with private function and per block.
-    def calcRecFieldOfPathway(self, kernelDimsPerLayer) :
-        return calcRecFieldFromKernDimListPerLayerWhenStrides1(kernelDimsPerLayer)
+    def calcRecFieldOfPathway(self, conv_kernel_dims_per_layer) :
+        return calcRecFieldFromKernDimListPerLayerWhenStrides1(conv_kernel_dims_per_layer)
         
     def calcInputRczDimsToProduceOutputFmsOfCompatibleDims(self, thisPathWayKernelDims, dimsOfOutputFromPrimaryPathway):
         recFieldAtEndOfPathway = self.calcRecFieldOfPathway(thisPathWayKernelDims)
@@ -277,12 +254,9 @@ class Pathway(object):
         return rczDimsOfInputToPathwayShouldBe
         
     # Setters
-    def _setInputAttributes(self, inputToLayerTrain, inputToLayerVal, inputToLayerTest):
-        self._input["train"] = inputToLayerTrain; self._input["val"] = inputToLayerVal; self._input["test"] = inputToLayerTest
-        
-    def _setOutputAttributes(self, outputTrain, outputVal, outputTest):
-        self._output["train"] = outputTrain; self._output["val"] = outputVal; self._output["test"] = outputTest
-        
+    def set_input_shape(self, in_shape_tr, in_shape_val, in_shape_test):
+        self._input_shape["train"] = in_shape_tr; self._input_shape["val"] = in_shape_val; self._input_shape["test"] = in_shape_test
+            
     # Getters
     def pName(self):
         return self._pName
@@ -293,19 +267,13 @@ class Pathway(object):
     def get_block(self, index):
         return self._blocks[index]
     def subsFactor(self):
-        return self._subsFactor
-    def getOutput(self):
-        return [ self._output["train"], self._output["val"], self._output["test"] ]
-    def getShapeOfOutput(self):
-        return [ self._output["train"].shape, self._output["val"].shape, self._output["test"].shape ]
+        return self._subs_factor
     def getShapeOfInput(self, train_val_test_str):
         assert train_val_test_str in ["train", "val", "test"]
-        return self._input[train_val_test_str].shape
+        return self._input_shape[train_val_test_str]
     
     # Other API :
     def getStringType(self) : raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
-    # Will be overriden for lower-resolution pathways.
-    def getOutputAtNormalRes(self): return self.getOutput()
     
 class NormalPathway(Pathway):
     def __init__(self, pName=None) :
@@ -319,43 +287,16 @@ class SubsampledPathway(Pathway):
     def __init__(self, subsamplingFactor, pName=None) :
         Pathway.__init__(self, pName)
         self._pType = PathwayTypes.SUBS
-        self._subsFactor = subsamplingFactor
+        self._subs_factor = subsamplingFactor
         
-        self._outputNormRes = {"train": None, "val": None, "test": None}
-        
-    def upsampleOutputToNormalRes(self, upsamplingScheme="repeat",
-                            shapeToMatchInRczTrain=None, shapeToMatchInRczVal=None, shapeToMatchInRczTest=None):
-        #should be called only once to build. Then just call getters if needed to get upsampled layer again.
-        [outputTrain, outputVal, outputTest] = self.getOutput()
-        
-        outputNormResTrain = upsampleRcz5DimArrayAndOptionalCrop(outputTrain,
-                                                                self.subsFactor(),
-                                                                upsamplingScheme,
-                                                                shapeToMatchInRczTrain)
-        outputNormResVal = upsampleRcz5DimArrayAndOptionalCrop(	outputVal,
-                                                                self.subsFactor(),
-                                                                upsamplingScheme,
-                                                                shapeToMatchInRczVal)
-        outputNormResTest = upsampleRcz5DimArrayAndOptionalCrop(outputTest,
-                                                                self.subsFactor(),
-                                                                upsamplingScheme,
-                                                                shapeToMatchInRczTest)
-        
-        self._setOutputAttributesNormRes(outputNormResTrain, outputNormResVal, outputNormResTest)
-        
-    def _setOutputAttributesNormRes(self, outputNormResTrain, outputNormResVal, outputNormResTest):
-        #Essentially this is after the upsampling "layer"
-        self._outputNormRes["train"] = outputNormResTrain; self._outputNormRes["val"] = outputNormResVal; self._outputNormRes["test"] = outputNormResTest
-        
-        
+    def upsampleOutputToNormalRes(self, input, shapeToMatchInRcz, upsamplingScheme="repeat"):
+        output = upsampleRcz5DimArrayAndOptionalCrop(input, self.subsFactor(), upsamplingScheme, shapeToMatchInRcz)
+        return output
+    
     # OVERRIDING parent's classes.
     def getStringType(self) :
         return "SUBSAMPLED" + str(self.subsFactor())
-        
-    def getOutputAtNormalRes(self):
-        # upsampleOutputToNormalRes() must be called first once.
-        return [ self._outputNormRes["train"], self._outputNormRes["val"], self._outputNormRes["test"] ]
-            
+                    
              
 class FcPathway(Pathway):
     def __init__(self, pName=None) :

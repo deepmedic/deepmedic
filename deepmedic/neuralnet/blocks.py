@@ -37,17 +37,11 @@ class Block(object):
         self._bn_l = None # Keep track to update moving avg. Only when rollingAverageForBn>0 AND use_bn, with the latter used for the 1st layers of pathways (on image).
         
         # === Output of the block ===
-        self.output = {"train": None, "val": None, "test": None}
+        self.output = {"train": None, "val": None, "test": None} # TODO: Remove for eigen.
         
         # ==== Target Block Connected to that layer (softmax, regression, auxiliary loss etc), if any ======
         self._target_blocks = []
-        
-    # Setters
-    def _setBlocksOutputAttributes(self, outputTrain, outputVal, outputTest) :
-        self.output["train"] = outputTrain
-        self.output["val"] = outputVal
-        self.output["test"] = outputTest
-            
+                
     # Getters
     def get_number_fms_in(self):
         return self._n_fms_in
@@ -107,9 +101,9 @@ class ConvBlock(Block):
               n_fms_out,
               conv_kernel_dims,
               pool_prms, # Can be []
-              convWInitMethod,
+              conv_w_init_method,
               use_bn,
-              movingAvForBnOverXBatches, #If this is <= 0, we are not using BatchNormalization, even if above is True.
+              moving_avg_length, #If this is <= 0, we are not using BatchNormalization, even if above is True.
               activ_func="relu",
               dropout_rate=0.0):
         """
@@ -128,8 +122,8 @@ class ConvBlock(Block):
         #  Input -> [ BatchNorm OR biases applied] -> NonLinearity -> DropOut -> Pooling --> Conv ]
         
         #------------------ Batch Normalization ------------------
-        if use_bn and movingAvForBnOverXBatches > 0 :
-            self._bn_l = dm_layers.BatchNormLayer(movingAvForBnOverXBatches, n_channels=n_fms_in)
+        if use_bn and moving_avg_length > 0 :
+            self._bn_l = dm_layers.BatchNormLayer(moving_avg_length, n_channels=n_fms_in)
             self._layers.append(self._bn_l)
         else : #Not using batch normalization
             #make the bias terms and apply them. Like the old days before BN's own learnt bias terms.
@@ -151,7 +145,7 @@ class ConvBlock(Block):
             self._layers.append(pooling_l)
         
         # --------- Convolution ---------------------------------
-        conv_l = self._create_conv_layer(n_fms_in, n_fms_out, conv_kernel_dims, convWInitMethod, rng)
+        conv_l = self._create_conv_layer(n_fms_in, n_fms_out, conv_kernel_dims, conv_w_init_method, rng)
         self._layers.append(conv_l)
     
     def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):

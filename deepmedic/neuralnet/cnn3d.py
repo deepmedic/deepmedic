@@ -366,10 +366,6 @@ class Cnn3d(object):
         
         thisPathway.build(log,
                           rng,
-                          inputToPathwayTrain,
-                          inputToPathwayVal,
-                          inputToPathwayTest,
-                          
                           self.numberOfImageChannelsPath1,
                           thisPathWayNKerns,
                           thisPathWayKernelDimensions,
@@ -386,8 +382,18 @@ class Cnn3d(object):
                           ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                           indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                           )
+        out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
+        out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
+        out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
+        thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
         
-        [dimsOfOutputFrom1stPathwayTrain, dimsOfOutputFrom1stPathwayVal, dimsOfOutputFrom1stPathwayTest] = thisPathway.getShapeOfOutput()
+        dimsOfOutputFrom1stPathwayTrain = out_train.shape
+        dimsOfOutputFrom1stPathwayVal = out_val.shape
+        dimsOfOutputFrom1stPathwayTest = out_test.shape
+        
+        fms_from_paths_to_concat_train = [out_train]
+        fms_from_paths_to_concat_val = [out_val]
+        fms_from_paths_to_concat_test = [out_test]
         
         #=======================Make the SUBSAMPLED PATHWAYs of the CNN=============================
         for subpath_i in range(self.numSubsPaths) :
@@ -411,10 +417,6 @@ class Cnn3d(object):
             
             thisPathway.build(log,
                               rng,
-                              inputToPathwayTrain,
-                              inputToPathwayVal,
-                              inputToPathwayTest,
-                              
                               self.numberOfImageChannelsPath2,
                               thisPathWayNKerns,
                               thisPathWayKernelDimensions,
@@ -423,32 +425,33 @@ class Cnn3d(object):
                               movingAvForBnOverXBatches,
                               thisPathwayActivFuncPerLayer,
                               dropoutRatesForAllPathways[thisPathwayType],
-                              
                               maxPoolingParamsStructure[thisPathwayType],
-                              
                               indicesOfLowerRankLayersPerPathway[thisPathwayType],
                               ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                               indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                               )
-            
+            out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
+            out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
+            out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
+            thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
             
             # this creates essentially the "upsampling layer"
-            thisPathway.upsampleOutputToNormalRes(upsamplingScheme="repeat",
-                                                  shapeToMatchInRczTrain=dimsOfOutputFrom1stPathwayTrain,
-                                                  shapeToMatchInRczVal=dimsOfOutputFrom1stPathwayVal,
-                                                  shapeToMatchInRczTest=dimsOfOutputFrom1stPathwayTest)
+            outputNormResOfPathTrain = thisPathway.upsampleOutputToNormalRes(out_train, shapeToMatchInRcz=dimsOfOutputFrom1stPathwayTrain, upsamplingScheme="repeat") 
+            outputNormResOfPathVal = thisPathway.upsampleOutputToNormalRes(out_val, shapeToMatchInRcz=dimsOfOutputFrom1stPathwayVal, upsamplingScheme="repeat")
+            outputNormResOfPathTest = thisPathway.upsampleOutputToNormalRes(out_test, shapeToMatchInRcz=dimsOfOutputFrom1stPathwayTest, upsamplingScheme="repeat")
             
+            fms_from_paths_to_concat_train.append(outputNormResOfPathTrain)
+            fms_from_paths_to_concat_val.append(outputNormResOfPathVal)
+            fms_from_paths_to_concat_test.append(outputNormResOfPathTest)
             
         #====================================CONCATENATE the output of the 2 cnn-pathways=============================
-        inputToFirstFcLayerTrain = None; inputToFirstFcLayerVal = None; inputToFirstFcLayerTest = None; n_fms_inp_to_fc_path = 0
+        n_fms_inp_to_fc_path = 0
         for path_i in range(len(self.pathways)) :
-            [outputNormResOfPathTrain, outputNormResOfPathVal, outputNormResOfPathTest] = self.pathways[path_i].getOutputAtNormalRes()
-            
-            inputToFirstFcLayerTrain =  tf.concat([inputToFirstFcLayerTrain, outputNormResOfPathTrain], axis=1) if path_i != 0 else outputNormResOfPathTrain
-            inputToFirstFcLayerVal = tf.concat([inputToFirstFcLayerVal, outputNormResOfPathVal], axis=1) if path_i != 0 else outputNormResOfPathVal
-            inputToFirstFcLayerTest = tf.concat([inputToFirstFcLayerTest, outputNormResOfPathTest], axis=1) if path_i != 0 else outputNormResOfPathTest
             n_fms_inp_to_fc_path += self.pathways[path_i].get_number_fms_out()
-            
+        inputToFirstFcLayerTrain =  tf.concat(fms_from_paths_to_concat_train, axis=1)
+        inputToFirstFcLayerVal = tf.concat(fms_from_paths_to_concat_val, axis=1)
+        inputToFirstFcLayerTest = tf.concat(fms_from_paths_to_concat_test, axis=1)
+        
         #======================= Make the Fully Connected Layers =======================
         thisPathway = FcPathway()
         self.pathways.append(thisPathway)
@@ -479,52 +482,41 @@ class Cnn3d(object):
         
         thisPathway.build(log,
                           rng,
-                          inputToPathwayTrain,
-                          inputToPathwayVal,
-                          inputToPathwayTest,
-                          
                           n_fms_inp_to_fc_path,
                           thisPathWayNKerns,
                           thisPathWayKernelDimensions,
-                          
                           convWInitMethod,
                           thisPathwayUseBnPerLayer,
                           movingAvForBnOverXBatches,
                           thisPathwayActivFuncPerLayer,
                           dropoutRatesForAllPathways[thisPathwayType],
-                          
                           maxPoolingParamsStructure[thisPathwayType],
-                          
                           indicesOfLowerRankLayersPerPathway[thisPathwayType],
                           ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                           indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                           )
+        out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
+        out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
+        out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
+        thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
         
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
         log.print3("Adding the final Softmax layer...")
         
         self.finalTargetLayer = SoftmaxBlock()
-        self.finalTargetLayer.build(rng, self.getFcPathway().get_block(-1).get_number_fms_out(), softmaxTemperature)
+        self.finalTargetLayer.build(rng, self.getFcPathway().get_number_fms_out(), softmaxTemperature)
         self.getFcPathway().get_block(-1).connect_target_block(self.finalTargetLayer)
-        p_y_given_x_train = self.finalTargetLayer.apply(self.getFcPathway()._output["train"], mode='train')
-        p_y_given_x_val = self.finalTargetLayer.apply(self.getFcPathway()._output["val"], mode='infer')
-        p_y_given_x_test = self.finalTargetLayer.apply(self.getFcPathway()._output["test"], mode='infer')    
-        self.finalTargetLayer._setBlocksOutputAttributes(p_y_given_x_train, p_y_given_x_val, p_y_given_x_test)
+        p_y_given_x_train = self.finalTargetLayer.apply(out_train, mode='train')
+        p_y_given_x_val = self.finalTargetLayer.apply(out_val, mode='infer')
+        p_y_given_x_test = self.finalTargetLayer.apply(out_test, mode='infer')    
+        self.finalTargetLayer.output['train'] = p_y_given_x_train
+        self.finalTargetLayer.output['val'] = p_y_given_x_val
+        self.finalTargetLayer.output['test'] = p_y_given_x_test
         
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
     
         log.print3("Finished building the CNN's model.")
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         
         
