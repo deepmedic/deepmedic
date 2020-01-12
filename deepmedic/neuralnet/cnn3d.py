@@ -436,9 +436,9 @@ class Cnn3d(object):
             thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
             
             # this creates essentially the "upsampling layer"
-            outputNormResOfPathTrain = thisPathway.upsampleOutputToNormalRes(out_train, shapeToMatchInRcz=dimsOfOutputFrom1stPathwayTrain, upsamplingScheme="repeat") 
-            outputNormResOfPathVal = thisPathway.upsampleOutputToNormalRes(out_val, shapeToMatchInRcz=dimsOfOutputFrom1stPathwayVal, upsamplingScheme="repeat")
-            outputNormResOfPathTest = thisPathway.upsampleOutputToNormalRes(out_test, shapeToMatchInRcz=dimsOfOutputFrom1stPathwayTest, upsamplingScheme="repeat")
+            outputNormResOfPathTrain = thisPathway.upsample_to_high_res(out_train, shape_to_match=dimsOfOutputFrom1stPathwayTrain, upsampl_type="repeat") 
+            outputNormResOfPathVal = thisPathway.upsample_to_high_res(out_val, shape_to_match=dimsOfOutputFrom1stPathwayVal, upsampl_type="repeat")
+            outputNormResOfPathTest = thisPathway.upsample_to_high_res(out_test, shape_to_match=dimsOfOutputFrom1stPathwayTest, upsampl_type="repeat")
             
             fms_from_paths_to_concat_train.append(outputNormResOfPathTrain)
             fms_from_paths_to_concat_val.append(outputNormResOfPathVal)
@@ -509,9 +509,9 @@ class Cnn3d(object):
         p_y_given_x_train = self.finalTargetLayer.apply(out_train, mode='train')
         p_y_given_x_val = self.finalTargetLayer.apply(out_val, mode='infer')
         p_y_given_x_test = self.finalTargetLayer.apply(out_test, mode='infer')    
-        self.finalTargetLayer.output['train'] = p_y_given_x_train
-        self.finalTargetLayer.output['val'] = p_y_given_x_val
-        self.finalTargetLayer.output['test'] = p_y_given_x_test
+        self.finalTargetLayer.output["train"] = p_y_given_x_train
+        self.finalTargetLayer.output["val"] = p_y_given_x_val
+        self.finalTargetLayer.output["test"] = p_y_given_x_test
         
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")

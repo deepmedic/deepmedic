@@ -21,62 +21,62 @@ from deepmedic.neuralnet.blocks import ConvBlock, LowRankConvBlock
 #                         Pathway Types                         #
 #################################################################
 
-def cropRczOf5DimArrayToMatchOther(array5DimToCrop, dimensionsOf5DimArrayToMatchInRcz):
-    # dimensionsOf5DimArrayToMatchInRcz : [ batch size, num of fms, r, c, z] 
-    output = array5DimToCrop[:,
-                            :,
-                            :dimensionsOf5DimArrayToMatchInRcz[2],
-                            :dimensionsOf5DimArrayToMatchInRcz[3],
-                            :dimensionsOf5DimArrayToMatchInRcz[4]]
+def crop_to_match_dims(input, dims_to_match):
+    # dims_to_match : [ batch size, num of fms, r, c, z] 
+    output = input[:,
+                   :,
+                   :dims_to_match[2],
+                   :dims_to_match[3],
+                   :dims_to_match[4]]
     return output
     
-def repeatRcz5DimArrayByFactor(array5Dim, factor3Dim):
-    # array5Dim: [batch size, num of FMs, r, c, z]. Ala input/output of conv layers.
+def upsample_by_repeat(input, up_factors):
+    # input: [batch size, num of FMs, r, c, z]. Ala input/output of conv layers.
     # Repeat FM in the three last dimensions, to upsample back to the normal resolution space.
     # In numpy below: (but tf has no repeat, only tile, so, implementation is funny.
-    #expandedR = array5Dim.repeat(factor3Dim[0], axis=2)
-    #expandedRC = expandedR.repeat(factor3Dim[1], axis=3)
-    #expandedRCZ = expandedRC.repeat(factor3Dim[2], axis=4)
-    res = array5Dim
-    res_shape = tf.shape(array5Dim) # Dynamic. For batch and r,c,z dimensions. (unknown prior to runtime)
-    n_fms = array5Dim.get_shape()[1] # Static via get_shape(). Known. For reshape to return tensor with *known* shape[1].
+    # up_factors: list of upsampling factors per (3d) dimension. [up-x, up-y, up-z]
+    res = input
+    res_shape = tf.shape(input) # Dynamic. For batch and r,c,z dimensions. (unknown prior to runtime)
+    n_fms = input.get_shape()[1] # Static via get_shape(). Known. For reshape to return tensor with *known* shape[1].
     # If tf.shape()[1] is used, reshape changes res.get_shape()[1] to (?).
     
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1]*res_shape[2], 1, res_shape[3], res_shape[4]] ),
-                               multiples=[1, 1, factor3Dim[0], 1, 1] ),
-                    shape=[res_shape[0], n_fms, res_shape[2]*factor3Dim[0], res_shape[3], res_shape[4]] )
+                               multiples=[1, 1, up_factors[0], 1, 1] ),
+                    shape=[res_shape[0], n_fms, res_shape[2]*up_factors[0], res_shape[3], res_shape[4]] )
     res_shape = tf.shape(res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2]*res_shape[3], 1, res_shape[4]] ),
-                               multiples=[1, 1, 1, factor3Dim[1], 1] ),
-                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3]*factor3Dim[1], res_shape[4]] )
+                               multiples=[1, 1, 1, up_factors[1], 1] ),
+                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3]*up_factors[1], res_shape[4]] )
     res_shape = tf.shape(res)
     res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*res_shape[4], 1] ),
-                               multiples=[1, 1, 1, 1, factor3Dim[2]] ),
-                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3], res_shape[4]*factor3Dim[2]] )
+                               multiples=[1, 1, 1, 1, up_factors[2]] ),
+                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3], res_shape[4]*up_factors[2]] )
     return res
     
-def upsampleRcz5DimArrayAndOptionalCrop(array5dimToUpsample,
-                                        upsamplingFactor,
-                                        upsamplingScheme="repeat",
-                                        dimensionsOf5DimArrayToMatchInRcz=None) :
-    # array5dimToUpsample : [batch_size, numberOfFms, r, c, z].
-    if upsamplingScheme == "repeat" :
-        upsampledOutput = repeatRcz5DimArrayByFactor(array5dimToUpsample, upsamplingFactor)
+def upsample_5D_tens_and_crop(input,
+                              up_factors,
+                              upsampl_type="repeat",
+                              dims_to_match=None) :
+    # input: [batch_size, numberOfFms, r, c, z].
+    # up_factors: list of upsampling factors per (3d) dimension. [up-x, up-y, up-z]
+    if upsampl_type == "repeat" :
+        out_hr = upsample_by_repeat(input, up_factors)
     else :
-        print("ERROR: in upsampleRcz5DimArrayAndOptionalCrop(...). Not implemented type of upsampling! Exiting!"); exit(1)
+        print("ERROR: in upsample_5D_tens_and_crop(...). Not implemented type of upsampling! Exiting!"); exit(1)
         
-    if dimensionsOf5DimArrayToMatchInRcz is not None:
+    if dims_to_match is not None:
         # If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
         # I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
-        output = cropRczOf5DimArrayToMatchOther(upsampledOutput, dimensionsOf5DimArrayToMatchInRcz)
+        out_hr_crop = crop_to_match_dims(out_hr, dims_to_match)
     else :
-        output = upsampledOutput
+        out_hr_crop = out_hr
         
-    return output
+    return out_hr_crop
     
-def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
+def crop_center(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
     # fms: a 5D tensor, [batch, fms, r, c, z]
     # listOfNumberOfCentralVoxelsToGetPerDimension: list of 3 scalars or Tensorflow 1D tensor (eg from tf.shape(x)). [r, c, z]
+    # NOTE: Because of the indexing in the end, the shape returned is commonyl (None, Fms, None, None, None). Should be reshape to preserve shape.
     fmsShape = tf.shape(fms) #fms.shape works too.
     # if part is of even width, one voxel to the left is the centre.
     rCentreOfPartIndex = (fmsShape[2] - 1) // 2
@@ -94,26 +94,28 @@ def getMiddlePartOfFms(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
                 zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
 
         
-def make_residual_connection(log, deeperLOut, earlierLOut) :
+def make_residual_connection(log, tensor_1, tensor_2) :
+    # tensor_1: earlier tensor
+    # tensor_2: deeper tensor
     # Add the outputs of the two layers and return the output, as well as its dimensions.
-    # deeperLOut & earlierLOut: 5D tensors [batchsize, chans, x, y, z], outputs of deepest and earliest layer of the Res.Conn.
+    # tensor_2 & tensor_1: 5D tensors [batchsize, chans, x, y, z], outputs of deepest and earliest layer of the Res.Conn.
     # Result: Shape of result should be exactly the same as the output of Deeper layer.
-    deeperLOutShape = tf.shape(deeperLOut)
-    earlierLOutShape = tf.shape(earlierLOut)
+    tens_1_shape = tf.shape(tensor_1)
+    tens_2_shape = tf.shape(tensor_2)
     # Get part of the earlier layer that is of the same dimensions as the FMs of the deeper:
-    partOfEarlierFmsToAddTrain = getMiddlePartOfFms(earlierLOut, deeperLOutShape[2:])
+    tens_1_center_crop = crop_center(tensor_1, tens_2_shape[2:])
     # Add the FMs, after taking care of zero padding if the deeper layer has more FMs.
-    if deeperLOut.get_shape()[1] >= earlierLOut.get_shape()[1] : # ifs not allowed via tensor (from tf.shape(...))
-        zeroFmsToConcatTrain = tf.zeros(shape=[deeperLOutShape[0],
-                                               deeperLOutShape[1] - earlierLOutShape[1],
-                                               deeperLOutShape[2], deeperLOutShape[3], deeperLOutShape[4]], dtype="float32")
-        outputOfResConnTrain = deeperLOut + tf.concat( [partOfEarlierFmsToAddTrain, zeroFmsToConcatTrain], axis=1)
+    if tensor_2.get_shape()[1] >= tensor_1.get_shape()[1] : # ifs not allowed via tensor (from tf.shape(...))
+        blank_channels = tf.zeros(shape=[tens_2_shape[0],
+                                         tens_2_shape[1] - tens_1_shape[1],
+                                         tens_2_shape[2], tens_2_shape[3], tens_2_shape[4]], dtype="float32")
+        res_out = tensor_2 + tf.concat( [tens_1_center_crop, blank_channels], axis=1)
 
     else : # Deeper FMs are fewer than earlier. This should not happen in most architectures. But oh well...
-        outputOfResConnTrain = deeperLOut + partOfEarlierFmsToAddTrain[:, :deeperLOutShape[1], :,:,:]
-        
-    # Dimensions of output are the same as those of the deeperLayer
-    return outputOfResConnTrain
+        res_out = tensor_2 + tens_1_center_crop[:, :tens_2_shape[1], :,:,:]
+    # The following reshape is to enforce the 4 dimensions to be "visible" to TF (cause the indexing in crop_center makes them dynamic/None)
+    res_out = tf.reshape(res_out, shape=[-1, res_out.shape[1], tensor_2.shape[2], tensor_2.shape[3], tensor_2.shape[4]])
+    return res_out
     
     
 #################################################################
@@ -158,14 +160,13 @@ class Pathway(object):
                 log.print3("\tBlock [" + str(idx) + "], Mode: [" + mode + "], Input's Shape: " + str(input_to_next_layer.shape))
             
             out = block.apply(input_to_next_layer, mode)
-            block.output[train_val_test] = out # HACK TEMPORARY
-            
+            block.output[train_val_test] = out # HACK TEMPORARY. ONLY USED FOR RETURNING FMS.
             if idx not in self._inds_of_blocks_for_res_conns_at_out: #not a residual connecting here
                 input_to_prev_layer = input_to_next_layer
                 input_to_next_layer = out
             else : #make residual connection
-                assert layer_i > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
-                out_res = make_residual_connection(log, out, input_to_prev_layer)
+                assert idx > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
+                out_res = make_residual_connection(log, input_to_prev_layer, out)
                 input_to_prev_layer = input_to_next_layer
                 input_to_next_layer = out_res
                 
@@ -236,7 +237,7 @@ class Pathway(object):
                 n_fms_input_to_next_layer = n_fms_res_out
                 
         self._n_fms_out = n_fms_input_to_next_layer
-                
+        
         
     # The below should be updated, and calculated in here properly with private function and per block.
     def calcRecFieldOfPathway(self, conv_kernel_dims_per_layer) :
@@ -276,34 +277,34 @@ class Pathway(object):
     def getStringType(self) : raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
     
 class NormalPathway(Pathway):
-    def __init__(self, pName=None) :
+    def __init__(self, pName=None):
         Pathway.__init__(self, pName)
         self._pType = PathwayTypes.NORM
     # Override parent's abstract classes.
-    def getStringType(self) :
+    def getStringType(self):
         return "NORMAL"
         
 class SubsampledPathway(Pathway):
-    def __init__(self, subsamplingFactor, pName=None) :
+    def __init__(self, subsamplingFactor, pName=None):
         Pathway.__init__(self, pName)
         self._pType = PathwayTypes.SUBS
         self._subs_factor = subsamplingFactor
         
-    def upsampleOutputToNormalRes(self, input, shapeToMatchInRcz, upsamplingScheme="repeat"):
-        output = upsampleRcz5DimArrayAndOptionalCrop(input, self.subsFactor(), upsamplingScheme, shapeToMatchInRcz)
-        return output
+    def upsample_to_high_res(self, input, shape_to_match, upsampl_type="repeat"):
+        # shape_to_match: list of dimensions x,y,z to match, eg by cropping after upsampling. [dimx, dimy, dimz]
+        return upsample_5D_tens_and_crop(input, self.subsFactor(), upsampl_type, shape_to_match)
     
     # OVERRIDING parent's classes.
-    def getStringType(self) :
+    def getStringType(self):
         return "SUBSAMPLED" + str(self.subsFactor())
                     
              
 class FcPathway(Pathway):
-    def __init__(self, pName=None) :
+    def __init__(self, pName=None):
         Pathway.__init__(self, pName)
         self._pType = PathwayTypes.FC
     # Override parent's abstract classes.
-    def getStringType(self) :
+    def getStringType(self):
         return "FC"
 
 
