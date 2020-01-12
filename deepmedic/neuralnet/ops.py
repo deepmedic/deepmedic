@@ -92,3 +92,99 @@ def pool3dMirrorPad(image3dBC012, window_size, strides, mirror_pad, mode) :
     
     return pooled_out
 
+
+def crop_center(fms, listOfNumberOfCentralVoxelsToGetPerDimension) :
+    # fms: a 5D tensor, [batch, fms, r, c, z]
+    # listOfNumberOfCentralVoxelsToGetPerDimension: list of 3 scalars or Tensorflow 1D tensor (eg from tf.shape(x)). [r, c, z]
+    # NOTE: Because of the indexing in the end, the shape returned is commonyl (None, Fms, None, None, None). Should be reshape to preserve shape.
+    fmsShape = tf.shape(fms) #fms.shape works too.
+    # if part is of even width, one voxel to the left is the centre.
+    rCentreOfPartIndex = (fmsShape[2] - 1) // 2
+    rIndexToStartGettingCentralVoxels = rCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[0] - 1) // 2
+    rIndexToStopGettingCentralVoxels = rIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[0]  # Excluding
+    cCentreOfPartIndex = (fmsShape[3] - 1) // 2
+    cIndexToStartGettingCentralVoxels = cCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[1] - 1) // 2
+    cIndexToStopGettingCentralVoxels = cIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[1]  # Excluding
+    zCentreOfPartIndex = (fmsShape[4] - 1) // 2
+    zIndexToStartGettingCentralVoxels = zCentreOfPartIndex - (listOfNumberOfCentralVoxelsToGetPerDimension[2] - 1) // 2
+    zIndexToStopGettingCentralVoxels = zIndexToStartGettingCentralVoxels + listOfNumberOfCentralVoxelsToGetPerDimension[2]  # Excluding
+    return fms[    :, :,
+                rIndexToStartGettingCentralVoxels : rIndexToStopGettingCentralVoxels,
+                cIndexToStartGettingCentralVoxels : cIndexToStopGettingCentralVoxels,
+                zIndexToStartGettingCentralVoxels : zIndexToStopGettingCentralVoxels]
+
+
+def crop_to_match_dims(input, dims_to_match):
+    # dims_to_match : [ batch size, num of fms, r, c, z] 
+    output = input[:,
+                   :,
+                   :dims_to_match[2],
+                   :dims_to_match[3],
+                   :dims_to_match[4]]
+    return output
+
+
+def make_residual_connection(tensor_1, tensor_2) :
+    # tensor_1: earlier tensor
+    # tensor_2: deeper tensor
+    # Add the outputs of the two layers and return the output, as well as its dimensions.
+    # tensor_2 & tensor_1: 5D tensors [batchsize, chans, x, y, z], outputs of deepest and earliest layer of the Res.Conn.
+    # Result: Shape of result should be exactly the same as the output of Deeper layer.
+    tens_1_shape = tf.shape(tensor_1)
+    tens_2_shape = tf.shape(tensor_2)
+    # Get part of the earlier layer that is of the same dimensions as the FMs of the deeper:
+    tens_1_center_crop = crop_center(tensor_1, tens_2_shape[2:])
+    # Add the FMs, after taking care of zero padding if the deeper layer has more FMs.
+    if tensor_2.get_shape()[1] >= tensor_1.get_shape()[1] : # ifs not allowed via tensor (from tf.shape(...))
+        blank_channels = tf.zeros(shape=[tens_2_shape[0],
+                                         tens_2_shape[1] - tens_1_shape[1],
+                                         tens_2_shape[2], tens_2_shape[3], tens_2_shape[4]], dtype="float32")
+        res_out = tensor_2 + tf.concat( [tens_1_center_crop, blank_channels], axis=1)
+
+    else : # Deeper FMs are fewer than earlier. This should not happen in most architectures. But oh well...
+        res_out = tensor_2 + tens_1_center_crop[:, :tens_2_shape[1], :,:,:]
+    # The following reshape is to enforce the 4 dimensions to be "visible" to TF (cause the indexing in crop_center makes them dynamic/None)
+    res_out = tf.reshape(res_out, shape=[-1, res_out.shape[1], tensor_2.shape[2], tensor_2.shape[3], tensor_2.shape[4]])
+    return res_out
+
+
+def upsample_by_repeat(input, up_factors):
+    # input: [batch size, num of FMs, r, c, z]. Ala input/output of conv layers.
+    # Repeat FM in the three last dimensions, to upsample back to the normal resolution space.
+    # In numpy below: (but tf has no repeat, only tile, so, implementation is funny.
+    # up_factors: list of upsampling factors per (3d) dimension. [up-x, up-y, up-z]
+    res = input
+    res_shape = tf.shape(input) # Dynamic. For batch and r,c,z dimensions. (unknown prior to runtime)
+    n_fms = input.get_shape()[1] # Static via get_shape(). Known. For reshape to return tensor with *known* shape[1].
+    # If tf.shape()[1] is used, reshape changes res.get_shape()[1] to (?).
+    
+    res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1]*res_shape[2], 1, res_shape[3], res_shape[4]] ),
+                               multiples=[1, 1, up_factors[0], 1, 1] ),
+                    shape=[res_shape[0], n_fms, res_shape[2]*up_factors[0], res_shape[3], res_shape[4]] )
+    res_shape = tf.shape(res)
+    res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2]*res_shape[3], 1, res_shape[4]] ),
+                               multiples=[1, 1, 1, up_factors[1], 1] ),
+                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3]*up_factors[1], res_shape[4]] )
+    res_shape = tf.shape(res)
+    res = tf.reshape( tf.tile( tf.reshape( res, shape=[res_shape[0], res_shape[1], res_shape[2], res_shape[3]*res_shape[4], 1] ),
+                               multiples=[1, 1, 1, 1, up_factors[2]] ),
+                    shape=[res_shape[0], n_fms, res_shape[2], res_shape[3], res_shape[4]*up_factors[2]] )
+    return res
+    
+def upsample_5D_tens_and_crop(input, up_factors, upsampl_type="repeat", dims_to_match=None) :
+    # input: [batch_size, numberOfFms, r, c, z].
+    # up_factors: list of upsampling factors per (3d) dimension. [up-x, up-y, up-z]
+    if upsampl_type == "repeat" :
+        out_hr = upsample_by_repeat(input, up_factors)
+    else :
+        print("ERROR: in upsample_5D_tens_and_crop(...). Not implemented type of upsampling! Exiting!"); exit(1)
+        
+    if dims_to_match is not None:
+        # If the central-voxels are eg 10, the susampled-part will have 4 central voxels. Which above will be repeated to 3*4 = 12.
+        # I need to clip the last ones, to have the same dimension as the input from 1st pathway, which will have dimensions equal to the centrally predicted voxels (10)
+        out_hr_crop = crop_to_match_dims(out_hr, dims_to_match)
+    else :
+        out_hr_crop = out_hr
+        
+    return out_hr_crop
+
