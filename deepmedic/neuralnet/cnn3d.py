@@ -16,31 +16,8 @@ import tensorflow as tf
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
-
+import deepmedic.neuralnet.ops as ops
 from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
-
-######### Helper functions used in this module ########
-
-def padImageWithMirroring(inputImage, voxelsPerDimToPad) :
-    # inputImage shape: [batchSize, #channels#, r, c, z]
-    # inputImageDimensions : [ batchSize, #channels, dim r, dim c, dim z ] of inputImage
-    # voxelsPerDimToPad shape: [ num o voxels in r-dim to add, ...c-dim, ...z-dim ]
-    # If voxelsPerDimToPad is odd, 1 more voxel is added to the right side.
-    # r-axis
-    assert np.all(voxelsPerDimToPad) >= 0
-    padLeft = int(voxelsPerDimToPad[0] // 2); padRight = int((voxelsPerDimToPad[0] + 1) // 2);
-    paddedImage = tf.concat([inputImage[:, :, int(voxelsPerDimToPad[0] // 2) - 1::-1 , :, :], inputImage], axis=2) if padLeft > 0 else inputImage
-    paddedImage = tf.concat([paddedImage, paddedImage[ :, :, -1:-1 - int((voxelsPerDimToPad[0] + 1) // 2):-1, :, :]], axis=2) if padRight > 0 else paddedImage
-    # c-axis
-    padLeft = int(voxelsPerDimToPad[1] // 2); padRight = int((voxelsPerDimToPad[1] + 1) // 2);
-    paddedImage = tf.concat([paddedImage[:, :, :, padLeft - 1::-1 , :], paddedImage], axis=3) if padLeft > 0 else paddedImage
-    paddedImage = tf.concat([paddedImage, paddedImage[:, :, :, -1:-1 - padRight:-1, :]], axis=3) if padRight > 0 else paddedImage
-    # z-axis
-    padLeft = int(voxelsPerDimToPad[2] // 2); padRight = int((voxelsPerDimToPad[2] + 1) // 2)
-    paddedImage = tf.concat([paddedImage[:, :, :, :, padLeft - 1::-1 ], paddedImage], axis=4) if padLeft > 0 else paddedImage
-    paddedImage = tf.concat([paddedImage, paddedImage[:, :, :, :, -1:-1 - padRight:-1]], axis=4) if padRight > 0 else paddedImage
-    
-    return paddedImage
 
 
 ##################################################
@@ -153,7 +130,7 @@ class Cnn3d(object):
         return total_params
     
     def get_main_ops(self, str_train_val_test):
-     # str_train_val_test: "train", "val" or "test"
+        # str_train_val_test: "train", "val" or "test"
         return self._ops_main[str_train_val_test]
     
     def get_main_feeds(self, str_train_val_test):
@@ -466,9 +443,9 @@ class Cnn3d(object):
         voxelsToPadPerDim = [ kernelDim - 1 for kernelDim in firstFcLayerAfterConcatenationKernelShape ]
         log.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape))
         log.print3("DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: " + str(voxelsToPadPerDim))
-        inputToPathwayTrain = padImageWithMirroring(inputToFirstFcLayerTrain, voxelsToPadPerDim)
-        inputToPathwayVal = padImageWithMirroring(inputToFirstFcLayerVal, voxelsToPadPerDim)
-        inputToPathwayTest = padImageWithMirroring(inputToFirstFcLayerTest, voxelsToPadPerDim)
+        inputToPathwayTrain = ops.pad_by_mirroring(inputToFirstFcLayerTrain, voxelsToPadPerDim)
+        inputToPathwayVal = ops.pad_by_mirroring(inputToFirstFcLayerVal, voxelsToPadPerDim)
+        inputToPathwayTest = ops.pad_by_mirroring(inputToFirstFcLayerTest, voxelsToPadPerDim)
         
         thisPathWayNKerns = fcLayersFMs + [self.num_classes]
         thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
