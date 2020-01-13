@@ -25,7 +25,7 @@ class PreprocConfig(Config):
                                   " - 'Target' (optional)   path to segmentation targets.")
 
     # ===Preprocessing Parameters===
-    config_data.set_curr_section('preproc', "Preprocessing Parameters")
+    config_data.set_curr_section('output', "Output Parameters")
 
     # [REQUIRED] Output:
     OUTPUT_DIR = \
@@ -52,11 +52,14 @@ class PreprocConfig(Config):
 
     EXTENSION = \
         config_data.add_elem("extension",
-                             description='File Format', elem_type='String', widget_type='combobox',
+                             description='Image File Format', elem_type='String', widget_type='combobox',
                              options=[".nii", ".nii.gz"],
                              info="File format to save the output images in. "
                                   "Compressed nifti (.nii.gz) takes up less memory. "
                                   "Default is to replicate the type of the input images.")
+
+    # ===Preprocessing Parameters===
+    config_data.set_curr_section('preproc', "Preprocessing Parameters")
 
     ORIENTATION = \
         config_data.add_elem("orientation", description='Orientation Normalisation', elem_type='Bool',
@@ -64,7 +67,8 @@ class PreprocConfig(Config):
 
     RESAMPLE = \
         config_data.add_elem("resample", description='Change Pixel Spacing', elem_type='Bool',
-                             info="Resample images to uniform scaling")
+                             info="Resample images to a different pixel spacing, "
+                                  "i.e. change the dimension of each pixel in the image.")
 
     SPACING = \
         config_data.add_elem("pixelSpacing",

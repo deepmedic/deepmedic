@@ -105,11 +105,11 @@ class PreprocConfigWindow(ConfigWindow):
     def preprocess(self):
         # Get parameters from forms
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
-        output_dir = self.get_text_value('preproc_outputDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputDir_lineedit'))
-        save_csv = self.findChild(QtWidgets.QCheckBox, 'preproc_saveCsv_checkbox').isChecked()
-        out_csv_dir = self.get_text_value('preproc_outputCsvDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputCsvDir_lineedit'))
-        out_csv_name = self.get_text_value('preproc_outputCsvName_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_outputCsvName_lineedit'))
-        image_extension = self.get_text_value('preproc_extension_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_extension_combobox'))
+        output_dir = self.get_text_value('output_outputDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputDir_lineedit'))
+        save_csv = self.findChild(QtWidgets.QCheckBox, 'output_saveCsv_checkbox').isChecked()
+        out_csv_dir = self.get_text_value('output_outputCsvDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputCsvDir_lineedit'))
+        out_csv_name = self.get_text_value('output_outputCsvName_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputCsvName_lineedit'))
+        image_extension = self.get_text_value('output_extension_combobox', self.findChild(QtWidgets.QComboBox, 'output_extension_combobox'))
         orientation_corr = self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').isChecked()
         resample_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').isChecked()
         spacing = self.get_text_value('preproc_pixelSpacing_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_pixelSpacing_lineedit'))
