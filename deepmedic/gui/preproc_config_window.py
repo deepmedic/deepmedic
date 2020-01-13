@@ -89,7 +89,12 @@ class PreprocConfigWindow(ConfigWindow):
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit').\
                     setText(str(self.dchecks_sug['size']))
-                self.findChild(QtWidgets.QComboBox, 'preproc_imgSize_combobox').setCurrentIndex(2)
+                combo = self.findChild(QtWidgets.QComboBox, 'preproc_imgSize_combobox')
+                index = combo.findText('pixels', QtCore.Qt.MatchFixedString)
+                if index < 0:
+                    index = 1
+                combo.setCurrentIndex(index)
+
             if self.dchecks_sug['dtype']:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').setChecked(True)
                 combo = self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox')
