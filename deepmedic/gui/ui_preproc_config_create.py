@@ -49,7 +49,7 @@ class UiPreprocConfig(UiConfig):
                     self.gridLayout.addWidget(self.data_checks_button, widget_num + 2, LABEL_COL, 1, SAVE_BUTTON_SIZE)
                     self.suggested_button = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
                     self.suggested_button.setObjectName("suggested_button")
-                    self.suggested_button.setText('Fill Form With Suggested Values')
+                    self.suggested_button.setText('Fill In Suggested Preprocessing Parameters')
                     self.gridLayout.addWidget(self.suggested_button, widget_num + 3, LABEL_COL, 1, SAVE_BUTTON_SIZE)
                     widget_num += 4
 
