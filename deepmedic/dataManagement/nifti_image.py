@@ -109,6 +109,7 @@ class NiftiImage(object):
 
     def __init__(self, filename=None, mask=None, target=None, image=None, channel_names=None):
         self.channels = None
+        self.channel_names = None
         if filename is not None:
             if type(filename) == list:
                 self.channels = {}
@@ -148,41 +149,90 @@ class NiftiImage(object):
         return metadata
 
     def get_num_dims(self):
-        return self.reader.GetDimension()
+        if self.channels is None:
+            return self.reader.GetDimension()
+        else:
+            dims = {}
+            for channel in self.channel_names:
+                dims[channel] = self.channels[channel].get_num_dims()
+            return dims
 
     def get_size(self):
-        return self.reader.GetSize()
+        if self.channels is None:
+            return self.reader.GetSize()
+        else:
+            sizes = {}
+            for channel in self.channel_names:
+                sizes[channel] = self.channels[channel].get_size()
+            return sizes
 
     def get_spacing(self):
-        return self.reader.GetSpacing()
+        if self.channels is None:
+            return self.reader.GetSpacing()
+        else:
+            spcs = {}
+            for channel in self.channel_names:
+                spcs[channel] = self.channels[channel].get_spacing()
+            return spcs
 
     def get_origin(self):
-        return self.reader.GetOrigin()
+        if self.channels is None:
+            return self.reader.GetOrigin()
+        else:
+            origins = {}
+            for channel in self.channel_names:
+                origins[channel] = self.channels[channel].get_origin()
+            return origins
 
     def get_direction(self):
-        return self.reader.GetDirection()
+        if self.channels is None:
+            return self.reader.GetDirection()
+        else:
+            dirs = {}
+            for channel in self.channel_names:
+                dirs[channel] = self.channels[channel].get_direction()
+            return dirs
 
     def get_pixel_type(self):
-        return self.reader.GetPixelIDValue()
+        if self.channels is None:
+            return self.reader.GetPixelIDValue()
+        else:
+            pixs = {}
+            for channel in self.channel_names:
+                pixs[channel] = self.channels[channel].get_pixel_type()
+            return pixs
 
     def get_pixel_type_string(self):
-        dtype = self.get_pixel_type()
-        return sitk.GetPixelIDValueAsString(dtype)
+        if self.channels is None:
+            dtype = self.get_pixel_type()
+            return sitk.GetPixelIDValueAsString(dtype)
+        else:
+            pixs = {}
+            for channel in self.channel_names:
+                pixs[channel] = self.channels[channel].get_pixel_type_string()
+            return pixs
 
     def get_resample_parameters(self):
-        return self.get_size(), self.get_spacing(), self.get_direction(), self.get_origin()
+        if self.channels is None:
+            return self.get_size(), self.get_spacing(), self.get_direction(), self.get_origin()
 
     def get_header_keys(self):
         return self.reader.GetMetaDataKeys()
 
     def is_in_std_radiology_view(self):
-        dir = np.array(self.get_direction()).reshape(len(self.get_size()), -1)
-        ind = np.argmax(np.abs(dir), axis=0)
-        new_dir = dir[:, ind]
+        if self.channels is None:
+            dir = np.array(self.get_direction()).reshape(len(self.get_size()), -1)
+            ind = np.argmax(np.abs(dir), axis=0)
+            new_dir = dir[:, ind]
 
-        flip = np.diag(new_dir) < 0
+            flip = np.diag(new_dir) < 0
 
-        return sum(flip) <= 0
+            return sum(flip) <= 0
+        else:
+            rad = {}
+            for channel in self.channel_names:
+                rad[channel] = self.channels[channel].is_in_std_radiology_view()
+            return rad
 
     def apply_resample(self, origin, spacing, direction, size, interpolator=sitk.sitkLinear):
 
@@ -193,24 +243,32 @@ class NiftiImage(object):
         resample.SetOutputSpacing(spacing)
         resample.SetSize((size[0], size[1], max(size[2], 1)))
 
-        return resample.Execute(self.open())
+        if self.channels is None:
+            return resample.Execute(self.open())
 
     def reorient(self):
-        needs_reorient, direction, size, spacing, origin = reorient_params(self.get_direction(), self.get_size(),
+        if self.channels is None:
+            needs_reorient, direction, size, spacing, origin = reorient_params(self.get_direction(), self.get_size(),
                                                                            self.get_spacing(), self.get_origin())
-        if needs_reorient:
-            self.image = self.apply_resample(origin, spacing, direction, size)
-            self.reader = self.image
-            if self.mask:
-                self.mask.image = self.mask.apply_resample(origin, spacing, direction, size)
-                self.mask.reader = self.mask.image
-            if self.target:
-                self.target.image = self.target.apply_resample(origin, spacing, direction, size)
-                self.target.reader = self.target.image
+            if needs_reorient:
+                self.image = self.apply_resample(origin, spacing, direction, size)
+                self.reader = self.image
+                if self.mask:
+                    self.mask.image = self.mask.apply_resample(origin, spacing, direction, size)
+                    self.mask.reader = self.mask.image
+                if self.target:
+                    self.target.image = self.target.apply_resample(origin, spacing, direction, size)
+                    self.target.reader = self.target.image
+        else:
+            for channel in self.channel_names:
+                self.channels[channel].reorient()
 
-    def get_mask(self, min_intensity, max_intensity, inplace=True, filename=None):
-        self.open()
-        image = sitk.GetArrayFromImage(self.open())
+    def get_mask(self, min_intensity, max_intensity, inplace=True, filename=None, channel=None):
+        if self.channels is not None and channel is not None:
+            image = self.channels[channel]
+        else:
+            image = sitk.GetArrayFromImage(self.open())
+
         mask = np.zeros(image.shape)
         if min_intensity is None:
             min_intensity = min(image.flatten())
@@ -268,7 +326,12 @@ class NiftiImage(object):
                     direction = self.get_direction()
 
         # apply transformation
-        resampled = self.apply_resample(origin, spacing, direction, size)
+        if self.channels is not None:
+            resampled = {}
+            for channel_name in self.channel_names:
+                resampled[channel_name] = self.channels[channel_name].apply_resample(origin, spacing, direction, size)
+        else:
+            resampled = self.apply_resample(origin, spacing, direction, size)
         if self.mask:
             resampled_mask = self.mask.apply_resample(origin, spacing, direction, size)
         else:
