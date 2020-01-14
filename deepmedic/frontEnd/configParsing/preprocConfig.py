@@ -20,7 +20,7 @@ class PreprocConfig(Config):
         config_data.add_elem("inputCsv", elem_type='File', options='csv',
                              description='Data CSV', required=True,
                              info="CSV with the input data. Columns should be named as follows:\n"
-                                  " - 'Image'   path to images\n"
+                                  " - 'Channel_##'   path to images for channel ##\n"
                                   " - 'Mask' (optional)   path to sampling masks\n"
                                   " - 'Target' (optional)   path to segmentation targets.")
 
@@ -89,7 +89,7 @@ class PreprocConfig(Config):
                                   "(masks and targets, if provided, will retain the original format.)")
 
     RESIZE = \
-        config_data.add_elem("resize", description='Resize Images', elem_type='Bool',
+        config_data.add_elem("resize", description='Resize Images (Crop/Pad)', elem_type='Bool',
                              info="Resize images to uniform dimensions")
 
     IMAGE_SIZE =\
