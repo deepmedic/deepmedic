@@ -107,9 +107,18 @@ def greater_than(size1, size2):
 
 class NiftiImage(object):
 
-    def __init__(self, filename=None, mask=None, target=None, image=None,):
-        if filename:
-            self.reader = get_nifti_reader(filename)
+    def __init__(self, filename=None, mask=None, target=None, image=None, channel_names=None):
+        self.channels = None
+        if filename is not None:
+            if type(filename) == list:
+                self.channels = {}
+                if channel_names is not None:
+                    channel_names = [i for i in range(len(filename))]
+                for i in range(len(filename)):
+                    self.channels[channel_names[i]] = NiftiImage(filename[i])
+                self.reader = self.channels[channel_names[0]].reader
+            else:
+                self.reader = get_nifti_reader(filename)
             self.image = None
         if image:
             self.image = image
