@@ -8,7 +8,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
 import random
-from math import ceil
 from collections import OrderedDict
 
 import tensorflow as tf
@@ -17,7 +16,7 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
 import deepmedic.neuralnet.ops as ops
-from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
+from deepmedic.neuralnet.utils import calc_rec_field_of_path_given_kern_dims_w_stride_1, calc_inp_dims_lr_path_to_match_outp_dims
 
 
 ##################################################
@@ -57,20 +56,30 @@ class Cnn3d(object):
         
         #======= Input tensors X. Placeholders OR given tensors =======
         # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
-        self._inp_x = { 'train': {},
-                        'val': {},
-                        'test': {} }
+        self._inp_x = {'train': {},
+                       'val': {},
+                       'test': {} }
         
+        self._inp_shapes_per_path = {'train': None,
+                                    'val': None,
+                                    'test': None} # TODO: For sampling. In eager, remove updating calc_inp_dims_of_paths_from_hr_inp
         
         #======= Output tensors Y_GT ========
         # For each targetLayer, I should be placing a y_gt placeholder/feed.
         self._output_gt_tensor_feeds = {'train': {},
-                                   'val': {} }
+                                        'val': {} }
         
         ######## These entries are setup in the setup_train/val/test functions here ############
         self._ops_main = { 'train': {} , 'val': {}, 'test': {} }
         self._feeds_main = { 'train': {} , 'val': {}, 'test': {} }
 
+    
+    def get_inp_shapes_per_path(self):
+        return self._inp_shapes_per_path # TODO: This is for wrapper. Remove.
+    
+    def get_inp_shape_of_path(self, path_idx, mode): # Called for sampling. TODO: Remove for eager.
+        assert mode in ['train', 'val', 'test']
+        return self._inp_shapes_per_path[mode][path_idx]
     
     def getNumSubsPathways(self):
         count = 0
@@ -213,9 +222,9 @@ class Cnn3d(object):
         self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_val, name="inp_x_val")
         self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_test, name="inp_x_test")
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+in_shape_train, name="inp_x_sub_"+str(subpath_i)+"_train")
-            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+in_shape_val, name="inp_x_sub_"+str(subpath_i)+"_val")
-            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+in_shape_test, name="inp_x_sub_"+str(subpath_i)+"_test")
+            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_train")
+            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_val")
+            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_test")
             
         
     def _setupInputXTensorsFromGivenArgs(self, givenInputTensorNormTrain, givenInputTensorNormVal, givenInputTensorNormTest,
@@ -303,7 +312,7 @@ class Cnn3d(object):
         
         # ======== Calculated Attributes =========
         #This recField CNN should in future be calculated with all non-secondary pathways, ie normal+fc. Use another variable for pathway.recField.
-        self.recFieldCnn = calcRecFieldFromKernDimListPerLayerWhenStrides1(kernelDimensions)
+        self.recFieldCnn = calc_rec_field_of_path_given_kern_dims_w_stride_1(kernelDimensions)
         
         #==============================
         rng = np.random.RandomState(seed=None)
@@ -362,7 +371,7 @@ class Cnn3d(object):
         out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
         out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
         out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
-        thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
+        #thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
         
         dimsOfOutputFrom1stPathwayTrain = out_train.shape
         dimsOfOutputFrom1stPathwayVal = out_val.shape
@@ -410,7 +419,7 @@ class Cnn3d(object):
             out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
             out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
             out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
-            thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
+            #thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
             
             # this creates essentially the "upsampling layer"
             outputNormResOfPathTrain = thisPathway.upsample_to_high_res(out_train, shape_to_match=dimsOfOutputFrom1stPathwayTrain, upsampl_type="repeat") 
@@ -475,7 +484,7 @@ class Cnn3d(object):
         out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
         out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
         out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
-        thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
+        #thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
         
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
         log.print3("Adding the final Softmax layer...")
@@ -496,4 +505,44 @@ class Cnn3d(object):
         log.print3("Finished building the CNN's model.")
         
         
+        
+        self._inp_shapes_per_path['train'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsTraining,
+                                                                                     kernelDimensions,
+                                                                                     kernelDimensionsSubsampled)
+        self._inp_shapes_per_path['val'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsValidation,
+                                                                                   kernelDimensions,
+                                                                                   kernelDimensionsSubsampled)
+        self._inp_shapes_per_path['test'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsTesting,
+                                                                                    kernelDimensions,
+                                                                                    kernelDimensionsSubsampled)
+        
+    def apply(self, input, mode, train_val_test, verbose=False, log=None):
+        # train_val_test: TEMPORARY. ONLY TO RETURN FMS. REMOVE IN END OF REFACTORING.
+        pass
+        
+    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims, kern_dims_hr, kern_dims_lr):
+        # TODO: In eager, change this to just do a fwd-pass on a tensor of the given shape...
+        #       In graph, just replace this with output.shape
+        # kern_dims_hr: [ [kdx-layer1, kdy-layer1, kdz-layer1], ..., [kdx-layer1, kdy-layer1, kdz-layer1]]. From config.
+        # kern_dims_lr: same as above but for low resolution.
+        rec_field_hr = calc_rec_field_of_path_given_kern_dims_w_stride_1(kern_dims_hr)
+        out_shape_of_hr_path = [inp_hr_dims[i] - rec_field_hr[i] + 1 for i in range(len(inp_hr_dims))] # Assumption
+        inp_shape_per_path = []
+        for path_idx in range(len(self.pathways)):
+            if self.pathways[path_idx].pType() == pt.NORM:
+                inp_shape_per_path.append(inp_hr_dims)
+            elif self.pathways[path_idx].pType() != pt.FC: # it's a low-res pathway.
+                subs_factor = self.pathways[path_idx].subsFactor()
+                inp_shape_lr = calc_inp_dims_lr_path_to_match_outp_dims(kern_dims_lr, subs_factor, out_shape_of_hr_path)
+                inp_shape_per_path.append(inp_shape_lr)
+            elif self.pathways[path_idx].pType() == pt.FC:
+                inp_shape_per_path.append(out_shape_of_hr_path)
+            else:
+                raise NotImplementedError()
+            
+        # [ [path0-in-dim-x, path0-in-dim-y, path0-in-dim-z],
+        #   [path1-in-dim-x, path1-in-dim-y, path1-in-dim-z],
+        #    ...
+        #   [pathFc-in-dim-x, pathFc-in-dim-y, pathFc-in-dim-z] ]
+        return inp_shape_per_path
         

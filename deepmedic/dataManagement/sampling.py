@@ -271,7 +271,7 @@ def load_subj_and_sample(job_idx,
     channs_of_samples_per_path = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
 
-    dims_hres_segment = cnn3d.pathways[0].getShapeOfInput(train_val_or_test)[2:]
+    dims_hres_segment = cnn3d.get_inp_shape_of_path(0, train_val_or_test)
     
     # Load images of subject
     time_load_0 = time.time()
@@ -730,16 +730,16 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
 
     channs_of_sample_per_path = []
     # Sampling
-    for pathway in cnn3d.pathways[:1]:  # Hack. The rest of this loop can work for the whole .pathways...
+    for path_idx in range(len(cnn3d.pathways[:1])):  # Hack. The rest of this loop can work for the whole .pathways...
         # ... BUT the loop does not check what happens if boundaries are out of limits, to fill with zeros.
         # This is done in getImagePartFromSubsampledImageForTraining().
         # ... Update it in a nice way to be done here, and then take getImagePartFromSubsampledImageForTraining()
         # out and make loop go for every pathway.
 
-        if pathway.pType() == pt.FC:
+        if cnn3d.pathways[path_idx].pType() == pt.FC:
             continue
-        subSamplingFactor = pathway.subsFactor()
-        pathwayInputShapeRcz = pathway.getShapeOfInput(train_val_or_test)[2:]
+        subSamplingFactor = cnn3d.pathways[path_idx].subsFactor()
+        pathwayInputShapeRcz = cnn3d.get_inp_shape_of_path(path_idx, train_val_or_test)
         leftBoundaryRcz = [coord_center[0] - subSamplingFactor[0] * (pathwayInputShapeRcz[0] - 1) // 2,
                            coord_center[1] - subSamplingFactor[1] * (pathwayInputShapeRcz[1] - 1) // 2,
                            coord_center[2] - subSamplingFactor[2] * (pathwayInputShapeRcz[2] - 1) // 2]
@@ -760,8 +760,8 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         if cnn3d.pathways[pathway_i].pType() == pt.FC or cnn3d.pathways[pathway_i].pType() == pt.NORM:
             continue
         # this datastructure is similar to channelsForThisImagePart, but contains voxels from the subsampled image.
-        dimsOfPrimarySegment = cnn3d.pathways[pathway_i].getShapeOfInput(train_val_or_test)[2:]
-
+        dimsOfPrimarySegment = cnn3d.get_inp_shape_of_path(pathway_i, train_val_or_test)
+                                
         # rightmost  are placeholders here.
         slicesCoordsOfSegmForPrimaryPathway = [[leftBoundaryRcz[0], rightBoundaryRcz[0] - 1],
                                                [leftBoundaryRcz[1], rightBoundaryRcz[1] - 1],
@@ -772,7 +772,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
             subsampledImageChannels=channels,
             image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
             subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
-            subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput(train_val_or_test)[2:]
+            subsampledImagePartDimensions=cnn3d.get_inp_shape_of_path(pathway_i, train_val_or_test)
             )
 
         channs_of_sample_per_path.append(channsForThisSubsampledPartAndPathway)
@@ -885,8 +885,8 @@ def extractSegmentsGivenSliceCoords(cnn3d,
     channsForSegmentsPerPathToReturn = [[] for i in range(
         cnn3d.getNumPathwaysThatRequireInput())]  # [pathway, image parts, channels, r, c, z]
     # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
-    dimsOfPrimarySegment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
-
+    dimsOfPrimarySegment = cnn3d.get_inp_shape_of_path(0, 'test')
+    
     for segment_i in range(numberOfSegmentsToExtract):
         rLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][0]
         rFarBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][1]
@@ -916,7 +916,7 @@ def extractSegmentsGivenSliceCoords(cnn3d,
                 subsampledImageChannels=channelsOfImageNpArray,
                 image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
                 subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
-                subsampledImagePartDimensions=cnn3d.pathways[pathway_i].getShapeOfInput("test")[2:]
+                subsampledImagePartDimensions=cnn3d.get_inp_shape_of_path(pathway_i, 'test')
                 )
             channsForSegmentsPerPathToReturn[pathway_i].append(channsForThisSubsPathForThisSegm)
 

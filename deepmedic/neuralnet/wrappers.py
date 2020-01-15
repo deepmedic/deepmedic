@@ -8,29 +8,27 @@
 from __future__ import absolute_import, print_function, division
 
 
-# The API for these classes should resemble the API of Pathway and Cnn3d classes. But only what is needed by the sampling process of the training procedure.
+# The API for these classes should resemble the API of Pathway and Cnn3d classes.
+# But only what is needed by the sampling process of the training procedure.
 class PathwayWrapperForSampling(object):
     # For CnnWrapperForSampling class.
     def __init__(self, pathwayInstance) :
         self._pType = pathwayInstance.pType()
         self._subsFactor = pathwayInstance.subsFactor()
-        self._inputShape = {"train": pathwayInstance.getShapeOfInput("train"),
-                              "val": pathwayInstance.getShapeOfInput("val"),
-                              "test": pathwayInstance.getShapeOfInput("test")}
+
     def pType(self):
         return self._pType
     def subsFactor(self):
         return self._subsFactor
-    def getShapeOfInput(self, train_val_test_str):
-        assert train_val_test_str in ["train", "val", "test"]
-        return self._inputShape[train_val_test_str]
         
 class CnnWrapperForSampling(object):
-    # Only for the parallel process used during training. So that it won't re-load theano/tensorflow etc. There was a problem with cnmem when reloading theano.
+    # Only for the parallel process used during training. So that it won't re-load theano/tensorflow etc.
+    # There was a problem with cnmem when reloading theano.
     def __init__(self, cnn3d) :
         # Cnn
         self.num_classes = cnn3d.num_classes
         self.recFieldCnn = cnn3d.recFieldCnn
+        self._inp_shapes_per_path = cnn3d.get_inp_shapes_per_path()
         self.finalTargetLayer_outputShape = {"train": cnn3d.finalTargetLayer.output["train"].shape,
                                              "val": cnn3d.finalTargetLayer.output["val"].shape,
                                              "test": cnn3d.finalTargetLayer.output["test"].shape}
@@ -44,4 +42,8 @@ class CnnWrapperForSampling(object):
         
     def getNumPathwaysThatRequireInput(self) :
         return self._numPathwaysThatRequireInput
+    
+    def get_inp_shape_of_path(self, path_idx, mode):
+        # mode: 'train', 'val', 'test'
+        return self._inp_shapes_per_path[mode][path_idx]
     

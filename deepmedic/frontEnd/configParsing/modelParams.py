@@ -8,7 +8,7 @@
 from __future__ import absolute_import, print_function, division
 import os
 
-from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1, checkRecFieldVsSegmSize, checkKernDimPerLayerCorrect3dAndNumLayers, checkSubsampleFactorEven
+from deepmedic.neuralnet.utils import calc_rec_field_of_path_given_kern_dims_w_stride_1, checkRecFieldVsSegmSize, checkKernDimPerLayerCorrect3dAndNumLayers, checkSubsampleFactorEven
 
 
 class ModelParameters(object) :
@@ -161,7 +161,7 @@ class ModelParameters(object) :
         self.numFMsPerLayerNormal = cfg[cfg.N_FMS_NORM] if cfg[cfg.N_FMS_NORM] is not None and len(cfg[cfg.N_FMS_NORM]) > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
         self.kernDimPerLayerNormal = cfg[cfg.KERN_DIM_NORM] if checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_NORM], numOfLayers) else self.errReqKernDimNormal()
-        self.receptiveFieldNormal = calcRecFieldFromKernDimListPerLayerWhenStrides1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
+        self.receptiveFieldNormal = calc_rec_field_of_path_given_kern_dims_w_stride_1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
         residConnAtLayersNormal = cfg[cfg.RESID_CONN_LAYERS_NORM] if cfg[cfg.RESID_CONN_LAYERS_NORM] is not None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         lowerRankLayersNormal = cfg[cfg.LOWER_RANK_LAYERS_NORM] if cfg[cfg.LOWER_RANK_LAYERS_NORM] is not None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         
@@ -193,7 +193,7 @@ class ModelParameters(object) :
                 self.errReqKernDimNormalCorr()
             else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
                 self.kernDimPerLayerSubsampled = cfg[cfg.KERN_DIM_SUBS]
-                self.receptiveFieldSubsampled = calcRecFieldFromKernDimListPerLayerWhenStrides1(self.kernDimPerLayerSubsampled)
+                self.receptiveFieldSubsampled = calc_rec_field_of_path_given_kern_dims_w_stride_1(self.kernDimPerLayerSubsampled)
                 if self.receptiveFieldNormal != self.receptiveFieldSubsampled :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...

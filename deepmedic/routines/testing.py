@@ -246,7 +246,7 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
 
     # Tile the image and get all slices of the tiles that it fully breaks down to.
     slice_coords_all_tiles = get_slice_coords_of_all_img_tiles(log,
-                                                               cnn3d.pathways[0].getShapeOfInput("test")[2:],
+                                                               cnn3d.get_inp_shape_of_path(0, 'test'),
                                                                stride_of_tiling,
                                                                batchsize,
                                                                inp_chan_dims,
@@ -524,7 +524,7 @@ def inference_on_whole_volumes(sessionTf,
     NA_PATTERN = AccuracyMonitorForEpSegm.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(paths_per_chan_per_subj)
-    dims_hres_segment = cnn3d.pathways[0].getShapeOfInput("test")[2:]
+    dims_hres_segment = cnn3d.get_inp_shape_of_path(0, 'test') # pathway [0] is the high-res path.
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions

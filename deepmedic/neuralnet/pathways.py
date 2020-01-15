@@ -13,7 +13,6 @@ from math import ceil
 import tensorflow as tf
 
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes
-from deepmedic.neuralnet.utils import calcRecFieldFromKernDimListPerLayerWhenStrides1
 from deepmedic.neuralnet.blocks import ConvBlock, LowRankConvBlock
 import deepmedic.neuralnet.ops as ops
 
@@ -30,12 +29,10 @@ class Pathway(object):
         self._pType = None # Pathway Type.
         
         # === Input to the pathway ===
-        self._input_shape = {"train": None, "val": None, "test": None}
         self._n_fms_in = None
         # === Basic architecture parameters === 
         self._blocks = []
         self._subs_factor = [1,1,1]
-        self._recField = None # At the end of pathway
         self._inds_of_blocks_for_res_conns_at_out = None
         
         # === Output of the block ===
@@ -49,6 +46,7 @@ class Pathway(object):
     
     def apply(self, input, mode, train_val_test, verbose=False, log=None):
         # mode: 'train' / 'infer'
+        # train_val_test: TEMPORARY. ONLY TO RETURN FMS. REMOVE IN END OF REFACTORING.
         if verbose:
             log.print3("\tPathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Input's Shape: " + str(input.shape))
             
@@ -97,7 +95,6 @@ class Pathway(object):
         log.print3("[Pathway_" + str(self.getStringType()) + "] is being built...")
 
         self._n_fms_in = n_input_channels
-        self._recField = self.calcRecFieldOfPathway(conv_kernel_dims_per_layer)
         self._inds_of_blocks_for_res_conns_at_out = inds_of_blocks_for_res_conns_at_out
         
         n_fms_input_to_prev_layer = None
@@ -139,25 +136,6 @@ class Pathway(object):
         self._n_fms_out = n_fms_input_to_next_layer
         
         
-    # The below should be updated, and calculated in here properly with private function and per block.
-    def calcRecFieldOfPathway(self, conv_kernel_dims_per_layer) :
-        return calcRecFieldFromKernDimListPerLayerWhenStrides1(conv_kernel_dims_per_layer)
-        
-    def calcInputRczDimsToProduceOutputFmsOfCompatibleDims(self, thisPathWayKernelDims, dimsOfOutputFromPrimaryPathway):
-        recFieldAtEndOfPathway = self.calcRecFieldOfPathway(thisPathWayKernelDims)
-        rczDimsOfInputToPathwayShouldBe = [-1,-1,-1]
-        rczDimsOfOutputOfPathwayShouldBe = [-1,-1,-1]
-        
-        rczDimsOfOutputFromPrimaryPathway = dimsOfOutputFromPrimaryPathway[2:]
-        for rcz_i in range(3) :
-            rczDimsOfOutputOfPathwayShouldBe[rcz_i] = int(ceil(rczDimsOfOutputFromPrimaryPathway[rcz_i]/(1.0*self.subsFactor()[rcz_i])))
-            rczDimsOfInputToPathwayShouldBe[rcz_i] = recFieldAtEndOfPathway[rcz_i] + rczDimsOfOutputOfPathwayShouldBe[rcz_i] - 1
-        return rczDimsOfInputToPathwayShouldBe
-        
-    # Setters
-    def set_input_shape(self, in_shape_tr, in_shape_val, in_shape_test):
-        self._input_shape["train"] = in_shape_tr; self._input_shape["val"] = in_shape_val; self._input_shape["test"] = in_shape_test
-            
     # Getters
     def pName(self):
         return self._pName
@@ -169,9 +147,6 @@ class Pathway(object):
         return self._blocks[index]
     def subsFactor(self):
         return self._subs_factor
-    def getShapeOfInput(self, train_val_test_str):
-        assert train_val_test_str in ["train", "val", "test"]
-        return self._input_shape[train_val_test_str]
     
     # Other API :
     def getStringType(self) : raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
