@@ -175,10 +175,7 @@ class BatchNormLayer(Layer):
     # __init__ -> apply(train) --> get_update_ops_for_bn_moving_avg -> update_arrays_of_bn_moving_avg -> apply(infer)
     def __init__(self, moving_avg_length, n_channels):
         self._moving_avg_length = moving_avg_length # integer. The number of iterations (batches) over which to compute a moving average.
-        if n_channels == 5: # HACK TO TRY ZERO-INIT ON TINY
-            self._g = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="gBn" )
-        else:
-            self._g = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
+        self._g = tf.Variable( np.ones( (n_channels), dtype='float32'), name="gBn" )
         self._b = tf.Variable( np.zeros( (n_channels), dtype='float32'), name="bBn" )
         #for moving average:
         self._array_mus_for_moving_avg = tf.Variable( np.zeros( (moving_avg_length, n_channels), dtype='float32' ), name="muBnsForRollingAverage" )

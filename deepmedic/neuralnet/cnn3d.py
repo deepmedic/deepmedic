@@ -216,15 +216,15 @@ class Cnn3d(object):
         log.print3("Done.")
         
         
-    def _setupInputXTensors(self, in_shape_train, in_shape_val, in_shape_test):
+    def _setupInputXTensors(self):
         # in_shape_train/val/test: list with 3 elements. The shape of the input patch/segment. [x, y, z]
-        self._inp_x['train']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_train, name="inp_x_train")
-        self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_val, name="inp_x_val")
-        self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+in_shape_test, name="inp_x_test")
-        for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_train")
-            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_val")
-            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2, None, None, None], name="inp_x_sub_"+str(subpath_i)+"_test")
+        self._inp_x['train']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path['train'][0], name="inp_x_train")
+        self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path['val'][0], name="inp_x_val")
+        self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path['test'][0], name="inp_x_test")
+        for subpath_i in range(self.numSubsPaths): # if there are subsampled paths...
+            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path['train'][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+"_train")
+            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path['val'][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+"_val")
+            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path['test'][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+"_test")
             
         
     def _setupInputXTensorsFromGivenArgs(self, givenInputTensorNormTrain, givenInputTensorNormVal, givenInputTensorNormTest,
@@ -322,24 +322,11 @@ class Cnn3d(object):
         ######################
         log.print3("...Building the CNN model...")
         
-        # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function.
-        # >>> I should have an input argument. Which, if given None, the below placeholders are created.
-        
-        if True: # Not given input tensors as arguments
-            self._setupInputXTensors(imagePartDimensionsTraining, imagePartDimensionsValidation, imagePartDimensionsTesting)
-        else: # Inputs given as argument tensors. Eg in adv from discr or from batcher.
-            self._setupInputXTensorsFromGivenArgs(1,2,3,4,5,6) # Placeholder. Todo: Replace with normal arguments, when input tensor is given. Eg adversarial G.
-
-        
         #=======================Make the NORMAL PATHWAY of the CNN=======================
         thisPathway = NormalPathway()
         self.pathways.append(thisPathway)
         thisPathwayType = thisPathway.pType()
-        
-        inputToPathwayTrain = self._inp_x['train']['x']
-        inputToPathwayVal = self._inp_x['val']['x']
-        inputToPathwayTest = self._inp_x['test']['x']
-        
+                
         thisPathWayNKerns = nkerns
         thisPathWayKernelDimensions = kernelDimensions
         
@@ -368,28 +355,12 @@ class Cnn3d(object):
                           ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                           indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                           )
-        out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
-        out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
-        out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
-        #thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
-        
-        dimsOfOutputFrom1stPathwayTrain = out_train.shape
-        dimsOfOutputFrom1stPathwayVal = out_val.shape
-        dimsOfOutputFrom1stPathwayTest = out_test.shape
-        
-        fms_from_paths_to_concat_train = [out_train]
-        fms_from_paths_to_concat_val = [out_val]
-        fms_from_paths_to_concat_test = [out_test]
         
         #=======================Make the SUBSAMPLED PATHWAYs of the CNN=============================
         for subpath_i in range(self.numSubsPaths) :
             thisPathway = SubsampledPathway(subsampleFactorsPerSubPath[subpath_i])
             self.pathways.append(thisPathway) # There will be at least an entry as a secondary pathway. But it won't have any layers if it was not actually used.
             thisPathwayType = thisPathway.pType()
-            
-            inputToPathwayTrain = self._inp_x['train']['x_sub_'+str(subpath_i)]
-            inputToPathwayVal = self._inp_x['val']['x_sub_'+str(subpath_i)]
-            inputToPathwayTest = self._inp_x['test']['x_sub_'+str(subpath_i)]
             
             thisPathWayNKerns = nkernsSubsampled[subpath_i]
             thisPathWayKernelDimensions = kernelDimensionsSubsampled
@@ -416,27 +387,11 @@ class Cnn3d(object):
                               ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                               indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                               )
-            out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
-            out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
-            out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
-            #thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
-            
-            # this creates essentially the "upsampling layer"
-            outputNormResOfPathTrain = thisPathway.upsample_to_high_res(out_train, shape_to_match=dimsOfOutputFrom1stPathwayTrain, upsampl_type="repeat") 
-            outputNormResOfPathVal = thisPathway.upsample_to_high_res(out_val, shape_to_match=dimsOfOutputFrom1stPathwayVal, upsampl_type="repeat")
-            outputNormResOfPathTest = thisPathway.upsample_to_high_res(out_test, shape_to_match=dimsOfOutputFrom1stPathwayTest, upsampl_type="repeat")
-            
-            fms_from_paths_to_concat_train.append(outputNormResOfPathTrain)
-            fms_from_paths_to_concat_val.append(outputNormResOfPathVal)
-            fms_from_paths_to_concat_test.append(outputNormResOfPathTest)
-            
+        
         #====================================CONCATENATE the output of the 2 cnn-pathways=============================
         n_fms_inp_to_fc_path = 0
         for path_i in range(len(self.pathways)) :
             n_fms_inp_to_fc_path += self.pathways[path_i].get_number_fms_out()
-        inputToFirstFcLayerTrain =  tf.concat(fms_from_paths_to_concat_train, axis=1)
-        inputToFirstFcLayerVal = tf.concat(fms_from_paths_to_concat_val, axis=1)
-        inputToFirstFcLayerTest = tf.concat(fms_from_paths_to_concat_test, axis=1)
         
         #======================= Make the Fully Connected Layers =======================
         thisPathway = FcPathway()
@@ -448,16 +403,9 @@ class Cnn3d(object):
         # Originally it was 1x1x1 only. The pathways themselves where taking care of the receptive field.
         # However I can now define it larger (eg 3x3x3), in case it helps combining the multiresolution features better/smoother.
         # The convolution is seamless, ie same shape output/input, by mirror padding the input.
-        firstFcLayerAfterConcatenationKernelShape = self.kernelDimensionsFirstFcLayer
-        voxelsToPadPerDim = [ kernelDim - 1 for kernelDim in firstFcLayerAfterConcatenationKernelShape ]
-        log.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(firstFcLayerAfterConcatenationKernelShape))
-        log.print3("DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: " + str(voxelsToPadPerDim))
-        inputToPathwayTrain = ops.pad_by_mirroring(inputToFirstFcLayerTrain, voxelsToPadPerDim)
-        inputToPathwayVal = ops.pad_by_mirroring(inputToFirstFcLayerVal, voxelsToPadPerDim)
-        inputToPathwayTest = ops.pad_by_mirroring(inputToFirstFcLayerTest, voxelsToPadPerDim)
-        
+        log.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(self.kernelDimensionsFirstFcLayer))
         thisPathWayNKerns = fcLayersFMs + [self.num_classes]
-        thisPathWayKernelDimensions = [firstFcLayerAfterConcatenationKernelShape] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
+        thisPathWayKernelDimensions = [self.kernelDimensionsFirstFcLayer] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
@@ -481,10 +429,6 @@ class Cnn3d(object):
                           ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                           indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
                           )
-        out_train = thisPathway.apply(inputToPathwayTrain, mode='train', train_val_test='train', verbose=True, log=log)
-        out_val = thisPathway.apply(inputToPathwayVal, mode='infer', train_val_test='val', verbose=True, log=log)
-        out_test = thisPathway.apply(inputToPathwayTest, mode='infer', train_val_test='test', verbose=True, log=log)
-        #thisPathway.set_input_shape(inputToPathwayTrain.shape, inputToPathwayVal.shape, inputToPathwayTest.shape) # For sampling. Should be removed in eager.
         
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
         log.print3("Adding the final Softmax layer...")
@@ -492,19 +436,8 @@ class Cnn3d(object):
         self.finalTargetLayer = SoftmaxBlock()
         self.finalTargetLayer.build(rng, self.getFcPathway().get_number_fms_out(), softmaxTemperature)
         self.getFcPathway().get_block(-1).connect_target_block(self.finalTargetLayer)
-        p_y_given_x_train = self.finalTargetLayer.apply(out_train, mode='train')
-        p_y_given_x_val = self.finalTargetLayer.apply(out_val, mode='infer')
-        p_y_given_x_test = self.finalTargetLayer.apply(out_test, mode='infer')    
-        self.finalTargetLayer.output["train"] = p_y_given_x_train
-        self.finalTargetLayer.output["val"] = p_y_given_x_val
-        self.finalTargetLayer.output["test"] = p_y_given_x_test
         
-        self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
-        self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
-    
-        log.print3("Finished building the CNN's model.")
-        
-        
+        # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================
         
         self._inp_shapes_per_path['train'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsTraining,
                                                                                      kernelDimensions,
@@ -515,10 +448,56 @@ class Cnn3d(object):
         self._inp_shapes_per_path['test'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsTesting,
                                                                                     kernelDimensions,
                                                                                     kernelDimensionsSubsampled)
+        # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function.
+        # >>> I should have an input argument. Which, if given None, the below placeholders are created.
+        if True: # Not given input tensors as arguments
+            self._setupInputXTensors()
+        else: # Inputs given as argument tensors. Eg in adv from discr or from batcher.
+            self._setupInputXTensorsFromGivenArgs(1,2,3,4,5,6) # Placeholder. Todo: Replace with normal arguments, when input tensor is given. Eg adversarial G.
+            
+        self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
+        self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
         
-    def apply(self, input, mode, train_val_test, verbose=False, log=None):
+        self.apply('inputs_per_pathw', 'train', 'train', verbose=True, log=log)
+        self.apply('inputs_per_pathw', 'infer', 'val', verbose=True, log=log)
+        self.apply('inputs_per_pathw', 'infer', 'test', verbose=True, log=log)
+        log.print3("Finished building the CNN's model.")
+        
+        
+    def apply(self, inputs_per_pathw, mode, train_val_test, verbose=True, log=None):
+        # Currently applies it on the placeholders. TODO: On actual input.
         # train_val_test: TEMPORARY. ONLY TO RETURN FMS. REMOVE IN END OF REFACTORING.
-        pass
+        #assert len(inputs_per_pathw) == len(self.pathways) - 1
+        
+        #===== Apply High-Res path =========
+        input = self._inp_x[train_val_test]['x']
+        out = self.pathways[0].apply(input, mode, train_val_test, verbose, log)
+        dims_outp_pathway_hr = out.shape
+        fms_from_paths_to_concat = [out]
+        
+        # === Subsampled pathways =========
+        for subpath_i in range(self.numSubsPaths):
+            input = self._inp_x[train_val_test]['x_sub_'+str(subpath_i)]
+            this_pathway = self.pathways[subpath_i+1]
+            out_lr = this_pathway.apply(input, mode, train_val_test, verbose, log)
+            # this creates essentially the "upsampling layer"
+            out = this_pathway.upsample_to_high_res(out_lr, shape_to_match=dims_outp_pathway_hr, upsampl_type="repeat") 
+            fms_from_paths_to_concat.append(out)
+            
+        # ===== Concatenate and final convs ========
+        conc_inp_fms =  tf.concat(fms_from_paths_to_concat, axis=1)
+        n_voxels_pad_per_dim = [kern_dim - 1 for kern_dim in self.kernelDimensionsFirstFcLayer]
+        log.print3("DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: " + str(n_voxels_pad_per_dim))
+        conc_inp_fms = ops.pad_by_mirroring(conc_inp_fms, n_voxels_pad_per_dim) # TODO: SHOULD BE SIMPLY A PADDED-CONV LAYER.
+        this_pathway = self.pathways[-1] # Fc path
+        logits_no_bias = this_pathway.apply(conc_inp_fms, mode, train_val_test, verbose, log)
+        # Softmax
+        p_y_given_x = self.finalTargetLayer.apply(logits_no_bias, mode)
+        
+        # TODO: REMOVE THE BELOW for eager mode.
+        self.finalTargetLayer.output[train_val_test] = p_y_given_x
+        
+        return p_y_given_x
         
     def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims, kern_dims_hr, kern_dims_lr):
         # TODO: In eager, change this to just do a fwd-pass on a tensor of the given shape...
