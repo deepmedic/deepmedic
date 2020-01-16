@@ -90,6 +90,8 @@ class TestSession(Session):
                 cnn3d = Cnn3d()
                 with tf.compat.v1.variable_scope("net"):
                     cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
+                    inp_plchldrs_test  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test', model_params.kernDimPerLayerNormal, model_params.kernDimPerLayerSubsampled)
+                    p_y_given_x_test   = cnn3d.apply(inp_plchldrs_test, 'infer', 'test', verbose=True, log=self._log)
                     
             self._log.print3("=========== Compiling the Testing Function ============")
             self._log.print3("=======================================================\n")

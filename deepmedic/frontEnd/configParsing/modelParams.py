@@ -41,9 +41,8 @@ class ModelParameters(object) :
     
     #ERRORS
     @staticmethod
-    def errorSegmDimensionsSmallerThanReceptiveF(receptiveFieldNormal, segmentDimensions, tr0_val1_inf2) :
-        stringsTrainValInference = ["TRAINING", "VALIDATION", "INFERENCE"]
-        print("ERROR: The segment-size (input) should be at least as big as the receptive field of the model! The network was made with a receptive field of dimensions: ", receptiveFieldNormal, ". But in the case of :", stringsTrainValInference[tr0_val1_inf2], " the dimensions of the input segment were specified smaller: ", segmentDimensions, ". Please fix this by adjusting number of layer and kernel dimensions! Exiting!"); exit(1)
+    def errorSegmDimensionsSmallerThanReceptiveF(receptiveFieldNormal, segmentDimensions, train_val_test) :
+        print("ERROR: The segment-size (input) should be at least as big as the receptive field of the model! The network was made with a receptive field of dimensions: ", receptiveFieldNormal, ". But in the case of: [", train_val_test, "] the dimensions of the input segment were specified smaller: ", segmentDimensions, ". Please fix this by adjusting number of layer and kernel dimensions! Exiting!"); exit(1)
     @staticmethod
     def errorRequireNumberOfClasses() :
         print("ERROR: Number of classses not specified in the config file, which is required. Please specify in the format: numberOfOutputClasses = 3 (any integer). This number should be including the background class! For instance if the class is binary, set this to 2! Exiting!"); exit(1)
@@ -226,12 +225,16 @@ class ModelParameters(object) :
         residConnAtLayersFc = cfg[cfg.RESID_CONN_LAYERS_FC] if cfg[cfg.RESID_CONN_LAYERS_FC] is not None else []
                                         
         #==Size of Image Segments ==
-        self.segmDimNormalTrain = cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None else self.errReqSegmDimTrain()
-        self.segmDimNormalVal = cfg[cfg.SEG_DIM_VAL] if cfg[cfg.SEG_DIM_VAL] is not None else self.receptiveFieldNormal
-        self.segmDimNormalInfer = cfg[cfg.SEG_DIM_INFER] if cfg[cfg.SEG_DIM_INFER] is not None else self.segmDimNormalTrain
-        for (tr0_val1_inf2, segmentDimensions) in [ (0,self.segmDimNormalTrain), (1,self.segmDimNormalVal), (2,self.segmDimNormalInfer) ] :
-            if not checkRecFieldVsSegmSize(self.receptiveFieldNormal, segmentDimensions) :
-                self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, tr0_val1_inf2)
+        self._inp_dims_hr_path = {'train': None, 'val': None, 'test': None}
+        self._inp_dims_hr_path['train'] = cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None else self.errReqSegmDimTrain()
+        self._inp_dims_hr_path['val'] = cfg[cfg.SEG_DIM_VAL] if cfg[cfg.SEG_DIM_VAL] is not None else self.receptiveFieldNormal
+        self._inp_dims_hr_path['test'] = cfg[cfg.SEG_DIM_INFER] if cfg[cfg.SEG_DIM_INFER] is not None else self._inp_dims_hr_path['train']
+        self.segmDimNormalTrain = 1
+        self.segmDimNormalVal = 2
+        self.segmDimNormalInfer = 3
+        for train_val_test in ['train', 'val', 'test']:
+            if not checkRecFieldVsSegmSize(self.receptiveFieldNormal, self._inp_dims_hr_path[train_val_test]) :
+                self.errorSegmDimensionsSmallerThanReceptiveF(self.receptiveFieldNormal, segmentDimensions, train_val_test)
 
         
         #=== Dropout rates ===
@@ -335,9 +338,9 @@ class ModelParameters(object) :
         logPrint("Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = " + str(self.kernelDimensionsFirstFcLayer))
         
         logPrint("~~Size Of Image Segments~~")
-        logPrint("Size of Segments for Training = " + str(self.segmDimNormalTrain))
-        logPrint("Size of Segments for Validation = " + str(self.segmDimNormalVal))
-        logPrint("Size of Segments for Testing = " + str(self.segmDimNormalInfer))
+        logPrint("Size of Segments for Training = " + str(self._inp_dims_hr_path['train']))
+        logPrint("Size of Segments for Validation = " + str(self._inp_dims_hr_path['val']))
+        logPrint("Size of Segments for Testing = " + str(self._inp_dims_hr_path['test']))
         
         logPrint("~~Dropout Rates~~")
         logPrint("Drop.R. for each layer in Normal Pathway = " + str(self.dropoutRatesForAllPathways[0]))
@@ -357,7 +360,7 @@ class ModelParameters(object) :
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================")
         
-    def get_args_for_arch(self) :
+    def get_args_for_arch(self):
         
         args = [
                         self.log,
@@ -391,11 +394,6 @@ class ModelParameters(object) :
                         #--- Skip Connections --- #Deprecated, not used/supported
                         self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
                         
-                        #==Size of Image Segments ==
-                        self.segmDimNormalTrain,
-                        self.segmDimNormalVal,
-                        self.segmDimNormalInfer,
-                        
                         #=== Others ====
                         #Dropout
                         self.dropoutRatesForAllPathways,
@@ -409,3 +407,11 @@ class ModelParameters(object) :
         
         return args
 
+
+    def get_inp_dims_hr_path(self, train_val_test): # TODO: Move config in train/test cfg.
+        #==Size of Image Segments ==
+        assert train_val_test in ['train', 'val', 'test']
+        return self._inp_dims_hr_path[train_val_test]
+        
+        
+        

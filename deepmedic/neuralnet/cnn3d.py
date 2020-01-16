@@ -216,27 +216,18 @@ class Cnn3d(object):
         log.print3("Done.")
         
         
-    def _setupInputXTensors(self):
-        # in_shape_train/val/test: list with 3 elements. The shape of the input patch/segment. [x, y, z]
-        self._inp_x['train']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path['train'][0], name="inp_x_train")
-        self._inp_x['val']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path['val'][0], name="inp_x_val")
-        self._inp_x['test']['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path['test'][0], name="inp_x_test")
+    def _setup_inp_plchldrs(self, train_val_test): # TODO: REMOVE for eager
+        assert train_val_test in ['train', 'val', 'test']
+        self._inp_x[train_val_test]['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path[train_val_test][0], name='inp_x_'+train_val_test)
         for subpath_i in range(self.numSubsPaths): # if there are subsampled paths...
-            self._inp_x['train']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path['train'][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+"_train")
-            self._inp_x['val']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path['val'][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+"_val")
-            self._inp_x['test']['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path['test'][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+"_test")
-            
-        
-    def _setupInputXTensorsFromGivenArgs(self, givenInputTensorNormTrain, givenInputTensorNormVal, givenInputTensorNormTest,
-                                         givenListInputTensorPerSubsTrain, givenListInputTensorPerSubsVal, givenListInputTensorPerSubsTest):
-        self._inp_x['train']['x'] = givenInputTensorNormTrain
-        self._inp_x['val']['x'] = givenInputTensorNormVal
-        self._inp_x['test']['x'] = givenInputTensorNormTest
-        for subpath_i in range(self.numSubsPaths):
-            self._inp_x['train']['x_sub_'+str(subpath_i)] = givenListInputTensorPerSubsTrain[subpath_i]
-            self._inp_x['val']['x_sub_'+str(subpath_i)] = givenListInputTensorPerSubsVal[subpath_i]
-            self._inp_x['test']['x_sub_'+str(subpath_i)] = givenListInputTensorPerSubsTest[subpath_i]
-        
+            self._inp_x[train_val_test]['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
+        return self._inp_x[train_val_test]
+    
+    def create_inp_plchldrs(self, inp_dms, train_val_test, kern_dims_hr_path, kern_dims_lr_paths): # TODO: Remove for eager
+            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dms,
+                                                                                                kern_dims_hr_path,
+                                                                                                kern_dims_lr_paths)
+            return self._setup_inp_plchldrs(train_val_test)    
         
         
     def make_cnn_model( self,
@@ -272,11 +263,6 @@ class Cnn3d(object):
                         #--- Skip Connections --- #Deprecated, not used/supported
                         convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
                         
-                        #===Size of Image Segments ===
-                        imagePartDimensionsTraining,
-                        imagePartDimensionsValidation,
-                        imagePartDimensionsTesting,
-                        
                         #=== Others ===
                         # Dropout
                         dropoutRatesForAllPathways,  # list of sublists, one for each pathway. Each either empty or full with the dropout rates of all the layers in the path.
@@ -285,7 +271,6 @@ class Cnn3d(object):
                         # Batch Normalization
                         applyBnToInputOfPathways,  # one Boolean flag per pathway type. Placeholder for the FC pathway.
                         movingAvForBnOverXBatches,
-                        
                         ):
         
         self.cnnModelName = cnnModelName
@@ -342,15 +327,12 @@ class Cnn3d(object):
                           self.numberOfImageChannelsPath1,
                           thisPathWayNKerns,
                           thisPathWayKernelDimensions,
-                          
                           convWInitMethod,
                           thisPathwayUseBnPerLayer,
                           movingAvForBnOverXBatches,
                           thisPathwayActivFuncPerLayer,
                           dropoutRatesForAllPathways[thisPathwayType],
-                          
                           maxPoolingParamsStructure[thisPathwayType],
-                          
                           indicesOfLowerRankLayersPerPathway[thisPathwayType],
                           ranksOfLowerRankLayersForEachPathway[thisPathwayType],
                           indicesOfLayersToConnectResidualsInOutput[thisPathwayType]
@@ -437,30 +419,10 @@ class Cnn3d(object):
         self.finalTargetLayer.build(rng, self.getFcPathway().get_number_fms_out(), softmaxTemperature)
         self.getFcPathway().get_block(-1).connect_target_block(self.finalTargetLayer)
         
-        # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================
-        
-        self._inp_shapes_per_path['train'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsTraining,
-                                                                                     kernelDimensions,
-                                                                                     kernelDimensionsSubsampled)
-        self._inp_shapes_per_path['val'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsValidation,
-                                                                                   kernelDimensions,
-                                                                                   kernelDimensionsSubsampled)
-        self._inp_shapes_per_path['test'] = self.calc_inp_dims_of_paths_from_hr_inp(imagePartDimensionsTesting,
-                                                                                    kernelDimensions,
-                                                                                    kernelDimensionsSubsampled)
-        # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function.
-        # >>> I should have an input argument. Which, if given None, the below placeholders are created.
-        if True: # Not given input tensors as arguments
-            self._setupInputXTensors()
-        else: # Inputs given as argument tensors. Eg in adv from discr or from batcher.
-            self._setupInputXTensorsFromGivenArgs(1,2,3,4,5,6) # Placeholder. Todo: Replace with normal arguments, when input tensor is given. Eg adversarial G.
-            
+        # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================    
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
         
-        self.apply('inputs_per_pathw', 'train', 'train', verbose=True, log=log)
-        self.apply('inputs_per_pathw', 'infer', 'val', verbose=True, log=log)
-        self.apply('inputs_per_pathw', 'infer', 'test', verbose=True, log=log)
         log.print3("Finished building the CNN's model.")
         
         
@@ -470,14 +432,14 @@ class Cnn3d(object):
         #assert len(inputs_per_pathw) == len(self.pathways) - 1
         
         #===== Apply High-Res path =========
-        input = self._inp_x[train_val_test]['x']
+        input = inputs_per_pathw['x']
         out = self.pathways[0].apply(input, mode, train_val_test, verbose, log)
         dims_outp_pathway_hr = out.shape
         fms_from_paths_to_concat = [out]
         
         # === Subsampled pathways =========
         for subpath_i in range(self.numSubsPaths):
-            input = self._inp_x[train_val_test]['x_sub_'+str(subpath_i)]
+            input = inputs_per_pathw['x_sub_'+str(subpath_i)]
             this_pathway = self.pathways[subpath_i+1]
             out_lr = this_pathway.apply(input, mode, train_val_test, verbose, log)
             # this creates essentially the "upsampling layer"
