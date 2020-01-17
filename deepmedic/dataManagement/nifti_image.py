@@ -109,12 +109,12 @@ class NiftiImage(object):
 
     def __init__(self, filename=None, mask=None, target=None, image=None, channel_names=None):
         self.channels = None
-        self.channel_names = None
+        self.channel_names = channel_names
         if filename is not None:
             if type(filename) == list:
                 self.channels = {}
-                if channel_names is not None:
-                    channel_names = [i for i in range(len(filename))]
+                if channel_names is None:
+                    self.channel_names = [i for i in range(len(filename))]
                 for i in range(len(filename)):
                     self.channels[channel_names[i]] = NiftiImage(filename[i])
                 self.reader = self.channels[channel_names[0]].reader
@@ -299,45 +299,48 @@ class NiftiImage(object):
 
     def resample(self, origin=None, spacing=None, direction=None, size=None, standard=False,
                  save=False, filename=None, copy=False, ref_image=None):
-        # get transformation parameters
-        if ref_image:
-            size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
-            if not size:
-                size = size_rsp
-            if not spacing:
-                spacing = spacing_rsp
-            if not direction:
-                direction = direction_rsp
-            if not origin:
-                origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
-                # origin = origin_rsp
-        else:
-            if spacing is None:
-                if standard:
-                    spacing = (1., 1., 1.)
-                else:
-                    spacing = self.get_spacing()
-            if size is None:
-                size = get_new_size(self.get_size(), spacing, self.get_spacing())
-            num_dims = len(size)
-            if origin is None:
-                if standard:
-                    origin = np.zeros(num_dims)
-                else:
-                    origin = self.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
-            if direction is None:
-                if standard:
-                    direction = np.identity(num_dims).flatten()
-                else:
-                    direction = self.get_direction()
-
         # apply transformation
         if self.channels is not None:
             resampled = {}
             for channel_name in self.channel_names:
-                resampled[channel_name] = self.channels[channel_name].apply_resample(origin, spacing, direction, size)
+                resampled[channel_name], _, _ = \
+                    self.channels[channel_name].resample(origin, spacing, direction, size, standard,
+                                                         save, filename, copy, ref_image)
         else:
+            # get transformation parameters
+            if ref_image:
+                size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
+                if not size:
+                    size = size_rsp
+                if not spacing:
+                    spacing = spacing_rsp
+                if not direction:
+                    direction = direction_rsp
+                if not origin:
+                    origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
+                    # origin = origin_rsp
+            else:
+                if spacing is None:
+                    if standard:
+                        spacing = (1., 1., 1.)
+                    else:
+                        spacing = self.get_spacing()
+                if size is None:
+                    size = get_new_size(self.get_size(), spacing, self.get_spacing())
+                num_dims = len(size)
+                if origin is None:
+                    if standard:
+                        origin = np.zeros(num_dims)
+                    else:
+                        origin = self.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
+                if direction is None:
+                    if standard:
+                        direction = np.identity(num_dims).flatten()
+                    else:
+                        direction = self.get_direction()
+
             resampled = self.apply_resample(origin, spacing, direction, size)
+
         if self.mask:
             resampled_mask = self.mask.apply_resample(origin, spacing, direction, size)
         else:
@@ -398,7 +401,7 @@ class NiftiImage(object):
     def crop(self, min_crop, max_crop):
         if self.channels is not None:
             for channel in self.channel_names:
-                channel.crop(min_crop, max_crop)
+                self.channels[channel].crop(min_crop, max_crop)
         else:
             self.open()
             crop_filter = sitk.CropImageFilter()
@@ -409,7 +412,7 @@ class NiftiImage(object):
     def pad_constant(self, constant, min_pad, max_pad):
         if self.channels is not None:
             for channel in self.channel_names:
-                channel.pad_constant(constant, min_pad, max_pad)
+                self.channels[channel].pad_constant(constant, min_pad, max_pad)
         else:
             self.open()
             pad_filter = sitk.ConstantPadImageFilter()
@@ -432,7 +435,7 @@ class NiftiImage(object):
     def resize(self, size, centre_mass=False, use_mask=True, pad_val=-1000, pad_val_mask=0, pad_val_target=0):
         if self.channels is not None:
             for channel in self.channel_names:
-                channel.resize(size, centre_mass, use_mask, pad_val, pad_val_mask, pad_val_target)
+                self.channels[channel].resize(size, centre_mass, use_mask, pad_val, pad_val_mask, pad_val_target)
         else:
             self.open()
             if centre_mass:
@@ -482,7 +485,7 @@ class NiftiImage(object):
     def change_pixel_type(self, pixel_type):
         if self.channels is not None:
             for channel in self.channel_names:
-                channel.change_pixel_type(pixel_type)
+                self.channels[channel].change_pixel_type(pixel_type)
         else:
             pixel_type_sitk = pixel_type_to_sitk(pixel_type)
             if pixel_type_sitk is None:

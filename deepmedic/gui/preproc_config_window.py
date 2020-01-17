@@ -2,12 +2,11 @@ from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.gui.ui_preproc_config_create import UiPreprocConfig
 from deepmedic.frontEnd.configParsing.preprocConfig import PreprocConfig
 from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
-from deepmedic.dataManagement.data_checks import run_checks, resample_image_list, ResampleParams
-from deepmedic.gui.config_utils import *
+from deepmedic.dataManagement.data_checks import run_checks
 import pandas as pd
 import os
 
-from PySide2 import QtWidgets, QtGui
+from PySide2 import QtWidgets, QtGui, QtCore
 
 
 def get_save_name(image_path, output_dir, image_extension):
@@ -21,6 +20,35 @@ def get_save_name(image_path, output_dir, image_extension):
         image_extension = '.' + '.'.join(path_split[1:])
 
     return image_name, image_save_name, image_extension
+
+
+def get_channel_names(data_columns):
+    channels = []
+    for col in data_columns:
+        if col.startswith('Channel_'):
+            channels += col[len('Channel_'):]
+    if not channels:
+        channels = None
+    return channels
+
+
+def get_image_paths(row, channels):
+    channel_paths = []
+    print(channels)
+    for channel in channels:
+        channel_paths += [row['Channel_' + channel]]
+
+    try:
+        mask_path = row['Mask']
+    except KeyError:
+        mask_path = None
+
+    try:
+        target_path = row['Target']
+    except KeyError:
+        target_path = None
+
+    return channel_paths, mask_path, target_path
 
 
 class ProgressBar(object):
@@ -72,6 +100,7 @@ class PreprocConfigWindow(ConfigWindow):
         self.data_checks_progress.show()
         check_text, self.dchecks_sug = run_checks(csv, csv=True,
                                                   pixs=True, dims=True, dtypes=True, dirs=True, sizes=True,
+                                                  intra_dims=True, intra_sizes=True,
                                                   disable_tqdm=False, html=True, progress=self.data_checks_progress)
         self.ui.data_checks_text.setText(check_text)
         self.ui.suggested_button.show()
@@ -79,13 +108,13 @@ class PreprocConfigWindow(ConfigWindow):
     def fill_in_sug(self):
         print(self.dchecks_sug)
         if self.dchecks_sug:
-            if self.dchecks_sug['direction']:
+            if self.dchecks_sug['direction'] is not None:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').setChecked(True)
-            if self.dchecks_sug['spacing']:
+            if self.dchecks_sug['spacing'] is not None:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit,
                                'preproc_pixelSpacing_lineedit').setText(str(self.dchecks_sug['spacing']))
-            if self.dchecks_sug['size']:
+            if self.dchecks_sug['size'] is not None:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit').\
                     setText(str(self.dchecks_sug['size']))
@@ -95,12 +124,17 @@ class PreprocConfigWindow(ConfigWindow):
                     index = 1
                 combo.setCurrentIndex(index)
 
-            if self.dchecks_sug['dtype']:
+            if self.dchecks_sug['dtype'] is not None:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').setChecked(True)
                 combo = self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox')
                 index = combo.findText(self.dchecks_sug['dtype'], QtCore.Qt.MatchFixedString)
                 if index >= 0:
                     combo.setCurrentIndex(index)
+
+            if self.dchecks_sug['base_dir'] is not None and not self.dchecks_sug['base_dir'] == '':
+                self.findChild(QtWidgets.QCheckBox, 'output_useBaseDir_checkbox').setChecked(True)
+                self.findChild(QtWidgets.QLineEdit,
+                               'output_baseDir_lineedit').setText(str(self.dchecks_sug['base_dir']))
 
     def preprocess(self):
         # Get parameters from forms
@@ -157,23 +191,29 @@ class PreprocConfigWindow(ConfigWindow):
         if not mask_suffix == '':
             mask_suffix = '_' + mask_suffix
 
+        channel_names = get_channel_names(image_list.columns)
+        print('names: ' + str(channel_names))
+
         for i, row in image_list.iterrows():
 
-            image_path = row['Image']
-            try:
-                mask_path = row['Mask']
-            except KeyError:
-                mask_path = None
-            try:
-                target_path = row['Target']
-            except KeyError:
-                target_path = None
+            (channel_paths,
+             mask_path,
+             target_path) = get_image_paths(row, channel_names)
 
-            image = NiftiImage(image_path, mask_path, target_path)
+            print(channel_paths)
 
-            (image_name,
-             image_save_name,
-             image_extension) = get_save_name(image_path, output_dir, image_extension)
+            image = NiftiImage(channel_paths, mask_path, target_path, channel_names=channel_names)
+
+            channel_image_names = []
+            channel_save_names = []
+            channel_extension = []
+            for channel_path in channel_paths:
+                (image_name,
+                 image_save_name,
+                 image_extension) = get_save_name(channel_path, output_dir, image_extension)
+                channel_image_names += [image_name]
+                channel_save_names += [image_save_name]
+                channel_extension += [image_extension]
 
             if mask_path:
                 (mask_name,
@@ -201,9 +241,9 @@ class PreprocConfigWindow(ConfigWindow):
             if create_mask:
                 image.get_mask(thresh_low, thresh_high)
                 if mask_dir:
-                    mask_save_name = os.path.join(mask_dir, image_name.split('/')[-1])
+                    mask_save_name = os.path.join(mask_dir, channel_image_names[0].split('/')[-1])
                 else:
-                    mask_save_name = image_save_name
+                    mask_save_name = channel_save_names[0]
                 if not mask_extension:
                     mask_extension = image_extension
                 if mask_pixel_type:
@@ -219,9 +259,14 @@ class PreprocConfigWindow(ConfigWindow):
 
             # save image
             if output_dir:
-                new_image_name = image_save_name + suffix + image_extension
-                save_nifti(image.open(), new_image_name)
-                image_list.at[i, 'Image'] = new_image_name
+                for j in range(len(channel_names)):
+                    print(j)
+                    print(channel_save_names[j])
+                    print(channel_extension[j])
+                    new_image_name = channel_save_names[j] + suffix + channel_extension[j]
+                    print(new_image_name)
+                    save_nifti(image.channels[channel_names[j]].open(), new_image_name)
+                    image_list.at[i, 'Channel_' + channel_names[j]] = new_image_name
                 if image.mask:
                     new_mask_name = mask_save_name + mask_suffix + mask_extension
                     save_nifti(image.mask.open(), new_mask_name)
