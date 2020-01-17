@@ -461,13 +461,12 @@ class Cnn3d(object):
         
         return p_y_given_x
         
-    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims, kern_dims_hr, kern_dims_lr):
+    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims, kern_dims_lr):
         # TODO: In eager, change this to just do a fwd-pass on a tensor of the given shape...
         #       In graph, just replace this with output.shape
-        # kern_dims_hr: [ [kdx-layer1, kdy-layer1, kdz-layer1], ..., [kdx-layer1, kdy-layer1, kdz-layer1]]. From config.
         # kern_dims_lr: same as above but for low resolution.
         rec_field_hr, _ = self.pathways[0].rec_field()
-        out_shape_of_hr_path = [inp_hr_dims[i] - rec_field_hr[i] + 1 for i in range(len(inp_hr_dims))] # Assumption, no strides or padding.
+        out_shape_of_hr_path = self.pathways[0].calc_outp_dims_given_inp(inp_hr_dims)
         inp_shape_per_path = []
         for path_idx in range(len(self.pathways)):
             if self.pathways[path_idx].pType() == pt.NORM:
@@ -491,3 +490,11 @@ class Cnn3d(object):
         rec_field_hr_path, strides_rf_at_end_of_hr_path = self.pathways[0].rec_field()
         cnn_rf, _ = self.pathways[-1].rec_field(rec_field_hr_path, strides_rf_at_end_of_hr_path)
         return cnn_rf
+    
+    def calc_outp_dims_given_inp(self, inp_dims_hr_path):
+        outp_dims_hr_path = self.pathways[0].calc_outp_dims_given_inp(inp_dims_hr_path)
+        outp_dims = self.pathway[-1].calc_outp_dims_given_inp(outp_dims_hr_path)
+        return outp_dims
+    
+    
+    

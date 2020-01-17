@@ -51,6 +51,12 @@ class Block(object):
             rf_prev_layer, stride_rf_prev_layer = layer.rec_field(rf_prev_layer, stride_rf_prev_layer)
         return rf_prev_layer, stride_rf_prev_layer
     
+    def calc_outp_dims_given_inp(self, inp_dims):
+        outp_dims_prev_layer = inp_dims
+        for layer in self._layers:
+            outp_dims_prev_layer = layer.calc_outp_dims_given_inp(outp_dims_prev_layer)
+        return outp_dims_prev_layer
+    
     # Getters
     def get_number_fms_in(self):
         return self._n_fms_in

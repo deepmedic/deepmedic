@@ -31,10 +31,13 @@ class Layer(object):
     def apply(self, input, mode):
         # mode: "train" or "infer"
         raise NotImplementedError()
+    
     def trainable_params(self):
         raise NotImplementedError()
+    
     def params_for_L1_L2_reg(self):
         return []
+    
     def rec_field(self, rf_at_inp, stride_rf_at_inp):
         # stride_rf_at_inp: [str-x, str-y, str-z
         #                stride of the rec field at prev layer wrt cnn's inp
@@ -42,25 +45,34 @@ class Layer(object):
         #          stride of rf wrt input-image when shifting between 2 consequtive neurons in this layer
         return rf_at_inp, stride_rf_at_inp
     
+    def calc_outp_dims_given_inp(self, inp_dims):
+        return inp_dims
+    
 class PoolingLayer(Layer):
-    def __init__(self, window_size, strides, mirror_pad, pool_mode):
+    def __init__(self, window_size, strides, padding, pool_mode):
         # window_size: [wx, wy, wz]
         # strides: [sx, sy, sz]
         # mode: 'MAX' or 'AVG'
         # mirror_pad: [mirrorPad-x,-y,-z]
         self._window_size = window_size
         self._strides = strides
-        self._mirror_pad = mirror_pad
+        self._padding = padding # how much to pad in total
+        self._pad_mode = 'mirror'
         self._pool_mode = pool_mode
         
     def apply(self, input, _):
         # input dimensions: (batch, fms, r, c, z)
-        return ops.pool3dMirrorPad(input, self._window_size, self._strides, self._mirror_pad, self._pool_mode)
-    
+        if self._pad_mode == 'mirror':
+            return ops.pool3dMirrorPad(input, self._window_size, self._strides, self._padding, self._pool_mode)
+        else:
+            raise NotImplementedError()
+        
     def trainable_params(self):
         return []
     def rec_field(self):
         raise NotImplementedError()
+    def calc_outp_dims_given_inp(self, inp_dims): # Same as conv.
+        return [(inp_dims[d] + self._padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
     
 class ConvolutionalLayer(Layer):
     def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
@@ -69,6 +81,8 @@ class ConvolutionalLayer(Layer):
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=[fms_out, fms_in] + conv_kernel_dims), dtype='float32')
         self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
         self._strides = [1,1,1]
+        self._padding = [0,0,0] # how much to pad in total
+        self._pad_mode = 'mirror'
         
     def _get_std_init(self, init_method, fms_in, fms_out, conv_kernel_dims):
         if init_method[0] == "normal" :
@@ -92,6 +106,11 @@ class ConvolutionalLayer(Layer):
         stride_rf = [stride_rf_at_inp[d]*self._strides[d] for d in range(3)]
         return rf_out, stride_rf
     
+    def calc_outp_dims_given_inp(self, inp_dims):
+        if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
+            return [0,0,0]
+        return [1+(inp_dims[d] + self._padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
+    
 class LowRankConvolutionalLayer(ConvolutionalLayer):
         # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
         # The created filters are either 1-dimensional (rank=1) or 2-dim (rank=2), depending  on the self._rank
@@ -114,7 +133,11 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         z_subfilter_shape = [n_fms_left, fms_in, 1 if self._rank == 1 else conv_kernel_dims[0], 1, conv_kernel_dims[2]]
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=z_subfilter_shape), dtype='float32')
         self._w_z = tf.Variable(w_init, dtype="float32", name="w_z")
-
+        
+        self._strides = [1,1,1]
+        self._padding = [0,0,0] # how much to pad in total
+        self._pad_mode = 'mirror'
+        
     def trainable_params(self):
         return [self._w_x, self._w_y, self._w_z] # Note: these tensors have different shapes! Treat carefully.
     
@@ -152,6 +175,11 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
                   rf_at_inp[2] + (self._w_z.shape[4]-1)*stride_rf_at_inp[2]]
         stride_rf = [stride_rf_at_inp[d]*self._strides[d] for d in range(3)]
         return rf_out, stride_rf
+    
+    def calc_outp_dims_given_inp(self, inp_dims):
+        return [(inp_dims[0] + self._padding[0] - self._w_x.shape[2]) // self._strides[0],
+                (inp_dims[1] + self._padding[1] - self._w_y.shape[3]) // self._strides[1],
+                (inp_dims[2] + self._padding[2] - self._w_z.shape[4]) // self._strides[2]]
         
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):

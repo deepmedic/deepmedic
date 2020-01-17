@@ -83,6 +83,15 @@ class Pathway(object):
             rf_prev_block, stride_rf_prev_block = block.rec_field(rf_prev_block, stride_rf_prev_block)
         return rf_prev_block, stride_rf_prev_block
     
+    def calc_outp_dims_given_inp(self, inp_dims):
+        outp_dims_prev_block = inp_dims
+        for block in self._blocks:
+            print("DEBUG: IN BLOCK: " +str(outp_dims_prev_block))
+            outp_dims_prev_block = block.calc_outp_dims_given_inp(outp_dims_prev_block)
+            print("DEBUG: OUT BLOCK: " +str(outp_dims_prev_block))
+        return outp_dims_prev_block
+        
+    
     def build(self,
               log,
               rng,
