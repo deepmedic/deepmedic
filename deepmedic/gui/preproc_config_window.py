@@ -9,17 +9,31 @@ import os
 from PySide2 import QtWidgets, QtGui, QtCore
 
 
-def get_save_name(image_path, output_dir, image_extension):
+def add_sufix(name, suffix):
+    name_split = name.split('.')
+    return name_split[0] + suffix + '.' + '.'.join(name_split[1:])
+
+
+def get_save_name(image_path, output_dir, image_extension, base_dir=None, subj_id=None, channel_name=None):
     path_split = image_path.split('.')
     image_name = path_split[0]
-    if output_dir:
-        image_save_name = os.path.join(output_dir, image_name.split('/')[-1])
+    image_save_name = None
+    if base_dir:
+        if image_name.startswith(base_dir):
+            image_save_name = os.path.join(output_dir, image_name[len(base_dir):].split('/')[-1])
+        else:
+            print('Image does not start with base_dir')
+            exit(23)
     else:
-        image_save_name = image_name
+        if subj_id is not None and channel_name is not None:
+            image_save_name = os.path.join(output_dir, subj_id, channel_name, os.path.basename(image_name))
+        else:
+            print('subj_id and channel name need to be given')
+            exit(24)
     if not image_extension:
         image_extension = '.' + '.'.join(path_split[1:])
 
-    return image_name, image_save_name, image_extension
+    return image_save_name + image_extension
 
 
 def get_channel_names(data_columns):
@@ -33,10 +47,10 @@ def get_channel_names(data_columns):
 
 
 def get_image_paths(row, channels):
-    channel_paths = []
+    channel_paths = {}
     print(channels)
     for channel in channels:
-        channel_paths += [row['Channel_' + channel]]
+        channel_paths[channel] = row['Channel_' + channel]
 
     try:
         mask_path = row['Mask']
@@ -144,6 +158,11 @@ class PreprocConfigWindow(ConfigWindow):
         out_csv_dir = self.get_text_value('output_outputCsvDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputCsvDir_lineedit'))
         out_csv_name = self.get_text_value('output_outputCsvName_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputCsvName_lineedit'))
         image_extension = self.get_text_value('output_extension_combobox', self.findChild(QtWidgets.QComboBox, 'output_extension_combobox'))
+        use_base_dir = self.findChild(QtWidgets.QCheckBox, 'output_useBaseDir_checkbox').isChecked()
+        if use_base_dir:
+            base_dir = self.findChild(QtWidgets.QLineEdit, 'output_baseDir_lineedit').text()
+        else:
+            base_dir = None
         orientation_corr = self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').isChecked()
         resample_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').isChecked()
         spacing = self.get_text_value('preproc_pixelSpacing_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_pixelSpacing_lineedit'))
@@ -200,30 +219,29 @@ class PreprocConfigWindow(ConfigWindow):
              mask_path,
              target_path) = get_image_paths(row, channel_names)
 
+            try:
+                subj_id = str(row['Id'])
+            except KeyError:
+                subj_id = str(i)
+
             print(channel_paths)
 
-            image = NiftiImage(channel_paths, mask_path, target_path, channel_names=channel_names)
+            image = NiftiImage([channel_paths[n] for n in channel_names], mask_path, target_path, channel_names=channel_names)
 
-            channel_image_names = []
-            channel_save_names = []
-            channel_extension = []
-            for channel_path in channel_paths:
-                (image_name,
-                 image_save_name,
-                 image_extension) = get_save_name(channel_path, output_dir, image_extension)
-                channel_image_names += [image_name]
-                channel_save_names += [image_save_name]
-                channel_extension += [image_extension]
+            channel_save_names = {}
+            for channel in channel_names:
+                channel_path = channel_paths[channel]
+                image_save_name = get_save_name(channel_path, output_dir, image_extension,
+                                                base_dir=base_dir, subj_id=subj_id, channel_name=channel)
+                channel_save_names[channel] = image_save_name
 
             if mask_path:
-                (mask_name,
-                 mask_save_name,
-                 mask_extension) = get_save_name(mask_path, output_dir, None)
+                mask_save_name = get_save_name(mask_path, output_dir, None,
+                                               base_dir=base_dir, subj_id=subj_id, channel_name='Mask')
 
             if target_path:
-                (target_name,
-                 target_save_name,
-                 target_extension) = get_save_name(target_path, output_dir, None)
+                target_save_name = get_save_name(target_path, output_dir, None,
+                                                 base_dir=base_dir, subj_id=subj_id, channel_name='Target')
 
             # convert type
             if change_pixel_type:
@@ -237,13 +255,16 @@ class PreprocConfigWindow(ConfigWindow):
             if resample_imgs:
                 image.resample(spacing=spacing)
 
-            # create mask
+            # create  <--------------------------------------------------------- R E V I E W --------------------
             if create_mask:
                 image.get_mask(thresh_low, thresh_high)
                 if mask_dir:
-                    mask_save_name = os.path.join(mask_dir, channel_image_names[0].split('/')[-1])
-                else:
+                    mask_save_name = os.path.join(mask_dir, channel_save_names[0].split('/')[-1])
+                elif mask_suffix:
                     mask_save_name = channel_save_names[0]
+                else:
+                    mask_save_name = get_save_name(channel_save_names[0], output_dir, None,
+                                                   base_dir=None, subj_id=subj_id, channel_name='Mask')
                 if not mask_extension:
                     mask_extension = image_extension
                 if mask_pixel_type:
@@ -259,20 +280,22 @@ class PreprocConfigWindow(ConfigWindow):
 
             # save image
             if output_dir:
-                for j in range(len(channel_names)):
-                    print(j)
-                    print(channel_save_names[j])
-                    print(channel_extension[j])
-                    new_image_name = channel_save_names[j] + suffix + channel_extension[j]
+                for channel in channel_names:
+                    new_image_name = add_sufix(channel_save_names[channel], suffix)
                     print(new_image_name)
-                    save_nifti(image.channels[channel_names[j]].open(), new_image_name)
-                    image_list.at[i, 'Channel_' + channel_names[j]] = new_image_name
+                    save_nifti(image.channels[channel].open(), new_image_name)
+                    if not channel == 'Image':
+                        full_channel = 'Channel_' + channel
+                    else:
+                        full_channel = channel
+                    image_list.at[i, full_channel] = new_image_name
+
                 if image.mask:
-                    new_mask_name = mask_save_name + mask_suffix + mask_extension
+                    new_mask_name = add_sufix(mask_save_name, mask_suffix)
                     save_nifti(image.mask.open(), new_mask_name)
                     image_list.at[i, 'Mask'] = new_mask_name
                 if image.target:
-                    new_target_name = target_save_name + target_extension
+                    new_target_name = target_save_name
                     save_nifti(image.target.open(), new_target_name)
                     image_list.at[i, 'Target'] = new_target_name
 

@@ -190,7 +190,7 @@ def pix_check(pix_count, verbose=True, html=False):
             ret += prefix + 'Pixel Spacing Count (mm):\n'
             ret += print_dict(pix_count, prefix)
     else:
-        pix_dims = list(pix_count.keys())[0]
+        pix_dims = tuple(pix_count.keys())[0]
         for pix_dim in pix_dims:
             if not pix_dim == pix_dims[0]:
                 ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Pixel Spacing Check\n')
@@ -222,7 +222,7 @@ def get_max_dims(dims_count):
         for i in range(len(size)):
             if size[i] > max_size[i]:
                 max_size[i] = size[i]
-    return max_size
+    return tuple(max_size)
 
 
 def dims_check(dims_count, pixel=False, verbose=True, html=False):

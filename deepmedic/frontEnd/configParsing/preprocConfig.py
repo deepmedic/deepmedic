@@ -61,7 +61,9 @@ class PreprocConfig(Config):
 
     USE_BASE_DIR = \
         config_data.add_elem("useBaseDir", description='Replicate Folder Structure', elem_type='Bool',
-                             info="Replicate the folder structure from the Base Directory in the Output folder.")
+                             info="Replicate the folder structure from the Base Directory in the Output folder. "
+                                  "If not selected, the default structure is as follows:\n"
+                                  "[output_dir]/[subj_id]/[channel]/[image_name].nii[.gz]")
     BASE_DIR = \
         config_data.add_elem("baseDir", elem_type='Folder', parent=USE_BASE_DIR,
                              description='     Data Base Directory',

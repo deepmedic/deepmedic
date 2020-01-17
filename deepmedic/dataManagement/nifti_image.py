@@ -5,6 +5,7 @@ from PIL import Image
 import SimpleITK as sitk
 import math
 from scipy import ndimage
+import os
 
 
 pixel_type_dict = {"uint8": sitk.sitkUInt8,
@@ -40,7 +41,9 @@ def get_nifti_reader(filename):
     return reader
 
 
-def save_nifti(image, filename):
+def save_nifti(image, filename, makedirs=True):
+    if makedirs:
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
     writer = sitk.ImageFileWriter()
     writer.SetFileName(filename)
     writer.Execute(image)
@@ -452,6 +455,9 @@ class NiftiImage(object):
                     mask_size = np.array(self.get_size())
                     min_i_list = np.zeros(3)
                     max_i_list = mask_size - 1
+
+            print(size)
+            print(mask_size)
 
             total_margin = np.array(list(size)) - mask_size
             min_i_resized = min_i_list - np.array([math.floor(margin / 2) for margin in total_margin])
