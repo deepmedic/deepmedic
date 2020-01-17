@@ -223,10 +223,8 @@ class Cnn3d(object):
             self._inp_x[train_val_test]['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
         return self._inp_x[train_val_test]
     
-    def create_inp_plchldrs(self, inp_dims, train_val_test, kern_dims_hr_path, kern_dims_lr_paths): # TODO: Remove for eager
-            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims,
-                                                                                                kern_dims_hr_path,
-                                                                                                kern_dims_lr_paths)
+    def create_inp_plchldrs(self, inp_dims, train_val_test, kern_dims_lr_paths): # TODO: Remove for eager
+            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims, kern_dims_lr_paths)
             return self._setup_inp_plchldrs(train_val_test)    
         
         
