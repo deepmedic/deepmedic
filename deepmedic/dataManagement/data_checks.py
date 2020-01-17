@@ -357,8 +357,27 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
         filelist = pd.read_csv(filelist)
         valid_cols = ['Image', 'Mask', 'Target']
         image_cols = [col for col in filelist.columns if col.startswith('Channel_') or col in valid_cols]
-        suggested['base_dir'] = os.path.dirname(
-            os.path.commonprefix([item for sublist in filelist[image_cols].values.tolist() for item in sublist]))
+        all_files = [item for sublist in filelist[image_cols].values.tolist() for item in sublist]
+        suggested['base_dir'] = os.path.dirname(os.path.commonprefix(all_files))
+        # check if all files exist
+        missing_files = []
+        for fn in all_files:
+            if not os.path.isfile(fn):
+                missing_files += [fn]
+        if missing_files:
+            prefix = ' ' * (len('[PASSED]') + 2)
+            ret = get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' ' +
+                                str(len(missing_files)) + ' FILES NOT FOUND. PLEASE FIX BEFORE CONTINUING.\n')
+            for fn in missing_files:
+                ret += prefix + get_bold_text('· ') + fn + '\n'
+
+            ret = text_to_html(ret)
+
+            if progress is not None:
+                progress.bar.setMaximum(1)
+                progress.bar.setValue(1)
+
+            return ret, suggested
 
     if progress is not None:
         progress.bar.setMaximum(len(filelist))
