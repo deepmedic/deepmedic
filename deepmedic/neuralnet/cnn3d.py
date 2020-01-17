@@ -16,7 +16,7 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
 import deepmedic.neuralnet.ops as ops
-from deepmedic.neuralnet.utils import calc_rec_field_of_path_given_kern_dims_w_stride_1, calc_inp_dims_lr_path_to_match_outp_dims
+from deepmedic.neuralnet.utils import calc_inp_dims_lr_path_to_match_outp_dims
 
 
 ##################################################
@@ -223,8 +223,8 @@ class Cnn3d(object):
             self._inp_x[train_val_test]['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
         return self._inp_x[train_val_test]
     
-    def create_inp_plchldrs(self, inp_dms, train_val_test, kern_dims_hr_path, kern_dims_lr_paths): # TODO: Remove for eager
-            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dms,
+    def create_inp_plchldrs(self, inp_dims, train_val_test, kern_dims_hr_path, kern_dims_lr_paths): # TODO: Remove for eager
+            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims,
                                                                                                 kern_dims_hr_path,
                                                                                                 kern_dims_lr_paths)
             return self._setup_inp_plchldrs(train_val_test)    
@@ -294,10 +294,6 @@ class Cnn3d(object):
 
         # == Others ==
         self.dropoutRatesForAllPathways = dropoutRatesForAllPathways
-        
-        # ======== Calculated Attributes =========
-        #This recField CNN should in future be calculated with all non-secondary pathways, ie normal+fc. Use another variable for pathway.recField.
-        self.recFieldCnn = calc_rec_field_of_path_given_kern_dims_w_stride_1(kernelDimensions)
         
         #==============================
         rng = np.random.RandomState(seed=None)
@@ -423,6 +419,10 @@ class Cnn3d(object):
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
         
+        # ======== Calculated Attributes =========
+        #This recField CNN should in future be calculated with all non-secondary pathways, ie normal+fc. Use another variable for pathway.recField.
+        self.recFieldCnn = self._calc_rec_field_cnn_wrt_hr_inp()
+        
         log.print3("Finished building the CNN's model.")
         
         
@@ -466,8 +466,8 @@ class Cnn3d(object):
         #       In graph, just replace this with output.shape
         # kern_dims_hr: [ [kdx-layer1, kdy-layer1, kdz-layer1], ..., [kdx-layer1, kdy-layer1, kdz-layer1]]. From config.
         # kern_dims_lr: same as above but for low resolution.
-        rec_field_hr = calc_rec_field_of_path_given_kern_dims_w_stride_1(kern_dims_hr)
-        out_shape_of_hr_path = [inp_hr_dims[i] - rec_field_hr[i] + 1 for i in range(len(inp_hr_dims))] # Assumption
+        rec_field_hr, _ = self.pathways[0].rec_field()
+        out_shape_of_hr_path = [inp_hr_dims[i] - rec_field_hr[i] + 1 for i in range(len(inp_hr_dims))] # Assumption, no strides or padding.
         inp_shape_per_path = []
         for path_idx in range(len(self.pathways)):
             if self.pathways[path_idx].pType() == pt.NORM:
@@ -487,3 +487,7 @@ class Cnn3d(object):
         #   [pathFc-in-dim-x, pathFc-in-dim-y, pathFc-in-dim-z] ]
         return inp_shape_per_path
         
+    def _calc_rec_field_cnn_wrt_hr_inp(self):
+        rec_field_hr_path, strides_rf_at_end_of_hr_path = self.pathways[0].rec_field()
+        cnn_rf, _ = self.pathways[-1].rec_field(rec_field_hr_path, strides_rf_at_end_of_hr_path)
+        return cnn_rf

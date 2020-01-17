@@ -74,8 +74,15 @@ class Pathway(object):
         
         return input_to_next_layer
     
-
-
+    def rec_field(self, rf_at_inp=[1,1,1], stride_rf_at_inp=[1,1,1]):
+        # Returns: Rf of neurons at the output of the final layer of the block, with respect to input.
+        #          Stride of rf at the block's output wrt input (how much it shifts at inp if we shift 1 neuron at out)
+        rf_prev_block = rf_at_inp
+        stride_rf_prev_block = stride_rf_at_inp
+        for block in self._blocks:
+            rf_prev_block, stride_rf_prev_block = block.rec_field(rf_prev_block, stride_rf_prev_block)
+        return rf_prev_block, stride_rf_prev_block
+    
     def build(self,
               log,
               rng,

@@ -49,8 +49,7 @@ def calc_rec_field_of_path_given_kern_dims_w_stride_1(kern_dims) :
         for layer_idx in range(len(kern_dims)) :
             receptive_field[dim_idx] += kern_dims[layer_idx][dim_idx] - 1
     return receptive_field
-
-
+    
 def checkRecFieldVsSegmSize(receptiveFieldDim, segmentDim) :
     numberOfRFDim = len(receptiveFieldDim)
     numberOfSegmDim = len(segmentDim)

@@ -35,6 +35,12 @@ class Layer(object):
         raise NotImplementedError()
     def params_for_L1_L2_reg(self):
         return []
+    def rec_field(self, rf_at_inp, stride_rf_at_inp):
+        # stride_rf_at_inp: [str-x, str-y, str-z
+        #                stride of the rec field at prev layer wrt cnn's inp
+        # Returns: receptive field [x,y,z] of neurons in this input, and ...
+        #          stride of rf wrt input-image when shifting between 2 consequtive neurons in this layer
+        return rf_at_inp, stride_rf_at_inp
     
 class PoolingLayer(Layer):
     def __init__(self, window_size, strides, mirror_pad, pool_mode):
@@ -53,6 +59,8 @@ class PoolingLayer(Layer):
     
     def trainable_params(self):
         return []
+    def rec_field(self):
+        raise NotImplementedError()
     
 class ConvolutionalLayer(Layer):
     def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
@@ -60,6 +68,7 @@ class ConvolutionalLayer(Layer):
         std_init = self._get_std_init(init_method, fms_in, fms_out, conv_kernel_dims)
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=[fms_out, fms_in] + conv_kernel_dims), dtype='float32')
         self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
+        self._strides = [1,1,1]
         
     def _get_std_init(self, init_method, fms_in, fms_out, conv_kernel_dims):
         if init_method[0] == "normal" :
@@ -77,6 +86,11 @@ class ConvolutionalLayer(Layer):
     
     def params_for_L1_L2_reg(self):
         return self.trainable_params()
+    
+    def rec_field(self, rf_at_inp, stride_rf_at_inp):
+        rf_out = [rf_at_inp[d] + (self._w.shape[2+d]-1)*stride_rf_at_inp[d] for d in range(3)]
+        stride_rf = [stride_rf_at_inp[d]*self._strides[d] for d in range(3)]
+        return rf_out, stride_rf
     
 class LowRankConvolutionalLayer(ConvolutionalLayer):
         # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
@@ -132,7 +146,13 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         conc_tens = tf.concat([tens_x_crop, tens_y_crop, tens_z_crop], axis=1) #concatenate the FMs
         return conc_tens
     
-
+    def rec_field(self, rf_at_inp, stride_rf_at_inp):
+        rf_out = [rf_at_inp[0] + (self._w_x.shape[2]-1)*stride_rf_at_inp[0],
+                  rf_at_inp[1] + (self._w_y.shape[3]-1)*stride_rf_at_inp[1],
+                  rf_at_inp[2] + (self._w_z.shape[4]-1)*stride_rf_at_inp[2]]
+        stride_rf = [stride_rf_at_inp[d]*self._strides[d] for d in range(3)]
+        return rf_out, stride_rf
+        
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):
         self._keep_prob = 1 - dropout_rate
