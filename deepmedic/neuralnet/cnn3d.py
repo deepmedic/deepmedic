@@ -183,8 +183,6 @@ class Cnn3d(object):
         log.print3("Done.")
         
         
-
-    
     def create_inp_plchldrs(self, inp_dims, train_val_test): # TODO: Remove for eager
             inp_shapes_per_path = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims)
             return self._setup_inp_plchldrs(train_val_test, inp_shapes_per_path), inp_shapes_per_path
@@ -441,8 +439,12 @@ class Cnn3d(object):
     
     def calc_outp_dims_given_inp(self, inp_dims_hr_path):
         outp_dims_hr_path = self.pathways[0].calc_outp_dims_given_inp(inp_dims_hr_path)
-        outp_dims = self.pathway[-1].calc_outp_dims_given_inp(outp_dims_hr_path)
-        return outp_dims
+        return self.pathways[-1].calc_outp_dims_given_inp(outp_dims_hr_path)
     
+    def calc_unpredicted_margin(self, inp_dims_hr_path):
+        outp_dims = self.calc_outp_dims_given_inp(inp_dims_hr_path)
+        n_unpred_vox = [inp_dims_hr_path[d] - outp_dims[d] for d in range(3)]
+        unpred_margin = [n_unpred_vox[d] // 2 for d in range(3)]
+        return unpred_margin
     
     
