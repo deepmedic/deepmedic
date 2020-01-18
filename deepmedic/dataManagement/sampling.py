@@ -673,7 +673,6 @@ def get_subsampl_segment(segment_hr_dims,
                    low_to_put_slice_in_segm[2]: low_to_put_slice_in_segm[2] + dims_of_slice_not_padded[2]
                    ] = chan_slice_lr
 
-    # placeholderReturn = np.ones([3,19,19,19], dtype="float32") #channel, dims
     return segment_lr
 
 
