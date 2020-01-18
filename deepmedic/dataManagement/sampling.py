@@ -738,7 +738,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
 
         if cnn3d.pathways[path_idx].pType() == pt.FC:
             continue
-        subSamplingFactor = cnn3d.pathways[path_idx].subsFactor()
+        subSamplingFactor = cnn3d.pathways[path_idx].subs_factor()
         pathwayInputShapeRcz = cnn3d.get_inp_shape_of_path(path_idx, train_val_or_test)
         leftBoundaryRcz = [coord_center[0] - subSamplingFactor[0] * (pathwayInputShapeRcz[0] - 1) // 2,
                            coord_center[1] - subSamplingFactor[1] * (pathwayInputShapeRcz[1] - 1) // 2,
@@ -771,7 +771,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
             recFieldCnn=cnn3d.recFieldCnn,
             subsampledImageChannels=channels,
             image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
-            subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
+            subSamplingFactor=cnn3d.pathways[pathway_i].subs_factor(),
             subsampledImagePartDimensions=cnn3d.get_inp_shape_of_path(pathway_i, train_val_or_test)
             )
 
@@ -915,7 +915,7 @@ def extractSegmentsGivenSliceCoords(cnn3d,
                 recFieldCnn=recFieldCnn,
                 subsampledImageChannels=channelsOfImageNpArray,
                 image_part_slices_coords=slicesCoordsOfSegmForPrimaryPathway,
-                subSamplingFactor=cnn3d.pathways[pathway_i].subsFactor(),
+                subSamplingFactor=cnn3d.pathways[pathway_i].subs_factor(),
                 subsampledImagePartDimensions=cnn3d.get_inp_shape_of_path(pathway_i, 'test')
                 )
             channsForSegmentsPerPathToReturn[pathway_i].append(channsForThisSubsPathForThisSegm)

@@ -65,7 +65,7 @@ def calculate_num_voxels_sub(num_central_voxels, pathway):
     num_voxels_sub = np.zeros(3)
     for i in range(3):
         num_voxels_sub[i] = num_central_voxels[i] - 1 if pathway.pType() != pt.SUBS else \
-            int(math.ceil((num_central_voxels[i] * 1.0) / pathway.subsFactor()[i]) - 1)
+            int(math.ceil((num_central_voxels[i] * 1.0) / pathway.subs_factor()[i]) - 1)
 
     return [int(a) for a in num_voxels_sub]
 
@@ -76,7 +76,7 @@ def calculate_num_central_voxels_dir(num_central_voxels, pathway):
     # Eg 9/2=4.5 => Get 5. Combined with the trick at repeat,
     # I get my correct number of central voxels hopefully.
     for i in range(3):
-        num_voxels_dir[i] = int(math.ceil((num_central_voxels[i] * 1.0) / pathway.subsFactor()[i])) \
+        num_voxels_dir[i] = int(math.ceil((num_central_voxels[i] * 1.0) / pathway.subs_factor()[i])) \
             if pathway.pType() == pt.SUBS else int(num_central_voxels[i])
 
     return [int(a) for a in num_voxels_dir]
@@ -149,9 +149,9 @@ def stitch_predicted_to_fms(array_fms_to_save, idx_next_tile_in_fm_vols,
             # because it works in the subsampled space.
             # I need to repeat it, to bring it to the dimensions of the normal-voxel-space.
             if pathway.pType() == pt.SUBS:
-                expanded_output_r = np.repeat(central_voxels_all_fms, pathway.subsFactor()[0], axis=2)
-                expanded_output_rc = np.repeat(expanded_output_r, pathway.subsFactor()[1], axis=3)
-                expanded_output_rcz = np.repeat(expanded_output_rc, pathway.subsFactor()[2], axis=4)
+                expanded_output_r = np.repeat(central_voxels_all_fms, pathway.subs_factor()[0], axis=2)
+                expanded_output_rc = np.repeat(expanded_output_r, pathway.subs_factor()[1], axis=3)
+                expanded_output_rcz = np.repeat(expanded_output_rc, pathway.subs_factor()[2], axis=4)
                 # The below is a trick to get correct number of voxels even when subsampling factor is
                 # even or not exact divisor of the number of central voxels.
                 # ...This trick is coupled with the ceil() when getting the

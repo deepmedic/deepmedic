@@ -131,16 +131,18 @@ class TrainSession(Session):
             self._log.print3("=========== Compiling the Training Function ===========")
             self._log.print3("=======================================================\n")
             cnn3d.setup_ops_n_feeds_to_train(self._log,
+                                             inp_plchldrs_train,
                                              trainer.get_total_cost(),
                                              trainer.get_param_updates_wrt_total_cost()  # list of ops
                                              )
 
             self._log.print3("=========== Compiling the Validation Function =========")
-            cnn3d.setup_ops_n_feeds_to_val(self._log)
+            cnn3d.setup_ops_n_feeds_to_val(self._log, inp_plchldrs_val)
 
             self._log.print3("=========== Compiling the Testing Function ============")
+            # For validation with full segmentation
             cnn3d.setup_ops_n_feeds_to_test(self._log,
-                                            # For validation with full segmentation
+                                            inp_plchldrs_test,
                                             self._params.indices_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers

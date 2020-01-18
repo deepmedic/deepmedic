@@ -164,7 +164,7 @@ class Pathway(object):
         return self._blocks
     def get_block(self, index):
         return self._blocks[index]
-    def subsFactor(self):
+    def subs_factor(self):
         return self._subs_factor
     
     # Other API :
@@ -188,14 +188,14 @@ class SubsampledPathway(Pathway):
         
     def upsample_to_high_res(self, input, shape_to_match, upsampl_type="repeat"):
         # shape_to_match: list of dimensions x,y,z to match, eg by cropping after upsampling. [dimx, dimy, dimz]
-        return ops.upsample_5D_tens_and_crop(input, self.subsFactor(), upsampl_type, shape_to_match)
+        return ops.upsample_5D_tens_and_crop(input, self.subs_factor(), upsampl_type, shape_to_match)
     
     # OVERRIDING parent's classes.
     def getStringType(self):
-        return "SUBSAMPLED" + str(self.subsFactor())
+        return "SUBSAMPLED" + str(self.subs_factor())
     
     def calc_inp_dims_given_outp_after_upsample(self, outp_dims_in_hr):
-        outp_dims_in_lr = [int(ceil(outp_dims_in_hr[d]/ self.subsFactor()[d])) for d in range(3)]
+        outp_dims_in_lr = [int(ceil(outp_dims_in_hr[d]/ self.subs_factor()[d])) for d in range(3)]
         inp_dims_req = self.calc_inp_dims_given_outp(outp_dims_in_lr)
         return inp_dims_req
     

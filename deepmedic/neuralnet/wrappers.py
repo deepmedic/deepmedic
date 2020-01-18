@@ -14,12 +14,12 @@ class PathwayWrapperForSampling(object):
     # For CnnWrapperForSampling class.
     def __init__(self, pathwayInstance) :
         self._pType = pathwayInstance.pType()
-        self._subsFactor = pathwayInstance.subsFactor()
+        self._subs_factor = pathwayInstance.subs_factor()
 
     def pType(self):
         return self._pType
-    def subsFactor(self):
-        return self._subsFactor
+    def subs_factor(self):
+        return self._subs_factor
         
 class CnnWrapperForSampling(object):
     # Only for the parallel process used during training. So that it won't re-load theano/tensorflow etc.

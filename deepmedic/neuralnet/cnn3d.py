@@ -39,26 +39,7 @@ class Cnn3d(object):
         #=====================================
         self.recFieldCnn = ""
         
-        # self.patchesToTrainPerImagePart = ""
-        self.nkerns = ""  # number of feature maps.
-        self.nkernsSubsampled = ""
-        
-        # Fully Connected Layers
-        self.kernelDimensionsFirstFcLayer = ""
-        
-        # Residual Learning
-        self.indicesOfLayersToConnectResidualsInOutput = ""
-        
-        # Lower rank convolutional layers
-        self.indicesOfLowerRankLayersPerPathway = ""
-        self.ranksOfLowerRankLayersForEachPathway = ""
-        
-        #======= Input tensors X. Placeholders OR given tensors =======
-        # Symbolic variables, which stand for the input. Will be loaded by the compiled trainining/val/test function. Can also be pre-set by an existing tensor if required in future extensions.
-        self._inp_x = {'train': {},
-                       'val': {},
-                       'test': {} }
-        
+        #======= Input tensors X. Placeholders OR given tensors =======        
         self._inp_shapes_per_path = {'train': None,
                                     'val': None,
                                     'test': None} # TODO: For sampling. In eager, remove updating calc_inp_dims_of_paths_from_hr_inp
@@ -145,7 +126,7 @@ class Cnn3d(object):
         return self._feeds_main[str_train_val_test]
     
     
-    def setup_ops_n_feeds_to_train(self, log, total_cost, updates_of_params_wrt_total_cost) :
+    def setup_ops_n_feeds_to_train(self, log, inp_plchldrs_train, total_cost, updates_of_params_wrt_total_cost) :
         log.print3("...Building the training function...")
         
         y_gt = self._output_gt_tensor_feeds['train']['y_gt']
@@ -161,14 +142,14 @@ class Cnn3d(object):
         self._ops_main['train']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['train'], y_gt)
         self._ops_main['train']['updates_grouped_op'] = updates_grouped_op
         
-        self._feeds_main['train']['x'] = self._inp_x['train']['x']
+        self._feeds_main['train']['x'] = inp_plchldrs_train['x']
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._feeds_main['train']['x_sub_'+str(subpath_i)] = self._inp_x['train']['x_sub_'+str(subpath_i)]
+            self._feeds_main['train']['x_sub_'+str(subpath_i)] = inp_plchldrs_train['x_sub_'+str(subpath_i)]
         self._feeds_main['train']['y_gt'] = y_gt
         
         log.print3("Done.")
         
-    def setup_ops_n_feeds_to_val(self, log):
+    def setup_ops_n_feeds_to_val(self, log, inp_plchldrs_val):
         log.print3("...Building the validation function...")
         
         y_gt = self._output_gt_tensor_feeds['val']['y_gt']
@@ -179,15 +160,15 @@ class Cnn3d(object):
         self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['val'], y_gt)
         
         self._feeds_main['val'] = {}
-        self._feeds_main['val']['x'] = self._inp_x['val']['x']
+        self._feeds_main['val']['x'] = inp_plchldrs_val['x']
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._feeds_main['val']['x_sub_'+str(subpath_i)] = self._inp_x['val']['x_sub_'+str(subpath_i)]
+            self._feeds_main['val']['x_sub_'+str(subpath_i)] = inp_plchldrs_val['x_sub_'+str(subpath_i)]
         self._feeds_main['val']['y_gt'] = y_gt
         
         log.print3("Done.")
         
         
-    def setup_ops_n_feeds_to_test(self, log, indices_fms_per_pathtype_per_layer_to_save=None) :
+    def setup_ops_n_feeds_to_test(self, log, inp_plchldrs_test, indices_fms_per_pathtype_per_layer_to_save=None) :
         log.print3("...Building the function for testing and visualisation of FMs...")
         
         listToReturnWithAllTheFmActivationsPerLayer = []
@@ -208,19 +189,20 @@ class Cnn3d(object):
         self._ops_main['test']['pred_probs'] = self.finalTargetLayer.output["test"]
         
         self._feeds_main['test'] = {}
-        self._feeds_main['test']['x'] = self._inp_x['test']['x']
+        self._feeds_main['test']['x'] = inp_plchldrs_test['x']
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._feeds_main['test']['x_sub_'+str(subpath_i)] = self._inp_x['test']['x_sub_'+str(subpath_i)]
+            self._feeds_main['test']['x_sub_'+str(subpath_i)] = inp_plchldrs_test['x_sub_'+str(subpath_i)]
         
         log.print3("Done.")
         
         
     def _setup_inp_plchldrs(self, train_val_test): # TODO: REMOVE for eager
         assert train_val_test in ['train', 'val', 'test']
-        self._inp_x[train_val_test]['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path[train_val_test][0], name='inp_x_'+train_val_test)
+        inp_plchldrs = {}
+        inp_plchldrs['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path[train_val_test][0], name='inp_x_'+train_val_test)
         for subpath_i in range(self.numSubsPaths): # if there are subsampled paths...
-            self._inp_x[train_val_test]['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
-        return self._inp_x[train_val_test]
+            inp_plchldrs['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
+        return inp_plchldrs
     
     def create_inp_plchldrs(self, inp_dims, train_val_test): # TODO: Remove for eager
             self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims)
@@ -277,20 +259,9 @@ class Cnn3d(object):
         self.numberOfImageChannelsPath1 = numberOfImageChannelsPath1
         self.numberOfImageChannelsPath2 = numberOfImageChannelsPath2
         # === Architecture ===
-        self.nkerns = nkerns  # Useless?
-        self.nkernsSubsampled = nkernsSubsampled  # Useless?
         self.numSubsPaths = len(subsampleFactorsPerSubPath) # do I want this as attribute? Or function is ok?
         
-        # fcLayersFMs???
-        self.kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer
-        
-        # == Other Architectural Params ==
-        self.indicesOfLayersToConnectResidualsInOutput = indicesOfLayersToConnectResidualsInOutput
-        self.indicesOfLowerRankLayersPerPathway = indicesOfLowerRankLayersPerPathway
-        # pooling?
-
-        # == Others ==
-        self.dropoutRatesForAllPathways = dropoutRatesForAllPathways
+        self._kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer # TODO: REMOVE. Temporary for 1st fc padding!
         
         #==============================
         rng = np.random.RandomState(seed=None)
@@ -378,9 +349,9 @@ class Cnn3d(object):
         # Originally it was 1x1x1 only. The pathways themselves where taking care of the receptive field.
         # However I can now define it larger (eg 3x3x3), in case it helps combining the multiresolution features better/smoother.
         # The convolution is seamless, ie same shape output/input, by mirror padding the input.
-        log.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(self.kernelDimensionsFirstFcLayer))
+        log.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(kernelDimensionsFirstFcLayer))
         thisPathWayNKerns = fcLayersFMs + [self.num_classes]
-        thisPathWayKernelDimensions = [self.kernelDimensionsFirstFcLayer] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
+        thisPathWayKernelDimensions = [kernelDimensionsFirstFcLayer] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
@@ -445,7 +416,7 @@ class Cnn3d(object):
             
         # ===== Concatenate and final convs ========
         conc_inp_fms =  tf.concat(fms_from_paths_to_concat, axis=1)
-        n_voxels_pad_per_dim = [kern_dim - 1 for kern_dim in self.kernelDimensionsFirstFcLayer]
+        n_voxels_pad_per_dim = [kern_dim - 1 for kern_dim in self._kernelDimensionsFirstFcLayer]
         log.print3("DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: " + str(n_voxels_pad_per_dim))
         conc_inp_fms = ops.pad_by_mirroring(conc_inp_fms, n_voxels_pad_per_dim) # TODO: SHOULD BE SIMPLY A PADDED-CONV LAYER.
         this_pathway = self.pathways[-1] # Fc path
