@@ -64,9 +64,9 @@ class Block(object):
         return inp_dims_deeper_layer
     
     # Getters
-    def get_number_fms_in(self):
+    def get_n_fms_in(self):
         return self._n_fms_in
-    def get_number_fms_out(self):
+    def get_n_fms_out(self):
         return self._n_fms_out
     
     def fm_activations(self, indices_of_fms_in_layer_to_visualise_from_to_exclusive) :

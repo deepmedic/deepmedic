@@ -39,9 +39,9 @@ class Pathway(object):
         self._n_fms_out = None
         
     # Getters
-    def get_number_fms_in(self):
+    def get_n_fms_in(self):
         return self._n_fms_in
-    def get_number_fms_out(self):
+    def get_n_fms_out(self):
         return self._n_fms_out
     
     def apply(self, input, mode, train_val_test, verbose=False, log=None):

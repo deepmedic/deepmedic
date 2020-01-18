@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function, division
 # But only what is needed by the sampling process of the training procedure.
 class PathwayWrapperForSampling(object):
     # For CnnWrapperForSampling class.
-    def __init__(self, pathwayInstance) :
+    def __init__(self, pathwayInstance):
         self._pType = pathwayInstance.pType()
         self._subs_factor = pathwayInstance.subs_factor()
 

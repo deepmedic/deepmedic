@@ -154,8 +154,8 @@ class ModelParameters(object) :
         
         #===========MODEL PARAMETERS==========
         self.numberClasses = cfg[cfg.NUM_CLASSES] if cfg[cfg.NUM_CLASSES] is not None else self.errReqNumClasses()
-        self.numberOfInputChannelsNormal = cfg[cfg.NUM_INPUT_CHANS] if cfg[cfg.NUM_INPUT_CHANS] is not None else self.errReqNumChannels()
-        assert self.numberOfInputChannelsNormal > 0
+        self.n_img_channs = cfg[cfg.NUM_INPUT_CHANS] if cfg[cfg.NUM_INPUT_CHANS] is not None else self.errReqNumChannels()
+        assert self.n_img_channs > 0
         #===Normal pathway===
         self.numFMsPerLayerNormal = cfg[cfg.N_FMS_NORM] if cfg[cfg.N_FMS_NORM] is not None and len(cfg[cfg.N_FMS_NORM]) > 0 else self.errReqFMsNormal()
         numOfLayers = len(self.numFMsPerLayerNormal)
@@ -277,7 +277,6 @@ class ModelParameters(object) :
                                                      []
                                                      ]
         #============= HIDDENS ======================
-        self.numberOfInputChannelsSubsampled = self.numberOfInputChannelsNormal
         
         #MultiscaleConnections:
         self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes = [ [], [] ] #a sublist for each pathway. Starts from 0 index. Give a sublist, even empty for no connections.
@@ -306,7 +305,7 @@ class ModelParameters(object) :
         logPrint("~~~~~~~~~~~~~~~~~~Model parameters~~~~~~~~~~~~~~~~")
         logPrint("Number of Classes (including background) = " + str(self.numberClasses))
         logPrint("~~Normal Pathway~~")
-        logPrint("Number of Input Channels = " + str(self.numberOfInputChannelsNormal))
+        logPrint("Number of Input Channels = " + str(self.n_img_channs))
         logPrint("Number of Layers = " + str(len(self.numFMsPerLayerNormal)))
         logPrint("Number of Feature Maps per layer = " + str(self.numFMsPerLayerNormal))
         logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerNormal))
@@ -367,8 +366,7 @@ class ModelParameters(object) :
                         self.cnnModelName,
                         #=== Model Parameters ===
                         self.numberClasses,
-                        self.numberOfInputChannelsNormal,
-                        self.numberOfInputChannelsSubsampled,
+                        self.n_img_channs,
                         #=== Normal Pathway ===
                         self.numFMsPerLayerNormal, #ONLY for the convolutional layers, NOT the final convFCSoftmaxLayer!
                         self.kernDimPerLayerNormal,

@@ -47,11 +47,11 @@ class Cnn3d(object):
         #======= Output tensors Y_GT ========
         # For each targetLayer, I should be placing a y_gt placeholder/feed.
         self._output_gt_tensor_feeds = {'train': {},
-                                        'val': {} }
+                                        'val': {}}
         
         ######## These entries are setup in the setup_train/val/test functions here ############
-        self._ops_main = { 'train': {} , 'val': {}, 'test': {} }
-        self._feeds_main = { 'train': {} , 'val': {}, 'test': {} }
+        self._ops_main = {'train': {} , 'val': {}, 'test': {}}
+        self._feeds_main = {'train': {} , 'val': {}, 'test': {}}
 
     
     def get_inp_shapes_per_path(self):
@@ -63,21 +63,21 @@ class Cnn3d(object):
     
     def getNumSubsPathways(self):
         count = 0
-        for pathway in self.pathways :
-            if pathway.pType() ==  pt.SUBS :
+        for pathway in self.pathways:
+            if pathway.pType() ==  pt.SUBS:
                 count += 1
         return count
     
     def getNumPathwaysThatRequireInput(self):
         count = 0
-        for pathway in self.pathways :
-            if pathway.pType() != pt.FC :
+        for pathway in self.pathways:
+            if pathway.pType() != pt.FC:
                 count += 1
         return count
     
     def getFcPathway(self):
-        for pathway in self.pathways :
-            if pathway.pType() == pt.FC :
+        for pathway in self.pathways:
+            if pathway.pType() == pt.FC:
                 return pathway
         return None
     
@@ -199,9 +199,9 @@ class Cnn3d(object):
     def _setup_inp_plchldrs(self, train_val_test): # TODO: REMOVE for eager
         assert train_val_test in ['train', 'val', 'test']
         inp_plchldrs = {}
-        inp_plchldrs['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath1]+self._inp_shapes_per_path[train_val_test][0], name='inp_x_'+train_val_test)
+        inp_plchldrs['x'] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.pathways[0].get_n_fms_in()]+self._inp_shapes_per_path[train_val_test][0], name='inp_x_'+train_val_test)
         for subpath_i in range(self.numSubsPaths): # if there are subsampled paths...
-            inp_plchldrs['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
+            inp_plchldrs['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.pathways[0].get_n_fms_in()]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
         return inp_plchldrs
     
     def create_inp_plchldrs(self, inp_dims, train_val_test): # TODO: Remove for eager
@@ -214,8 +214,7 @@ class Cnn3d(object):
                         cnnModelName,
                         #=== Model Parameters ===
                         numberOfOutputClasses,
-                        numberOfImageChannelsPath1,
-                        numberOfImageChannelsPath2,
+                        n_img_channs,
                         
                         #=== Normal Pathway ===
                         nkerns,
@@ -256,8 +255,6 @@ class Cnn3d(object):
         
         # ============= Model Parameters Passed as arguments ================
         self.num_classes = numberOfOutputClasses
-        self.numberOfImageChannelsPath1 = numberOfImageChannelsPath1
-        self.numberOfImageChannelsPath2 = numberOfImageChannelsPath2
         # === Architecture ===
         self.numSubsPaths = len(subsampleFactorsPerSubPath) # do I want this as attribute? Or function is ok?
         
@@ -288,7 +285,7 @@ class Cnn3d(object):
         
         thisPathway.build(log,
                           rng,
-                          self.numberOfImageChannelsPath1,
+                          n_img_channs,
                           thisPathWayNKerns,
                           thisPathWayKernelDimensions,
                           convWInitMethod,
@@ -320,7 +317,7 @@ class Cnn3d(object):
             
             thisPathway.build(log,
                               rng,
-                              self.numberOfImageChannelsPath2,
+                              n_img_channs,
                               thisPathWayNKerns,
                               thisPathWayKernelDimensions,
                               convWInitMethod,
@@ -337,7 +334,7 @@ class Cnn3d(object):
         #====================================CONCATENATE the output of the 2 cnn-pathways=============================
         n_fms_inp_to_fc_path = 0
         for path_i in range(len(self.pathways)) :
-            n_fms_inp_to_fc_path += self.pathways[path_i].get_number_fms_out()
+            n_fms_inp_to_fc_path += self.pathways[path_i].get_n_fms_out()
         
         #======================= Make the Fully Connected Layers =======================
         thisPathway = FcPathway()
@@ -380,7 +377,7 @@ class Cnn3d(object):
         log.print3("Adding the final Softmax layer...")
         
         self.finalTargetLayer = SoftmaxBlock()
-        self.finalTargetLayer.build(rng, self.getFcPathway().get_number_fms_out(), softmaxTemperature)
+        self.finalTargetLayer.build(rng, self.getFcPathway().get_n_fms_out(), softmaxTemperature)
         self.getFcPathway().get_block(-1).connect_target_block(self.finalTargetLayer)
         
         # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================    
