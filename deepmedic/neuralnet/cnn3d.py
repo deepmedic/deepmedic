@@ -223,8 +223,8 @@ class Cnn3d(object):
             self._inp_x[train_val_test]['x_sub_'+str(subpath_i)] = tf.compat.v1.placeholder(dtype="float32", shape=[None, self.numberOfImageChannelsPath2]+self._inp_shapes_per_path[train_val_test][subpath_i+1], name="inp_x_sub_"+str(subpath_i)+'_' + train_val_test)
         return self._inp_x[train_val_test]
     
-    def create_inp_plchldrs(self, inp_dims, train_val_test, kern_dims_lr_paths): # TODO: Remove for eager
-            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims, kern_dims_lr_paths)
+    def create_inp_plchldrs(self, inp_dims, train_val_test): # TODO: Remove for eager
+            self._inp_shapes_per_path[train_val_test] = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims)
             return self._setup_inp_plchldrs(train_val_test)    
         
         
@@ -459,19 +459,14 @@ class Cnn3d(object):
         
         return p_y_given_x
         
-    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims, kern_dims_lr):
-        # TODO: In eager, change this to just do a fwd-pass on a tensor of the given shape...
-        #       In graph, just replace this with output.shape
-        # kern_dims_lr: same as above but for low resolution.
-        rec_field_hr, _ = self.pathways[0].rec_field()
+    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims):
         out_shape_of_hr_path = self.pathways[0].calc_outp_dims_given_inp(inp_hr_dims)
         inp_shape_per_path = []
         for path_idx in range(len(self.pathways)):
             if self.pathways[path_idx].pType() == pt.NORM:
                 inp_shape_per_path.append(inp_hr_dims)
             elif self.pathways[path_idx].pType() != pt.FC: # it's a low-res pathway.
-                subs_factor = self.pathways[path_idx].subsFactor()
-                inp_shape_lr = calc_inp_dims_lr_path_to_match_outp_dims(kern_dims_lr, subs_factor, out_shape_of_hr_path)
+                inp_shape_lr = self.pathways[path_idx].calc_inp_dims_given_outp_after_upsample(out_shape_of_hr_path)
                 inp_shape_per_path.append(inp_shape_lr)
             elif self.pathways[path_idx].pType() == pt.FC:
                 inp_shape_per_path.append(out_shape_of_hr_path)

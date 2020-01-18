@@ -57,6 +57,12 @@ class Block(object):
             outp_dims_prev_layer = layer.calc_outp_dims_given_inp(outp_dims_prev_layer)
         return outp_dims_prev_layer
     
+    def calc_inp_dims_given_outp(self, outp_dims):
+        inp_dims_deeper_layer = outp_dims
+        for layer in self._layers:
+            inp_dims_deeper_layer = layer.calc_inp_dims_given_outp(inp_dims_deeper_layer)
+        return inp_dims_deeper_layer
+    
     # Getters
     def get_number_fms_in(self):
         return self._n_fms_in

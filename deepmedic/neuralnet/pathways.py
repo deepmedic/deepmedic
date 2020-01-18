@@ -86,11 +86,14 @@ class Pathway(object):
     def calc_outp_dims_given_inp(self, inp_dims):
         outp_dims_prev_block = inp_dims
         for block in self._blocks:
-            print("DEBUG: IN BLOCK: " +str(outp_dims_prev_block))
             outp_dims_prev_block = block.calc_outp_dims_given_inp(outp_dims_prev_block)
-            print("DEBUG: OUT BLOCK: " +str(outp_dims_prev_block))
         return outp_dims_prev_block
         
+    def calc_inp_dims_given_outp(self, outp_dims):
+        inp_dims_deeper_block = outp_dims
+        for block in self._blocks:
+            inp_dims_deeper_block = block.calc_inp_dims_given_outp(inp_dims_deeper_block)
+        return inp_dims_deeper_block
     
     def build(self,
               log,
@@ -191,6 +194,10 @@ class SubsampledPathway(Pathway):
     def getStringType(self):
         return "SUBSAMPLED" + str(self.subsFactor())
     
+    def calc_inp_dims_given_outp_after_upsample(self, outp_dims_in_hr):
+        outp_dims_in_lr = [int(ceil(outp_dims_in_hr[d]/ self.subsFactor()[d])) for d in range(3)]
+        inp_dims_req = self.calc_inp_dims_given_outp(outp_dims_in_lr)
+        return inp_dims_req
     
 class FcPathway(Pathway):
     def __init__(self, pName=None):

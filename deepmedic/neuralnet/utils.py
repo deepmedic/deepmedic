@@ -39,7 +39,7 @@ def calc_inp_dims_lr_path_to_match_outp_dims(kernel_dims_lr, subs_factor, out_sh
         required_inp_dims_to_path[rcz_i] = rec_of_pathway[rcz_i] + required_outp_dims_of_path[rcz_i] - 1
     return required_inp_dims_to_path
 
-def calc_rec_field_of_path_given_kern_dims_w_stride_1(kern_dims) :
+def calc_rec_field_of_path_given_kern_dims_w_stride_1(kern_dims):
     if not kern_dims : #list is []
         return 0
     

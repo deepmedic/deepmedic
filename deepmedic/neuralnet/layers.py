@@ -48,6 +48,9 @@ class Layer(object):
     def calc_outp_dims_given_inp(self, inp_dims):
         return inp_dims
     
+    def calc_inp_dims_given_outp(self, outp_dims):
+        return outp_dims
+    
 class PoolingLayer(Layer):
     def __init__(self, window_size, strides, padding, pool_mode):
         # window_size: [wx, wy, wz]
@@ -69,10 +72,19 @@ class PoolingLayer(Layer):
         
     def trainable_params(self):
         return []
+    
     def rec_field(self):
         raise NotImplementedError()
+    
     def calc_outp_dims_given_inp(self, inp_dims): # Same as conv.
-        return [(inp_dims[d] + self._padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
+        if np.any([inp_dims[d] < self._window_size[d] for d in range(3)]):
+            return [0,0,0]
+        else:
+            return [1 + (inp_dims[d] + self._padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
+    
+    def calc_inp_dims_given_outp(self, outp_dims):
+        assert np.all([outp_dims[d] > 0 for d in range(3)])
+        return [(outp_dims[d]-1)*self._strides[d] + self._window_size[d] - self._padding[d] for d in range(3)]
     
 class ConvolutionalLayer(Layer):
     def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
@@ -109,7 +121,13 @@ class ConvolutionalLayer(Layer):
     def calc_outp_dims_given_inp(self, inp_dims):
         if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
             return [0,0,0]
-        return [1+(inp_dims[d] + self._padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
+        else:
+            return [1 + (inp_dims[d] + self._padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
+    
+    def calc_inp_dims_given_outp(self, outp_dims):
+        assert np.all([outp_dims[d] > 0 for d in range(3)])
+        return [(outp_dims[d]-1)*self._strides[d] + self._w.shape[2+d] - self._padding[d] for d in range(3)]
+    
     
 class LowRankConvolutionalLayer(ConvolutionalLayer):
         # Behaviour: Create W, set self._W, set self._params, convolve, return ouput and outputShape.
@@ -177,10 +195,19 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         return rf_out, stride_rf
     
     def calc_outp_dims_given_inp(self, inp_dims):
-        return [(inp_dims[0] + self._padding[0] - self._w_x.shape[2]) // self._strides[0],
-                (inp_dims[1] + self._padding[1] - self._w_y.shape[3]) // self._strides[1],
-                (inp_dims[2] + self._padding[2] - self._w_z.shape[4]) // self._strides[2]]
+        if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
+            return [0,0,0]
+        else:
+            return [(inp_dims[0] + self._padding[0] - self._w_x.shape[2]) // self._strides[0],
+                    (inp_dims[1] + self._padding[1] - self._w_y.shape[3]) // self._strides[1],
+                    (inp_dims[2] + self._padding[2] - self._w_z.shape[4]) // self._strides[2]]
         
+    def calc_inp_dims_given_outp(self, outp_dims):
+        assert np.all([outp_dims[d] > 0 for d in range(3)])
+        return [(outp_dims[0]-1)*self._strides[0] + self._w_x.shape[2] - self._padding[0],
+                (outp_dims[1]-1)*self._strides[1] + self._w_y.shape[3] - self._padding[1],
+                (outp_dims[2]-1)*self._strides[2] + self._w_z.shape[4] - self._padding[2]]
+    
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):
         self._keep_prob = 1 - dropout_rate
