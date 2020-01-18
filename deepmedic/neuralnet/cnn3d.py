@@ -16,7 +16,6 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
 import deepmedic.neuralnet.ops as ops
-from deepmedic.neuralnet.utils import calc_inp_dims_lr_path_to_match_outp_dims
 
 
 ##################################################
