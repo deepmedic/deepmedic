@@ -90,15 +90,13 @@ class TestSession(Session):
                 cnn3d = Cnn3d()
                 with tf.compat.v1.variable_scope("net"):
                     cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
-                    inp_plchldrs_test  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
-                    p_y_given_x_test   = cnn3d.apply(inp_plchldrs_test, 'infer', 'test', verbose=True, log=self._log)
+                    inp_plchldrs, inp_shapes_per_path = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
+                    p_y_given_x = cnn3d.apply(inp_plchldrs, 'infer', 'test', verbose=True, log=self._log)
                     
             self._log.print3("=========== Compiling the Testing Function ============")
             self._log.print3("=======================================================\n")
             
-            cnn3d.setup_ops_n_feeds_to_test( self._log,
-                                             inp_plchldrs_test,
-                                             self._params.indices_fms_per_pathtype_per_layer_to_save )
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs, self._params.indices_fms_per_pathtype_per_layer_to_save )
             # Create the saver
             collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
             saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net) # saver_net would suffice
@@ -131,7 +129,9 @@ class TestSession(Session):
             self._log.print3("=========== Testing with the CNN model ===============")
             self._log.print3("======================================================")
             
-            res_code = inference_on_whole_volumes( *( [sessionTf, cnn3d] + self._params.get_args_for_testing() ) )
+            res_code = inference_on_whole_volumes(*([sessionTf, cnn3d] +\
+                                                    self._params.get_args_for_testing() +\
+                                                    [inp_shapes_per_path]))
         
         self._log.print3("")
         self._log.print3("======================================================")

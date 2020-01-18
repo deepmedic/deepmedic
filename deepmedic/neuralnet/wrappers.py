@@ -28,7 +28,6 @@ class CnnWrapperForSampling(object):
         # Cnn
         self.num_classes = cnn3d.num_classes
         self.recFieldCnn = cnn3d.recFieldCnn
-        self._inp_shapes_per_path = cnn3d.get_inp_shapes_per_path()
         self.finalTargetLayer_outputShape = {"train": cnn3d.finalTargetLayer.output["train"].shape,
                                              "val": cnn3d.finalTargetLayer.output["val"].shape,
                                              "test": cnn3d.finalTargetLayer.output["test"].shape}
@@ -43,7 +42,4 @@ class CnnWrapperForSampling(object):
     def getNumPathwaysThatRequireInput(self) :
         return self._numPathwaysThatRequireInput
     
-    def get_inp_shape_of_path(self, path_idx, mode):
-        # mode: 'train', 'val', 'test'
-        return self._inp_shapes_per_path[mode][path_idx]
     

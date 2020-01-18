@@ -220,7 +220,7 @@ def prepare_feeds_dict(feeds, channs_of_tiles_per_path):
     
 
 def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
-                                   channels, roi_mask, batchsize,
+                                   channels, roi_mask, inp_shapes_per_path, batchsize,
                                    save_fms_flag, idxs_fms_to_save ):
     # One of the main routines. Segment whole volume tile-by-tile.
     
@@ -246,7 +246,7 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
 
     # Tile the image and get all slices of the tiles that it fully breaks down to.
     slice_coords_all_tiles = get_slice_coords_of_all_img_tiles(log,
-                                                               cnn3d.get_inp_shape_of_path(0, 'test'),
+                                                               inp_shapes_per_path[0],
                                                                stride_of_tiling,
                                                                batchsize,
                                                                inp_chan_dims,
@@ -271,7 +271,8 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
         channs_of_tiles_per_path = extractSegmentsGivenSliceCoords(cnn3d,
                                                                    slice_coords_of_tiles_batch,
                                                                    channels,
-                                                                   cnn3d.recFieldCnn)
+                                                                   cnn3d.recFieldCnn,
+                                                                   inp_shapes_per_path)
 
         # ============================== Perform forward pass ====================================
         t_fwd_start = time.time()
@@ -506,7 +507,9 @@ def inference_on_whole_volumes(sessionTf,
                                # Saving feature maps
                                save_fms_flag,
                                idxs_fms_to_save,
-                               namesForSavingFms):
+                               namesForSavingFms,
+                               # Sampling
+                               inp_shapes_per_path):
     # save_fms_flag: should contain an entry per pathwayType, even if just []...
     #       ... If not [], the list should contain one entry per layer of the pathway, even if just [].
     #       ... The layer entries, if not [], they should have to integers, lower and upper FM to visualise.
@@ -524,7 +527,7 @@ def inference_on_whole_volumes(sessionTf,
     NA_PATTERN = AccuracyMonitorForEpSegm.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(paths_per_chan_per_subj)
-    dims_hres_segment = cnn3d.get_inp_shape_of_path(0, 'test') # pathway [0] is the high-res path.
+    dims_hres_segment = inp_shapes_per_path[0] # pathway [0] is the high-res path.
     
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
@@ -567,7 +570,7 @@ def inference_on_whole_volumes(sessionTf,
         # array_fms_to_save will be None if not saving them.
         (prob_maps_vols,
          array_fms_to_save) = predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
-                                                             channels, roi_mask, batchsize,
+                                                             channels, roi_mask, inp_shapes_per_path, batchsize,
                                                              save_fms_flag, idxs_fms_to_save )
         
         # ========================== Post-Processing =========================

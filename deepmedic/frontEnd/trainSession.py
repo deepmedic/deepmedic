@@ -109,9 +109,9 @@ class TrainSession(Session):
                 with tf.compat.v1.variable_scope("net"):
                     cnn3d.make_cnn_model(*model_params.get_args_for_arch())
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
-                    inp_plchldrs_train = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('train'), 'train')
-                    inp_plchldrs_val   = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('val'), 'val')
-                    inp_plchldrs_test  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
+                    inp_plchldrs_train, inp_shapes_per_path_train = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('train'), 'train')
+                    inp_plchldrs_val, inp_shapes_per_path_val  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('val'), 'val')
+                    inp_plchldrs_test, inp_shapes_per_path_test  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
                     p_y_given_x_train  = cnn3d.apply(inp_plchldrs_train, 'train', 'train', verbose=True, log=self._log)
                     p_y_given_x_val    = cnn3d.apply(inp_plchldrs_val, 'infer', 'val', verbose=True, log=self._log)
                     p_y_given_x_test   = cnn3d.apply(inp_plchldrs_test, 'infer', 'test', verbose=True, log=self._log)
@@ -141,9 +141,7 @@ class TrainSession(Session):
 
             self._log.print3("=========== Compiling the Testing Function ============")
             # For validation with full segmentation
-            cnn3d.setup_ops_n_feeds_to_test(self._log,
-                                            inp_plchldrs_test,
-                                            self._params.indices_fms_per_pathtype_per_layer_to_save)
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, self._params.indices_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers
             saver_all = tf.compat.v1.train.Saver()  # Will be used during training for saving everything.
@@ -217,7 +215,9 @@ class TrainSession(Session):
             self._log.print3("============== Training the CNN model =================")
             self._log.print3("=======================================================")
 
-            do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] + self._params.get_args_for_train_routine()))
+            do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] +\
+                          self._params.get_args_for_train_routine() +\
+                          [inp_shapes_per_path_train, inp_shapes_per_path_val, inp_shapes_per_path_test]))
 
             ckpt_all.save(file_prefix = filename_to_save_with+".all.FINAL.ckpt2")
             ckpt_net.save(file_prefix = filename_to_save_with+".net.FINAL.ckpt2")

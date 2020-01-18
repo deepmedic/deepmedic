@@ -173,8 +173,11 @@ def do_training(sessionTf,
 
                 # -------- Pre-processing ------
                 pad_input,
-                norm_prms
-                ):
+                norm_prms,
+                #--------- Sampling Hyperparamas -----
+                inp_shapes_per_path_train,
+                inp_shapes_per_path_val,
+                inp_shapes_per_path_test):
     id_str = "[MAIN|PID:" + str(os.getpid()) + "]"
     start_time_train = time.time()
 
@@ -190,6 +193,7 @@ def do_training(sessionTf,
                             max_n_cases_per_subep_train,
                             n_samples_per_subep_train,
                             sampling_type_inst_tr,
+                            inp_shapes_per_path_train,
                             paths_per_chan_per_subj_train,
                             paths_to_lbls_per_subj_train,
                             paths_to_masks_per_subj_train,
@@ -207,6 +211,7 @@ def do_training(sessionTf,
                              max_n_cases_per_subep_train,
                              n_samples_per_subep_val,
                              sampling_type_inst_val,
+                             inp_shapes_per_path_val,
                              paths_per_chan_per_subj_val,
                              paths_to_lbls_per_subj_val,
                              paths_to_masks_per_subj_val,
@@ -399,7 +404,8 @@ def do_training(sessionTf,
                                                                          # Saving feature maps
                                                                          save_fms_flag,
                                                                          idxs_fms_to_save,
-                                                                         namesForSavingFms)
+                                                                         namesForSavingFms,
+                                                                         inp_shapes_per_path_test)
                 
                 acc_monitor_ep_val.report_metrics_whole_vols(mean_metrics_val_whole_vols)
 
