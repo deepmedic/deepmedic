@@ -592,14 +592,7 @@ def sample_idxs_of_segments(log,
     return (idxs_of_sampled_centers, slice_idxs_of_sampled_segms)
 
 
-def get_subsampl_segment(segment_hr_dims,
-                         outp_pred_dims,
-                         recFieldCnn,
-                         channels,
-                         segment_hr_slice_coords,
-                         subs_factor,
-                         segment_lr_dims
-                         ):
+def get_subsampl_segment(channels, segment_hr_slice_coords, subs_factor, segment_lr_dims):
     """
     This returns an image part from the sampled data, given the segment_hr_slice_coords,
     which has the coordinates where the normal-scale image part starts and ends (inclusive).
@@ -627,37 +620,6 @@ def get_subsampl_segment(segment_hr_dims,
     central_vox = [segment_hr_slice_coords[d][0] + (segment_hr_slice_coords[d][1]-segment_hr_slice_coords[d][0])//2 for d in range(3)]
     low = [central_vox[d] - (segment_lr_dims[d]-1)//2 * subs_factor[d] for d in range(3)] # -1 to to deal with even sizes.
     high_non_incl = [low[d] + subs_factor[d] * (segment_lr_dims[d]-1) + 1 for d in range(3)] # +1 to make it non inclusive
-    print("DEBUG: segment_hr_slice_coords=" + str(segment_hr_slice_coords))
-    print("DEBUG: central_vox=" +str(central_vox))
-    print("DEBUG: low=" +str(low))
-    print("DEBUG: high_non=" + str(high_non_incl))
-    
-    # Calculate the slice that I should get, and where I should put it in the imagePart
-    # (eg if near the borders, and I cant grab a whole slice-imagePart).
-    slots_previously = []
-    for d in range(3):
-        if subs_factor[d] % 2 == 1:
-            slots_previously.append((subs_factor[d] - 1) // 2 * recFieldCnn[d])
-        else:
-            slots_previously.append((subs_factor[d] - 2) // 2 * recFieldCnn[d] + recFieldCnn[d] // 2)
-    
-    # Below: One vox closer to the beginning of dim. Same happens when I get parts of image.
-    idx_centre_of_subs_kernel = []# ... and number of voxels from left to the centre of the downsampling-area.
-    for d in range(3):
-        if subs_factor[d] % 2 == 1:
-            idx_centre_of_subs_kernel.append(subs_factor[d] // 2)
-        else:
-            idx_centre_of_subs_kernel.append(subs_factor[d] // 2 - 1)
-    
-    # This is where to start taking voxels from the subsampled image. From the beginning of the imagePart(1 st patch)...
-    # ... go forward a few steps to the voxel that is like the "central" in this subsampled (eg 3x3) area.
-    # ...Then go backwards -Patchsize to find the first voxel of the subsampled.
-    
-    # These indices can run out of image boundaries. I ll correct them afterwards.
-    old_low = [segment_hr_slice_coords[d][0] + idx_centre_of_subs_kernel[d] - slots_previously[d] for d in range(3)]
-    old_high_non_incl = [int(low[d] + subs_factor[d] * recFieldCnn[d] + (math.ceil(outp_pred_dims[d] / subs_factor[d]) - 1) * subs_factor[d]) for d in range(3)]
-    print("DEBUG: olow=" +str(old_low))
-    print("DEBUG: ohigh_non=" + str(old_high_non_incl))
     
     low_corrected = [max(low[d], 0) for d in range(3)]
     high_non_incl_corrected = [min(high_non_incl[d], img_dims[d]) for d in range(3)]
@@ -673,9 +635,6 @@ def get_subsampl_segment(segment_hr_dims,
         chan_slice_lr = channels[channel_i][low_corrected[0]: high_non_incl_corrected[0]: subs_factor[0],
                                             low_corrected[1]: high_non_incl_corrected[1]: subs_factor[1],
                                             low_corrected[2]: high_non_incl_corrected[2]: subs_factor[2]]
-        #print("DEBUG: low_to_put_slice_in_segm=" + str(low_to_put_slice_in_segm))
-        #print("DEBUG: dims_of_slice_not_padded=" + str(dims_of_slice_not_padded))
-        #print("DEBUG chan_slice_lr.shape=" +str(chan_slice_lr.shape))
         segment_lr[channel_i,
                    low_to_put_slice_in_segm[0]: low_to_put_slice_in_segm[0] + dims_of_slice_not_padded[0],
                    low_to_put_slice_in_segm[1]: low_to_put_slice_in_segm[1] + dims_of_slice_not_padded[1],
@@ -746,10 +705,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         # rightmost  are placeholders here.
         slicesCoordsOfSegmForPrimaryPathway = [[leftBoundaryRcz[d], rightBoundaryRcz[d] - 1] for d in range(3)]
         
-        channsForThisSubsampledPartAndPathway = get_subsampl_segment(segment_hr_dims,
-                                                                     outp_pred_dims,
-                                                                     cnn3d.recFieldCnn,
-                                                                     channels,
+        channsForThisSubsampledPartAndPathway = get_subsampl_segment(channels,
                                                                      slicesCoordsOfSegmForPrimaryPathway,
                                                                      cnn3d.pathways[pathway_i].subs_factor(),
                                                                      inp_shapes_per_path[pathway_i])
@@ -888,10 +844,7 @@ def extractSegmentsGivenSliceCoords(cnn3d,
                                                    [cLowBoundary, cFarBoundary],
                                                    [zLowBoundary, zFarBoundary]]
             
-            channsForThisSubsPathForThisSegm = get_subsampl_segment(segment_hr_dims,
-                                                                    outp_pred_dims,
-                                                                    recFieldCnn,
-                                                                    channelsOfImageNpArray,
+            channsForThisSubsPathForThisSegm = get_subsampl_segment(channelsOfImageNpArray,
                                                                     slicesCoordsOfSegmForPrimaryPathway,
                                                                     cnn3d.pathways[pathway_i].subs_factor(),
                                                                     inp_shapes_per_path[pathway_i])
