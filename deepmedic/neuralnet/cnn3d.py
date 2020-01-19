@@ -111,7 +111,7 @@ class Cnn3d(object):
         return self._feeds_main[str_train_val_test]
     
     
-    def setup_ops_n_feeds_to_train(self, log, inp_plchldrs_train, total_cost, updates_of_params_wrt_total_cost) :
+    def setup_ops_n_feeds_to_train(self, log, inp_plchldrs, p_y_given_x, total_cost, updates_of_params_wrt_total_cost) :
         log.print3("...Building the training function...")
         
         y_gt = self._output_gt_tensor_feeds['train']['y_gt']
@@ -124,17 +124,17 @@ class Cnn3d(object):
         log.print3("...Collecting ops and feeds for training...")
         
         self._ops_main['train']['cost'] = total_cost
-        self._ops_main['train']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['train'], y_gt)
+        self._ops_main['train']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(p_y_given_x, y_gt)
         self._ops_main['train']['updates_grouped_op'] = updates_grouped_op
         
-        self._feeds_main['train']['x'] = inp_plchldrs_train['x']
+        self._feeds_main['train']['x'] = inp_plchldrs['x']
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._feeds_main['train']['x_sub_'+str(subpath_i)] = inp_plchldrs_train['x_sub_'+str(subpath_i)]
+            self._feeds_main['train']['x_sub_'+str(subpath_i)] = inp_plchldrs['x_sub_'+str(subpath_i)]
         self._feeds_main['train']['y_gt'] = y_gt
         
         log.print3("Done.")
         
-    def setup_ops_n_feeds_to_val(self, log, inp_plchldrs_val):
+    def setup_ops_n_feeds_to_val(self, log, inp_plchldrs, p_y_given_x):
         log.print3("...Building the validation function...")
         
         y_gt = self._output_gt_tensor_feeds['val']['y_gt']
@@ -142,18 +142,18 @@ class Cnn3d(object):
         log.print3("...Collecting ops and feeds for validation...")
         
         self._ops_main['val'] = {}
-        self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(self.finalTargetLayer.output['val'], y_gt)
+        self._ops_main['val']['list_rp_rn_tp_tn'] = self.finalTargetLayer.get_rp_rn_tp_tn(p_y_given_x, y_gt)
         
         self._feeds_main['val'] = {}
-        self._feeds_main['val']['x'] = inp_plchldrs_val['x']
+        self._feeds_main['val']['x'] = inp_plchldrs['x']
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._feeds_main['val']['x_sub_'+str(subpath_i)] = inp_plchldrs_val['x_sub_'+str(subpath_i)]
+            self._feeds_main['val']['x_sub_'+str(subpath_i)] = inp_plchldrs['x_sub_'+str(subpath_i)]
         self._feeds_main['val']['y_gt'] = y_gt
         
         log.print3("Done.")
         
         
-    def setup_ops_n_feeds_to_test(self, log, inp_plchldrs_test, indices_fms_per_pathtype_per_layer_to_save=None) :
+    def setup_ops_n_feeds_to_test(self, log, inp_plchldrs, p_y_given_x, indices_fms_per_pathtype_per_layer_to_save=None) :
         log.print3("...Building the function for testing and visualisation of FMs...")
         
         listToReturnWithAllTheFmActivationsPerLayer = []
@@ -171,12 +171,12 @@ class Cnn3d(object):
         
         self._ops_main['test'] = {}
         self._ops_main['test']['list_of_fms_per_layer'] = listToReturnWithAllTheFmActivationsPerLayer
-        self._ops_main['test']['pred_probs'] = self.finalTargetLayer.output["test"]
+        self._ops_main['test']['pred_probs'] = p_y_given_x
         
         self._feeds_main['test'] = {}
-        self._feeds_main['test']['x'] = inp_plchldrs_test['x']
+        self._feeds_main['test']['x'] = inp_plchldrs['x']
         for subpath_i in range(self.numSubsPaths) : # if there are subsampled paths...
-            self._feeds_main['test']['x_sub_'+str(subpath_i)] = inp_plchldrs_test['x_sub_'+str(subpath_i)]
+            self._feeds_main['test']['x_sub_'+str(subpath_i)] = inp_plchldrs['x_sub_'+str(subpath_i)]
         
         log.print3("Done.")
         
@@ -401,7 +401,7 @@ class Cnn3d(object):
         # Softmax
         p_y_given_x = self.finalTargetLayer.apply(logits_no_bias, mode)
         
-        # TODO: REMOVE THE BELOW for eager mode.
+        # TODO: REMOVE THE BELOW for eager mode. NEEDED by the trainer.py (loss) for now. And returning FMs.
         self.finalTargetLayer.output[train_val_test] = p_y_given_x
         
         return p_y_given_x

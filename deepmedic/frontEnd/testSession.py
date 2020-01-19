@@ -96,7 +96,7 @@ class TestSession(Session):
             self._log.print3("=========== Compiling the Testing Function ============")
             self._log.print3("=======================================================\n")
             
-            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs, self._params.indices_fms_per_pathtype_per_layer_to_save )
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs, p_y_given_x, self._params.indices_fms_per_pathtype_per_layer_to_save )
             # Create the saver
             collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
             saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net) # saver_net would suffice

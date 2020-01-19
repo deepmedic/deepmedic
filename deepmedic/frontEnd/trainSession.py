@@ -132,16 +132,17 @@ class TrainSession(Session):
             self._log.print3("=======================================================\n")
             cnn3d.setup_ops_n_feeds_to_train(self._log,
                                              inp_plchldrs_train,
+                                             p_y_given_x_train,
                                              trainer.get_total_cost(),
                                              trainer.get_param_updates_wrt_total_cost()  # list of ops
                                              )
 
             self._log.print3("=========== Compiling the Validation Function =========")
-            cnn3d.setup_ops_n_feeds_to_val(self._log, inp_plchldrs_val)
+            cnn3d.setup_ops_n_feeds_to_val(self._log, inp_plchldrs_val, p_y_given_x_val)
 
             self._log.print3("=========== Compiling the Testing Function ============")
             # For validation with full segmentation
-            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, self._params.indices_fms_per_pathtype_per_layer_to_save)
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, p_y_given_x_test, self._params.indices_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers
             saver_all = tf.compat.v1.train.Saver()  # Will be used during training for saving everything.
