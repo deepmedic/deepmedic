@@ -559,7 +559,7 @@ def inference_on_whole_volumes(sessionTf,
         pad_left_right_per_axis) = preproc_imgs_of_subj(log, "",
                                                         channels, gt_lbl_img, roi_mask, None,
                                                         run_input_checks, n_classes, # checks
-                                                        pad_input, cnn3d.recFieldCnn, dims_hres_segment, # pad
+                                                        pad_input, cnn3d.receptive_field, dims_hres_segment, # pad
                                                         norm_prms)
     
         # ============== Augmentation ==================

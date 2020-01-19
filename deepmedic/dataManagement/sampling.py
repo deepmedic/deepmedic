@@ -301,7 +301,7 @@ def load_subj_and_sample(job_idx,
     pad_left_right_per_axis) = preproc_imgs_of_subj(log, job_id,
                                                     channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
                                                     run_input_checks, cnn3d.num_classes, # checks
-                                                    pad_input_imgs, cnn3d.recFieldCnn, dims_hres_segment, # pad
+                                                    pad_input_imgs, cnn3d.receptive_field, dims_hres_segment, # pad
                                                     norm_prms)
     time_prep = time.time() - time_prep_0
     

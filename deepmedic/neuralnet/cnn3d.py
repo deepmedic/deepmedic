@@ -36,7 +36,7 @@ class Cnn3d(object):
         
         self.num_classes = None
         
-        self.recFieldCnn = ""
+        self.receptive_field = ""
         
         #======= Output tensors Y_GT ========
         # For each targetLayer, I should be placing a y_gt placeholder/feed.
@@ -372,7 +372,7 @@ class Cnn3d(object):
         
         # ======== Calculated Attributes =========
         #This recField CNN should in future be calculated with all non-secondary pathways, ie normal+fc. Use another variable for pathway.recField.
-        self.recFieldCnn = self._calc_rec_field_cnn_wrt_hr_inp()
+        self.receptive_field = self._calc_rec_field_cnn_wrt_hr_inp()
         
         log.print3("Finished building the CNN's model.")
         
