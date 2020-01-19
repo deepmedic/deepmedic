@@ -626,7 +626,7 @@ def get_subsampl_segment(channels, segment_hr_slice_coords, subs_factor, segment
 
     low_to_put_slice_in_segm = [0 if low[d] >= 0 else abs(low[d]) // subs_factor[d] for d in range(3)]
     dims_of_slice_not_padded = [int(math.ceil((high_non_incl_corrected[d] - low_corrected[d]) / subs_factor[0])) for d in range(3)]
-
+    
     # I now have exactly where to get the slice from and where to put it in the new array.
     for channel_i in range(len(channels)):
         black_int_for_chan = calc_border_int_of_3d_img(channels[channel_i])
@@ -685,12 +685,12 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         subs_factor = cnn3d.pathways[path_idx].subs_factor()
         pathwayInputShapeRcz = inp_shapes_per_path[path_idx]
         leftBoundaryRcz = [coord_center[d] - subs_factor[d] * (pathwayInputShapeRcz[d] - 1) // 2 for d in range(3)]
-        rightBoundaryRcz = [leftBoundaryRcz[d] + subs_factor[d] * pathwayInputShapeRcz[d] for d in range(3)]
+        rightBoundaryRcz = [leftBoundaryRcz[d] + subs_factor[d] * pathwayInputShapeRcz[d] - 1 for d in range(3)]
 
         channelsForThisImagePart = channels[:,
-                                            leftBoundaryRcz[0]: rightBoundaryRcz[0]: subs_factor[0],
-                                            leftBoundaryRcz[1]: rightBoundaryRcz[1]: subs_factor[1],
-                                            leftBoundaryRcz[2]: rightBoundaryRcz[2]: subs_factor[2]]
+                                            leftBoundaryRcz[0]: rightBoundaryRcz[0] + 1: subs_factor[0],
+                                            leftBoundaryRcz[1]: rightBoundaryRcz[1] + 1: subs_factor[1],
+                                            leftBoundaryRcz[2]: rightBoundaryRcz[2] + 1: subs_factor[2]]
 
         channs_of_sample_per_path.append(channelsForThisImagePart)
 
@@ -703,7 +703,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         segment_hr_dims = inp_shapes_per_path[pathway_i]
                                 
         # rightmost  are placeholders here.
-        slicesCoordsOfSegmForPrimaryPathway = [[leftBoundaryRcz[d], rightBoundaryRcz[d] - 1] for d in range(3)]
+        slicesCoordsOfSegmForPrimaryPathway = [[leftBoundaryRcz[d], rightBoundaryRcz[d]] for d in range(3)]
         
         channsForThisSubsampledPartAndPathway = get_subsampl_segment(channels,
                                                                      slicesCoordsOfSegmForPrimaryPathway,
