@@ -5,6 +5,7 @@ from PIL import Image
 import SimpleITK as sitk
 import math
 from scipy import ndimage
+import os
 
 
 pixel_type_dict = {"uint8": sitk.sitkUInt8,
@@ -40,7 +41,9 @@ def get_nifti_reader(filename):
     return reader
 
 
-def save_nifti(image, filename):
+def save_nifti(image, filename, makedirs=True):
+    if makedirs:
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
     writer = sitk.ImageFileWriter()
     writer.SetFileName(filename)
     writer.Execute(image)
@@ -107,9 +110,19 @@ def greater_than(size1, size2):
 
 class NiftiImage(object):
 
-    def __init__(self, filename=None, mask=None, target=None, image=None,):
-        if filename:
-            self.reader = get_nifti_reader(filename)
+    def __init__(self, filename=None, mask=None, target=None, image=None, channel_names=None):
+        self.channels = None
+        self.channel_names = channel_names
+        if filename is not None:
+            if type(filename) == list:
+                self.channels = {}
+                if channel_names is None:
+                    self.channel_names = [i for i in range(len(filename))]
+                for i in range(len(filename)):
+                    self.channels[channel_names[i]] = NiftiImage(filename[i])
+                self.reader = self.channels[channel_names[0]].reader
+            else:
+                self.reader = get_nifti_reader(filename)
             self.image = None
         if image:
             self.image = image
@@ -139,41 +152,90 @@ class NiftiImage(object):
         return metadata
 
     def get_num_dims(self):
-        return self.reader.GetDimension()
+        if self.channels is None:
+            return self.reader.GetDimension()
+        else:
+            dims = {}
+            for channel in self.channel_names:
+                dims[channel] = self.channels[channel].get_num_dims()
+            return dims
 
     def get_size(self):
-        return self.reader.GetSize()
+        if self.channels is None:
+            return self.reader.GetSize()
+        else:
+            sizes = {}
+            for channel in self.channel_names:
+                sizes[channel] = self.channels[channel].get_size()
+            return sizes
 
     def get_spacing(self):
-        return self.reader.GetSpacing()
+        if self.channels is None:
+            return self.reader.GetSpacing()
+        else:
+            spcs = {}
+            for channel in self.channel_names:
+                spcs[channel] = self.channels[channel].get_spacing()
+            return spcs
 
     def get_origin(self):
-        return self.reader.GetOrigin()
+        if self.channels is None:
+            return self.reader.GetOrigin()
+        else:
+            origins = {}
+            for channel in self.channel_names:
+                origins[channel] = self.channels[channel].get_origin()
+            return origins
 
     def get_direction(self):
-        return self.reader.GetDirection()
+        if self.channels is None:
+            return self.reader.GetDirection()
+        else:
+            dirs = {}
+            for channel in self.channel_names:
+                dirs[channel] = self.channels[channel].get_direction()
+            return dirs
 
     def get_pixel_type(self):
-        return self.reader.GetPixelIDValue()
+        if self.channels is None:
+            return self.reader.GetPixelIDValue()
+        else:
+            pixs = {}
+            for channel in self.channel_names:
+                pixs[channel] = self.channels[channel].get_pixel_type()
+            return pixs
 
     def get_pixel_type_string(self):
-        dtype = self.get_pixel_type()
-        return sitk.GetPixelIDValueAsString(dtype)
+        if self.channels is None:
+            dtype = self.get_pixel_type()
+            return sitk.GetPixelIDValueAsString(dtype)
+        else:
+            pixs = {}
+            for channel in self.channel_names:
+                pixs[channel] = self.channels[channel].get_pixel_type_string()
+            return pixs
 
     def get_resample_parameters(self):
-        return self.get_size(), self.get_spacing(), self.get_direction(), self.get_origin()
+        if self.channels is None:
+            return self.get_size(), self.get_spacing(), self.get_direction(), self.get_origin()
 
     def get_header_keys(self):
         return self.reader.GetMetaDataKeys()
 
     def is_in_std_radiology_view(self):
-        dir = np.array(self.get_direction()).reshape(len(self.get_size()), -1)
-        ind = np.argmax(np.abs(dir), axis=0)
-        new_dir = dir[:, ind]
+        if self.channels is None:
+            dir = np.array(self.get_direction()).reshape(len(self.get_size()), -1)
+            ind = np.argmax(np.abs(dir), axis=0)
+            new_dir = dir[:, ind]
 
-        flip = np.diag(new_dir) < 0
+            flip = np.diag(new_dir) < 0
 
-        return sum(flip) <= 0
+            return sum(flip) <= 0
+        else:
+            rad = {}
+            for channel in self.channel_names:
+                rad[channel] = self.channels[channel].is_in_std_radiology_view()
+            return rad
 
     def apply_resample(self, origin, spacing, direction, size, interpolator=sitk.sitkLinear):
 
@@ -184,24 +246,38 @@ class NiftiImage(object):
         resample.SetOutputSpacing(spacing)
         resample.SetSize((size[0], size[1], max(size[2], 1)))
 
-        return resample.Execute(self.open())
+        if self.channels is None:
+            return resample.Execute(self.open())
+        else:
+            rsp = {}
+            for channel in self.channel_names:
+                rsp[channel] = \
+                    self.channels[channel].apply_resample(origin, spacing, direction, size, interpolator)
+            return rsp
 
     def reorient(self):
-        needs_reorient, direction, size, spacing, origin = reorient_params(self.get_direction(), self.get_size(),
-                                                                           self.get_spacing(), self.get_origin())
-        if needs_reorient:
-            self.image = self.apply_resample(origin, spacing, direction, size)
-            self.reader = self.image
-            if self.mask:
-                self.mask.image = self.mask.apply_resample(origin, spacing, direction, size)
-                self.mask.reader = self.mask.image
-            if self.target:
-                self.target.image = self.target.apply_resample(origin, spacing, direction, size)
-                self.target.reader = self.target.image
+        if self.channels is None:
+            needs_reorient, direction, size, spacing, origin = reorient_params(self.get_direction(), self.get_size(),
+                                                                               self.get_spacing(), self.get_origin())
+            if needs_reorient:
+                self.image = self.apply_resample(origin, spacing, direction, size)
+                self.reader = self.image
+                if self.mask:
+                    self.mask.image = self.mask.apply_resample(origin, spacing, direction, size)
+                    self.mask.reader = self.mask.image
+                if self.target:
+                    self.target.image = self.target.apply_resample(origin, spacing, direction, size)
+                    self.target.reader = self.target.image
+        else:
+            for channel in self.channel_names:
+                self.channels[channel].reorient()
 
-    def get_mask(self, min_intensity, max_intensity, inplace=True, filename=None):
-        self.open()
-        image = sitk.GetArrayFromImage(self.open())
+    def get_mask(self, min_intensity, max_intensity, inplace=True, filename=None, channel=None):
+        if self.channels is not None and channel is not None:
+            image = self.channels[channel]
+        else:
+            image = sitk.GetArrayFromImage(self.open())
+
         mask = np.zeros(image.shape)
         if min_intensity is None:
             min_intensity = min(image.flatten())
@@ -226,40 +302,48 @@ class NiftiImage(object):
 
     def resample(self, origin=None, spacing=None, direction=None, size=None, standard=False,
                  save=False, filename=None, copy=False, ref_image=None):
-        # get transformation parameters
-        if ref_image:
-            size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
-            if not size:
-                size = size_rsp
-            if not spacing:
-                spacing = spacing_rsp
-            if not direction:
-                direction = direction_rsp
-            if not origin:
-                origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
-                # origin = origin_rsp
-        else:
-            if spacing is None:
-                if standard:
-                    spacing = (1., 1., 1.)
-                else:
-                    spacing = self.get_spacing()
-            if size is None:
-                size = get_new_size(self.get_size(), spacing, self.get_spacing())
-            num_dims = len(size)
-            if origin is None:
-                if standard:
-                    origin = np.zeros(num_dims)
-                else:
-                    origin = self.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
-            if direction is None:
-                if standard:
-                    direction = np.identity(num_dims).flatten()
-                else:
-                    direction = self.get_direction()
-
         # apply transformation
-        resampled = self.apply_resample(origin, spacing, direction, size)
+        if self.channels is not None:
+            resampled = {}
+            for channel_name in self.channel_names:
+                resampled[channel_name], _, _ = \
+                    self.channels[channel_name].resample(origin, spacing, direction, size, standard,
+                                                         save, filename, copy, ref_image)
+        else:
+            # get transformation parameters
+            if ref_image:
+                size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
+                if not size:
+                    size = size_rsp
+                if not spacing:
+                    spacing = spacing_rsp
+                if not direction:
+                    direction = direction_rsp
+                if not origin:
+                    origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
+                    # origin = origin_rsp
+            else:
+                if spacing is None:
+                    if standard:
+                        spacing = (1., 1., 1.)
+                    else:
+                        spacing = self.get_spacing()
+                if size is None:
+                    size = get_new_size(self.get_size(), spacing, self.get_spacing())
+                num_dims = len(size)
+                if origin is None:
+                    if standard:
+                        origin = np.zeros(num_dims)
+                    else:
+                        origin = self.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
+                if direction is None:
+                    if standard:
+                        direction = np.identity(num_dims).flatten()
+                    else:
+                        direction = self.get_direction()
+
+            resampled = self.apply_resample(origin, spacing, direction, size)
+
         if self.mask:
             resampled_mask = self.mask.apply_resample(origin, spacing, direction, size)
         else:
@@ -270,7 +354,7 @@ class NiftiImage(object):
             resampled_target = None
 
         # save/update
-        if save:
+        if save and self.channels is not None:
             save_nifti(resampled, filename)
         if not copy:
             self.image = resampled
@@ -318,19 +402,27 @@ class NiftiImage(object):
         return min_size
 
     def crop(self, min_crop, max_crop):
-        self.open()
-        crop_filter = sitk.CropImageFilter()
-        crop_filter.SetLowerBoundaryCropSize(min_crop)
-        crop_filter.SetUpperBoundaryCropSize(max_crop)
-        self.image = crop_filter.Execute(self.image)
+        if self.channels is not None:
+            for channel in self.channel_names:
+                self.channels[channel].crop(min_crop, max_crop)
+        else:
+            self.open()
+            crop_filter = sitk.CropImageFilter()
+            crop_filter.SetLowerBoundaryCropSize(min_crop)
+            crop_filter.SetUpperBoundaryCropSize(max_crop)
+            self.image = crop_filter.Execute(self.image)
 
     def pad_constant(self, constant, min_pad, max_pad):
-        self.open()
-        pad_filter = sitk.ConstantPadImageFilter()
-        pad_filter.SetConstant(constant)
-        pad_filter.SetPadLowerBound(min_pad)
-        pad_filter.SetPadUpperBound(max_pad)
-        self.image = pad_filter.Execute(self.image)
+        if self.channels is not None:
+            for channel in self.channel_names:
+                self.channels[channel].pad_constant(constant, min_pad, max_pad)
+        else:
+            self.open()
+            pad_filter = sitk.ConstantPadImageFilter()
+            pad_filter.SetConstant(constant)
+            pad_filter.SetPadLowerBound(min_pad)
+            pad_filter.SetPadUpperBound(max_pad)
+            self.image = pad_filter.Execute(self.image)
 
     def get_centre_mass(self, mask):
         if mask:
@@ -344,56 +436,67 @@ class NiftiImage(object):
         return list(map(math.floor, reversed(centre_mass_rev)))
 
     def resize(self, size, centre_mass=False, use_mask=True, pad_val=-1000, pad_val_mask=0, pad_val_target=0):
-        self.open()
-        if centre_mass:
-            centre_mass_idxs = self.get_centre_mass(self.mask)
-            min_i_list = centre_mass_idxs
-            max_i_list = centre_mass_idxs
-            mask_size = np.ones(len(max_i_list))
+        if self.channels is not None:
+            for channel in self.channel_names:
+                self.channels[channel].resize(size, centre_mass, use_mask, pad_val, pad_val_mask, pad_val_target)
         else:
-            if self.mask and use_mask:
-                self.mask.open()
-                min_i_list, max_i_list = get_min_size_idxs(self.mask, self.mask.get_num_dims(), self.mask.get_size())
-                mask_size = max_i_list - min_i_list
+            self.open()
+            if centre_mass:
+                centre_mass_idxs = self.get_centre_mass(self.mask)
+                min_i_list = centre_mass_idxs
+                max_i_list = centre_mass_idxs
+                mask_size = np.ones(len(max_i_list))
             else:
-                mask_size = np.array(self.get_size())
-                min_i_list = np.zeros(3)
-                max_i_list = mask_size - 1
+                if self.mask and use_mask:
+                    self.mask.open()
+                    min_i_list, max_i_list = get_min_size_idxs(self.mask, self.mask.get_num_dims(), self.mask.get_size())
+                    mask_size = max_i_list - min_i_list
+                else:
+                    mask_size = np.array(self.get_size())
+                    min_i_list = np.zeros(3)
+                    max_i_list = mask_size - 1
 
-        total_margin = np.array(list(size)) - mask_size
-        min_i_resized = min_i_list - np.array([math.floor(margin / 2) for margin in total_margin])
-        max_i_resized = max_i_list + np.array([math.ceil(margin / 2) for margin in total_margin])
+            print(size)
+            print(mask_size)
 
-        needs_cropping = bool(sum(min_i_resized > 0) + sum(max_i_resized + 1 < np.array(list(self.get_size()))))
-        needs_padding = bool(sum(min_i_resized < 0) + sum(max_i_resized + 1 > np.array(list(self.get_size()))))
+            total_margin = np.array(list(size)) - mask_size
+            min_i_resized = min_i_list - np.array([math.floor(margin / 2) for margin in total_margin])
+            max_i_resized = max_i_list + np.array([math.ceil(margin / 2) for margin in total_margin])
 
-        if needs_cropping:  # crop
-            min_crop = [max(int(a), 0) for a in min_i_resized]
-            max_crop = [max(int(size_a - a - 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
+            needs_cropping = bool(sum(min_i_resized > 0) + sum(max_i_resized + 1 < np.array(list(self.get_size()))))
+            needs_padding = bool(sum(min_i_resized < 0) + sum(max_i_resized + 1 > np.array(list(self.get_size()))))
 
-            if self.mask:
-                self.mask.crop(min_crop, max_crop)
-            if self.target:
-                self.target.crop(min_crop, max_crop)
+            if needs_cropping:  # crop
+                min_crop = [max(int(a), 0) for a in min_i_resized]
+                max_crop = [max(int(size_a - a - 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
 
-            self.crop(min_crop, max_crop)
+                if self.mask:
+                    self.mask.crop(min_crop, max_crop)
+                if self.target:
+                    self.target.crop(min_crop, max_crop)
 
-        if needs_padding:  # pad
-            min_pad = [max(int(-a), 0) for a in min_i_resized]
-            max_pad = [max(int(a - size_a + 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
-            if self.mask:
-                self.mask.pad_constant(pad_val_mask, min_pad, max_pad)
-            if self.target:
-                self.target.pad_constant(pad_val_target, min_pad, max_pad)
-            self.pad_constant(pad_val, min_pad, max_pad)
+                self.crop(min_crop, max_crop)
 
-        self.reader = self.image
+            if needs_padding:  # pad
+                min_pad = [max(int(-a), 0) for a in min_i_resized]
+                max_pad = [max(int(a - size_a + 1), 0) for a, size_a in zip(max_i_resized, list(self.get_size()))]
+                if self.mask:
+                    self.mask.pad_constant(pad_val_mask, min_pad, max_pad)
+                if self.target:
+                    self.target.pad_constant(pad_val_target, min_pad, max_pad)
+                self.pad_constant(pad_val, min_pad, max_pad)
+
+            self.reader = self.image
 
     def change_pixel_type(self, pixel_type):
-        pixel_type_sitk = pixel_type_to_sitk(pixel_type)
-        if pixel_type_sitk is None:
-            self.open()
-            return None
-        filter = sitk.CastImageFilter()
-        filter.SetOutputPixelType(pixel_type_sitk)
-        self.image = filter.Execute(self.open())
+        if self.channels is not None:
+            for channel in self.channel_names:
+                self.channels[channel].change_pixel_type(pixel_type)
+        else:
+            pixel_type_sitk = pixel_type_to_sitk(pixel_type)
+            if pixel_type_sitk is None:
+                self.open()
+                return None
+            filter = sitk.CastImageFilter()
+            filter.SetOutputPixelType(pixel_type_sitk)
+            self.image = filter.Execute(self.open())
