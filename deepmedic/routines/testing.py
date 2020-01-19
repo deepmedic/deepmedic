@@ -271,7 +271,6 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
         channs_of_tiles_per_path = extractSegmentsGivenSliceCoords(cnn3d,
                                                                    slice_coords_of_tiles_batch,
                                                                    channels,
-                                                                   cnn3d.recFieldCnn,
                                                                    inp_shapes_per_path,
                                                                    outp_pred_dims)
 

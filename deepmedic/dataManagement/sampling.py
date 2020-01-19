@@ -810,7 +810,6 @@ def get_slice_coords_of_all_img_tiles(log,
 def extractSegmentsGivenSliceCoords(cnn3d,
                                     sliceCoordsOfSegmentsToExtract,
                                     channelsOfImageNpArray,
-                                    recFieldCnn,
                                     inp_shapes_per_path,
                                     outp_pred_dims):
     # channelsOfImageNpArray: numpy array [ n_channels, x, y, z ]
