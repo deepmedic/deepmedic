@@ -2,7 +2,7 @@ from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.gui.ui_preproc_config_create import UiPreprocConfig
 from deepmedic.frontEnd.configParsing.preprocConfig import PreprocConfig
 from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
-from deepmedic.dataManagement.data_checks import run_checks, resample_image_list, ResampleParams
+from deepmedic.dataManagement.data_checks import run_checks
 from deepmedic.gui.config_utils import *
 import pandas as pd
 import os
