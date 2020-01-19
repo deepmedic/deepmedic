@@ -401,9 +401,6 @@ class Cnn3d(object):
         # Softmax
         p_y_given_x = self.finalTargetLayer.apply(logits_no_bias, mode)
         
-        # TODO: REMOVE THE BELOW for eager mode. NEEDED by the trainer.py (loss) for now. And returning FMs.
-        self.finalTargetLayer.output[train_val_test] = p_y_given_x
-        
         return p_y_given_x
         
     def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims):

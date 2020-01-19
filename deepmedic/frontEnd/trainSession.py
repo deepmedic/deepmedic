@@ -121,6 +121,7 @@ class TrainSession(Session):
             with tf.compat.v1.variable_scope("trainer"):
                 self._log.print3("=========== Building Trainer ===========\n")
                 trainer = Trainer(*(self._params.get_args_for_trainer() + [cnn3d]))
+                trainer.compute_costs(self._log, p_y_given_x_train)
                 trainer.create_optimizer(*self._params.get_args_for_optimizer())  # Trainer and net connect here.
 
             tensorboard_loggers = self.create_tensorboard_loggers(['train', 'val'],
