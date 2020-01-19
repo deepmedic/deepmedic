@@ -52,9 +52,9 @@ def stitch_predicted_to_prob_maps(prob_maps_per_class, idx_next_tile_in_pred_vol
         slice_coords_tile = slice_coords[idx_next_tile_in_pred_vols]
         top_left = [slice_coords_tile[0][0], slice_coords_tile[1][0], slice_coords_tile[2][0]]
         prob_maps_per_class[:,
-                            top_left[0] + unpred_margin[0]: top_left[0] + unpred_margin[0] + stride[0],
-                            top_left[1] + unpred_margin[1]: top_left[1] + unpred_margin[1] + stride[1],
-                            top_left[2] + unpred_margin[2]: top_left[2] + unpred_margin[2] + stride[2]
+                            top_left[0] + unpred_margin[0][0]: top_left[0] + unpred_margin[0][0] + stride[0],
+                            top_left[1] + unpred_margin[1][0]: top_left[1] + unpred_margin[1][0] + stride[1],
+                            top_left[2] + unpred_margin[2][0]: top_left[2] + unpred_margin[2][0] + stride[2]
                             ] = prob_maps_batch[tile_i]
         idx_next_tile_in_pred_vols += 1
 
@@ -180,14 +180,14 @@ def stitch_predicted_to_fms(array_fms_to_save, idx_next_tile_in_fm_vols,
                 # newly created images all at once.
                 fm_to_reconstruct[:,  # last dimension is the number-of-Fms, I create an image for each.
 
-                                  coords_top_left_voxel[0] + unpred_margin[0]:
-                                  coords_top_left_voxel[0] + unpred_margin[0] + stride[0],
+                                  coords_top_left_voxel[0] + unpred_margin[0][0]:
+                                  coords_top_left_voxel[0] + unpred_margin[0][0] + stride[0],
 
-                                  coords_top_left_voxel[1] + unpred_margin[1]:
-                                  coords_top_left_voxel[1] + unpred_margin[1] + stride[1],
+                                  coords_top_left_voxel[1] + unpred_margin[1][0]:
+                                  coords_top_left_voxel[1] + unpred_margin[1][0] + stride[1],
 
-                                  coords_top_left_voxel[2] + unpred_margin[2]:
-                                  coords_top_left_voxel[2] + unpred_margin[2] + stride[2]
+                                  coords_top_left_voxel[2] + unpred_margin[2][0]:
+                                  coords_top_left_voxel[2] + unpred_margin[2][0] + stride[2]
 
                                   ] = central_voxels_all_fms_batch[tile_batch_idx]
 
@@ -220,12 +220,10 @@ def prepare_feeds_dict(feeds, channs_of_tiles_per_path):
     
 
 def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
-                                   channels, roi_mask, inp_shapes_per_path, batchsize,
-                                   save_fms_flag, idxs_fms_to_save ):
+                                   channels, roi_mask, inp_shapes_per_path, unpred_margin,
+                                   batchsize, save_fms_flag, idxs_fms_to_save):
     # One of the main routines. Segment whole volume tile-by-tile.
     
-    # Receptive field is list [size-x, size-y, size-z]. -1 to exclude the central voxel.
-    unpred_margin = cnn3d.calc_unpredicted_margin(inp_shapes_per_path[0]) # Non pred voxels left.
     # For tiling the volume: Stride is how much I move in each dimension to get the next tile.
     # I stride exactly the number of voxels that are predicted per forward pass.
     outp_pred_dims = cnn3d.calc_outp_dims_given_inp(inp_shapes_per_path[0])
@@ -526,8 +524,7 @@ def inference_on_whole_volumes(sessionTf,
     NA_PATTERN = AccuracyMonitorForEpSegm.NA_PATTERN
     n_classes = cnn3d.num_classes
     n_subjects = len(paths_per_chan_per_subj)
-    dims_hres_segment = inp_shapes_per_path[0] # pathway [0] is the high-res path.
-    
+    unpred_margin = cnn3d.calc_unpredicted_margin(inp_shapes_per_path[0])
     # One dice score for whole foreground (0) AND one for each actual class
     # Dice1 - AllpredictedLes/AllLesions
     # Dice2 - predictedInsideRoiMask/AllLesions
@@ -559,7 +556,7 @@ def inference_on_whole_volumes(sessionTf,
         pad_left_right_per_axis) = preproc_imgs_of_subj(log, "",
                                                         channels, gt_lbl_img, roi_mask, None,
                                                         run_input_checks, n_classes, # checks
-                                                        pad_input, cnn3d.receptive_field, dims_hres_segment, # pad
+                                                        pad_input, unpred_margin,
                                                         norm_prms)
     
         # ============== Augmentation ==================
@@ -569,8 +566,8 @@ def inference_on_whole_volumes(sessionTf,
         # array_fms_to_save will be None if not saving them.
         (prob_maps_vols,
          array_fms_to_save) = predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
-                                                             channels, roi_mask, inp_shapes_per_path, batchsize,
-                                                             save_fms_flag, idxs_fms_to_save )
+                                                             channels, roi_mask, inp_shapes_per_path, unpred_margin, 
+                                                             batchsize, save_fms_flag, idxs_fms_to_save )
         
         # ========================== Post-Processing =========================
         pred_seg = np.argmax(prob_maps_vols, axis=0)  # The segmentation.

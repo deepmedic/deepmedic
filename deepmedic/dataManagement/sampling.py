@@ -50,6 +50,7 @@ def get_samples_for_subepoch(log,
                              sampling_type,
                              inp_shapes_per_path,
                              outp_pred_dims,
+                             unpred_margin,
                              # Paths to input files
                              paths_per_chan_per_subj,
                              paths_to_lbls_per_subj,
@@ -109,7 +110,8 @@ def get_samples_for_subepoch(log,
                          idxs_of_subjs_for_subep,
                          n_samples_per_subj,
                          inp_shapes_per_path,
-                         outp_pred_dims
+                         outp_pred_dims,
+                         unpred_margin
                          ]
 
     log.print3(sampler_id + " Will sample from [" + str(n_subjs_for_subep) +
@@ -261,7 +263,8 @@ def load_subj_and_sample(job_idx,
                          idxs_of_subjs_for_subep,
                          n_samples_per_subj,
                          inp_shapes_per_path,
-                         outp_pred_dims):
+                         outp_pred_dims,
+                         unpred_margin):
     # train_val_or_test: 'train', 'val' or 'test'
     # paths_per_chan_per_subj: [[ for chan-0 [ one path per subj ]], ..., [for chan-n  [ one path per subj ] ]]
     # n_samples_per_cat_per_subj: np arr, shape [num sampling categories, num subjects in subepoch]
@@ -301,7 +304,7 @@ def load_subj_and_sample(job_idx,
     pad_left_right_per_axis) = preproc_imgs_of_subj(log, job_id,
                                                     channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
                                                     run_input_checks, cnn3d.num_classes, # checks
-                                                    pad_input_imgs, cnn3d.receptive_field, dims_hres_segment, # pad
+                                                    pad_input_imgs, unpred_margin,
                                                     norm_prms)
     time_prep = time.time() - time_prep_0
     
@@ -466,9 +469,7 @@ def load_imgs_of_subject(log,
 
 
 def preproc_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                         run_input_checks, n_classes,
-                         pad_input_imgs, dims_rec_field, dims_hres_segment,
-                         norm_prms):
+                         run_input_checks, n_classes, pad_input_imgs, unpred_margin, norm_prms):
     # job_id: Should be "" in testing.
     
     if run_input_checks:
@@ -479,7 +480,7 @@ def preproc_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_s
      roi_mask,
      wmaps_to_sample_per_cat,
      pad_left_right_per_axis) = pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                                                 pad_input_imgs, dims_rec_field, dims_hres_segment)
+                                                 pad_input_imgs, unpred_margin)
     
     channels = normalize_int_of_subj(log, channels, roi_mask, norm_prms, job_id)
     
@@ -713,7 +714,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         channs_of_sample_per_path.append(channsForThisSubsampledPartAndPathway)
 
     # Get ground truth labels for training.
-    numOfCentralVoxelsClassifRcz = cnn3d.finalTargetLayer_outputShape[train_val_or_test][2:]
+    numOfCentralVoxelsClassifRcz = outp_pred_dims
     leftBoundaryRcz = [coord_center[d] - (numOfCentralVoxelsClassifRcz[d] - 1) // 2 for d in range (3)]
     rightBoundaryRcz = [leftBoundaryRcz[d] + numOfCentralVoxelsClassifRcz[d] for d in range(3)]
     lbls_predicted_part_of_sample = gt_lbl_img[leftBoundaryRcz[0]: rightBoundaryRcz[0],

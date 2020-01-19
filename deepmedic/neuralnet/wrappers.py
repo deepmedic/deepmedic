@@ -27,10 +27,6 @@ class CnnWrapperForSampling(object):
     def __init__(self, cnn3d) :
         # Cnn
         self.num_classes = cnn3d.num_classes
-        self.receptive_field = cnn3d.receptive_field
-        self.finalTargetLayer_outputShape = {"train": cnn3d.finalTargetLayer.output["train"].shape,
-                                             "val": cnn3d.finalTargetLayer.output["val"].shape,
-                                             "test": cnn3d.finalTargetLayer.output["test"].shape}
         # Pathways related
         self._numPathwaysThatRequireInput = cnn3d.getNumPathwaysThatRequireInput()
         self.numSubsPaths = cnn3d.numSubsPaths

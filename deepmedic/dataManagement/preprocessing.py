@@ -55,20 +55,20 @@ def calc_pad_per_axis(pad_input_imgs, dims_img, dims_rec_field, dims_highres_seg
 # These pad/unpad should have their own class, and an instance should be created per subject.
 # So that unpad gets how much to unpad from the pad.
 def pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                     pad_input_imgs, dims_rec_field, dims_highres_segment):
+                     pad_input_imgs, unpred_margin):
     # channels: np.array of dimensions [n_channels, x-dim, y-dim, z-dim]
     # gt_lbl_img: np.array
     # roi_mask: np.array
     # wmaps_to_sample_per_cat: np.array of dimensions [num_categories, x-dim, y-dim, z-dim]
-    # dims_highres_segment: list [x,y,z] of dimensions of the normal-resolution samples for cnn.
+    # pad_input_imgs: Boolean, do padding or not.
+    # unpred_margin: [[pre-x, post-x], [pre-y, post-y], [pre-z, post-z]], number voxels not predicted
     # Returns:
     # pad_left_right_axes: Padding added before and after each axis. All 0s if no padding.
-    
-    # Padding added before and after each axis. ((0, 0), (0, 0), (0, 0)) if no pad.
-    pad_left_right_per_axis = calc_pad_per_axis(pad_input_imgs,
-                                                channels[0].shape, dims_rec_field, dims_highres_segment)
     if not pad_input_imgs:
         return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_axes
+    
+    # Padding added before and after each axis. ((0, 0), (0, 0), (0, 0)) if no pad.
+    pad_left_right_per_axis = unpred_margin
     
     channels = pad_4d_arr(channels, pad_left_right_per_axis)
 
@@ -85,7 +85,7 @@ def pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
 
 def pad_4d_arr(arr_4d, pad_left_right_per_axis_3d):
     # Do not pad first dimension. E.g. for channels or weightmaps, [n_chans,x,y,z]
-    pad_left_right_per_axis_4d = ((0,0),) + pad_left_right_per_axis_3d
+    pad_left_right_per_axis_4d = [[0,0],] + pad_left_right_per_axis_3d
     return np.lib.pad(arr_4d, pad_left_right_per_axis_4d, 'reflect')
 
 def pad_3d_img(img, pad_left_right_per_axis):

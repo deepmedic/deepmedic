@@ -36,8 +36,6 @@ class Cnn3d(object):
         
         self.num_classes = None
         
-        self.receptive_field = ""
-        
         #======= Output tensors Y_GT ========
         # For each targetLayer, I should be placing a y_gt placeholder/feed.
         self._output_gt_tensor_feeds = {'train': {},
@@ -370,10 +368,6 @@ class Cnn3d(object):
         self._output_gt_tensor_feeds['train']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_train")
         self._output_gt_tensor_feeds['val']['y_gt'] = tf.compat.v1.placeholder(dtype="int32", shape=[None, None, None, None], name="y_val")
         
-        # ======== Calculated Attributes =========
-        #This recField CNN should in future be calculated with all non-secondary pathways, ie normal+fc. Use another variable for pathway.recField.
-        self.receptive_field = self._calc_rec_field_cnn_wrt_hr_inp()
-        
         log.print3("Finished building the CNN's model.")
         
         
@@ -432,7 +426,7 @@ class Cnn3d(object):
         #   [pathFc-in-dim-x, pathFc-in-dim-y, pathFc-in-dim-z] ]
         return inp_shape_per_path
         
-    def _calc_rec_field_cnn_wrt_hr_inp(self):
+    def _calc_receptive_field_cnn_wrt_hr_inp(self):
         rec_field_hr_path, strides_rf_at_end_of_hr_path = self.pathways[0].rec_field()
         cnn_rf, _ = self.pathways[-1].rec_field(rec_field_hr_path, strides_rf_at_end_of_hr_path)
         return cnn_rf
@@ -442,9 +436,10 @@ class Cnn3d(object):
         return self.pathways[-1].calc_outp_dims_given_inp(outp_dims_hr_path)
     
     def calc_unpredicted_margin(self, inp_dims_hr_path):
+        # unpred_margin: [[before-x, after-x], [before-y, after-y], [before-z, after-z]]
         outp_dims = self.calc_outp_dims_given_inp(inp_dims_hr_path)
         n_unpred_vox = [inp_dims_hr_path[d] - outp_dims[d] for d in range(3)]
-        unpred_margin = [n_unpred_vox[d] // 2 for d in range(3)]
+        unpred_margin = [[n_unpred_vox[d]//2, n_unpred_vox[d]-n_unpred_vox[d]//2] for d in range(3)]
         return unpred_margin
     
     
