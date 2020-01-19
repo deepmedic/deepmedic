@@ -48,7 +48,7 @@ class Pathway(object):
         # mode: 'train' / 'infer'
         # train_val_test: TEMPORARY. ONLY TO RETURN FMS. REMOVE IN END OF REFACTORING.
         if verbose:
-            log.print3("\tPathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Input's Shape: " + str(input.shape))
+            log.print3("Pathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Input's Shape: " + str(input.shape))
             
         input_to_prev_layer = None
         input_to_next_layer = input
@@ -69,8 +69,8 @@ class Pathway(object):
                 input_to_next_layer = out_res
                 
         if verbose:
-            log.print3("\tPathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Output's Shape: " + str(input_to_next_layer.shape))
-            log.print3("Pathway [" + str(self.getStringType()) + "] done.")
+            log.print3("Pathway ["+str(self.getStringType())+"], Mode: [" + mode + "], Output's Shape: " + str(input_to_next_layer.shape))
+            #log.print3("Pathway [" + str(self.getStringType()) + "] done.")
         
         return input_to_next_layer
     
