@@ -64,6 +64,7 @@ class Pathway(object):
                 input_to_next_layer = out
             else : #make residual connection
                 assert idx > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
+                log.print3("\tResidual-Connection made between: output of [Block_"+str(idx)+"] & input of previous block.")
                 out_res = ops.make_residual_connection(input_to_prev_layer, out)
                 input_to_prev_layer = input_to_next_layer
                 input_to_next_layer = out_res
@@ -144,15 +145,8 @@ class Pathway(object):
                         )
             self._blocks.append(block)
             
-            if layer_i not in inds_of_blocks_for_res_conns_at_out: #not a residual connecting here
-                n_fms_input_to_prev_layer = n_fms_input_to_next_layer
-                n_fms_input_to_next_layer = num_kerns_per_layer[layer_i]
-            else : #make residual connection
-                log.print3("\t[Pathway_"+str(self.getStringType())+"]: making Residual Connection between output of [Layer_"+str(layer_i)+"] to input of previous block.")
-                assert layer_i > 0 # The very first block (index 0), should never be provided for now. Cause I am connecting 2 layers back.
-                n_fms_res_out = max(num_kerns_per_layer[layer_i], n_fms_input_to_prev_layer)
-                n_fms_input_to_prev_layer = n_fms_input_to_next_layer
-                n_fms_input_to_next_layer = n_fms_res_out
+            n_fms_input_to_prev_layer = n_fms_input_to_next_layer
+            n_fms_input_to_next_layer = num_kerns_per_layer[layer_i]
                 
         self._n_fms_out = n_fms_input_to_next_layer
         
