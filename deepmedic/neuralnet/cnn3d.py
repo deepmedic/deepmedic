@@ -339,7 +339,7 @@ class Cnn3d(object):
         thisPathWayKernelDimensions = [kernelDimensionsFirstFcLayer] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
-        thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
+        thisPathwayConvPadModePerLayer = ['MIRROR'] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         
@@ -399,11 +399,7 @@ class Cnn3d(object):
             
         # ===== Concatenate and final convs ========
         conc_inp_fms =  tf.concat(fms_from_paths_to_concat, axis=1)
-        n_voxels_pad_per_dim = [kern_dim - 1 for kern_dim in self._kernelDimensionsFirstFcLayer]
-        log.print3("DEBUG: Input to the FC Pathway will be padded by that many voxels per dimension: " + str(n_voxels_pad_per_dim))
-        conc_inp_fms = ops.pad_by_mirroring(conc_inp_fms, n_voxels_pad_per_dim) # TODO: SHOULD BE SIMPLY A PADDED-CONV LAYER.
-        this_pathway = self.pathways[-1] # Fc path
-        logits_no_bias = this_pathway.apply(conc_inp_fms, mode, train_val_test, verbose, log)
+        logits_no_bias = self.pathways[-1].apply(conc_inp_fms, mode, train_val_test, verbose, log)
         # Softmax
         p_y_given_x = self.finalTargetLayer.apply(logits_no_bias, mode)
         
