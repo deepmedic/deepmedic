@@ -116,7 +116,7 @@ class ConvolutionalLayer(Layer):
     
     def _n_padding(self):
         # Returns [padx,pady,padz], how much pad would have been added to preserve dimensions ('SAME' or 'MIRROR').
-        return [0,0,0] if self._pad_mode in ['SAME', 'MIRROR'] else [self._w.shape[d] - 1 for d in range(3)]
+        return [0,0,0] if self._pad_mode == 'VALID' else [self._w.shape[2+d] - 1 for d in range(3)]
     
     def rec_field(self, rf_at_inp, stride_rf_at_inp):
         rf_out = [rf_at_inp[d] + (self._w.shape[2+d]-1)*stride_rf_at_inp[d] for d in range(3)]
@@ -195,7 +195,7 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
     
     def _n_padding(self):
         # Returns [padx,pady,padz], how much pad would have been added to preserve dimensions ('SAME' or 'MIRROR').
-        if self._pad_mode in ['SAME', 'MIRROR']:
+        if self._pad_mode == 'VALID':
             padding = [0,0,0]
         else:
             padding = [self._w_x.shape[2] - 1, self._w_y.shape[3] - 1, self._w_z.shape[4] - 1]

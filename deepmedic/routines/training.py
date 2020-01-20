@@ -45,7 +45,7 @@ def process_in_batches(log,
 
         if train_or_val == "train":
             if batch_i == 0 or ((batch_i + 1) % print_progress_step) == 0 or (batch_i + 1) == n_batches:
-                log.print3("[TRAINING] Trained on " + str(batch_i + 1) + "/" + str(n_batches) +\
+                log.print3("[TRAINING] Trained on " + str(batch_i) + "/" + str(n_batches) +\
                            " batches for this subepoch...")
 
             ops_to_fetch = cnn3d.get_main_ops('train')
@@ -72,7 +72,7 @@ def process_in_batches(log,
         else:  # validation
             if batch_i == 0 or ((batch_i + 1) % print_progress_step) == 0 or (batch_i + 1) == n_batches:
                 log.print3("[VALIDATION] Validated on " +
-                           str(batch_i + 1) + "/" + str(n_batches) + " batches for this subepoch...")
+                           str(batch_i) + "/" + str(n_batches) + " batches for this subepoch...")
 
             ops_to_fetch = cnn3d.get_main_ops('val')
             list_of_ops = ops_to_fetch['list_rp_rn_tp_tn']

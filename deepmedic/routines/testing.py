@@ -206,7 +206,7 @@ def print_progress_step(log, n_batches, batch_i, batch_size, n_tiles_for_subj):
     progress_step = max(1, n_batches // 5)
 
     if batch_i == 0 or ((batch_i + 1) % progress_step) == 0 or (batch_i + 1) == n_batches:
-        log.print3("Processed " + str((batch_i + 1) * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
+        log.print3("Processed " + str(batch_i * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
 
 
 def prepare_feeds_dict(feeds, channs_of_tiles_per_path):
@@ -259,9 +259,8 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
     n_batches = n_tiles_for_subj // batchsize
     t_fwd_pass_subj = 0 # time it took for forward pass over all tiles of subject.
     for batch_i in range(n_batches):
-
+        
         print_progress_step(log, n_batches, batch_i, batchsize, n_tiles_for_subj)
-
         # Extract data for the segments of this batch.
         # ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords()
         # of training and use it here as well. )
@@ -309,7 +308,7 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
                                                           cnn3d.pathways,
                                                           idxs_fms_to_save)
         # Done with batch
-    
+        
     log.print3("TIMING: Segmentation of subject: [Forward Pass:] {0:.2f}".format(t_fwd_pass_subj) + " secs.")
 
     return prob_maps_vols, array_fms_to_save
