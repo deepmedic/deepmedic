@@ -52,26 +52,26 @@ class Layer(object):
         return outp_dims
     
 class PoolingLayer(Layer):
-    def __init__(self, window_size, strides, padding, pool_mode):
+    def __init__(self, window_size, strides, pad_mode, pool_mode):
         # window_size: [wx, wy, wz]
         # strides: [sx, sy, sz]
         # mode: 'MAX' or 'AVG'
         # mirror_pad: [mirrorPad-x,-y,-z]
         self._window_size = window_size
         self._strides = strides
-        self._padding = padding # how much to pad in total
-        self._pad_mode = 'mirror'
+        self._pad_mode = pad_mode
         self._pool_mode = pool_mode
         
     def apply(self, input, _):
         # input dimensions: (batch, fms, r, c, z)
-        if self._pad_mode == 'mirror':
-            return ops.pool3dMirrorPad(input, self._window_size, self._strides, self._padding, self._pool_mode)
-        else:
-            raise NotImplementedError()
+        return ops.pool_3d(input, self._window_size, self._strides, self._pad_mode, self._pool_mode)
         
     def trainable_params(self):
         return []
+    
+    def _n_padding(self):
+        # Returns [padx,pady,padz], how much pad would have been added to preserve dimensions ('SAME' or 'MIRROR').
+        return [0,0,0] if self._pad_mode == 'VALID' else [self._window_size[d] - 1 for d in range(3)]
     
     def rec_field(self):
         raise NotImplementedError()
@@ -80,21 +80,22 @@ class PoolingLayer(Layer):
         if np.any([inp_dims[d] < self._window_size[d] for d in range(3)]):
             return [0,0,0]
         else:
-            return [1 + (inp_dims[d] + self._padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
+            padding = self._n_padding()
+            return [1 + (inp_dims[d] + padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
     
     def calc_inp_dims_given_outp(self, outp_dims):
         assert np.all([outp_dims[d] > 0 for d in range(3)])
-        return [(outp_dims[d]-1)*self._strides[d] + self._window_size[d] - self._padding[d] for d in range(3)]
+        padding = self._n_padding()
+        return [(outp_dims[d]-1)*self._strides[d] + self._window_size[d] - padding[d] for d in range(3)]
     
 class ConvolutionalLayer(Layer):
-    def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
+    def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, pad_mode, rng):
         # filter_shape of dimensions: list/np.array: [#FMs in this layer, #FMs in input, kern-dim-x, kern-dim-y, kern-dim-z]
         std_init = self._get_std_init(init_method, fms_in, fms_out, conv_kernel_dims)
         w_init = np.asarray(rng.normal(loc=0.0, scale=std_init, size=[fms_out, fms_in] + conv_kernel_dims), dtype='float32')
         self._w = tf.Variable(w_init, dtype="float32", name="W") # w shape: [#FMs of this layer, #FMs of Input, x, y, z]
         self._strides = [1,1,1]
-        self._padding = [0,0,0] # how much to pad in total
-        self._pad_mode = 'mirror'
+        self._pad_mode = pad_mode
         
     def _get_std_init(self, init_method, fms_in, fms_out, conv_kernel_dims):
         if init_method[0] == "normal" :
@@ -105,13 +106,17 @@ class ConvolutionalLayer(Layer):
         return std_init
     
     def apply(self, input, mode):
-        return ops.conv_3d(input, self._w)
+        return ops.conv_3d(input, self._w, self._pad_mode)
 
     def trainable_params(self):
         return [self._w]
     
     def params_for_L1_L2_reg(self):
         return self.trainable_params()
+    
+    def _n_padding(self):
+        # Returns [padx,pady,padz], how much pad would have been added to preserve dimensions ('SAME' or 'MIRROR').
+        return [0,0,0] if self._pad_mode in ['SAME', 'MIRROR'] else [self._w.shape[d] - 1 for d in range(3)]
     
     def rec_field(self, rf_at_inp, stride_rf_at_inp):
         rf_out = [rf_at_inp[d] + (self._w.shape[2+d]-1)*stride_rf_at_inp[d] for d in range(3)]
@@ -122,11 +127,13 @@ class ConvolutionalLayer(Layer):
         if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
             return [0,0,0]
         else:
-            return [1 + (inp_dims[d] + self._padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
+            padding = self._n_padding()
+            return [1 + (inp_dims[d] + padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
     
     def calc_inp_dims_given_outp(self, outp_dims):
         assert np.all([outp_dims[d] > 0 for d in range(3)])
-        return [(outp_dims[d]-1)*self._strides[d] + self._w.shape[2+d] - self._padding[d] for d in range(3)]
+        padding = self._n_padding()
+        return [(outp_dims[d]-1)*self._strides[d] + self._w.shape[2+d] - padding[d] for d in range(3)]
     
     
 class LowRankConvolutionalLayer(ConvolutionalLayer):
@@ -135,7 +142,7 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         # If 1-dim: rSubconv is the input convolved with the row-1dimensional filter.
         # If 2-dim: rSubconv is the input convolved with the RC-2D filter, cSubconv with CZ-2D filter, zSubconv with ZR-2D filter. 
 
-    def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, rng) :
+    def __init__(self, fms_in, fms_out, conv_kernel_dims, init_method, pad_mode, rng) :
         self._conv_kernel_dims = conv_kernel_dims # For _crop_sub_outputs_same_dims_and_concat(). Could be done differently?
         std_init = self._get_std_init(init_method, fms_in, fms_out, conv_kernel_dims)
                 
@@ -153,8 +160,7 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         self._w_z = tf.Variable(w_init, dtype="float32", name="w_z")
         
         self._strides = [1,1,1]
-        self._padding = [0,0,0] # how much to pad in total
-        self._pad_mode = 'mirror'
+        self._pad_mode = pad_mode
         
     def trainable_params(self):
         return [self._w_x, self._w_y, self._w_z] # Note: these tensors have different shapes! Treat carefully.
@@ -163,9 +169,9 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         return self.trainable_params()
     
     def apply(self, input, mode):
-        out_x = ops.conv_3d(input, self._w_x)
-        out_y = ops.conv_3d(input, self._w_y)
-        out_z = ops.conv_3d(input, self._w_z)
+        out_x = ops.conv_3d(input, self._w_x, self._pad_mode)
+        out_y = ops.conv_3d(input, self._w_y, self._pad_mode)
+        out_z = ops.conv_3d(input, self._w_z, self._pad_mode)
         # concatenate together.
         out = self._crop_sub_outputs_same_dims_and_concat(out_x, out_y, out_z)
         return out
@@ -187,6 +193,14 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         conc_tens = tf.concat([tens_x_crop, tens_y_crop, tens_z_crop], axis=1) #concatenate the FMs
         return conc_tens
     
+    def _n_padding(self):
+        # Returns [padx,pady,padz], how much pad would have been added to preserve dimensions ('SAME' or 'MIRROR').
+        if self._pad_mode in ['SAME', 'MIRROR']:
+            padding = [0,0,0]
+        else:
+            padding = [self._w_x.shape[2] - 1, self._w_y.shape[3] - 1, self._w_z.shape[4] - 1]
+        return padding
+    
     def rec_field(self, rf_at_inp, stride_rf_at_inp):
         rf_out = [rf_at_inp[0] + (self._w_x.shape[2]-1)*stride_rf_at_inp[0],
                   rf_at_inp[1] + (self._w_y.shape[3]-1)*stride_rf_at_inp[1],
@@ -198,15 +212,17 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
             return [0,0,0]
         else:
-            return [(inp_dims[0] + self._padding[0] - self._w_x.shape[2]) // self._strides[0],
-                    (inp_dims[1] + self._padding[1] - self._w_y.shape[3]) // self._strides[1],
-                    (inp_dims[2] + self._padding[2] - self._w_z.shape[4]) // self._strides[2]]
-        
+            padding = self._n_padding()
+            return [1 + (inp_dims[0] + padding[0] - self._w_x.shape[2]) // self._strides[0],
+                    1 + (inp_dims[1] + padding[1] - self._w_y.shape[3]) // self._strides[1],
+                    1 + (inp_dims[2] + padding[2] - self._w_z.shape[4]) // self._strides[2]]
+               
     def calc_inp_dims_given_outp(self, outp_dims):
         assert np.all([outp_dims[d] > 0 for d in range(3)])
-        return [(outp_dims[0]-1)*self._strides[0] + self._w_x.shape[2] - self._padding[0],
-                (outp_dims[1]-1)*self._strides[1] + self._w_y.shape[3] - self._padding[1],
-                (outp_dims[2]-1)*self._strides[2] + self._w_z.shape[4] - self._padding[2]]
+        padding = self._n_padding()
+        return [(outp_dims[0]-1)*self._strides[0] + self._w_x.shape[2] - padding[0],
+                (outp_dims[1]-1)*self._strides[1] + self._w_y.shape[3] - padding[1],
+                (outp_dims[2]-1)*self._strides[2] + self._w_z.shape[4] - padding[2]]
     
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):

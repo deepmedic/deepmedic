@@ -110,9 +110,11 @@ class TrainSession(Session):
                     cnn3d.make_cnn_model(*model_params.get_args_for_arch())
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
                     inp_plchldrs_train, inp_shapes_per_path_train = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('train'), 'train')
-                    inp_plchldrs_val, inp_shapes_per_path_val  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('val'), 'val')
-                    inp_plchldrs_test, inp_shapes_per_path_test  = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
+                    print("DEBUG inp_shapes_per_path_train=" + str(inp_shapes_per_path_train))
+                    inp_plchldrs_val, inp_shapes_per_path_val = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('val'), 'val')
+                    inp_plchldrs_test, inp_shapes_per_path_test = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
                     p_y_given_x_train  = cnn3d.apply(inp_plchldrs_train, 'train', 'train', verbose=True, log=self._log)
+                    print("DEBUG p_y_given_x_train.shape=" + str(p_y_given_x_train.shape))
                     p_y_given_x_val    = cnn3d.apply(inp_plchldrs_val, 'infer', 'val', verbose=True, log=self._log)
                     p_y_given_x_test   = cnn3d.apply(inp_plchldrs_test, 'infer', 'test', verbose=True, log=self._log)
                     

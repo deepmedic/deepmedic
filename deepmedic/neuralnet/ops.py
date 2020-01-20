@@ -27,8 +27,12 @@ except ImportError:
 def conv_3d(input, w, padding="VALID"):
     # input weight matrix W has shape: [ #ChannelsOut, #ChannelsIn, R, C, Z ]
     # Input signal given in shape [BatchSize, Channels, R, C, Z]
-    
+    # padding: 'VALID', 'SAME' or 'MIRROR'
     # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
+    if padding == 'MIRROR': # If mirror, do it here and perform conv as if not pad ('SAME')
+        input = pad_by_mirroring(input, n_vox_pad_per_dim=[w.shape[2+d] - 1 for d in range(3)])
+        padding = 'VALID'
+        
     w_resh = tf.transpose(w, perm=[4,3,2,1,0])
     # Conv3d requires signal in shape: [BatchSize, Channels, Z, R, C]
     input_resh = tf.transpose(input, perm=[0,4,3,2,1])
@@ -64,29 +68,20 @@ def selu(input):
     return lambda01 * tf.nn.elu(input)
 
 
-# Currently only used for pooling3d
-def mirrorFinalBordersOfImage(image3dBC012, mirrorFinalBordersForThatMuch) :
-    image3dBC012WithMirrorPad = image3dBC012
-    for time_i in range(0, mirrorFinalBordersForThatMuch[0]):
-        image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,-1:,:,:] ], axis=2)
-    for time_i in range(0, mirrorFinalBordersForThatMuch[1]):
-        image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,-1:,:] ], axis=3)
-    for time_i in range(0, mirrorFinalBordersForThatMuch[2]):
-        image3dBC012WithMirrorPad = tf.concat([ image3dBC012WithMirrorPad, image3dBC012WithMirrorPad[:,:,:,:,-1:] ], axis=4)
-    return image3dBC012WithMirrorPad
-
-
-def pool3dMirrorPad(image3dBC012, window_size, strides, mirror_pad, mode) :
-    # image3dBC012 dimensions: (batch, fms, r, c, z)
+def pool_3d(input, window_size, strides, pad_mode, pool_mode) :
+    # input dimensions: (batch, fms, r, c, z)
     # poolParams: [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode]
-    # mode: 'Max' or 'AVG'
-    image3dBC012WithMirrorPad = mirrorFinalBordersOfImage(image3dBC012, mirror_pad)
-    inp_resh = tf.transpose(image3dBC012WithMirrorPad, perm=[0,4,3,2,1]) # Channels last.
+    # pool_mode: 'MAX' or 'AVG'
+    if pad_mode == 'MIRROR':
+        input = pad_by_mirroring(input, n_vox_pad_per_dim=[window_size.shape[2+d] - 1 for d in range(3)])
+        pad_mode = 'VALID'
+    
+    inp_resh = tf.transpose(input, perm=[0,4,3,2,1]) # Channels last.
     pooled_out = tf.nn.pool(input = inp_resh,
                             window_shape=window_size,
                             strides=strides,
-                            padding="VALID", # SAME or VALID
-                            pooling_type=mode,
+                            padding=pad_mode, # SAME or VALID
+                            pooling_type=pool_mode,
                             data_format="NDHWC") # AVG or MAX
     pooled_out = tf.transpose(pooled_out, perm=[0,4,3,2,1])
     
@@ -189,22 +184,22 @@ def upsample_5D_tens_and_crop(input, up_factors, upsampl_type="repeat", dims_to_
     return out_hr_crop
 
 
-def pad_by_mirroring(input, voxelsPerDimToPad) :
+def pad_by_mirroring(input, n_vox_pad_per_dim):
     # input shape: [batchSize, #channels#, r, c, z]
     # inputImageDimensions : [ batchSize, #channels, dim r, dim c, dim z ] of input
-    # voxelsPerDimToPad shape: [ num o voxels in r-dim to add, ...c-dim, ...z-dim ]
-    # If voxelsPerDimToPad is odd, 1 more voxel is added to the right side.
+    # n_vox_pad_per_dim shape: [ num o voxels in r-dim to add, ...c-dim, ...z-dim ]
+    # If n_vox_pad_per_dim is odd, 1 more voxel is added to the right side.
     # r-axis
-    assert np.all(voxelsPerDimToPad) >= 0
-    padLeft = int(voxelsPerDimToPad[0] // 2); padRight = int((voxelsPerDimToPad[0] + 1) // 2);
-    paddedImage = tf.concat([input[:, :, int(voxelsPerDimToPad[0] // 2) - 1::-1 , :, :], input], axis=2) if padLeft > 0 else input
-    paddedImage = tf.concat([paddedImage, paddedImage[ :, :, -1:-1 - int((voxelsPerDimToPad[0] + 1) // 2):-1, :, :]], axis=2) if padRight > 0 else paddedImage
+    assert np.all(n_vox_pad_per_dim) >= 0
+    padLeft = int(n_vox_pad_per_dim[0] // 2); padRight = int((n_vox_pad_per_dim[0] + 1) // 2);
+    paddedImage = tf.concat([input[:, :, int(n_vox_pad_per_dim[0] // 2) - 1::-1 , :, :], input], axis=2) if padLeft > 0 else input
+    paddedImage = tf.concat([paddedImage, paddedImage[ :, :, -1:-1 - int((n_vox_pad_per_dim[0] + 1) // 2):-1, :, :]], axis=2) if padRight > 0 else paddedImage
     # c-axis
-    padLeft = int(voxelsPerDimToPad[1] // 2); padRight = int((voxelsPerDimToPad[1] + 1) // 2);
+    padLeft = int(n_vox_pad_per_dim[1] // 2); padRight = int((n_vox_pad_per_dim[1] + 1) // 2);
     paddedImage = tf.concat([paddedImage[:, :, :, padLeft - 1::-1 , :], paddedImage], axis=3) if padLeft > 0 else paddedImage
     paddedImage = tf.concat([paddedImage, paddedImage[:, :, :, -1:-1 - padRight:-1, :]], axis=3) if padRight > 0 else paddedImage
     # z-axis
-    padLeft = int(voxelsPerDimToPad[2] // 2); padRight = int((voxelsPerDimToPad[2] + 1) // 2)
+    padLeft = int(n_vox_pad_per_dim[2] // 2); padRight = int((n_vox_pad_per_dim[2] + 1) // 2)
     paddedImage = tf.concat([paddedImage[:, :, :, :, padLeft - 1::-1 ], paddedImage], axis=4) if padLeft > 0 else paddedImage
     paddedImage = tf.concat([paddedImage, paddedImage[:, :, :, :, -1:-1 - padRight:-1]], axis=4) if padRight > 0 else paddedImage
     

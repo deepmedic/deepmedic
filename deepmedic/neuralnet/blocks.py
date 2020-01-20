@@ -123,6 +123,7 @@ class ConvBlock(Block):
               conv_kernel_dims,
               pool_prms, # Can be []
               conv_w_init_method,
+              conv_pad_mode,
               use_bn,
               moving_avg_length, #If this is <= 0, we are not using BatchNormalization, even if above is True.
               activ_func="relu",
@@ -166,11 +167,11 @@ class ConvBlock(Block):
             self._layers.append(pooling_l)
         
         # --------- Convolution ---------------------------------
-        conv_l = self._create_conv_layer(n_fms_in, n_fms_out, conv_kernel_dims, conv_w_init_method, rng)
+        conv_l = self._create_conv_layer(n_fms_in, n_fms_out, conv_kernel_dims, conv_w_init_method, conv_pad_mode, rng)
         self._layers.append(conv_l)
     
-    def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
-        return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
+    def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, pad_mode, rng):
+        return dm_layers.ConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, pad_mode, rng)
 
         
 # Ala Yani Ioannou et al, Training CNNs with Low-Rank Filters For Efficient Image Classification, ICLR 2016. Allowed Ranks: Rank=1 or 2.
@@ -180,8 +181,8 @@ class LowRankConvBlock(ConvBlock):
         self._rank = rank # 1 or 2 dimensions
             
     # Overload the ConvBlock's function. Called from build. The only different behaviour.        
-    def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, rng):
-        return dm_layers.LowRankConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, rng)
+    def _create_conv_layer(self, fms_in, fms_out, conv_kernel_dims, init_method, pad_mode, rng):
+        return dm_layers.LowRankConvolutionalLayer(fms_in, fms_out, conv_kernel_dims, init_method, pad_mode, rng)
     
     
 class SoftmaxBlock(Block):

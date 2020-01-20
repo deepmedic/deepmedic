@@ -102,6 +102,7 @@ class Pathway(object):
               num_kerns_per_layer,
               conv_kernel_dims_per_layer,
               conv_w_init_method,
+              conv_pad_mode_per_layer,
               use_bn_per_layer, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
               moving_avg_length,
               activ_func_per_layer,
@@ -135,6 +136,7 @@ class Pathway(object):
                         conv_kernel_dims=conv_kernel_dims_per_layer[layer_i],
                         pool_prms=pool_prms_for_path[layer_i],
                         conv_w_init_method=conv_w_init_method,
+                        conv_pad_mode=conv_pad_mode_per_layer[layer_i],
                         use_bn = use_bn_per_layer[layer_i],
                         moving_avg_length=moving_avg_length,
                         activ_func=activ_func_per_layer[layer_i],

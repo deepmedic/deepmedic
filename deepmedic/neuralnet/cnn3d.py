@@ -261,6 +261,7 @@ class Cnn3d(object):
         thisPathWayKernelDimensions = kernelDimensions
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
+        thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         
@@ -273,6 +274,7 @@ class Cnn3d(object):
                           thisPathWayNKerns,
                           thisPathWayKernelDimensions,
                           convWInitMethod,
+                          thisPathwayConvPadModePerLayer,
                           thisPathwayUseBnPerLayer,
                           movingAvForBnOverXBatches,
                           thisPathwayActivFuncPerLayer,
@@ -293,6 +295,7 @@ class Cnn3d(object):
             thisPathWayKernelDimensions = kernelDimensionsSubsampled
             
             thisPathwayNumOfLayers = len(thisPathWayNKerns)
+            thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
             thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
             thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
             
@@ -305,6 +308,7 @@ class Cnn3d(object):
                               thisPathWayNKerns,
                               thisPathWayKernelDimensions,
                               convWInitMethod,
+                              thisPathwayConvPadModePerLayer,
                               thisPathwayUseBnPerLayer,
                               movingAvForBnOverXBatches,
                               thisPathwayActivFuncPerLayer,
@@ -335,6 +339,7 @@ class Cnn3d(object):
         thisPathWayKernelDimensions = [kernelDimensionsFirstFcLayer] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
         
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
+        thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         
@@ -347,6 +352,7 @@ class Cnn3d(object):
                           thisPathWayNKerns,
                           thisPathWayKernelDimensions,
                           convWInitMethod,
+                          thisPathwayConvPadModePerLayer,
                           thisPathwayUseBnPerLayer,
                           movingAvForBnOverXBatches,
                           thisPathwayActivFuncPerLayer,
