@@ -18,9 +18,8 @@ from deepmedic.dataManagement.sampling import extractSegmentsGivenSliceCoords
 from deepmedic.dataManagement.io import savePredImgToNiiWithOriginalHdr, saveFmImgToNiiWithOriginalHdr, \
     save4DImgWithAllFmsToNiiWithOriginalHdr
 from deepmedic.dataManagement.preprocessing import unpad_3d_img
-
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
-from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA
+from deepmedic.logging.utils import strListFl4fNA, getMeanPerColOf2dListExclNA, print_progress_step_test
 
 
 
@@ -202,13 +201,6 @@ def stitch_predicted_to_fms(array_fms_to_save, idx_next_tile_in_fm_vols,
     return idx_next_tile_in_fm_vols, array_fms_to_save
 
 
-def print_progress_step(log, n_batches, batch_i, batch_size, n_tiles_for_subj):
-    progress_step = max(1, n_batches // 5)
-
-    if batch_i == 0 or ((batch_i + 1) % progress_step) == 0 or (batch_i + 1) == n_batches:
-        log.print3("Processed " + str(batch_i * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
-
-
 def prepare_feeds_dict(feeds, channs_of_tiles_per_path):
     # TODO: Can we rename the input feeds so that they are easier to deal with?
     feeds_dict = {feeds['x']: np.asarray(channs_of_tiles_per_path[0], dtype='float32')}
@@ -258,9 +250,9 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
     idx_next_tile_in_fm_vols = 0
     n_batches = n_tiles_for_subj // batchsize
     t_fwd_pass_subj = 0 # time it took for forward pass over all tiles of subject.
+    print_progress_step_test(log, n_batches, 0, batchsize, n_tiles_for_subj)    
     for batch_i in range(n_batches):
         
-        print_progress_step(log, n_batches, batch_i, batchsize, n_tiles_for_subj)
         # Extract data for the segments of this batch.
         # ( I could modularize extractDataOfASegmentFromImagesUsingSampledSliceCoords()
         # of training and use it here as well. )
@@ -307,6 +299,7 @@ def predict_whole_volume_by_tiling(log, sessionTf, cnn3d,
                                                           outp_pred_dims,
                                                           cnn3d.pathways,
                                                           idxs_fms_to_save)
+        print_progress_step_test(log, n_batches, batch_i + 1, batchsize, n_tiles_for_subj)
         # Done with batch
         
     log.print3("TIMING: Segmentation of subject: [Forward Pass:] {0:.2f}".format(t_fwd_pass_subj) + " secs.")
