@@ -210,7 +210,7 @@ class Cnn3d(object):
                         subsampleFactorsPerSubPath, # Controls how many pathways: [] if no secondary pathways. Else, List of lists. One sublist per secondary pathway. Each sublist has 3 ints, the rcz subsampling factors.
                         #=== FC Layers ===
                         fcLayersFMs,
-                        kernelDimensionsFirstFcLayer,
+                        kernelDimensionsFc,
                         softmaxTemperature,
                         
                         #=== Other Architectural params ===
@@ -236,14 +236,8 @@ class Cnn3d(object):
                         ):
         
         self.cnnModelName = cnnModelName
-        
-        # ============= Model Parameters Passed as arguments ================
         self.num_classes = numberOfOutputClasses
-        # === Architecture ===
         self.numSubsPaths = len(subsampleFactorsPerSubPath) # do I want this as attribute? Or function is ok?
-        
-        self._kernelDimensionsFirstFcLayer = kernelDimensionsFirstFcLayer # TODO: REMOVE. Temporary for 1st fc padding!
-        
         #==============================
         rng = np.random.RandomState(seed=None)
         
@@ -256,15 +250,12 @@ class Cnn3d(object):
         thisPathway = NormalPathway()
         self.pathways.append(thisPathway)
         thisPathwayType = thisPathway.pType()
-                
         thisPathWayNKerns = nkerns
         thisPathWayKernelDimensions = kernelDimensions
-        
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
         thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
-        
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         
@@ -290,15 +281,12 @@ class Cnn3d(object):
             thisPathway = SubsampledPathway(subsampleFactorsPerSubPath[subpath_i])
             self.pathways.append(thisPathway) # There will be at least an entry as a secondary pathway. But it won't have any layers if it was not actually used.
             thisPathwayType = thisPathway.pType()
-            
             thisPathWayNKerns = nkernsSubsampled[subpath_i]
             thisPathWayKernelDimensions = kernelDimensionsSubsampled
-            
             thisPathwayNumOfLayers = len(thisPathWayNKerns)
             thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
             thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
             thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
-            
             thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
             thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
             
@@ -328,21 +316,12 @@ class Cnn3d(object):
         thisPathway = FcPathway()
         self.pathways.append(thisPathway)
         thisPathwayType = thisPathway.pType()
-        
-        # This is the shape of the kernel in the first FC layer.
-        # NOTE: If there is no hidden FC layer, this kernel is used in the Classification layer then.
-        # Originally it was 1x1x1 only. The pathways themselves where taking care of the receptive field.
-        # However I can now define it larger (eg 3x3x3), in case it helps combining the multiresolution features better/smoother.
-        # The convolution is seamless, ie same shape output/input, by mirror padding the input.
-        log.print3("DEBUG: Shape of the kernel of the first FC layer is : " + str(kernelDimensionsFirstFcLayer))
         thisPathWayNKerns = fcLayersFMs + [self.num_classes]
-        thisPathWayKernelDimensions = [kernelDimensionsFirstFcLayer] + [[1, 1, 1]] * (len(thisPathWayNKerns) - 1)
-        
+        thisPathWayKernelDimensions = kernelDimensionsFc
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
         thisPathwayConvPadModePerLayer = ['MIRROR'] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
-        
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
         thisPathwayActivFuncPerLayer[0] = "linear" if thisPathwayType != pt.FC else activationFunc  # To not apply activation on raw input. -1 is linear activation.
         

@@ -40,7 +40,7 @@ class ModelConfig(Config):
     
     #==Extra hidden FC Layers. Final Classification layer is not included in here.
     N_FMS_FC = "numberFMsPerLayerFC"
-    KERN_DIM_1ST_FC = "kernelDimFor1stFcLayer"
+    KERN_DIM_FC = "kernelDimPerLayerFC"
     RESID_CONN_LAYERS_FC = "layersWithResidualConnFC"
     
     #Size of Image Segments

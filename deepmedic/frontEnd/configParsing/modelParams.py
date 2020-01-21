@@ -220,8 +220,8 @@ class ModelParameters(object) :
             
         #==FC Layers==
         self.numFMsInExtraFcs = cfg[cfg.N_FMS_FC] if cfg[cfg.N_FMS_FC] is not None else []
-        self.kernelDimensionsFirstFcLayer = cfg[cfg.KERN_DIM_1ST_FC] if cfg[cfg.KERN_DIM_1ST_FC] is not None else [1,1,1]
-        assert len(self.kernelDimensionsFirstFcLayer) == 3 and (False not in [ dim > 0 for dim in self.kernelDimensionsFirstFcLayer] )
+        self.kernelDimensionsFc = cfg[cfg.KERN_DIM_FC] if cfg[cfg.KERN_DIM_FC] is not None else [[1,1,1]]
+        assert len(self.kernelDimensionsFc) == (len(self.numFMsInExtraFcs) + 1), 'Need one Kernel-Dimensions per layer of FC path, equal to length of number-of-FMs-in-FC +1 (for classif layer)'
         residConnAtLayersFc = cfg[cfg.RESID_CONN_LAYERS_FC] if cfg[cfg.RESID_CONN_LAYERS_FC] is not None else []
                                         
         #==Size of Image Segments ==
@@ -334,7 +334,7 @@ class ModelParameters(object) :
         logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
         logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[2]))
         #logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[2]))
-        logPrint("Dimensions of Kernels in the 1st FC layer (Classif. layer if no hidden FCs used) = " + str(self.kernelDimensionsFirstFcLayer))
+        logPrint("Dimensions of Kernels in final FC path before classification = " + str(self.kernelDimensionsFc))
         
         logPrint("~~Size Of Image Segments~~")
         logPrint("Size of Segments for Training = " + str(self._inp_dims_hr_path['train']))
@@ -377,7 +377,7 @@ class ModelParameters(object) :
                         
                         #=== FC Layers ===
                         self.numFMsInExtraFcs,
-                        self.kernelDimensionsFirstFcLayer,
+                        self.kernelDimensionsFc,
                         self.softmaxTemperature,
                         
                         #=== Other Architectural params ===
