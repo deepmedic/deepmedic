@@ -236,7 +236,7 @@ If the process does not start on the GPU as required, please ensure you have *CU
 
 Previously we briefly discussed how to quickly run a pre-set example with a tiny CNN, just so you can check whether everything works on your system. In this section we will go through the process in a bit more detail. We also explain the main parameters that should be specified in the configuration files, in order for you to tailor the network and process to your needs. 
 
-The **.cfg configuration files** in `examples/configFiles/deepMedicOriginal/` display the parameters used in our work in [[1](#citations)]. In an attempt to make it simpler for the user, we also provide a cleaner version of the configuration files, named with "Less", where many parameters are "hidden". They are internally passed values that worked well in our experiments. Finally, the config files in `examples/configFiles/deepMedic/` provide a network configuration that we will be gradually updating with components that seem to improve the overall performance of the system.
+The **.cfg configuration files** in `examples/configFiles/deepMedic/` holds the parameters for creating and training DeepMedic. In an attempt to support a broader range of applications and users, the config files in `examples/configFiles/deepMedic/` are gradually updated with components that seem to improve the overall performance of the system. (Note: These parameters are similar but not same as what was used in our work in [[1](#citations)]. Original config as used in the paper can be found in archived github-branch 'dm_theano_v0.6.1_depr')
 
 **_Note:_** The config files are parsed as python scripts, thus follow **python syntax**. Any commented-out configuration variables are internally given **default values**.
 
@@ -271,7 +271,7 @@ The main parameters to specify the CNN model are the following.
 - numberFMsPerLayerNormal: A list which needs to have as many entries as the number of layers in the normal pathway that  we want to create. Each entry is a number, which defines the number of feature-maps in the corresponding layer ([30, 40, 40, 50] in fig1)
 - kernelDimPerLayerNormal: The dimensions of the kernels per layer. ([[5,5,5], [5,5,5], [5,5,5], [5,5,5]] in Fig.1.) 
 - useSubsampledPathway: Setting this to “True” creates a subsampled-pathway, with the same architecture as the normal one. “False” for single-scale processing with the normal pathway only. Additional parameters allow tailoring this pathway further.
-- numberFMsPerLayerFC: The final layers of the two pathways are contatenated. This parameter allows the addition of extra hidden FC layers before the classification layer. The number of entries specified how many extra layers, the number of each entry specifies the number of FMs in each layer. Final classification layer not included ([[150], [150]] in Fig.1).
+- numberFMsPerLayerFC: The final layers of the high and low resolution pathways are contatenated. The concatenated feature maps are then processed by a Final Classification (FC) pathway. This parameter allows the addition of hidden layers in the FC path before the classification layer. The number of entries specifies how many hidden layers. The number of each entry specifies the number of FMs in each layer. Final classification layer is not included ([[150], [150]] in Fig.1).
 
 *Image Segments and Batch Sizes:*
 
@@ -448,7 +448,7 @@ Note that this testing procedure is similar to the full-inference procedure perf
 
 ### 4. How to run DeepMedic on your data
 
-In `examples/configFiles/deepMedicOriginal/` we provide the configuration of the network as employed in our work in [1], and very similar to the model employed in our winning contribution for the ISLES 2015 challenge [2]. The config files named with “Less” are “cleaner” versions to make them more readable, where many parameters are omitted/hidden (they are passed *default* values internally). The configuration of these two models is exactly the same. In `examples/configFiles/deepMedic/` we provide a configuration which we will be gradually updating with any components we find generally well behaved. You are adviced to use the latter, bearing in mind that behavior might slightly change between version (hopefully for the best!). 
+The **.cfg configuration files** in `examples/configFiles/deepMedic/` provides parameters for creating and training DeepMedic. These parameters are similar (but not same) as what was used in our work in [[1](#citations)] and our winning contribution for the ISLES 2015 challenge [2]. In order to support a broader range of applications and users, the config files in `examples/configFiles/deepMedic/` are gradually updated with components that seem to improve the overall performance of the system. (Note: Original config as used in the mentioned papers can be found in archived github-branch 'dm_theano_v0.6.1_depr')
 
 To run the DeepMedic on your data, the following are the minimum steps you need to follow:
 
