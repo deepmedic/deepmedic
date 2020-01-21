@@ -29,8 +29,12 @@ def conv_3d(input, w, padding="VALID"):
     # Input signal given in shape [BatchSize, Channels, R, C, Z]
     # padding: 'VALID', 'SAME' or 'MIRROR'
     # Tensorflow's Conv3d requires filter shape: [ D/Z, H/C, W/R, C_in, C_out ] #ChannelsOut, #ChannelsIn, Z, R, C ]
-    if padding == 'MIRROR': # If mirror, do it here and perform conv as if not pad ('SAME')
+    if padding in ['MIRROR', 'mirror']: # If mirror, do it here and perform conv as if not pad ('SAME')
         input = pad_by_mirroring(input, n_vox_pad_per_dim=[w.shape[2+d] - 1 for d in range(3)])
+        padding = 'VALID'
+    elif padding in ['ZERO', 'zero']:
+        padding = 'SAME'
+    elif padding is None or padding in ['none', 'VALID', 'valid']:
         padding = 'VALID'
         
     w_resh = tf.transpose(w, perm=[4,3,2,1,0])
@@ -72,10 +76,14 @@ def pool_3d(input, window_size, strides, pad_mode, pool_mode) :
     # input dimensions: (batch, fms, r, c, z)
     # poolParams: [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode]
     # pool_mode: 'MAX' or 'AVG'
-    if pad_mode == 'MIRROR':
+    if pad_mode in ['MIRROR', 'mirror']:
         input = pad_by_mirroring(input, n_vox_pad_per_dim=[window_size.shape[2+d] - 1 for d in range(3)])
         pad_mode = 'VALID'
-    
+    elif padding in ['ZERO', 'zero']:
+        padding = 'SAME'
+    elif padding is None or padding in ['none']:
+        padding = 'VALID'
+        
     inp_resh = tf.transpose(input, perm=[0,4,3,2,1]) # Channels last.
     pooled_out = tf.nn.pool(input = inp_resh,
                             window_shape=window_size,

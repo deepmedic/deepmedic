@@ -203,14 +203,17 @@ class Cnn3d(object):
                         #=== Normal Pathway ===
                         nkerns,
                         kernelDimensions,
+                        pad_mode_per_l_norm,
                         #=== Subsampled Pathway ===
                         # THESE NEXT TWO, ALONG WITH THE ONES FOR FC, COULD BE PUT IN ONE STRUCTURE WITH NORMAL, EG LIKE kerns = [ [kernsNorm], [kernsSub], [kernsFc]]
                         nkernsSubsampled, # Used to control if secondary pathways: [] if no secondary pathways. Now its the "factors"
                         kernelDimensionsSubsampled,
+                        pad_mode_per_l_subs,
                         subsampleFactorsPerSubPath, # Controls how many pathways: [] if no secondary pathways. Else, List of lists. One sublist per secondary pathway. Each sublist has 3 ints, the rcz subsampling factors.
                         #=== FC Layers ===
                         fcLayersFMs,
                         kernelDimensionsFc,
+                        pad_mode_per_l_fc,
                         softmaxTemperature,
                         
                         #=== Other Architectural params ===
@@ -222,8 +225,6 @@ class Cnn3d(object):
                         ranksOfLowerRankLayersForEachPathway,
                         #---Pooling---
                         maxPoolingParamsStructure,
-                        #--- Skip Connections --- #Deprecated, not used/supported
-                        convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
                         
                         #=== Others ===
                         # Dropout
@@ -253,7 +254,7 @@ class Cnn3d(object):
         thisPathWayNKerns = nkerns
         thisPathWayKernelDimensions = kernelDimensions
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
-        thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
+        thisPathwayConvPadModePerLayer = pad_mode_per_l_norm
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
@@ -284,7 +285,7 @@ class Cnn3d(object):
             thisPathWayNKerns = nkernsSubsampled[subpath_i]
             thisPathWayKernelDimensions = kernelDimensionsSubsampled
             thisPathwayNumOfLayers = len(thisPathWayNKerns)
-            thisPathwayConvPadModePerLayer = ['VALID'] * thisPathwayNumOfLayers
+            thisPathwayConvPadModePerLayer = pad_mode_per_l_subs
             thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
             thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
             thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers
@@ -319,7 +320,7 @@ class Cnn3d(object):
         thisPathWayNKerns = fcLayersFMs + [self.num_classes]
         thisPathWayKernelDimensions = kernelDimensionsFc
         thisPathwayNumOfLayers = len(thisPathWayNKerns)
-        thisPathwayConvPadModePerLayer = ['MIRROR'] * thisPathwayNumOfLayers
+        thisPathwayConvPadModePerLayer = pad_mode_per_l_fc
         thisPathwayUseBnPerLayer = [movingAvForBnOverXBatches > 0] * thisPathwayNumOfLayers
         thisPathwayUseBnPerLayer[0] = applyBnToInputOfPathways[thisPathwayType] if movingAvForBnOverXBatches > 0 else False  # For the 1st layer, ask specific flag.
         thisPathwayActivFuncPerLayer = [activationFunc] * thisPathwayNumOfLayers

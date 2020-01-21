@@ -26,6 +26,7 @@ class ModelConfig(Config):
     #===Normal pathway===
     N_FMS_NORM = "numberFMsPerLayerNormal"
     KERN_DIM_NORM = "kernelDimPerLayerNormal"
+    PAD_MODE_NORM = "padTypePerLayerNormal"
     RESID_CONN_LAYERS_NORM = "layersWithResidualConnNormal"
     LOWER_RANK_LAYERS_NORM = "lowerRankLayersNormal"
     
@@ -34,6 +35,7 @@ class ModelConfig(Config):
     #The below should be mirroring the pathway, otherwise let them specify them but throw warning all around that receptive field should stay the same!
     N_FMS_SUBS = "numberFMsPerLayerSubsampled"
     KERN_DIM_SUBS = "kernelDimPerLayerSubsampled"
+    PAD_MODE_SUBS = "padTypePerLayerSubsampled"
     SUBS_FACTOR = "subsampleFactor"
     RESID_CONN_LAYERS_SUBS = "layersWithResidualConnSubsampled"
     LOWER_RANK_LAYERS_SUBS = "lowerRankLayersSubsampled"
@@ -41,6 +43,7 @@ class ModelConfig(Config):
     #==Extra hidden FC Layers. Final Classification layer is not included in here.
     N_FMS_FC = "numberFMsPerLayerFC"
     KERN_DIM_FC = "kernelDimPerLayerFC"
+    PAD_MODE_FC = "padTypePerLayerFC"
     RESID_CONN_LAYERS_FC = "layersWithResidualConnFC"
     
     #Size of Image Segments

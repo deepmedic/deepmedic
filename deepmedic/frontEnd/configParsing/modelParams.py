@@ -158,9 +158,10 @@ class ModelParameters(object) :
         assert self.n_img_channs > 0
         #===Normal pathway===
         self.numFMsPerLayerNormal = cfg[cfg.N_FMS_NORM] if cfg[cfg.N_FMS_NORM] is not None and len(cfg[cfg.N_FMS_NORM]) > 0 else self.errReqFMsNormal()
-        numOfLayers = len(self.numFMsPerLayerNormal)
-        self.kernDimPerLayerNormal = cfg[cfg.KERN_DIM_NORM] if checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_NORM], numOfLayers) else self.errReqKernDimNormal()
+        n_layers_norm = len(self.numFMsPerLayerNormal)
+        self.kernDimPerLayerNormal = cfg[cfg.KERN_DIM_NORM] if checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_NORM], n_layers_norm) else self.errReqKernDimNormal()
         self.receptiveFieldNormal = calc_rec_field_of_path_given_kern_dims_w_stride_1(self.kernDimPerLayerNormal) # Just for COMPATIBILITY CHECKS!
+        self.pad_mode_per_l_norm = cfg[cfg.PAD_MODE_NORM] if cfg[cfg.PAD_MODE_NORM] is not None else ['VALID']*n_layers_norm
         residConnAtLayersNormal = cfg[cfg.RESID_CONN_LAYERS_NORM] if cfg[cfg.RESID_CONN_LAYERS_NORM] is not None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         lowerRankLayersNormal = cfg[cfg.LOWER_RANK_LAYERS_NORM] if cfg[cfg.LOWER_RANK_LAYERS_NORM] is not None else [] #layer number, starting from 1 for 1st layer. NOT indices.
         
@@ -181,14 +182,14 @@ class ModelParameters(object) :
             if not self.checkThatSublistsHaveSameLength(self.numFMsPerLayerSubsampled):
                 self.errReqSameNumOfLayersPerSubPathway()
 
-            numOfLayersInEachSubPath = len(self.numFMsPerLayerSubsampled[0])
-            if cfg[cfg.KERN_DIM_SUBS] == None and numOfLayersInEachSubPath == len(self.numFMsPerLayerNormal) :
+            n_layers_subs = len(self.numFMsPerLayerSubsampled[0])
+            if cfg[cfg.KERN_DIM_SUBS] is None and n_layers_subs == len(self.numFMsPerLayerNormal) :
                 self.kernDimPerLayerSubsampled = self.kernDimPerLayerNormal
                 self.receptiveFieldSubsampled = self.receptiveFieldNormal
-            elif cfg[cfg.KERN_DIM_SUBS] == None and numOfLayersInEachSubPath != len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
+            elif cfg[cfg.KERN_DIM_SUBS] is None and n_layers_subs != len(self.numFMsPerLayerNormal) : #user specified subsampled layers.
                 self.errorRequireKernelDimensionsSubsampled(self.kernDimPerLayerNormal, cfg[cfg.N_FMS_SUBS])
             # kernDimSubsampled was specified. Now it's going to be tricky to make sure everything alright.
-            elif not checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_SUBS], numOfLayersInEachSubPath) :
+            elif not checkKernDimPerLayerCorrect3dAndNumLayers(cfg[cfg.KERN_DIM_SUBS], n_layers_subs) :
                 self.errReqKernDimNormalCorr()
             else : #kernel dimensions specified and are correct (3d, same number of layers as subsampled specified). Need to check the two receptive fields and make sure they are correct.
                 self.kernDimPerLayerSubsampled = cfg[cfg.KERN_DIM_SUBS]
@@ -196,6 +197,7 @@ class ModelParameters(object) :
                 if self.receptiveFieldNormal != self.receptiveFieldSubsampled :
                     self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(self.receptiveFieldNormal, self.receptiveFieldSubsampled)
                 #Everything alright, finally. Proceed safely...
+            self.pad_mode_per_l_subs = cfg[cfg.PAD_MODE_SUBS] if cfg[cfg.PAD_MODE_SUBS] is not None else ['VALID']*n_layers_subs
             self.subsampleFactor = cfg[cfg.SUBS_FACTOR] if cfg[cfg.SUBS_FACTOR] is not None else [3,3,3]
             self.subsampleFactor = self.changeDatastructureToListOfListsForSecondaryPathwaysIfNeeded(self.subsampleFactor)
             for secondaryPathway_i in range(len(self.subsampleFactor)) : #It should now be a list of lists, one sublist per secondary pathway. This is what is currently defining how many pathways to use.
@@ -220,8 +222,10 @@ class ModelParameters(object) :
             
         #==FC Layers==
         self.numFMsInExtraFcs = cfg[cfg.N_FMS_FC] if cfg[cfg.N_FMS_FC] is not None else []
+        n_layers_fc = len(self.numFMsInExtraFcs)
         self.kernelDimensionsFc = cfg[cfg.KERN_DIM_FC] if cfg[cfg.KERN_DIM_FC] is not None else [[1,1,1]]
         assert len(self.kernelDimensionsFc) == (len(self.numFMsInExtraFcs) + 1), 'Need one Kernel-Dimensions per layer of FC path, equal to length of number-of-FMs-in-FC +1 (for classif layer)'
+        self.pad_mode_per_l_fc = cfg[cfg.PAD_MODE_FC] if cfg[cfg.PAD_MODE_FC] is not None else ['VALID']*n_layers_fc
         residConnAtLayersFc = cfg[cfg.RESID_CONN_LAYERS_FC] if cfg[cfg.RESID_CONN_LAYERS_FC] is not None else []
                                         
         #==Size of Image Segments ==
@@ -241,7 +245,7 @@ class ModelParameters(object) :
         self.dropNormal = cfg[cfg.DROP_NORM] if cfg[cfg.DROP_NORM] is not None else []
         self.dropSubsampled = cfg[cfg.DROP_SUBS] if cfg[cfg.DROP_SUBS] is not None else []
         self.dropFc = cfg[cfg.DROP_FC] if cfg[cfg.DROP_FC] is not None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
-        self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc, []]
+        self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc]
         
         #== Weight Initialization==
         self.convWInitMethod = cfg[cfg.CONV_W_INIT] if cfg[cfg.CONV_W_INIT] is not None else ["fanIn", 2]
@@ -278,10 +282,6 @@ class ModelParameters(object) :
                                                      ]
         #============= HIDDENS ======================
         
-        #MultiscaleConnections:
-        self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes = [ [], [] ] #a sublist for each pathway. Starts from 0 index. Give a sublist, even empty for no connections.
-        #... It's ok if I dont have a 2nd path but still give a 2nd sublist, it's controlled by nkernsSubsampled.
-        
         #-------POOLING---------- (not fully supported currently)
         #One entry per pathway-type. leave [] if the pathway does not exist or there is no mp there AT ALL.
         #Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
@@ -310,6 +310,7 @@ class ModelParameters(object) :
         logPrint("Number of Feature Maps per layer = " + str(self.numFMsPerLayerNormal))
         logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerNormal))
         logPrint("Receptive Field = " + str(self.receptiveFieldNormal))
+        logPrint("Padding mode of convs per layer = " + str(self.pad_mode_per_l_norm))
         logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[0]))
         logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[0]))
         logPrint("Lower Rank layers will be made of rank = " + str(self.ranksOfLowerRankLayersForEachPathway[0]))
@@ -322,6 +323,7 @@ class ModelParameters(object) :
         logPrint("Number of Feature Maps per layer (per sub-pathway) = " + str(self.numFMsPerLayerSubsampled))
         logPrint("Kernel Dimensions per layer = " + str(self.kernDimPerLayerSubsampled))
         logPrint("Receptive Field = " + str(self.receptiveFieldSubsampled))
+        logPrint("Padding mode of convs per layer = " + str(self.pad_mode_per_l_subs))
         logPrint("Subsampling Factor per dimension (per sub-pathway) = " + str(self.subsampleFactor))
         logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
         logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[1]))
@@ -331,6 +333,7 @@ class ModelParameters(object) :
         logPrint("~~Fully Connected Pathway~~")
         logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.numFMsInExtraFcs)))
         logPrint("Number of Feature Maps in the additional FC layers = " + str(self.numFMsInExtraFcs))
+        logPrint("Padding mode of convs per layer = " + str(self.pad_mode_per_l_fc))
         logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
         logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[2]))
         #logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[2]))
@@ -370,14 +373,17 @@ class ModelParameters(object) :
                         #=== Normal Pathway ===
                         self.numFMsPerLayerNormal, #ONLY for the convolutional layers, NOT the final convFCSoftmaxLayer!
                         self.kernDimPerLayerNormal,
+                        self.pad_mode_per_l_norm,
                         #=== Subsampled Pathway ===
                         self.numFMsPerLayerSubsampled,
                         self.kernDimPerLayerSubsampled,
+                        self.pad_mode_per_l_subs,
                         self.subsampleFactor,
                         
                         #=== FC Layers ===
                         self.numFMsInExtraFcs,
                         self.kernelDimensionsFc,
+                        self.pad_mode_per_l_fc,
                         self.softmaxTemperature,
                         
                         #=== Other Architectural params ===
@@ -389,8 +395,6 @@ class ModelParameters(object) :
                         self.ranksOfLowerRankLayersForEachPathway,
                         #---Pooling---
                         self.maxPoolingParamsStructure,
-                        #--- Skip Connections --- #Deprecated, not used/supported
-                        self.convLayersToConnectToFirstFcForMultiscaleFromAllLayerTypes,
                         
                         #=== Others ====
                         #Dropout
