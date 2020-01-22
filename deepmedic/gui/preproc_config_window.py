@@ -2,7 +2,7 @@ from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.gui.ui_preproc_config_create import UiPreprocConfig
 from deepmedic.frontEnd.configParsing.preprocConfig import PreprocConfig
 from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
-from deepmedic.dataManagement.data_checks import run_checks, get_html_colour
+from deepmedic.dataManagement.data_checks import run_checks, get_html_colour, get_bold_text, text_to_html
 import pandas as pd
 import os
 
@@ -101,8 +101,9 @@ class PreprocConfigWindow(ConfigWindow):
         self.ui.preprocess_button.clicked.connect(self.preprocess)
         self.data_checks_progress = ProgressBar(self.ui.data_checks_progress)
         self.data_checks_progress.hide()
+        self.progress_text = 'Preprocessing data...'
         self.resample_progress = ProgressBar(self.ui.resample_progress, self.ui.resample_text,
-                                             'Preprocessing data...')
+                                             self.progress_text)
         self.resample_progress.hide()
 
         self.dchecks_sug = None
@@ -110,6 +111,10 @@ class PreprocConfigWindow(ConfigWindow):
         self.ui.suggested_button.hide()
 
         self.fill_in_defaults()
+
+    def reset_progress_text(self):
+        self.resample_progress.hide()
+        self.resample_progress.set_text(self.progress_text)
 
     def fill_in_defaults(self):
         self.findChild(QtWidgets.QCheckBox, 'output_saveCsv_checkbox').setChecked(True)
@@ -156,6 +161,7 @@ class PreprocConfigWindow(ConfigWindow):
                                'output_baseDir_lineedit').setText(str(self.dchecks_sug['base_dir']))
 
     def preprocess(self):
+
         # Get parameters from forms
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         output_dir = self.get_text_value('output_outputDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputDir_lineedit'))
@@ -186,13 +192,19 @@ class PreprocConfigWindow(ConfigWindow):
         use_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_useMask_checkbox').isChecked()
         use_centre_mass = self.findChild(QtWidgets.QCheckBox, 'preproc_centreMass_checkbox').isChecked()
 
+        self.reset_progress_text()
+
         # check output
         if not output_dir:
             output_dir_label = self.findChild(QtWidgets.QLabel, 'output_outputDir_label')
             text = output_dir_label.text()
             output_dir_label.setText(get_html_colour(text, colour='red'))
 
-            # Add text to bottom to alert that something went wrong < ------------------------------------------q
+            current_text = self.resample_progress.label.text()
+            new_text = 'ERROR: No ' + get_bold_text('Output Directory') + ' was given.'
+            current_text += '\n' + get_html_colour(new_text, colour='red')
+            self.resample_progress.set_text(text_to_html(current_text))
+            self.resample_progress.show()
 
         # # check csv
         # if save_csv:
