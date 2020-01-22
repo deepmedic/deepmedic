@@ -100,8 +100,8 @@ class TestSession(Session):
             # Create the saver
             collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
             saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net) # saver_net would suffice
-            dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(collection_vars_net)}
-            ckpt_net = tf.train.Checkpoint(**dict_vars_net)
+            #TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(collection_vars_net)}
+            #TF2: ckpt_net = tf.train.Checkpoint(**dict_vars_net)
             
         with tf.compat.v1.Session( graph=graphTf, config=tf.compat.v1.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
             file_to_load_params_from = self._params.get_path_to_load_model_from()
@@ -112,7 +112,7 @@ class TestSession(Session):
                 try:
                     #tf.compat.v1.variables_initializer( var_list = collection_vars_net ).run()
                     saver_net.restore(sessionTf, chkpt_fname)
-                    #ckpt_net.restore(chkpt_fname)
+                    #TF2: ckpt_net.restore(chkpt_fname)
                     self._log.print3("Parameters were loaded.")
                 except Exception as e: handle_exception_tf_restore(self._log, e)
                 
