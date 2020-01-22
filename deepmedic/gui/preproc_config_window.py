@@ -2,7 +2,7 @@ from deepmedic.gui.config_window import ConfigWindow
 from deepmedic.gui.ui_preproc_config_create import UiPreprocConfig
 from deepmedic.frontEnd.configParsing.preprocConfig import PreprocConfig
 from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
-from deepmedic.dataManagement.data_checks import run_checks
+from deepmedic.dataManagement.data_checks import run_checks, get_html_colour
 import pandas as pd
 import os
 
@@ -109,6 +109,11 @@ class PreprocConfigWindow(ConfigWindow):
         self.ui.suggested_button.clicked.connect(self.fill_in_sug)
         self.ui.suggested_button.hide()
 
+        self.fill_in_defaults()
+
+    def fill_in_defaults(self):
+        self.findChild(QtWidgets.QCheckBox, 'output_saveCsv_checkbox').setChecked(True)
+
     def run_data_checks(self):
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         self.data_checks_progress.show()
@@ -146,7 +151,7 @@ class PreprocConfigWindow(ConfigWindow):
                     combo.setCurrentIndex(index)
 
             if self.dchecks_sug['base_dir'] is not None and not self.dchecks_sug['base_dir'] == '':
-                self.findChild(QtWidgets.QCheckBox, 'output_useBaseDir_checkbox').setChecked(True)
+                # self.findChild(QtWidgets.QCheckBox, 'output_useBaseDir_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit,
                                'output_baseDir_lineedit').setText(str(self.dchecks_sug['base_dir']))
 
@@ -180,6 +185,20 @@ class PreprocConfigWindow(ConfigWindow):
         size_units = self.get_text_value('preproc_imgSize_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_imgSize_combobox'), elem_type='Units')
         use_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_useMask_checkbox').isChecked()
         use_centre_mass = self.findChild(QtWidgets.QCheckBox, 'preproc_centreMass_checkbox').isChecked()
+
+        # check output
+        if not output_dir:
+            output_dir_label = self.findChild(QtWidgets.QLabel, 'output_outputDir_label')
+            text = output_dir_label.text()
+            output_dir_label.setText(get_html_colour(text, colour='red'))
+
+            # Add text to bottom to alert that something went wrong < ------------------------------------------q
+
+        # # check csv
+        # if save_csv:
+        #     if not (out_csv_dir or out_csv_dir):
+        #         text = self.ui.output_saveCsv_checkbox.text()
+        #         self.ui.output_saveCsv_checkbox.setText()
 
         print(output_dir, orientation_corr, resample_imgs, spacing, change_pixel_type, pixel_type, resize_imgs, size, size_units)
 
