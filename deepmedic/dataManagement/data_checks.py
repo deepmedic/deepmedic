@@ -237,7 +237,7 @@ def dims_check(dims_count, pixel=False, verbose=True, html=False):
     suggested = None
     if len(dims_count) > 1:
         ret += get_bold_text(get_html_colour('   [INFO]', 'salmon', html) + ' Image (' + dim_type + ') Dimensions Check\n')
-        suggested = get_max_dims(dims_count)
+        # suggested = get_max_dims(dims_count)
         if verbose:
             ret += prefix + 'Image dimensions do not match across images\n'
             ret += prefix + 'Some applications (e.g. classification) require uniformly\n'
@@ -258,7 +258,7 @@ def dims_check(dims_count, pixel=False, verbose=True, html=False):
     return ret, suggested
 
 
-def intra_dims_check(dims_count, pixel=False, verbose=True, html=False):
+def intra_dims_check(dims_count, pixel=False, cols=None, verbose=True, html=False):
     ret = ''
     prefix = ' '*(len('[PASSED]') + 2)
     if pixel:
@@ -270,6 +270,8 @@ def intra_dims_check(dims_count, pixel=False, verbose=True, html=False):
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Intra Subject Image ('
                              + dim_type + ') Dimensions Check\n')
         suggested = True
+        if cols is not None:
+            suggested = cols[0]
         if verbose:
             ret += prefix + 'Image dimensions do not match in between images of the same subject\n'
             ret += prefix + 'Deepmedic requires all images of each subject to have the same dimensions.\n'
@@ -353,6 +355,8 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
                  'direction': None,
                  'base_dir': None}
 
+    image_cols = None
+
     if csv:
         filelist = pd.read_csv(filelist)
         valid_cols = ['Image', 'Mask', 'Target']
@@ -398,7 +402,7 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
         aux_ret, suggested['intra_dimensions'] = intra_dims_check(intra_dims_count, pixel=True, html=html)
         ret += aux_ret
     if intra_sizes:
-        aux_ret, suggested['intra_size'] = intra_dims_check(intra_dims_count, html=html)
+        aux_ret, suggested['intra_size'] = intra_dims_check(intra_dims_count, html=html, cols=image_cols)
         ret += aux_ret
     if pixs:
         aux_ret, suggested['spacing'] = pix_check(spacing_count, html=html)

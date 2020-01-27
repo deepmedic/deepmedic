@@ -107,6 +107,7 @@ class PreprocConfigWindow(ConfigWindow):
         self.resample_progress.hide()
 
         self.dchecks_sug = None
+        self.data_cols = None
         self.ui.suggested_button.clicked.connect(self.fill_in_sug)
         self.ui.suggested_button.hide()
 
@@ -138,6 +139,10 @@ class PreprocConfigWindow(ConfigWindow):
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit,
                                'preproc_pixelSpacing_lineedit').setText(str(self.dchecks_sug['spacing']))
+            if self.dchecks_sug['intra_size'] is not None:
+                self.findChild(QtWidgets.QCheckBox, 'preproc_resizeIntraSubject_checkbox').setChecked(True)
+                self.findChild(QtWidgets.QLineEdit, 'preproc_resizeIntraColumn_lineedit'). \
+                    setText(self.dchecks_sug['intra_size'])
             if self.dchecks_sug['size'] is not None:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resize_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit, 'preproc_imgSize_lineedit').\
@@ -177,6 +182,8 @@ class PreprocConfigWindow(ConfigWindow):
         orientation_corr = self.findChild(QtWidgets.QCheckBox, 'preproc_orientation_checkbox').isChecked()
         resample_imgs = self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').isChecked()
         spacing = self.get_text_value('preproc_pixelSpacing_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_pixelSpacing_lineedit'))
+        resize_intra = self.findChild(QtWidgets.QCheckBox, 'preproc_resizeIntraSubject_checkbox').isChecked()
+        resize_intra_col = self.get_text_value('preproc_resizeIntraColumn_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_resizeIntraColumn_lineedit'))
         change_pixel_type = self.findChild(QtWidgets.QCheckBox, 'preproc_changePixelType_checkbox').isChecked()
         pixel_type = self.get_text_value('preproc_pixelType_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_pixelType_combobox'))
         create_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_createMask_checkbox').isChecked()
@@ -285,6 +292,10 @@ class PreprocConfigWindow(ConfigWindow):
             # resample (spacing)
             if resample_imgs:
                 image.resample(spacing=spacing)
+
+            # resize (intra-subject)
+            if resize_intra:
+                image
 
             # create  <--------------------------------------------------------- R E V I E W --------------------
             if create_mask:

@@ -301,14 +301,17 @@ class NiftiImage(object):
         return mask_image
 
     def resample(self, origin=None, spacing=None, direction=None, size=None, standard=False,
-                 save=False, filename=None, copy=False, ref_image=None):
+                 save=False, filename=None, copy=False, ref_image=None, ref_channel=None):
+
         # apply transformation
         if self.channels is not None:
             resampled = {}
+            if ref_channel and ref_channel in self.channels.keys():
+                ref_image = self.channels[ref_channel]
             for channel_name in self.channel_names:
                 resampled[channel_name], _, _ = \
                     self.channels[channel_name].resample(origin, spacing, direction, size, standard,
-                                                         save, filename, copy, ref_image)
+                                                         save, filename, copy, ref_image, None)
         else:
             # get transformation parameters
             if ref_image:

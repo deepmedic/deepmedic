@@ -88,6 +88,16 @@ class PreprocConfig(Config):
                              info="The dimensions of each pixel. "
                                   "For most applications we recommend isotropic pixel spacing, e.g. (1.0, 1.0, 1.0)")
 
+    RESIZE_INTRA = \
+        config_data.add_elem("resizeIntraSubject", description='Resize Same Subject Images', elem_type='Bool',
+                             info="Resize all images of the same subject to the dimensions of the reference column")
+
+    RESIZE_INTRA_COLUMN = \
+        config_data.add_elem("resizeIntraColumn", parent=RESIZE_INTRA,
+                             description='     Reference Column', elem_type='String',
+                             info="Reference column name to be used across the dataset to"
+                                  " resize the same subject images. (e.g. 'Channel_1')")
+
     CHANGE_PIXEL_TYPE = \
         config_data.add_elem("changePixelType", description='Change Pixel Type', elem_type='Bool',
                              info="Save image with a certain pixel data type.")
@@ -101,7 +111,7 @@ class PreprocConfig(Config):
                                   "(masks and targets, if provided, will retain the original format.)")
 
     RESIZE = \
-        config_data.add_elem("resize", description='Resize Images (Crop/Pad)', elem_type='Bool',
+        config_data.add_elem("resize", description='Resize All Images (Crop/Pad)', elem_type='Bool',
                              info="Resize images to uniform dimensions")
 
     IMAGE_SIZE =\
