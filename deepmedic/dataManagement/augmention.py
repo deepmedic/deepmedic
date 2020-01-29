@@ -1,6 +1,24 @@
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import zoom, rotate
+import warnings
 import SimpleITK as sitk
+
+
+def crop_rescale(image, slc, scale, order):
+    image = image[tuple(slc)]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        image = zoom(image, scale, order=order)
+    return image
+
+
+def to_array(a, ndim):
+    if not isinstance(a, list):
+        return a * np.ones(ndim)
+    else:
+        return a
 
 
 class RandomAugmentation(object):
@@ -255,6 +273,47 @@ class RandomElasticDeformationCoarsePerlinNoise(RandomElasticDeformation):
         n1 = (1 - t[:, :, :, 1]) * n01 + t[:, :, :, 1] * n11
 
         return (1 - t[:, :, :, 2]) * n0 + t[:, :, :, 2] * n1
+
+
+class RandomRotation(RandomAugmentation):
+    def __init__(self, allowed_planes, max_angle, min_angle=0, prob=0.5,
+                 cval=0, cval_target=0, cval_mask=0, order=3, segmentation=False):
+        super().__init__(prob)
+        self.allowed_planes = allowed_planes
+        self.max_angle = max_angle
+        self.min_angle = min_angle
+        self.cval = cval
+        self.cval_target = cval_target
+        self.cval_mask = cval_mask
+        self.order = order
+        self.segmentation = segmentation
+
+    def augment(self, image, target, sampling_mask):
+        for i, axes in enumerate(self.allowed_planes):
+            angle = np.random.choice([-1, 1]) * \
+                    (np.random.random() * (self.max_angle - self.min_angle) + self.min_angle)
+            image = rotate(image, angle, axes=tuple(a + 1 for a in axes), reshape=False,
+                           cval=self.cval, order=self.order)
+            if self.segmentation:
+                target = rotate(target, angle, axes=axes, reshape=False,
+                                cval=self.cval_target, order=self.order) if target is not None else None
+                sampling_mask = rotate(sampling_mask, angle, axes=axes, reshape=False,
+                                       cval=self.cval_mask, order=self.order) if sampling_mask is not None else None
+
+        return image, target, sampling_mask
+
+
+class RandomInvert(RandomAugmentation):
+    def __init__(self, prob=0.5):
+        super().__init__(prob)
+
+    def augment(self, image, target, sampling_mask):
+        if np.random.random_sample() > self.prob:
+            return image, target, sampling_mask
+
+        image = -image
+
+        return image, target, sampling_mask
 
 # class RandomAffineTransformation(Augmentation):
 #     def __init__(self, prob, max_xy_rot=np.pi / 4, max_xz_rot=np.pi / 6, max_yz_rot=np.pi / 6, max_scaling=.1,
