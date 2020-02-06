@@ -266,7 +266,7 @@ def intra_dims_check(dims_count, pixel=False, cols=None, verbose=True, html=Fals
     else:
         dim_type = 'Actual'
     suggested = False
-    if len(dims_count) > 1:
+    if len(dims_count) > 0:
         ret += get_bold_text(get_html_colour(' [FAILED]', 'red', html) + ' Intra Subject Image ('
                              + dim_type + ') Dimensions Check\n')
         suggested = True
@@ -276,7 +276,7 @@ def intra_dims_check(dims_count, pixel=False, cols=None, verbose=True, html=Fals
             ret += prefix + 'Image dimensions do not match in between images of the same subject\n'
             ret += prefix + 'Deepmedic requires all images of each subject to have the same dimensions.\n'
             ret += prefix + 'Subjects with different sized images:\n'
-            ret += print_list(dims_count, prefix)
+            ret += print_list(dims_count, prefix + ' ' * 10 + '· ')
 
     else:
         ret += get_bold_text(get_html_colour(' [PASSED]', 'green') + ' Intra Subject Image ('
@@ -398,11 +398,13 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
                                         progress=progress)
     ret = ''
 
+    print(intra_size_count, intra_dims_count)
+
     if intra_dims:
         aux_ret, suggested['intra_dimensions'] = intra_dims_check(intra_dims_count, pixel=True, html=html)
         ret += aux_ret
     if intra_sizes:
-        aux_ret, suggested['intra_size'] = intra_dims_check(intra_dims_count, html=html, cols=image_cols)
+        aux_ret, suggested['intra_size'] = intra_dims_check(intra_size_count, html=html, cols=image_cols)
         ret += aux_ret
     if pixs:
         aux_ret, suggested['spacing'] = pix_check(spacing_count, html=html)

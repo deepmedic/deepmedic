@@ -39,8 +39,8 @@ def get_save_name(image_path, output_dir, image_extension, base_dir=None, subj_i
 def get_channel_names(data_columns):
     channels = []
     for col in data_columns:
-        if col.startswith('Channel_'):
-            channels += col[len('Channel_'):]
+        if col.startswith('Channel_') or col == 'Image':
+            channels += [col]
     if not channels:
         channels = None
     return channels
@@ -50,7 +50,7 @@ def get_image_paths(row, channels):
     channel_paths = {}
     print(channels)
     for channel in channels:
-        channel_paths[channel] = row['Channel_' + channel]
+        channel_paths[channel] = row[channel]
 
     try:
         mask_path = row['Mask']
@@ -295,7 +295,7 @@ class PreprocConfigWindow(ConfigWindow):
 
             # resize (intra-subject)
             if resize_intra:
-                image
+                image.resample(ref_image=image.channels[resize_intra_col])
 
             # create  <--------------------------------------------------------- R E V I E W --------------------
             if create_mask:
