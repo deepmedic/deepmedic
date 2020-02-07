@@ -182,6 +182,8 @@ class ModelConfig(Config):
                                   "layer of the FC pathway to preserve output's shape equal to input's.\n"
                                   "Possible values: None: no padding, 'zero': pads with zeros, "
                                   "'mirror': pads by mirroring the edges of the feature maps.\n"
+                                  "NOTE: As many elements as the 'numberFMsPerLayerFC' PLUS 1, "
+                                  "for the final classification layer.\n"
                                   "Default: [None, None, ...] for all layers, which means no padding.")
     RESID_CONN_LAYERS_FC = \
         config_data.add_elem("layersWithResidualConnFC",
