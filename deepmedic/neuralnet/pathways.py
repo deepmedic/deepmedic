@@ -137,8 +137,8 @@ class Pathway(object):
                         conv_kernel_dims=conv_kernel_dims_per_layer[layer_i],
                         pool_prms=pool_prms_for_path[layer_i],
                         conv_w_init_method=conv_w_init_method,
-                        conv_pad_mode=conv_pad_mode_per_layer[layer_i],
-                        use_bn = use_bn_per_layer[layer_i],
+                        conv_pad_mode=conv_pad_mode_per_layer[layer_i] if len(conv_pad_mode_per_layer) > 0 else None,
+                        use_bn=use_bn_per_layer[layer_i],
                         moving_avg_length=moving_avg_length,
                         activ_func=activ_func_per_layer[layer_i],
                         dropout_rate=dropout_rate_per_layer[layer_i] if len(dropout_rate_per_layer) > 0 else 0
@@ -191,7 +191,7 @@ class SubsampledPathway(Pathway):
         return "SUBSAMPLED" + str(self.subs_factor())
 
     def calc_inp_dims_given_outp_after_upsample(self, outp_dims_in_hr):
-        outp_dims_in_lr = [int(ceil(outp_dims_in_hr[d]/ self.subs_factor()[d])) for d in range(3)]
+        outp_dims_in_lr = [int(ceil(int(outp_dims_in_hr[d])/ self.subs_factor()[d])) for d in range(3)]
         inp_dims_req = self.calc_inp_dims_given_outp(outp_dims_in_lr)
         return inp_dims_req
 
