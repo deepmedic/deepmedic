@@ -275,6 +275,83 @@ class RandomElasticDeformationCoarsePerlinNoise(RandomElasticDeformation):
         return (1 - t[:, :, :, 2]) * n0 + t[:, :, :, 2] * n1
 
 
+class RandomGaussian(RandomAugmentation):
+    def __init__(self, sigma, prob=0.5, random_sigma=False, sigma_min=0):
+        super().__init__(prob)
+        self.sigma = sigma
+        self.sigma_min = sigma_min
+        self.random_sigma = random_sigma
+
+    def augment(self, image, target, sampling_mask):
+        if self.random_sigma:
+            sigma = np.random.uniform(self.sigma_min, self.sigma)
+        else:
+            sigma = self.sigma
+
+        image = gaussian_filter(image, sigma)
+
+        return image, target, sampling_mask
+
+
+class RandomCropRescale(RandomAugmentation):
+    def __init__(self, prob, max_crop, min_crop=1, centred=False, segmentation=False, percent=False,
+                 uniform=True, order=3):
+        super().__init__(prob)
+        self.max_crop = max_crop
+        self.min_crop = min_crop
+        self.centred = centred
+        self.segmentation = segmentation
+        self.order = order
+        self.percent = percent
+        self.uniform = uniform
+
+    def augment(self, image, target, sampling_mask):
+        ndim = target.ndim
+        shape = np.array(target.shape)
+
+        max_crop = to_array(self.max_crop, ndim)
+        min_crop = to_array(self.min_crop, ndim)
+
+        if self.uniform:
+            crop_val = np.random.random() * (max_crop[0] - min_crop[0]) + min_crop[0]
+            crop = to_array(crop_val, ndim)
+        else:
+            crop = [np.random.random() * (n_crop_max - n_crop_min) + n_crop_min
+                    for n_crop_min, n_crop_max in zip(min_crop, max_crop)]
+
+        if self.percent:
+            crop = np.ceil([crop[i] * shape[i] for i in range(ndim)])
+
+        crop = np.array([min(crop[i], shape[i] - 1) for i in range(ndim)], dtype=int)
+
+        shape_crop = shape - crop
+        scale = np.array(1. * (shape / shape_crop))
+
+        if self.centred:
+            crop_left = np.floor(crop / 2)
+            crop_right = np.ceil(crop / 2)
+        else:
+            crop_left = [np.random.randint(n_crop) if n_crop > 0 else 0 for n_crop in crop]
+            crop_right = crop - crop_left
+
+        # get slc
+        slc = [slice(None)] * len(shape)
+        for axis in range(ndim):
+            if crop[axis] == 0:
+                slc[axis] = slice(shape[axis])
+            else:
+                slc[axis] = slice(crop_left[axis], -crop_right[axis])
+
+        # crop & rescale
+        image = np.stack([crop_rescale(channel, slc, scale, self.order) for channel in image])
+
+        if self.segmentation:
+            target = crop_rescale(target, slc, scale, self.order)
+            sampling_mask = crop_rescale(sampling_mask, slc, scale, self.order)
+
+        return image, target, sampling_mask
+
+
 class RandomRotation(RandomAugmentation):
     def __init__(self, allowed_planes, max_angle, min_angle=0, prob=0.5,
                  cval=0, cval_target=0, cval_mask=0, order=3, segmentation=False):
