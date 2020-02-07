@@ -53,6 +53,13 @@ class ModelConfig(Config):
                                   "the normal pathway.\n"
                                   "Each entry should be a sublist with 3 entries. These should specify "
                                   "the dimensions of the kernel at the corresponding layer.")
+    PAD_MODE_NORM = \
+        config_data.add_elem("padTypePerLayerNormal", description="Padding Type per Layer",
+                             info="Specify what type of padding (if any) to use in each convolutional "
+                                  "layer of the Normal pathway to preserve output's shape equal to input's.\n"
+                                  "Possible values: None: no padding, 'zero': pads with zeros, "
+                                  "'mirror': pads by mirroring the edges of the feature maps.\n"
+                                  "Default: [None, None, ...] for all layers, which means no padding.")
     RESID_CONN_LAYERS_NORM = \
         config_data.add_elem("layersWithResidualConnNormal", required=False,
                              description='Layers with Residual Connections',
@@ -112,6 +119,13 @@ class ModelConfig(Config):
                                   "different number of FMs, but care must be given if the number of layers "
                                   "is changed. In this case, kernel sizes should also be adjusted to "
                                   "achieve the same size of Rec. Field.")
+    PAD_MODE_SUBS = \
+        config_data.add_elem("padTypePerLayerSubsampled", description="Padding Type per Layer",
+                             info="Specify what type of padding (if any) to use in each convolutional "
+                                  "layer of the Subsampled pathway to preserve output's shape equal to input's.\n"
+                                  "Possible values: None: no padding, 'zero': pads with zeros, "
+                                  "'mirror': pads by mirroring the edges of the feature maps.\n"
+                                  "Default: [None, None, ...] for all layers, which means no padding.")
     SUBS_FACTOR = \
         config_data.add_elem("subsampleFactor", parent=USE_SUBSAMPLED,
                              description='Subsampling Factor',
@@ -154,13 +168,21 @@ class ModelConfig(Config):
                                   "(other than the classification layer) to add. "
                                   "The entries specify the number of Feature Maps to use.",
                              default=[])
-    KERN_DIM_1ST_FC = \
-        config_data.add_elem("kernelDimFor1stFcLayer", description='Kernel Dimensions for 1st Layer',
-                             info="Specify dimensions of the kernel in the first FC layer. This kernel "
-                                  "combines the features from multiple scales. Applies to the final "
-                                  "Classification layer if no hidden FC layers in network.\n"
-                                  "Note: convolution with this kernel retains the size of the FMs (input is padded).",
-                             default=[])
+    KERN_DIM_FC = \
+        config_data.add_elem("kernelDimPerLayerFC", description='Kernel Dimensions per Layer',
+                             info="Specify dimensions of kernels in the last hidden layers, "
+                                  "between concatenation of multi-scale features and the output SoftMax.\n"
+                                  "Note: Should have as many sublists as the number of layers in the path. "
+                                  "Equal to integers in list (numberFMsPerLayerFC), +1 for the final "
+                                  "classification layer.",
+                             default=[[1,1,1]])
+    PAD_MODE_FC = \
+        config_data.add_elem("padTypePerLayerFC", description="Padding Type per Layer",
+                             info="Specify what type of padding (if any) to use in each convolutional "
+                                  "layer of the FC pathway to preserve output's shape equal to input's.\n"
+                                  "Possible values: None: no padding, 'zero': pads with zeros, "
+                                  "'mirror': pads by mirroring the edges of the feature maps.\n"
+                                  "Default: [None, None, ...] for all layers, which means no padding.")
     RESID_CONN_LAYERS_FC = \
         config_data.add_elem("layersWithResidualConnFC",
                              description='Layers with Residual Connections',

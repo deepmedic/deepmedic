@@ -53,9 +53,7 @@ class TrainConfig(Config):
         config_data.add_elem("gtLabelsTraining", description="Ground Truth Labels", elem_type='File', required=True,
                              info='The path to a file which should list paths to the Ground Truth labels '
                                   'of each training case.')
-    
-    # ~~~~ Sampling (training) ~~~~~
-    config_data.set_curr_section('sampling_train', "Sampling (Training)")
+
 
     ROI_MASKS_TR = \
         config_data.add_elem("roiMasksTraining", description="RoI Masks", elem_type='File',
@@ -63,6 +61,9 @@ class TrainConfig(Config):
                                   "each training case.\n"
                                   "If ROI masks are provided, the training samples will be extracted only within it. "
                                   "Otherwise from whole volume.")
+
+    # ~~~~ Sampling (training) ~~~~~
+    config_data.set_curr_section('sampling_train', "Sampling (Training)")
 
     TYPE_OF_SAMPLING_TR = \
         config_data.add_elem("typeOfSamplingForTraining", widget_type="combobox",
@@ -474,9 +475,6 @@ class TrainConfig(Config):
         config_data.add_elem("saveIndividualFmsVal",
                              elem_type='bool',
                              parent=PERFORM_VAL_INFERENCE)
-    SAVE_4DIM_FMS_VAL = \
-        config_data.add_elem("saveAllFmsIn4DimImageVal",
-                             parent=PERFORM_VAL_INFERENCE)
     INDICES_OF_FMS_TO_SAVE_NORMAL_VAL = \
         config_data.add_elem("minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathwayVal",
                              parent=PERFORM_VAL_INFERENCE)
@@ -579,15 +577,49 @@ class TrainConfig(Config):
     # ========= GENERICS =========
     config_data.set_curr_section('generic', "Generic")
 
-    PAD_INPUT = \
-        config_data.add_elem("padInputImagesBool", elem_type='Bool', default=True,
-                             description="Pad Input Images",
-                             info="Pad images to fully convolve.")
     RUN_INP_CHECKS = \
         config_data.add_elem("run_input_checks", elem_type='Bool', default=True,
                              description="Run Input Checks",
                              info="Checks for format correctness of loaded input images. Can slow down the process.")
-    
+
+    PAD_INPUT = \
+        config_data.add_elem("padInputImagesBool", elem_type='Bool', description="Pad Input Images",
+                             info="Pad images to fully convolve.", default=True)
+
+    NORM_VERB_LVL = \
+        config_data.add_elem("norm_verbosity_lvl", widget_type='combobox', options=[0, 1, 2],
+                             description='Verbosity Level',
+                             info="Verbosity-level for logging info on intensity-normalization. "
+                                  "0: Nothing (default), 1: Per-subject, 2: Per-channel")
+    NORM_ZSCORE_PRMS = \
+        config_data.add_elem("norm_zscore_prms", widget_type='multiple',
+                             description="Z-Score Normalisation",
+                             options={
+                                 'apply_to_all_channels':
+                                     ConfigElem('apply_to_all_channels', description="Apply to All Channels",
+                                                elem_type='Bool',
+                                                info="True/False. Whether to do z-score normalization to ALL channels.",
+                                                default=False),
+                                 'apply_per_channel':
+                                     ConfigElem('apply_per_channel', description='Apply per Channel',
+                                                info="None, or a List with one boolean per channel. "
+                                                     "Whether to normalize specific channel.\n"
+                                                     "NOTE: If apply_to_all_channels is True, "
+                                                     "apply_per_channel MUST be None."),
+                                 'cutoff_percents':
+                                     ConfigElem('cutoff_percents', description="Cutoff Percentiles",
+                                                info="Cutoff at percentiles [float_low, float_high], "
+                                                     "values in [0.0 - 100.0])"),
+                                 'cutoff_times_std':
+                                     ConfigElem('cutoff_times_std', description="Cutoff Standard Deviation",
+                                                info="Cutoff intensities below/above [float_below, float_above] "
+                                                     "times std from the mean."),
+                                 'cutoff_below_mean':
+                                     ConfigElem('cutoff_below_mean', description="Cutoff Below Mean", elem_type='Bool',
+                                                info="True/False. Cutoff intensities below image mean. "
+                                                     "Useful to exclude air in brain MRI.")
+                             })
+
     # ======== DEPRECATED, backwards compatibility =======
     REFL_AUGM_PER_AXIS = \
         config_data.add_elem("reflectImagesPerAxis", advanced=True)

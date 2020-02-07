@@ -16,7 +16,7 @@ def x_entr( p_y_given_x_train, y_gt, weightPerClass, eps=1e-6 ):
     # weightPerClass is a vector with 1 element per class.
     
     #Weighting the cost of the different classes in the cost-function, in order to counter class imbalance.
-    log_p_y_given_x_train = tf.log( p_y_given_x_train + eps)
+    log_p_y_given_x_train = tf.math.log( p_y_given_x_train + eps)
     
     weightPerClass5D = tf.reshape(weightPerClass, shape=[1, tf.shape(p_y_given_x_train)[1], 1, 1, 1])
     weighted_log_p_y_given_x_train = log_p_y_given_x_train * weightPerClass5D
@@ -55,5 +55,18 @@ def dsc(p_y_given_x_train, y_gt, eps=1e-5):
     cost = 1. - av_class_dsc
     return cost
 
+def cost_L1(prms):
+    # prms: list of tensors
+    cost = 0
+    for prm in prms:
+        cost += tf.reduce_sum(tf.abs(prm))
+    return cost
 
+def cost_L2(prms) : #Called for L2 weigths regularisation
+    # prms: list of tensors
+    cost = 0
+    for prm in prms:
+        cost += tf.reduce_sum(prm ** 2)
+    return cost
+    
 

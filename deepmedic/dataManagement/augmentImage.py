@@ -13,7 +13,7 @@ import scipy.ndimage
 
 
 # Main function to call:
-def augment_images_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
+def augment_imgs_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
     # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
     # gt_lbls: np array of shape [x,y,z]. Can be None.
     # roi_mask: np array of shape [x,y,z]. Can be None.

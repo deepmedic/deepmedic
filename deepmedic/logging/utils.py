@@ -77,11 +77,21 @@ def getMeanPerColOf2dListExclNA(list2d, notApplicPattern) :
     return listWithMeanPerColumn
 
 
-
-def datetimeNowAsStr() :
+def datetime_now_str() :
     #datetime returns in the format: YYYY-MM-DD HH:MM:SS.millis but ':' is not supported for Windows' naming convention.
     dateTimeNowStr = str(datetime.datetime.now())
     dateTimeNowStr = dateTimeNowStr.replace(':','.')
     dateTimeNowStr = dateTimeNowStr.replace(' ','.')
     return dateTimeNowStr
 
+# TODO: Merge the two below
+def print_progress_step_tr_val(log, n_batches, n_batches_done, batch_size, prefix_str):
+    progress_step = max(1, n_batches // 5)
+    if n_batches_done == 0 or (n_batches_done % progress_step) == 0 or (n_batches_done == n_batches):
+        log.print3(prefix_str + " Processed " + str(n_batches_done) + "/" + str(n_batches) + " batches for this subepoch...")
+        
+def print_progress_step_test(log, n_batches, n_batches_done, batch_size, n_tiles_for_subj):
+    progress_step = max(1, n_batches // 5)
+    if n_batches_done == 0 or (n_batches_done % progress_step) == 0 or (n_batches_done == n_batches):
+        log.print3("Processed " + str(n_batches_done * batch_size) + "/" + str(n_tiles_for_subj) + " segments.")
+        
