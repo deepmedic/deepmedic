@@ -107,24 +107,6 @@ class RandomGammaCorrection(RandomAugmentation):
         return image, target, mask
 
 
-class NonLinearRandomHistogramDeformation(RandomHistogramDeformation):
-    def __init__(self, prob, range_min=-1., range_max=1., num_segments=5, shift_std=0.25, scale_std=0.25,
-                 allow_mirror=True):
-        super().__init__(prob, shift_std, scale_std, allow_mirror)
-        segments = np.linspace(range_min, range_max, num_segments + 1)
-        segments[-1] += 1  # ensure whole array gets distorted
-        self.segments = segments
-
-    def augment(self, image, target, mask):
-        new_image = np.zeros_like(image)
-        for i, _ in enumerate(self.segments[:-1]):
-            indices = np.logical_and(image >= self.segments[i], image < self.segments[i + 1])
-            image_segment, _, _ = super().augment(image, target, mask)
-            new_image[indices] = image_segment[indices]
-
-        return new_image, target, mask
-
-
 class RandomElasticDeformation(RandomAugmentation):
     """
     alpha: The amplitude of the noise;
