@@ -222,10 +222,9 @@ class ModelParameters(object) :
             
         #==FC Layers==
         self.numFMsInExtraFcs = cfg[cfg.N_FMS_FC] if cfg[cfg.N_FMS_FC] is not None else []
-        n_layers_fc = len(self.numFMsInExtraFcs)
         self.kernelDimensionsFc = cfg[cfg.KERN_DIM_FC] if cfg[cfg.KERN_DIM_FC] is not None else [[1,1,1]]
         assert len(self.kernelDimensionsFc) == (len(self.numFMsInExtraFcs) + 1), 'Need one Kernel-Dimensions per layer of FC path, equal to length of number-of-FMs-in-FC +1 (for classif layer)'
-        self.pad_mode_per_l_fc = cfg[cfg.PAD_MODE_FC] if cfg[cfg.PAD_MODE_FC] is not None else ['VALID']*n_layers_fc
+        self.pad_mode_per_l_fc = cfg[cfg.PAD_MODE_FC] if cfg[cfg.PAD_MODE_FC] is not None else ['VALID']*(len(self.numFMsInExtraFcs)+1)
         residConnAtLayersFc = cfg[cfg.RESID_CONN_LAYERS_FC] if cfg[cfg.RESID_CONN_LAYERS_FC] is not None else []
                                         
         #==Size of Image Segments ==
