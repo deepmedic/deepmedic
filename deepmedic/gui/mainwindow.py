@@ -41,9 +41,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.session_combobox.currentTextChanged.connect(self.enable_train_test)
 
         self.ui.model_config_path.setText(
-            '/vol/biomedic2/bgmarque/deepmedic-priv-bm/examples/configFiles/tinyCnn/model/modelConfig.cfg')
+            'examples/configFiles/tinyCnn/model/modelConfig.cfg')
         self.ui.train_config_path.setText(
-            '/vol/biomedic2/bgmarque/deepmedic-priv-bm/examples/configFiles/tinyCnn/train/trainConfig.cfg')
+            'examples/configFiles/tinyCnn/train/trainConfig.cfg')
 
         self.process = QtCore.QProcess(self)
         self.process.readyReadStandardOutput.connect(self.stdout_read)
