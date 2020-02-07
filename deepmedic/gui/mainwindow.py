@@ -41,9 +41,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.session_combobox.currentTextChanged.connect(self.enable_train_test)
 
         self.ui.model_config_path.setText(
-            '/vol/biomedic2/bgmarque/deepmedic/examples/configFiles/tinyCnn/model/modelConfig.cfg')
+            '/vol/biomedic2/bgmarque/deepmedic-priv-bm/examples/configFiles/tinyCnn/model/modelConfig.cfg')
         self.ui.train_config_path.setText(
-            '/vol/biomedic2/bgmarque/deepmedic/examples/configFiles/tinyCnn/train/trainConfig.cfg')
+            '/vol/biomedic2/bgmarque/deepmedic-priv-bm/examples/configFiles/tinyCnn/train/trainConfig.cfg')
 
         self.process = QtCore.QProcess(self)
         self.process.readyReadStandardOutput.connect(self.stdout_read)
@@ -116,7 +116,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # params = ['nohup', '/vol/biomedic2/bgmarque/deepmedic/deepMedicRun',
         #           '-model', model_arg, '-' + sess_type, train_test_arg, '-dev', dev_arg]
 
-        params = ['/vol/biomedic2/bgmarque/deepmedic/deepMedicRun',
+        # params = ['/vol/biomedic2/bgmarque/deepmedic-priv-bm/deepMedicRun',
+        #           '-model', model_arg, '-' + sess_type, train_test_arg, '-dev', dev_arg]
+
+        params = ['deepMedicRun',
                   '-model', model_arg, '-' + sess_type, train_test_arg, '-dev', dev_arg]
 
         if load_arg:
