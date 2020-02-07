@@ -149,7 +149,7 @@ def get_samples_for_subepoch(log,
                     try:
                         # timeout in case process for some reason never started (happens in py3)
                         (channs_samples_from_job_per_path,
-                         lbls_predicted_part_samples_from_job) = jobs[job_idx].get(timeout=30)
+                         lbls_predicted_part_samples_from_job) = jobs[job_idx].get(timeout=60)
                         for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
                             # concat does not copy.
                             channs_of_samples_per_path[pathway_i] += channs_samples_from_job_per_path[pathway_i]
@@ -186,8 +186,7 @@ def get_samples_for_subepoch(log,
 
     # Got all samples for subepoch. Now shuffle them, together segments and their labels.
     (channs_of_samples_per_path,
-     lbls_predicted_part_of_samples) = shuffle_samples(channs_of_samples_per_path,
-                                                                 lbls_predicted_part_of_samples)
+     lbls_predicted_part_of_samples) = shuffle_samples(channs_of_samples_per_path, lbls_predicted_part_of_samples)
     log.print3(sampler_id + " TIMING: Sampling for next [" + tr_or_val_str_log +
                "] lasted: {0:.1f}".format(time.time() - start_time_sampling) + " secs.")
 
@@ -196,8 +195,7 @@ def get_samples_for_subepoch(log,
     channs_of_samples_arr_per_path = [np.asarray(channs_of_samples_for_path, dtype="float32") for
                                       channs_of_samples_for_path in channs_of_samples_per_path]
 
-    lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples,
-                                                    dtype="int32")  # Could be int16 to save RAM?
+    lbls_predicted_part_of_samples_arr = np.asarray(lbls_predicted_part_of_samples, dtype="int32")
 
     return channs_of_samples_arr_per_path, lbls_predicted_part_of_samples_arr
 
@@ -330,7 +328,9 @@ def load_subj_and_sample(job_idx,
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
-
+    time_sample_idxs = 0
+    time_extr_samples = 0
+    time_augm_samples = 0
     str_samples_per_cat = " Done. Samples per category: "
     for cat_i in range(sampling_type.get_n_sampling_cats()):
         cat_str = sampling_type.get_sampling_cats_as_str()[cat_i]
@@ -344,6 +344,7 @@ def load_subj_and_sample(job_idx,
             assert n_samples_for_cat == 0
             continue # This should not be needed, the next func should also handle it. But whatever.
             
+        time_sample_idx0 = time.time()
         (idxs_sampl_centers,
          slice_idxs_sampl_segms) = sample_idxs_of_segments(log,
                                                            job_id,
@@ -351,13 +352,14 @@ def load_subj_and_sample(job_idx,
                                                            dims_hres_segment,
                                                            dims_of_scan,
                                                            sampling_map)
+        time_sample_idxs += time.time() - time_sample_idx0
         str_samples_per_cat += "[" + cat_str + ": " + str(len(idxs_sampl_centers[0])) + "/" + str(n_samples_for_cat) + "] "
-
+        
         # Use the just sampled coordinates of slices to actually extract the segments (data) from the subject's images.
-        time_augm_samples = 0
         for image_part_i in range(len(idxs_sampl_centers[0])):
             coord_center = idxs_sampl_centers[:, image_part_i]
             
+            time_extr_sample_0 = time.time()
             (channs_of_sample_per_path,
              lbls_predicted_part_of_sample) = extractSegmentGivenSliceCoords(train_val_or_test,
                                                                              cnn3d,
@@ -366,7 +368,8 @@ def load_subj_and_sample(job_idx,
                                                                              gt_lbl_img,
                                                                              inp_shapes_per_path,
                                                                              outp_pred_dims)
-
+            time_extr_samples += time.time() - time_extr_sample_0
+            
             # Augmentation of segments
             time_augm_sample_0 = time.time()
             (channs_of_sample_per_path,
@@ -384,6 +387,8 @@ def load_subj_and_sample(job_idx,
                "[Load: {0:.1f}".format(time_load) + "] "
                "[Preproc: {0:.1f}".format(time_prep) + "] " +
                "[Augm-Img: {0:.1f}".format(time_augm_img) + "] " +
+               "[Sample Coords: {0:.1f}".format(time_sample_idxs) + "] " +
+               "[Extract Sampl: {0:.1f}".format(time_extr_samples) + "] " +
                "[Augm-Samples: {0:.1f}".format(time_augm_samples) + "] secs")
     return (channs_of_samples_per_path, lbls_predicted_part_of_samples)
 
