@@ -104,7 +104,7 @@ class AugmenterAffineParams(AugmenterParams):
         return str(self._prms)
 
 
-class AugmenterAffine(object):
+class AugmenterAffine(object):  # NEEDS TO BE REDONE <-----------------------------------------------------------------
     def __init__(self, prob, max_rot_xyz, max_scaling, seed=None):
         self.prob = prob # Probability of applying the transformation.
         self.max_rot_xyz = max_rot_xyz
