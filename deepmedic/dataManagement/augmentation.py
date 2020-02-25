@@ -40,6 +40,10 @@ class RandomAugmentation(object):
     def augment(self, image, target, mask, wmaps):
         raise NotImplementedError
 
+    def get_attrs_str(self):
+        attrs = vars(self)
+        return '\t' + self.__class__.__name__ + '\n\t\t' + '\n\t\t'.join("%s: %s" % item for item in attrs.items())
+
 
 class RandomAffineTransformation(RandomAugmentation):
     def __init__(self, prob, max_rot_xyz=(45., 45., 45.), max_scaling=.1, seed=None,
@@ -48,7 +52,8 @@ class RandomAffineTransformation(RandomAugmentation):
         super().__init__(prob)
         self.max_rot_xyz = max_rot_xyz
         self.max_scaling = max_scaling
-        self.rng = np.random.RandomState(seed)
+        self.seed = seed
+        self.rng = np.random.RandomState(self.seed)
         # For calls.
         self.interp_order_imgs = interp_order_imgs
         self.interp_order_lbls = interp_order_lbls

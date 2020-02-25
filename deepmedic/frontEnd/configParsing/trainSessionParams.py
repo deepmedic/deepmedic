@@ -11,6 +11,7 @@ from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiv
     parseFileLinesInList, check_and_adjust_path_to_ckpt
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
+import deepmedic.dataManagement.augmentation as augmentation
 
 
 def get_default(value, default, required=False):
@@ -25,6 +26,10 @@ def get_default(value, default, required=False):
 
 def get_config_value(cfg, elem):
     return get_default(cfg[elem.name], elem.default, elem.required)
+
+
+def get_augmentation(cfg_entry):
+    return [getattr(augmentation, name)(**kwargs) for name, kwargs in cfg_entry.items()]
 
 
 class TrainSessionParameters(object):
@@ -291,6 +296,11 @@ class TrainSessionParameters(object):
             for key in cfg[cfg.AUGM_SAMPLE_PRMS_TR]:
                 # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
                 self.augm_sample_prms_tr[key] = cfg[cfg.AUGM_SAMPLE_PRMS_TR][key]
+
+        self.augmentation_image = \
+            get_augmentation(cfg[cfg.AUGMENTATION_IMAGE]) if cfg[cfg.AUGMENTATION_IMAGE] is not None else []
+        self.augmentation_sample = \
+            get_augmentation(cfg[cfg.AUGMENTATION_SAMPLE]) if cfg[cfg.AUGMENTATION_SAMPLE] is not None else []
 
         # ===================VALIDATION========================
         self.val_on_samples_during_train = \
@@ -624,6 +634,18 @@ class TrainSessionParameters(object):
         logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
 
         logPrint("~~Data Augmentation During Training~~")
+        logPrint("Image-level Augmentation (new):")
+        if self.augmentation_image == []:
+            logPrint("None")
+        else:
+            for aug in self.augmentation_image:
+                logPrint(aug.get_attrs_str())
+        logPrint("Sample-level Augmentation (new):")
+        if self.augmentation_sample == []:
+            logPrint("None")
+        else:
+            for aug in self.augmentation_sample:
+                logPrint(aug.get_attrs_str())
         logPrint("Image level augmentation:")
         logPrint("Parameters for image-level augmentation: " + str(self.augm_img_prms_tr))
         if self.augm_img_prms_tr is not None:

@@ -53,6 +53,9 @@ class TrainConfig(Config):
     # ~~~~ Data Augmentation~~~
     AUGM_IMG_PRMS_TR = "augm_img_prms_tr"
     AUGM_SAMPLE_PRMS_TR = "augm_sample_prms_tr"
+    AUGMENTATION_SAMPLE = "augmentation_sample"
+    AUGMENTATION_IMAGE = "augmentation_image"
+
     
     # ============== VALIDATION ===================
     PERFORM_VAL_SAMPLES = "performValidationOnSamplesThroughoutTraining"
