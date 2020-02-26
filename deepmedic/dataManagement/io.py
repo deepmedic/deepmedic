@@ -12,7 +12,7 @@ import nibabel as nib
 import numpy as np
 
 
-def loadVolume(filepath):
+def load_volume(filepath):
     # Loads the image specified by filepath.
     # Returns a 3D np array.
     # The image can be 2D, but will be returned as 3D, with dimensions =[x, y, 1]

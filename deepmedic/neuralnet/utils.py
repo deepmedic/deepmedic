@@ -6,37 +6,20 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-import os
 import numpy as np
+from math import ceil
 
-
-def calculateSubsampledImagePartDimensionsFromImagePartSizePatchSizeAndSubsampleFactor(imagePartDimensions, patchDimensions, subsampleFactor) :
-    """
-    This function gives you how big your subsampled-image-part should be, so that it corresponds to the correct number of central-voxels in the normal-part. Currently, it's coupled with the patch-size of the normal-scale. I.e. the subsampled-patch HAS TO BE THE SAME SIZE as the normal-scale, and corresponds to subFactor*patchsize in context.
-    When the central voxels are not a multiple of the subFactor, you get ceil(), so +1 sub-patch. When the CNN repeats the pattern, it is giving dimension higher than the central-voxels of the normal-part, but then they are sliced-down to the correct number (in the cnn_make_model function, right after the repeat).        
-    This function works like this because of getImagePartFromSubsampledImageForTraining(), which gets a subsampled-image-part by going 1 normal-patch back from the top-left voxel of a normal-scale-part, and then 3 ahead. If I change it to start from the top-left-CENTRAL-voxel back and front, I will be able to decouple the normal-patch size and the subsampled-patch-size. 
-    """
-    #if patch is 17x17, a 17x17 subPart is cool for 3 voxels with a subsampleFactor. +2 to be ok for the 9x9 centrally classified voxels, so 19x19 sub-part.
-    subsampledImagePartDimensions = []
-    for rcz_i in range(len(imagePartDimensions)) :
-        centralVoxelsInThisDimension = imagePartDimensions[rcz_i] - patchDimensions[rcz_i] + 1
-        centralVoxelsInThisDimensionForSubsampledPart = int(ceil(centralVoxelsInThisDimension*1.0/subsampleFactor[rcz_i]))
-        sizeOfSubsampledImagePartInThisDimension = patchDimensions[rcz_i] + centralVoxelsInThisDimensionForSubsampledPart - 1
-        subsampledImagePartDimensions.append(sizeOfSubsampledImagePartInThisDimension)
-    return subsampledImagePartDimensions
-
-def calcRecFieldFromKernDimListPerLayerWhenStrides1(kernDimPerLayerList) :
-    if not kernDimPerLayerList : #list is []
+def calc_rec_field_of_path_given_kern_dims_w_stride_1(kern_dims): # Used by modelParams.py to find default input-shape. TODO: Remove
+    if not kern_dims : #list is []
         return 0
     
-    numberOfDimensions = len(kernDimPerLayerList[0])
-    receptiveField = [1]*numberOfDimensions
-    for dimension_i in range(numberOfDimensions) :
-        for layer_i in range(len(kernDimPerLayerList)) :
-            receptiveField[dimension_i] += kernDimPerLayerList[layer_i][dimension_i] - 1
-    return receptiveField
-
-
+    n_dims = len(kern_dims[0])
+    receptive_field = [1]*n_dims
+    for dim_idx in range(n_dims) :
+        for layer_idx in range(len(kern_dims)) :
+            receptive_field[dim_idx] += kern_dims[layer_idx][dim_idx] - 1
+    return receptive_field
+    
 def checkRecFieldVsSegmSize(receptiveFieldDim, segmentDim) :
     numberOfRFDim = len(receptiveFieldDim)
     numberOfSegmDim = len(segmentDim)

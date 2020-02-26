@@ -302,8 +302,8 @@ def parseDetailedMetricsFromThisLog( logFile, classesFromThisLog, movingAverSube
     # Each class-sublist has 4 entries, one for each of the plotted metrics Acc,Sens,Spec,DSC-samples. NOT FOR DSC-Full-Seg cause it's not reported per class/subepoch.
     regExprForEachClassAndMetric = [ [], [] ] #[0] val, [1] train
     sentencesToLookForEachClassAndMetric = [ [], [] ] #[0] val, [1] train
-    regExprForDscFullSeg = ".*ACCURACY:.*Validation.*The Per-Class average DICE Coefficients over all subjects are:.*DICE3="  # Special case, because it's not reported per class.
-    sentenceForDscFullSeg = "DICE3="
+    regExprForDscFullSeg = ".*ACCURACY:.*Validation.*The Per-Class average DICE Coefficients over all subjects are:.*DICE2="  # Special case, because it's not reported per class.
+    sentenceForDscFullSeg = "DICE2="
     
     for val0orTrain1 in [0,1] :
         for classInt in classesFromThisLog :

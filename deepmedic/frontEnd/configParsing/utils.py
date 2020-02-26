@@ -95,4 +95,3 @@ def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
     
 
     
-    

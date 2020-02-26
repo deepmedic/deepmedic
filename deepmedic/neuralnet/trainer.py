@@ -26,17 +26,15 @@ class Trainer(object):
     # This acts as a learning-rate scheduler and as a manager of the optimizer.
     # In case of multiple optimizers, either this must become a manager of multiple optimizers+schedules, ...
     # ... or I ll need one trainer per optimizer and a new trainer-manager. 
-    def __init__(   self,
-                    log,
-                    indicesOfLayersPerPathwayTypeToFreeze,
-                    losses_and_weights,
-                    L1_reg_weight,
-                    L2_reg_weight,
-                    # Cost schedules
-                    reweight_classes_in_cost,
-                    
-                    network_to_train
-                    ):
+    def __init__(self,
+                 log,
+                 indicesOfLayersPerPathwayTypeToFreeze,
+                 losses_and_weights,
+                 L1_reg_weight,
+                 L2_reg_weight,
+                 # Cost schedules
+                 reweight_classes_in_cost,
+                 network_to_train):
         
         log.print3("Building Trainer.")
         
@@ -59,9 +57,9 @@ class Trainer(object):
         # State Ops
         # TODO: All the ops should be constructed and kept into one place (eg dict), and then can be easily called from outside...
         # ... INSTEAD of called a public function such as set_lr or change_lr.
-        self._tf_plchld_float32 = tf.placeholder( dtype="float32", name="tf_plchld_float32") # convenience feed for tf.assign
-        self._tf_plchld_int32 = tf.placeholder( dtype="int32", name="tf_plchld_int32") # convenience feed for tf.assign
-        self._op_increase_num_epochs_trained = tf.assign( self._num_epochs_trained_tfv, self._num_epochs_trained_tfv + 1)
+        self._tf_plchld_float32 = tf.compat.v1.placeholder( dtype="float32", name="tf_plchld_float32") # convenience feed for tf.assign
+        self._tf_plchld_int32 = tf.compat.v1.placeholder( dtype="int32", name="tf_plchld_int32") # convenience feed for tf.assign
+        self._op_increase_num_epochs_trained = tf.compat.v1.assign( self._num_epochs_trained_tfv, self._num_epochs_trained_tfv + 1)
         
         
         ########### Optimizer ###########
@@ -95,12 +93,9 @@ class Trainer(object):
         self._op_assign_epoch_with_top_mean_val_acc_tvf = None
         self._op_assign_last_epoch_lr_lowered = None
         
-        # Setup any parameters needed
-        self._setup_costs(log) # Needs to be run with initialized self._num_epochs_trained_tfv
-        
         
     ############## All the logic wrt cost / regularizers should be done here ##############
-    def _setup_costs(self, log):
+    def compute_costs(self, log, p_y_given_x): # Needs to be run with initialized self._num_epochs_trained_tfv
         if not self._total_cost is None:
             log.print3("ERROR: Problem in Trainer. It was called to setup the total cost, but it was not None."+\
                        "\n\t This should not happen. Setup should be called only once.\n Exiting!")
@@ -111,17 +106,17 @@ class Trainer(object):
         y_gt = self._net._output_gt_tensor_feeds['train']['y_gt']
         if "xentr" in self._losses_and_weights and self._losses_and_weights["xentr"] is not None:
             log.print3("COST: Using cross entropy with weight: " +str(self._losses_and_weights["xentr"]))
-            w_per_cl_vec = self._compute_w_per_class_vector_for_xentr( self._net.num_classes, y_gt )
-            cost += self._losses_and_weights["xentr"] * cfs.x_entr( self._net.finalTargetLayer.p_y_given_x_train, y_gt, w_per_cl_vec )
+            w_per_cl_vec = self._compute_w_per_class_vector_for_xentr(self._net.num_classes, y_gt)
+            cost += self._losses_and_weights["xentr"] * cfs.x_entr(p_y_given_x, y_gt, w_per_cl_vec)
         if "iou" in self._losses_and_weights and self._losses_and_weights["iou"] is not None:
             log.print3("COST: Using iou loss with weight: " +str(self._losses_and_weights["iou"]))
-            cost += self._losses_and_weights["iou"] * cfs.iou( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
+            cost += self._losses_and_weights["iou"] * cfs.iou(p_y_given_x, y_gt)
         if "dsc" in self._losses_and_weights and self._losses_and_weights["dsc"] is not None:
             log.print3("COST: Using dsc loss with weight: " +str(self._losses_and_weights["dsc"]))
-            cost += self._losses_and_weights["dsc"] * cfs.dsc( self._net.finalTargetLayer.p_y_given_x_train, y_gt )
+            cost += self._losses_and_weights["dsc"] * cfs.dsc(p_y_given_x, y_gt)
             
-        cost_L1_reg = self._L1_reg_weight * self._net._get_L1_cost()
-        cost_L2_reg = self._L2_reg_weight * self._net._get_L2_cost()        
+        cost_L1_reg = self._L1_reg_weight * cfs.cost_L1(self._net.params_for_L1_L2_reg())
+        cost_L2_reg = self._L2_reg_weight * cfs.cost_L2(self._net.params_for_L1_L2_reg())
         cost = cost + cost_L1_reg + cost_L2_reg
         
         self._total_cost = cost
@@ -213,7 +208,7 @@ class Trainer(object):
             if self._reweight_classes_in_cost["type"] == "freq":
                 # Frequency re-weighting
                 num_lbls_in_ygt = tf.cast( tf.reduce_prod(tf.shape(y_gt)), dtype="float32" )
-                num_lbls_in_ygt_per_c = tf.bincount( arr = y_gt, minlength=num_classes, maxlength=num_classes, dtype="float32" ) # without the min/max, length of vector can change.
+                num_lbls_in_ygt_per_c = tf.math.bincount( arr = y_gt, minlength=num_classes, maxlength=num_classes, dtype="float32" ) # without the min/max, length of vector can change.
                 y1 = (1./(num_lbls_in_ygt_per_c + eps)) * (num_lbls_in_ygt / num_classes)
                 
             elif self._reweight_classes_in_cost["type"] == "per_c":
@@ -304,7 +299,7 @@ class Trainer(object):
             div_lr_by = self._lr_sched_params['predef']['div_lr_by']
             epochs_boundaries = [ tf.cast(e, tf.int32) for e in self._lr_sched_params['predef']['epochs'] ]
             lr_values = [ ( self._init_lr_tfv / pow(div_lr_by, i) ) for i in range( 1+len(epochs_boundaries) ) ]
-            curr_lr = tf.train.piecewise_constant(self._num_epochs_trained_tfv, boundaries = epochs_boundaries, values = lr_values)
+            curr_lr = tf.compat.v1.train.piecewise_constant(self._num_epochs_trained_tfv, boundaries = epochs_boundaries, values = lr_values)
         
         elif self._lr_sched_params['type'] == 'auto' :
             self._learning_rate_tfv = tf.Variable( self._init_lr_tfv, dtype="float32", trainable=False, name="curr_lr_tfv")
@@ -312,10 +307,10 @@ class Trainer(object):
             self._epoch_with_top_mean_val_acc_tvf = tf.Variable(0, dtype=self._num_epochs_trained_tfv.dtype.as_numpy_dtype, trainable=False, name="ep_top_mean_val_acc")
             self._last_epoch_lr_got_lowered_tvf = tf.Variable(0, dtype="float32", trainable=False, name="last_ep_lr_lowered")
             
-            self._op_assign_new_lr = tf.assign(self._learning_rate_tfv, self._tf_plchld_float32)
-            self._op_assign_top_mean_val_acc_tfv = tf.assign(self._top_mean_val_acc_tfv, self._tf_plchld_float32)
-            self._op_assign_epoch_with_top_mean_val_acc_tvf = tf.assign(self._epoch_with_top_mean_val_acc_tvf, self._tf_plchld_int32)
-            self._op_assign_last_epoch_lr_lowered = tf.assign(self._last_epoch_lr_got_lowered_tvf, self._tf_plchld_float32)
+            self._op_assign_new_lr = tf.compat.v1.assign(self._learning_rate_tfv, self._tf_plchld_float32)
+            self._op_assign_top_mean_val_acc_tfv = tf.compat.v1.assign(self._top_mean_val_acc_tfv, self._tf_plchld_float32)
+            self._op_assign_epoch_with_top_mean_val_acc_tvf = tf.compat.v1.assign(self._epoch_with_top_mean_val_acc_tvf, self._tf_plchld_int32)
+            self._op_assign_last_epoch_lr_lowered = tf.compat.v1.assign(self._last_epoch_lr_got_lowered_tvf, self._tf_plchld_float32)
             
             # The LR will be changed during the routine.training, by a call to function self.run_lr_sched_updates( sessionTf )
             curr_lr = self._learning_rate_tfv

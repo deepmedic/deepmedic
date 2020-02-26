@@ -68,6 +68,16 @@ def createFolderForSessionCnnModels(folderForSessionCnnModels) :
         os.mkdir(folderForSessionCnnModels)
         print("\t>>Created folder to save session's cnn-models as they get trained: ", folderForSessionCnnModels)
 
+def createFolderForTensorboard(folderForTensorboard):
+    if not os.path.exists(folderForTensorboard) :
+        os.mkdir(folderForTensorboard)
+        print("\t>>Created folder to log tensorboard metrics/events: ", folderForTensorboard)
+
+def createFolderForSessionTensorboard(folderForSessionTensorboard) :
+    if not os.path.exists(folderForSessionTensorboard) :
+        os.mkdir(folderForSessionTensorboard)
+        print("\t>>Created folder to log session's tensorboard metrics/events: ", folderForSessionTensorboard)
+        
 def makeFoldersNeededForTrainingSession(absMainOutputFolder, sessionName):
     #Create folders for saving the prediction images:
     print("Creating necessary folders for training session...")
@@ -78,26 +88,28 @@ def makeFoldersNeededForTrainingSession(absMainOutputFolder, sessionName):
         
     folderForCnnModels = absMainOutputFolder + "/saved_models/"
     createFolderForCnnModels(folderForCnnModels)
-    
     folderForSessionCnnModels = folderForCnnModels + "/" + sessionName + "/"
     createFolderForSessionCnnModels(folderForSessionCnnModels)
     
     folderForPredictions = absMainOutputFolder + "/predictions"
     createFolderForPredictions(folderForPredictions)
-    
     folderForSessionResults = folderForPredictions + "/" + sessionName
     createFolderForSessionResults(folderForSessionResults)
-    
     folderForSegmAndProbMaps = folderForSessionResults + "/predictions/"
     createFolderForSegmAndProbMaps(folderForSegmAndProbMaps)
-    
     folderForFeatures = folderForSessionResults + "/features/"
     createFolderForFeatures(folderForFeatures)
+    
+    folderForTensorboard = absMainOutputFolder + "/tensorboard/"
+    createFolderForTensorboard(folderForTensorboard)
+    folderForSessionTensorboard = folderForTensorboard + "/" + sessionName + "/"
+    createFolderForSessionTensorboard(folderForSessionTensorboard)
     
     return [folderForLogs,
             folderForSessionCnnModels,
             folderForSegmAndProbMaps,
-            folderForFeatures]
+            folderForFeatures,
+            folderForSessionTensorboard]
     
 
 def makeFoldersNeededForCreateModelSession(absMainOutputFolder, modelName):

@@ -3,6 +3,11 @@ DeepMedic
 
 ### News
 
+14 Nov 2019 (v0.8.0):
+* Logging metrics to Tensorboard.
+* Capability to normalize input on-the-fly (Disabled by default). Only z-score norm for now.
+* Refactoring & aesthetics in training, testing and sampling.
+
 11 June 2019 (v0.7.4):
 * Added augmentation via affine transforms, rotation & scaling. Off by default (slows down training).
 * Redistribute samples of non-existent class & code refactoring in sampling.
@@ -28,29 +33,6 @@ DeepMedic
 * Updated the default config in ./examples/config/deepmedic with three pathways.
 * Refactored/reorganized the code.
 
-28 Oct 2017 (v0.6.1):
-* Supporting Theano 0.10beta (v0.9 was found unstable with some cuDnn versions).
-* Refactored/reorganized the modules.
-* Updated installation process in README, requiring >= theano-0.10.
-
-26 Mar 2017 (v0.6):
-* Functionality for transfering parameters and finetuning. See Sec 3.2 below.
-* Code refactored to facilitate upcoming extension.
-* **Important**: "Optimization" related configuration parameters moved from modelConfig.cfg to trainConfig.cfg. To reuse old config files, please adjust them to the new format. This should be easy, as all parameters that were moved are under the "Optimization" tagged block of the new trainConfig.cfg.
-
-14 Nov 2016 (v0.5.4):
-* Original configuration moved to deepMedicOriginal. Updated config now in deepMedic.
-* More memory efficient testing. CNN code has been refactored. Minor fixes.
-
-10 Oct 2016 (v0.5.3):
-* Sampling refactored. Now possible to use weighted-maps to sample each class.
-
-4 Aug 2016 (v0.5.2):
-* Code in Layer-classes cleaned/commented. Residual Connections enabled. Possible to specify kernel size at FC1. 
-
-14 July 2016 (v0.5.1):
-* Master branch was updated with better monitoring of training progress and a better plotting script. This version is not backwards compatible. CPickle will fail loading previously trained models from previous versions of the code.
-* Previous version of master branch tagged as v0.5. Use this if you wish to continue working with previously trained models.
 
 ### Introduction
 
@@ -207,6 +189,10 @@ You can **plot the training progress** using an accompanying script, which parse
 ```
 python plotTrainingProgress.py examples/output/logs/trainSessionWithValidTiny.txt -d
 ```
+Moreover, by default (variable `tensorboard_log=True` in train-config) the training & validation metrics are also logged for visualisation via **TensorBoard**. Required log-files found at `examples/output/tensorboard/trainSessionWithValidTiny` (non-human readable). See [Tensorboard documentation](https://www.tensorflow.org/tensorboard/get_started) for its use. TensorBoard can be activated via the following command:
+```
+tensorboard --logdir=./examples/output/tensorboard/trainSessionWithValidTiny
+```
 
 Now lets **test** with the trained model (replace *DATE+TIME*):
 ```cshell
@@ -250,7 +236,7 @@ If the process does not start on the GPU as required, please ensure you have *CU
 
 Previously we briefly discussed how to quickly run a pre-set example with a tiny CNN, just so you can check whether everything works on your system. In this section we will go through the process in a bit more detail. We also explain the main parameters that should be specified in the configuration files, in order for you to tailor the network and process to your needs. 
 
-The **.cfg configuration files** in `examples/configFiles/deepMedicOriginal/` display the parameters used in our work in [[1](#citations)]. In an attempt to make it simpler for the user, we also provide a cleaner version of the configuration files, named with "Less", where many parameters are "hidden". They are internally passed values that worked well in our experiments. Finally, the config files in `examples/configFiles/deepMedic/` provide a network configuration that we will be gradually updating with components that seem to improve the overall performance of the system.
+The **.cfg configuration files** in `examples/configFiles/deepMedic/` holds the parameters for creating and training DeepMedic. In an attempt to support a broader range of applications and users, the config files in `examples/configFiles/deepMedic/` are gradually updated with components that seem to improve the overall performance of the system. (Note: These parameters are similar but not same as what was used in our work in [[1](#citations)]. Original config as used in the paper can be found in archived github-branch 'dm_theano_v0.6.1_depr')
 
 **_Note:_** The config files are parsed as python scripts, thus follow **python syntax**. Any commented-out configuration variables are internally given **default values**.
 
@@ -285,7 +271,7 @@ The main parameters to specify the CNN model are the following.
 - numberFMsPerLayerNormal: A list which needs to have as many entries as the number of layers in the normal pathway that  we want to create. Each entry is a number, which defines the number of feature-maps in the corresponding layer ([30, 40, 40, 50] in fig1)
 - kernelDimPerLayerNormal: The dimensions of the kernels per layer. ([[5,5,5], [5,5,5], [5,5,5], [5,5,5]] in Fig.1.) 
 - useSubsampledPathway: Setting this to “True” creates a subsampled-pathway, with the same architecture as the normal one. “False” for single-scale processing with the normal pathway only. Additional parameters allow tailoring this pathway further.
-- numberFMsPerLayerFC: The final layers of the two pathways are contatenated. This parameter allows the addition of extra hidden FC layers before the classification layer. The number of entries specified how many extra layers, the number of each entry specifies the number of FMs in each layer. Final classification layer not included ([[150], [150]] in Fig.1).
+- numberFMsPerLayerFC: The final layers of the high and low resolution pathways are contatenated. The concatenated feature maps are then processed by a Final Classification (FC) pathway. This parameter allows the addition of hidden layers in the FC path before the classification layer. The number of entries specifies how many hidden layers. The number of each entry specifies the number of FMs in each layer. Final classification layer is not included ([[150], [150]] in Fig.1).
 
 *Image Segments and Batch Sizes:*
 
@@ -333,7 +319,8 @@ For each epoch {
 ```
 The validation on samples and the full segmention of the scans of validation subjects are optional.
 
-**Plotting Training Progress**
+
+**Plotting Training Progress via MatPlotLib**
 
 The progress of training can be plotted by using the accompanying `plotTrainingProgress.py` script, which parses the training logs for the reported validation and training accuracy metrics. A common usage example is:
 ```
@@ -341,6 +328,18 @@ python plotTrainingProgress.py examples/output/logs/trainSession\_1.txt examples
        -d -m 20 -c 1
 ```
 Try option `-h` for help. Here, two logs/experiments are specified, to plot metrics for both to compare. Any number is allowed. `-d` requests a *detailed* plot with more metrics. `-m 20` runs a moving average over 20 subepochs for smoothing the curves. `-c 1` requests plotting class with label=1. Note that in case of multiple labels, `-c 0` actually reports the metrics NOT for the background class (as we did not find this useful in most applications), but rather for the *whole-foreground* class, which can be imagined as if all labels except 0 (assumed background) are fused into one.
+
+Metrics logged are both from training and validation. Most are computed on *samples* (which are *sub-volumes*, aka patches). Exception is the *DSC-on-whole-scans* (aka *full-segm*), that is computed by segmenting the whole validation volumes every few epochs (if specified).
+
+
+**Plotting Training Progress via TensorBoard**
+
+Moreover, if the train-config file specifies this functionality enabled (variable `tensorboard_log=True` in the train-config-files), training metrics are also logged such that they can be visualised using Tensorflow's **TensorBoard**. See [Tensorboard documentation](https://www.tensorflow.org/tensorboard/get_started) for use. The files that keep logged metrics in the required format for TensorBoard are at `examples/output/tensorboard/name-of-training-session/`. It can be activated via the command:
+```
+tensorboard --logdir=./examples/output/tensorboard/name-of-training-session
+```
+Metrics logged for tensorboard are the same as those logged in the main log .txt file and visualised via the above described script. 
+
 
 **Resuming an Interrupted Training Session**
 
@@ -372,6 +371,7 @@ Common practice with neural networks is to take a network pre-trained on one tas
 - sessionName: The name of the session. Used to save the trained models, logs and results.
 - folderForOutput: The main output folder.
 - cnnModelFilePath: path to a saved CNN model (in case one wants to resume training. Disregarded if -load is used.).
+- tensorboard_log: Specifies (True/False) whether to log metrics for visualisation (See Section 3.2) via Tensorboard (takes space on disk).
 
 *Input for Training:*
 
@@ -409,7 +409,6 @@ Common practice with neural networks is to take a network pre-trained on one tas
 #### 3.3. Testing
 
 When a training epoch is finished, the model’s state is saved. These models can be used for segmenting previously unseen scans. A testing configuration file has to be specified. Testing can be started in two ways.
-
 
 a) A model is specified straight from the command line.
 ```
@@ -449,7 +448,7 @@ Note that this testing procedure is similar to the full-inference procedure perf
 
 ### 4. How to run DeepMedic on your data
 
-In `examples/configFiles/deepMedicOriginal/` we provide the configuration of the network as employed in our work in [1], and very similar to the model employed in our winning contribution for the ISLES 2015 challenge [2]. The config files named with “Less” are “cleaner” versions to make them more readable, where many parameters are omitted/hidden (they are passed *default* values internally). The configuration of these two models is exactly the same. In `examples/configFiles/deepMedic/` we provide a configuration which we will be gradually updating with any components we find generally well behaved. You are adviced to use the latter, bearing in mind that behavior might slightly change between version (hopefully for the best!). 
+The **.cfg configuration files** in `examples/configFiles/deepMedic/` provides parameters for creating and training DeepMedic. These parameters are similar (but not same) as what was used in our work in [[1](#citations)] and our winning contribution for the ISLES 2015 challenge [2]. In order to support a broader range of applications and users, the config files in `examples/configFiles/deepMedic/` are gradually updated with components that seem to improve the overall performance of the system. (Note: Original config as used in the mentioned papers can be found in archived github-branch 'dm_theano_v0.6.1_depr')
 
 To run the DeepMedic on your data, the following are the minimum steps you need to follow:
 
