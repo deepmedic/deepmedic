@@ -762,7 +762,8 @@ class TrainSessionParameters(object):
                 self.batchsize_val_whole,
                 
                 # -------Data Augmentation-------
-                self.augm_img_prms_tr,
+                # self.augm_img_prms_tr,
+                self.augmentation_image,
                 self.augm_sample_prms_tr,
 
                 # --- Validation on whole volumes ---

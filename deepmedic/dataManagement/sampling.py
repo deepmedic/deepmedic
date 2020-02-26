@@ -23,6 +23,7 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.preprocessing import pad_imgs_of_case, normalize_int_of_subj, calc_border_int_of_3d_img
 from deepmedic.dataManagement.augmentSample import augment_sample
 from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
+from deepmedic.dataManagement.augmentation import apply_augmentations
 
 
 # Order of calls:
@@ -308,14 +309,22 @@ def load_subj_and_sample(job_idx,
     
     # Augment at image level:
     time_augm_0 = time.time()
+    # (channels,
+    #  gt_lbl_img,
+    #  roi_mask,
+    #  wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
+    #                                                  gt_lbl_img,
+    #                                                  roi_mask,
+    #                                                  wmaps_to_sample_per_cat,
+    #                                                  augm_img_prms)
     (channels,
      gt_lbl_img,
      roi_mask,
-     wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
-                                                     gt_lbl_img,
-                                                     roi_mask,
-                                                     wmaps_to_sample_per_cat,
-                                                     augm_img_prms)
+     wmaps_to_sample_per_cat) = apply_augmentations(augm_img_prms,
+                                                    channels,
+                                                    gt_lbl_img,
+                                                    roi_mask,
+                                                    wmaps_to_sample_per_cat)
     time_augm_img = time.time() - time_augm_0
 
     # Sampling of segments (sub-volumes) from an image.

@@ -19,6 +19,7 @@ def augment_imgs_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
     # roi_mask: np array of shape [x,y,z]. Can be None.
     # wmaps_per_cat: List of np.arrays (floats or ints), weightmaps for sampling. Can be None.
     # prms: None (for no augmentation) or Dictionary with parameters of each augmentation type. }
+
     if prms is not None:
         (channels,
         gt_lbls,

@@ -3,6 +3,7 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage import zoom, rotate
 import warnings
 import SimpleITK as sitk
+import scipy.ndimage
 
 
 def crop_rescale(image, slc, scale, order):
@@ -19,6 +20,14 @@ def to_array(a, ndim):
         return a * np.ones(ndim)
     else:
         return a
+
+
+def apply_augmentations(augs, image, target, mask, wmaps):
+    if augs is not None:
+        for aug in augs:
+            image, target, mask, wmaps = aug(image, target, mask, wmaps)
+
+    return image, target, mask, wmaps
 
 
 class RandomAugmentation(object):
@@ -99,16 +108,21 @@ class RandomAffineTransformation(RandomAugmentation):
             cval = np.min(image)
             mode = 'constant'
 
-        # For recentering
-        centre_coords = 0.5 * np.asarray(image.shape, dtype=np.int32)
-        c_offset = centre_coords - centre_coords.dot(transf_mtx)
+        new_image = np.array(image.shape)
+        print(new_image.shape)
+        print(new_image[1].shape)
 
-        new_image = scipy.ndimage.affine_transform(image,
-                                                   transf_mtx.T,
-                                                   c_offset,
-                                                   order=interp_order,
-                                                   mode=mode,
-                                                   cval=cval)
+        for img_i in range(len(image)):
+            # For recentering
+            centre_coords = 0.5 * np.asarray(image[img_i].shape, dtype=np.int32)
+            c_offset = centre_coords - centre_coords.dot(transf_mtx)
+
+            new_image[img_i] = scipy.ndimage.affine_transform(image[img_i],
+                                                              transf_mtx.T,
+                                                              c_offset,
+                                                              order=interp_order,
+                                                              mode=mode,
+                                                              cval=cval)
         return new_image
 
     def augment(self, image, target, mask, wmaps):
