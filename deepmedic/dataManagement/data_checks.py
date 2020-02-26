@@ -363,14 +363,10 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
         image_cols = [col for col in filelist.columns if col.startswith('Channel_') or col in valid_cols]
         all_files = [item for sublist in filelist[image_cols].values.tolist() for item in sublist]
         suggested['base_dir'] = os.path.dirname(os.path.commonprefix(all_files))
-        ret = ''
         # check if all files exist
         missing_files = []
-        empty_fields = 0
         for fn in all_files:
-            if fn == '':
-                empty_fields += 1
-            elif not os.path.isfile(fn):
+            if not os.path.isfile(fn):
                 missing_files += [fn]
         if missing_files:
             prefix = ' ' * (len('[PASSED]') + 2)
@@ -387,10 +383,6 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
 
             return ret, suggested
 
-        if empty_fields:
-            ret += get_bold_text(get_html_colour('[WARNING]', 'orange', html) + ' ' +
-                                 str(empty_fields) + ' EMPTY FIELDS IN THE CSV.\n')
-
     if progress is not None:
         progress.bar.setMaximum(len(filelist))
 
@@ -404,6 +396,9 @@ def run_checks(filelist, csv=False, pixs=False, dims=False, dtypes=False, dirs=F
                                         do_intra_size=intra_sizes, do_intra_dims=intra_dims,
                                         disable_tqdm=disable_tqdm, tqdm_text='Running Image and Pixel Dimension Checks',
                                         progress=progress)
+    ret = ''
+
+    print(intra_size_count, intra_dims_count)
 
     if intra_dims:
         aux_ret, suggested['intra_dimensions'] = intra_dims_check(intra_dims_count, pixel=True, html=html)
