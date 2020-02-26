@@ -22,10 +22,25 @@ def to_array(a, ndim):
         return a
 
 
-def apply_augmentations(augs, image, target, mask, wmaps):
+def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
     if augs is not None:
-        for aug in augs:
-            image, target, mask, wmaps = aug(image, target, mask, wmaps)
+        if image.__class__ == list:
+            for i in range(len(image)):
+                for aug in augs:
+                    image_tmp, target_tmp, mask_tmp, wmaps_tmp = aug(image[i],
+                                                                     target[i] if target is not None else None,
+                                                                     mask[i] if mask is not None else None,
+                                                                     wmaps[i] if wmaps is not None else None)
+                    image[i] = image_tmp
+                    if target is not None:
+                        target[i] = target_tmp
+                    if mask is not None:
+                        mask[i] = mask_tmp
+                    if wmaps is not None:
+                        wmaps[i] = wmaps_tmp
+        else:
+            for aug in augs:
+                image, target, mask, wmaps = aug(image, target, mask, wmaps)
 
     return image, target, mask, wmaps
 
@@ -52,6 +67,98 @@ class RandomAugmentation(object):
     def get_attrs_str(self):
         attrs = vars(self)
         return '\t' + self.__class__.__name__ + '\n\t\t' + '\n\t\t'.join("%s: %s" % item for item in attrs.items())
+
+
+class RandomHistogramDistortion(RandomAugmentation):
+    def __init__(self, prob, shift=None, scale=None):
+        super().__init__(prob)
+        self.shift = shift
+        self.scale = scale
+
+    def augment(self, image, target, mask, wmaps):
+        n_channs = image.shape[0]
+        if self.shift is None:
+            shift_per_chan = 0.
+        elif self.shift['std'] != 0:  # np.random.normal does not work for an std==0.
+            shift_per_chan = np.random.normal(self.shift['mu'], self.shift['std'], [n_channs, 1, 1, 1])
+        else:
+            shift_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * self.shift['mu']
+
+        if self.scale is None:
+            scale_per_chan = 1.
+        elif self.scale['std'] != 0:
+            scale_per_chan = np.random.normal(self.scale['mu'], self.scale['std'], [n_channs, 1, 1, 1])
+        else:
+            scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * self.scale['mu']
+
+        # Intensity augmentation
+        image = (image + shift_per_chan) * scale_per_chan
+
+        return image, target, mask, wmaps
+
+
+class RandomFlip(RandomAugmentation):
+    def __init__(self, prob=1., prob_flip_axes=None):
+        super().__init__(prob)
+        if prob_flip_axes is None:
+            self.prob_flip_axes = [1] * 3
+        else:
+            self.prob_flip_axes = prob_flip_axes
+
+    def augment(self, image, target, mask, wmaps):
+        for axis_idx in range(len(image[0].shape)):  # 3 dims
+            flip = np.random.choice(a=(True, False), size=1,
+                                    p=(self.prob_flip_axes[axis_idx], 1. - self.prob_flip_axes[axis_idx]))
+            if flip:
+                for path_idx in range(len(image)):
+                    image[path_idx] = np.flip(image[path_idx], axis=axis_idx + 1)  # + 1 because dim [0] is channels.
+                target = np.flip(target, axis=axis_idx) if target is not None else None
+                mask = np.flip(mask, axis=axis_idx) if mask is not None else None
+                wmaps = np.flip(wmaps, axis=axis_idx) if wmaps is not None else None
+
+        return image, target, mask, wmaps
+
+
+class RandomRotation90(RandomAugmentation):
+    def __init__(self, prob=1., prob_rot_90=None):
+        super().__init__(prob)
+        if prob_rot_90 is None:
+            self.prob_rot_90 = {
+                'xy': {'0': 1, '90': 1, '180': 1, '270': 1},
+                'yz': {'0': 1, '90': 1, '180': 1, '270': 1},
+                'xz': {'0': 1, '90': 1, '180': 1, '270': 1}
+            }
+        else:
+            self.prob_rot_90 = prob_rot_90
+
+    def augment(self, image, target, mask, wmaps):
+        for key, plane_axes in zip(['xy', 'yz', 'xz'], [(0, 1), (1, 2), (0, 2)]):
+            probs_plane = self.prob_rot_90[key]
+
+            if probs_plane is None:
+                continue
+
+            assert len(probs_plane) == 4  # rotation 0, rotation 90 degrees, 180, 270.
+            # +1 cause [0] is channel. Image/patch must be isotropic.
+            assert image.shape[1 + plane_axes[0]] == image.shape[1 + plane_axes[1]]
+
+            # Normalize probs
+            sum_p = probs_plane['0'] + probs_plane['90'] + probs_plane['180'] + probs_plane['270']
+            if sum_p == 0:
+                continue
+            for rot_k in probs_plane:
+                probs_plane[rot_k] /= sum_p  # normalize p to 1.
+
+            p_rot_90_x0123 = (probs_plane['0'], probs_plane['90'], probs_plane['180'], probs_plane['270'])
+            rot_90_xtimes = np.random.choice(a=(0, 1, 2, 3), size=1, p=p_rot_90_x0123)
+            for path_idx in range(len(image)):
+                image[path_idx] = np.rot90(image[path_idx], k=rot_90_xtimes,
+                                           axes=[axis + 1 for axis in plane_axes])  # + 1 cause [0] is channels.
+            target = np.rot90(target, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
+            mask = np.rot90(mask, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
+            wmaps = np.rot90(wmaps, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
+
+        return image, target, mask, wmaps
 
 
 class RandomAffineTransformation(RandomAugmentation):
@@ -112,10 +219,6 @@ class RandomAffineTransformation(RandomAugmentation):
             image = np.expand_dims(image, axis=0)
 
         new_image = np.array(image, copy=True)
-        print(new_image.shape)
-        print(new_image[0].shape)
-
-        print(image.shape)
 
         for img_i in range(len(image)):
             # For recentering
@@ -141,7 +244,6 @@ class RandomAffineTransformation(RandomAugmentation):
                                            self.cval)
 
         if mask is not None:
-            print('doing mask')
             mask = self._apply_transformation(mask,
                                               transf_mtx,
                                               self.interp_order_roi,
@@ -149,7 +251,6 @@ class RandomAffineTransformation(RandomAugmentation):
                                               self.cval)
 
         if target is not None:
-            print('doing target')
             target = self._apply_transformation(target,
                                                 transf_mtx,
                                                 self.interp_order_lbls,
@@ -157,7 +258,6 @@ class RandomAffineTransformation(RandomAugmentation):
                                                 self.cval)
 
         if wmaps is not None:
-            print('doing wmaps')
             wmaps = self._apply_transformation(target,
                                                transf_mtx,
                                                self.interp_order_wmaps,

@@ -381,10 +381,14 @@ def load_subj_and_sample(job_idx,
             
             # Augmentation of segments
             time_augm_sample_0 = time.time()
+            # (channs_of_sample_per_path,
+            #  lbls_predicted_part_of_sample) = augment_sample(channs_of_sample_per_path,
+            #                                                  lbls_predicted_part_of_sample,
+            #                                                  augm_sample_prms)
             (channs_of_sample_per_path,
-             lbls_predicted_part_of_sample) = augment_sample(channs_of_sample_per_path,
-                                                             lbls_predicted_part_of_sample,
-                                                             augm_sample_prms)
+             lbls_predicted_part_of_sample, _, _) = apply_augmentations(augm_sample_prms,
+                                                                        channs_of_sample_per_path,
+                                                                        lbls_predicted_part_of_sample)
             time_augm_samples += time.time() - time_augm_sample_0
             
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):

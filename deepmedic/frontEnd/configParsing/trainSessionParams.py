@@ -764,7 +764,8 @@ class TrainSessionParameters(object):
                 # -------Data Augmentation-------
                 # self.augm_img_prms_tr,
                 self.augmentation_image,
-                self.augm_sample_prms_tr,
+                self.augmentation_sample,
+                # self.augm_sample_prms_tr,
 
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,
