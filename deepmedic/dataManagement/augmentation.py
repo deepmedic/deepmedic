@@ -108,9 +108,14 @@ class RandomAffineTransformation(RandomAugmentation):
             cval = np.min(image)
             mode = 'constant'
 
-        new_image = np.array(image.shape)
+        while image.ndim < 4:
+            image = np.expand_dims(image, axis=0)
+
+        new_image = np.array(image, copy=True)
         print(new_image.shape)
-        print(new_image[1].shape)
+        print(new_image[0].shape)
+
+        print(image.shape)
 
         for img_i in range(len(image)):
             # For recentering
@@ -123,7 +128,8 @@ class RandomAffineTransformation(RandomAugmentation):
                                                               order=interp_order,
                                                               mode=mode,
                                                               cval=cval)
-        return new_image
+
+        return np.squeeze(new_image)
 
     def augment(self, image, target, mask, wmaps):
         transf_mtx = self._get_random_transformation()
@@ -135,6 +141,7 @@ class RandomAffineTransformation(RandomAugmentation):
                                            self.cval)
 
         if mask is not None:
+            print('doing mask')
             mask = self._apply_transformation(mask,
                                               transf_mtx,
                                               self.interp_order_roi,
@@ -142,6 +149,7 @@ class RandomAffineTransformation(RandomAugmentation):
                                               self.cval)
 
         if target is not None:
+            print('doing target')
             target = self._apply_transformation(target,
                                                 transf_mtx,
                                                 self.interp_order_lbls,
@@ -149,6 +157,7 @@ class RandomAffineTransformation(RandomAugmentation):
                                                 self.cval)
 
         if wmaps is not None:
+            print('doing wmaps')
             wmaps = self._apply_transformation(target,
                                                transf_mtx,
                                                self.interp_order_wmaps,
