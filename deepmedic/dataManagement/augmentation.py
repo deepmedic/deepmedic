@@ -24,23 +24,25 @@ def to_array(a, ndim):
 
 def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
     if augs is not None:
-        if image.__class__ == list:
-            for i in range(len(image)):
-                for aug in augs:
-                    image_tmp, target_tmp, mask_tmp, wmaps_tmp = aug(image[i],
-                                                                     target[i] if target is not None else None,
-                                                                     mask[i] if mask is not None else None,
-                                                                     wmaps[i] if wmaps is not None else None)
-                    image[i] = image_tmp
-                    if target is not None:
-                        target[i] = target_tmp
-                    if mask is not None:
-                        mask[i] = mask_tmp
-                    if wmaps is not None:
-                        wmaps[i] = wmaps_tmp
-        else:
-            for aug in augs:
-                image, target, mask, wmaps = aug(image, target, mask, wmaps)
+        # if image.__class__ == list:
+        #     print('list')
+        #     for i in range(len(image)):
+        #         for aug in augs:
+        #             image_tmp, target_tmp, mask_tmp, wmaps_tmp = aug(image[i],
+        #                                                              target[i] if target is not None else None,
+        #                                                              mask[i] if mask is not None else None,
+        #                                                              wmaps[i] if wmaps is not None else None)
+        #             image[i] = image_tmp
+        #             if target is not None:
+        #                 target[i] = target_tmp
+        #             if mask is not None:
+        #                 mask[i] = mask_tmp
+        #             if wmaps is not None:
+        #                 wmaps[i] = wmaps_tmp
+        # else:
+        #     print('not list')
+        for aug in augs:
+            image, target, mask, wmaps = aug(image, target, mask, wmaps)
 
     return image, target, mask, wmaps
 
@@ -76,7 +78,7 @@ class RandomHistogramDistortion(RandomAugmentation):
         self.scale = scale
 
     def augment(self, image, target, mask, wmaps):
-        n_channs = image.shape[0]
+        n_channs = image[0].shape[0]
         if self.shift is None:
             shift_per_chan = 0.
         elif self.shift['std'] != 0:  # np.random.normal does not work for an std==0.
@@ -92,7 +94,8 @@ class RandomHistogramDistortion(RandomAugmentation):
             scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * self.scale['mu']
 
         # Intensity augmentation
-        image = (image + shift_per_chan) * scale_per_chan
+        for path_idx in range(len(image)):
+            image[path_idx] = (image[path_idx] + shift_per_chan) * scale_per_chan
 
         return image, target, mask, wmaps
 
@@ -101,12 +104,12 @@ class RandomFlip(RandomAugmentation):
     def __init__(self, prob=1., prob_flip_axes=None):
         super().__init__(prob)
         if prob_flip_axes is None:
-            self.prob_flip_axes = [1] * 3
+            self.prob_flip_axes = tuple([1] * 3)
         else:
             self.prob_flip_axes = prob_flip_axes
 
     def augment(self, image, target, mask, wmaps):
-        for axis_idx in range(len(image[0].shape)):  # 3 dims
+        for axis_idx in range(len(image[0].shape) - 1):  # 3 dims ( -1 because dim [0] refers to the channels)
             flip = np.random.choice(a=(True, False), size=1,
                                     p=(self.prob_flip_axes[axis_idx], 1. - self.prob_flip_axes[axis_idx]))
             if flip:
@@ -140,7 +143,7 @@ class RandomRotation90(RandomAugmentation):
 
             assert len(probs_plane) == 4  # rotation 0, rotation 90 degrees, 180, 270.
             # +1 cause [0] is channel. Image/patch must be isotropic.
-            assert image.shape[1 + plane_axes[0]] == image.shape[1 + plane_axes[1]]
+            # assert image.shape[1 + plane_axes[0]] == image.shape[1 + plane_axes[1]]
 
             # Normalize probs
             sum_p = probs_plane['0'] + probs_plane['90'] + probs_plane['180'] + probs_plane['270']
@@ -155,8 +158,8 @@ class RandomRotation90(RandomAugmentation):
                 image[path_idx] = np.rot90(image[path_idx], k=rot_90_xtimes,
                                            axes=[axis + 1 for axis in plane_axes])  # + 1 cause [0] is channels.
             target = np.rot90(target, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
-            mask = np.rot90(mask, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
-            wmaps = np.rot90(wmaps, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
+            mask = np.rot90(mask, k=rot_90_xtimes, axes=plane_axes) if mask is not None else None
+            wmaps = np.rot90(wmaps, k=rot_90_xtimes, axes=plane_axes) if wmaps is not None else None
 
         return image, target, mask, wmaps
 

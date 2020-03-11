@@ -317,6 +317,7 @@ def load_subj_and_sample(job_idx,
     #                                                  roi_mask,
     #                                                  wmaps_to_sample_per_cat,
     #                                                  augm_img_prms)
+
     (channels,
      gt_lbl_img,
      roi_mask,
@@ -351,7 +352,7 @@ def load_subj_and_sample(job_idx,
             log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_str +
                         "] samples from this subject!")
             assert n_samples_for_cat == 0
-            continue # This should not be needed, the next func should also handle it. But whatever.
+            continue  # This should not be needed, the next func should also handle it. But whatever.
             
         time_sample_idx0 = time.time()
         (idxs_sampl_centers,
