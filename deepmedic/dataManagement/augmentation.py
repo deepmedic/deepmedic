@@ -329,12 +329,13 @@ class RandomGammaCorrection(RandomAugmentation):
         self.gamma_std = gamma_std
 
     def augment(self, image, target, mask, wmaps):
-        num_channels = image.shape[0]
+        num_channels = image[0].shape[0]
         # gamma correction must be performed in the range of 0 to 1
-        image = (image - self.range_min) / (self.range_max - self.range_min)
-        gamma = np.random.normal(1, self.gamma_std, num_channels)
-        image = np.power(image.T, gamma).T
-        image = image * (self.range_max - self.range_min) + self.range_min
+        for i in range(len(image)):
+            image[i] = (image[i] - self.range_min) / (self.range_max - self.range_min)
+            gamma = np.random.normal(1, self.gamma_std, num_channels)
+            image[i] = np.power(image[i].T, gamma).T
+            image[i] = image[i] * (self.range_max - self.range_min) + self.range_min
         return image, target, mask, wmaps
 
 
