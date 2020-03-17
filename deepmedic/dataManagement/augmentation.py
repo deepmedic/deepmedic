@@ -368,7 +368,7 @@ class RandomElasticDeformation(RandomAugmentation):
 
     def augment(self, image, target, mask, wmaps):
 
-        shape = image.shape[1:]
+        shape = image[0].shape[1:]
         if shape != self.patch_shape:
             self.grid = [g.astype(np.int32) for g in np.meshgrid(*[np.arange(s) for s in shape], indexing='ij')]
             self.patch_shape = shape
@@ -382,7 +382,8 @@ class RandomElasticDeformation(RandomAugmentation):
             target = target.ravel()[indices].reshape(shape) if target is not None else None
             mask = mask.ravel()[indices].reshape(shape) if mask is not None else None
             wmaps.ravel()[indices].reshape(shape) if wmaps is not None else None
-            image = np.stack([channel.ravel()[indices].reshape(shape) for channel in image])
+            for i in range(len(image)):
+                image[i] = np.stack([channel.ravel()[indices].reshape(shape) for channel in image[i]])
         except IndexError:
             return image, target, mask, wmaps
 
