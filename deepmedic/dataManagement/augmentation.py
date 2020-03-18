@@ -322,20 +322,21 @@ class RandomHistogramDeformation(RandomAugmentation):
 
 
 class RandomGammaCorrection(RandomAugmentation):
-    def __init__(self, prob, range_min=-1., range_max=1., gamma_std=.1):
+    def __init__(self, prob, gamma_std=.1):
         super().__init__(prob)
-        self.range_min = range_min
-        self.range_max = range_max
         self.gamma_std = gamma_std
 
     def augment(self, image, target, mask, wmaps):
         num_channels = image[0].shape[0]
         # gamma correction must be performed in the range of 0 to 1
         for i in range(len(image)):
-            image[i] = (image[i] - self.range_min) / (self.range_max - self.range_min)
+            image_min = np.min(image[i])
+            image_max = np.max(image[i])
+            image[i] = (image[i] - image_min) / (image_max - image_min)
             gamma = np.random.normal(1, self.gamma_std, num_channels)
             image[i] = np.power(image[i].T, gamma).T
-            image[i] = image[i] * (self.range_max - self.range_min) + self.range_min
+            image[i] = image[i] * (image_max - image_min) + image_min
+
         return image, target, mask, wmaps
 
 
