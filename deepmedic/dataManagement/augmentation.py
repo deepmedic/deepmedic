@@ -587,8 +587,9 @@ class RandomRotation(RandomAugmentation):
         for i, axes in enumerate(self.allowed_planes):
             angle = np.random.choice([-1, 1]) * \
                     (np.random.random() * (self.max_angle - self.min_angle) + self.min_angle)
-            image = rotate(image, angle, axes=tuple(a + 1 for a in axes), reshape=False,
-                           cval=self.cval, order=self.order)
+            for i in range(len(image)):
+                image[i] = rotate(image[i], angle, axes=tuple(a + 1 for a in axes), reshape=False,
+                                  cval=self.cval, order=self.order)
             if self.segmentation:
                 target = rotate(target, angle, axes=axes, reshape=False,
                                 cval=self.cval_target, order=self.order) if target is not None else None
