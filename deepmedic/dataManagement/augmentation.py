@@ -572,7 +572,7 @@ class RandomCropRescale(RandomAugmentation):
 
 class RandomRotation(RandomAugmentation):
     def __init__(self, allowed_planes, max_angle, min_angle=0, prob=0.5,
-                 cval=0, cval_target=0, cval_mask=0, order=3, segmentation=False):
+                 cval=0, cval_target=0, cval_mask=0, order=3):
         super().__init__(prob)
         self.allowed_planes = allowed_planes
         self.max_angle = max_angle
@@ -581,7 +581,6 @@ class RandomRotation(RandomAugmentation):
         self.cval_target = cval_target
         self.cval_mask = cval_mask
         self.order = order
-        self.segmentation = segmentation
 
     def augment(self, image, target, mask, wmaps):
         for i, axes in enumerate(self.allowed_planes):
@@ -590,13 +589,12 @@ class RandomRotation(RandomAugmentation):
             for i in range(len(image)):
                 image[i] = rotate(image[i], angle, axes=tuple(a + 1 for a in axes), reshape=False,
                                   cval=self.cval, order=self.order)
-            if self.segmentation:
-                target = rotate(target, angle, axes=axes, reshape=False,
-                                cval=self.cval_target, order=self.order) if target is not None else None
-                mask = rotate(mask, angle, axes=axes, reshape=False,
-                              cval=self.cval_mask, order=self.order) if mask is not None else None
-                wmaps = rotate(wmaps, angle, axes=axes, reshape=False,
-                               cval=self.cval_mask, order=self.order) if mask is not None else None
+            target = rotate(target, angle, axes=axes, reshape=False,
+                            cval=self.cval_target, order=self.order) if target is not None else None
+            mask = rotate(mask, angle, axes=axes, reshape=False,
+                          cval=self.cval_mask, order=self.order) if mask is not None else None
+            wmaps = rotate(wmaps, angle, axes=axes, reshape=False,
+                           cval=self.cval_mask, order=self.order) if mask is not None else None
 
         return image, target, mask, wmaps
 
