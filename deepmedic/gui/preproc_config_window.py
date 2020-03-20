@@ -139,7 +139,7 @@ class PreprocConfigWindow(ConfigWindow):
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resample_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit,
                                'preproc_pixelSpacing_lineedit').setText(str(self.dchecks_sug['spacing']))
-            if self.dchecks_sug['intra_size'] is not None:
+            if self.dchecks_sug['intra_size']:
                 self.findChild(QtWidgets.QCheckBox, 'preproc_resizeIntraSubject_checkbox').setChecked(True)
                 self.findChild(QtWidgets.QLineEdit, 'preproc_resizeIntraColumn_lineedit'). \
                     setText(self.dchecks_sug['intra_size'])
@@ -326,11 +326,7 @@ class PreprocConfigWindow(ConfigWindow):
                     new_image_name = add_sufix(channel_save_names[channel], suffix)
                     print(new_image_name)
                     save_nifti(image.channels[channel].open(), new_image_name)
-                    if not channel == 'Image':
-                        full_channel = 'Channel_' + channel
-                    else:
-                        full_channel = channel
-                    image_list.at[i, full_channel] = new_image_name
+                    image_list.at[i, channel] = new_image_name
 
                 if image.mask:
                     new_mask_name = add_sufix(mask_save_name, mask_suffix)
