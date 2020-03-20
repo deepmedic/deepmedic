@@ -108,6 +108,29 @@ def greater_than(size1, size2):
     return compare
 
 
+def get_resample_params(img, origin=None, spacing=None, direction=None, size=None, standard=False):
+    if spacing is None:
+        if standard:
+            spacing = (1., 1., 1.)
+        else:
+            spacing = img.get_spacing()
+    if size is None:
+        size = get_new_size(img.get_size(), spacing, img.get_spacing())
+    num_dims = len(size)
+    if origin is None:
+        if standard:
+            origin = np.zeros(num_dims)
+        else:
+            origin = img.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
+    if direction is None:
+        if standard:
+            direction = np.identity(num_dims).flatten()
+        else:
+            direction = img.get_direction()
+
+    return origin, spacing, direction, size
+
+
 class NiftiImage(object):
 
     def __init__(self, filename=None, mask=None, target=None, image=None, channel_names=None):
@@ -303,56 +326,44 @@ class NiftiImage(object):
     def resample(self, origin=None, spacing=None, direction=None, size=None, standard=False,
                  save=False, filename=None, copy=False, ref_image=None, ref_channel=None):
 
+        if ref_channel and ref_channel in self.channels.keys():
+            ref_image = self.channels[ref_channel]
+            # get transformation parameters
+        if ref_image:
+            size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
+            if not size:
+                size = size_rsp
+            if not spacing:
+                spacing = spacing_rsp
+            if not direction:
+                direction = direction_rsp
+            if not origin:
+                origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
+
         # apply transformation
         if self.channels is not None:
             resampled = {}
-            if ref_channel and ref_channel in self.channels.keys():
-                ref_image = self.channels[ref_channel]
             for channel_name in self.channel_names:
                 resampled[channel_name], _, _ = \
                     self.channels[channel_name].resample(origin, spacing, direction, size, standard,
                                                          save, filename, copy, ref_image, None)
         else:
-            # get transformation parameters
-            if ref_image:
-                size_rsp, spacing_rsp, direction_rsp, origin_rsp = ref_image.get_resample_parameters()
-                if not size:
-                    size = size_rsp
-                if not spacing:
-                    spacing = spacing_rsp
-                if not direction:
-                    direction = direction_rsp
-                if not origin:
-                    origin = origin_rsp  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
-                    # origin = origin_rsp
-            else:
-                if spacing is None:
-                    if standard:
-                        spacing = (1., 1., 1.)
-                    else:
-                        spacing = self.get_spacing()
-                if size is None:
-                    size = get_new_size(self.get_size(), spacing, self.get_spacing())
-                num_dims = len(size)
-                if origin is None:
-                    if standard:
-                        origin = np.zeros(num_dims)
-                    else:
-                        origin = self.get_origin()  # get_new_origin(self.get_origin(), spacing, self.get_spacing())
-                if direction is None:
-                    if standard:
-                        direction = np.identity(num_dims).flatten()
-                    else:
-                        direction = self.get_direction()
+            (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self, origin, spacing,
+                                                                             direction, size, standard)
 
-            resampled = self.apply_resample(origin, spacing, direction, size)
+            resampled = self.apply_resample(origin_t, spacing_t, direction_t, size_t)
 
         if self.mask:
-            resampled_mask = self.mask.apply_resample(origin, spacing, direction, size)
+            (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self.mask, origin, spacing,
+                                                                             direction, size, standard)
+            resampled_mask = self.mask.apply_resample(origin_t, spacing_t, direction_t, size_t)
         else:
             resampled_mask = None
+
         if self.target:
-            resampled_target = self.target.apply_resample(origin, spacing, direction, size)
+            (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self.target, origin, spacing,
+                                                                             direction, size, standard)
+            resampled_target = self.target.apply_resample(origin_t, spacing_t, direction_t, size_t)
         else:
             resampled_target = None
 
@@ -366,7 +377,7 @@ class NiftiImage(object):
                 self.mask.image = resampled_mask
                 self.mask.reader = self.mask.image
             if self.target:
-                self.target.image = resampled_mask
+                self.target.image = resampled_target
                 self.target.reader = self.target.image
 
         return resampled, resampled_mask, resampled_target
