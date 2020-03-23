@@ -169,5 +169,55 @@ class PreprocConfig(Config):
                              info="File format to save the masks in. "
                                   "Default is to replicate the type of the input images.")
 
+    THRESHOLD = \
+        config_data.add_elem("thresh", description='Threshold Images', elem_type='Bool',
+                             info='Cutoff Images using thresholds.')
+
+    THRESH_LOW_CUT = \
+        config_data.add_elem("threshLowCut", description='     Lower Threshold', parent=THRESHOLD,
+                             info="Low bound threshold. Leave empty if using only a high bound threshold."
+                                  "This can be a list (one threshold per channel) or a single value "
+                                  "(which will be used for all channels)\n"
+                                  "[Default: None]")
+
+    THRESH_HIGH_CUT = \
+        config_data.add_elem("threshHighCut", description='     Higher Threshold', parent=THRESHOLD,
+                             info="High bound threshold. Leave empty if using only a low bound threshold."
+                                  "This can be a list (one threshold per channel) or a single value "
+                                  "(which will be used for all channels)\n"
+                                  "[Default: None]")
+
+    NORM_RANGE = \
+        config_data.add_elem("normRange", description='Normalise to a Range', elem_type='Bool',
+                             info='Normalise to a range')
+
+    LOW_RANGE_ORIG = \
+        config_data.add_elem("lowRangeOrig", description='     Original Low Bound', parent=NORM_RANGE,
+                             info="Low bound threshold. Leave empty if using only a high bound threshold. "
+                                  "This can be a list (one threshold per channel) or a single value "
+                                  "(which will be used for all channels)\n"
+                                  "[Default: None]")
+
+    HIGH_RANGE_ORIG = \
+        config_data.add_elem("highRangeOrig", description='     Original High Bound', parent=NORM_RANGE,
+                             info="High bound threshold. Leave empty if using only a low bound threshold. "
+                                  "This can be a list (one threshold per channel) or a single value "
+                                  "(which will be used for all channels)\n"
+                                  "[Default: None]")
+
+    LOW_RANGE_TARGET = \
+        config_data.add_elem("lowRangeTarget", description='     Preprocessed Low Bound', parent=NORM_RANGE,
+                             info="Low bound threshold. Leave empty if using only a high bound threshold. "
+                                  "This can be a list (one threshold per channel) or a single value "
+                                  "(which will be used for all channels)",
+                             default=1)
+
+    HIGH_RANGE_TARGET = \
+        config_data.add_elem("highRangeTarget", description='     Preprocessed High Bound', parent=NORM_RANGE,
+                             info="High bound threshold. Leave empty if using only a low bound threshold. "
+                                  "This can be a list (one threshold per channel) or a single value "
+                                  "(which will be used for all channels)",
+                             default=1)
+
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)

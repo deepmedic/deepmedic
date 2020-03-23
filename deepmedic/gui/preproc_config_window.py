@@ -198,6 +198,14 @@ class PreprocConfigWindow(ConfigWindow):
         size_units = self.get_text_value('preproc_imgSize_combobox', self.findChild(QtWidgets.QComboBox, 'preproc_imgSize_combobox'), elem_type='Units')
         use_mask = self.findChild(QtWidgets.QCheckBox, 'preproc_useMask_checkbox').isChecked()
         use_centre_mass = self.findChild(QtWidgets.QCheckBox, 'preproc_centreMass_checkbox').isChecked()
+        threshold = self.findChild(QtWidgets.QCheckBox, 'preproc_thresh_checkbox').isChecked()
+        thresh_low_cut = self.get_text_value('preproc_threshLowCut_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_threshLowCut_lineedit'))
+        thresh_high_cut = self.get_text_value('preproc_threshHighCut_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_threshHighCut_lineedit'))
+        norm_range = self.findChild(QtWidgets.QCheckBox, 'preproc_normRange_checkbox').isChecked()
+        low_range_orig = self.get_text_value('preproc_lowRangeOrig_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_lowRangeOrig_lineedit'))
+        high_range_orig = self.get_text_value('preproc_highRangeOrig_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_highRangeOrig_lineedit'))
+        low_range_target = self.get_text_value('preproc_lowRangeTarget_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_lowRangeTarget_lineedit'))
+        high_range_target = self.get_text_value('preproc_highRangeTarget_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_highRangeTarget_lineedit'))
 
         self.reset_progress_text()
 
@@ -319,6 +327,14 @@ class PreprocConfigWindow(ConfigWindow):
                 else:
                     this_size = size
                 image.resize(this_size, centre_mass=use_centre_mass, use_mask=use_mask)
+
+            # cutoff
+            if threshold:
+                image.thresh_cutoff(thresh_low_cut, thresh_high_cut)
+
+            # normalise range
+            if norm_range:
+                image.norm_range(low_range_orig, high_range_orig, low_range_target, high_range_target)
 
             # save image
             if output_dir:

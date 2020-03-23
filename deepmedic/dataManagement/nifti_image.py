@@ -7,6 +7,8 @@ import math
 from scipy import ndimage
 import os
 
+from deepmedic.dataManagement.preprocessing import get_cutoff_mask
+
 
 pixel_type_dict = {"uint8": sitk.sitkUInt8,
                    "int8": sitk.sitkInt8,
@@ -514,3 +516,41 @@ class NiftiImage(object):
             filter = sitk.CastImageFilter()
             filter.SetOutputPixelType(pixel_type_sitk)
             self.image = filter.Execute(self.open())
+
+    def thresh_cutoff(self, low, high):
+        if self.channels is not None:
+            if not type(low) == list:
+                low = [low] * len(self.channels)
+            if not type(high) == list:
+                high = [high] * len(self.channels)
+            for i in range(len(self.channels)):
+                channel = self.channel_names[i]
+                self.channels[channel].open()
+                array = sitk.GetArrayFromImage(self.channels[channel].image)
+                if low[i] is not None:
+                    array[array < low[i]] = low[i]
+                if high[i] is not None:
+                    array[array > high[i]] = high[i]
+                self.channels[channel].image = sitk.GetImageFromArray(array)
+        else:
+            array = sitk.GetArrayFromImage(self.open())
+            array[array < low] = low
+            array[array > high] = high
+            self.image = sitk.GetImageFromArray(array)
+
+    def norm_range(self, orig_low, orig_high, target_low, target_high):
+        if self.channels is not None:
+            if not type(orig_low) == list:
+                orig_low = np.ones(len(self.channels)) * orig_low
+            if not type(orig_high) == list:
+                orig_high = np.ones(len(self.channels)) * orig_high
+            if not type(target_low) == list:
+                target_low = np.ones(len(self.channels)) * target_low
+            if not type(target_high) == list:
+                target_high = np.ones(len(self.channels)) * target_high
+            for i in range(len(self.channels)):
+                channel = self.channel_names[i]
+                target_range = target_high[i] - target_low[i]
+                orig_range = orig_high[i] - orig_low[i]
+                self.channels[channel].image = \
+                    (self.channels[channel].image - orig_low[i]) * target_range / orig_range + target_low[i]
