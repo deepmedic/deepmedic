@@ -124,11 +124,11 @@ class SamplingType(object):
             elif roi_mask is not None: # and provided GT
                 sampling_maps_per_cat = []
                 for cat_i in range( self.get_n_sampling_cats() ): # Should be same number as actual classes, including background.
-                    sampling_maps_per_cat.append( ( (gt_lbl_img==cat_i)*(roi_mask>0) ).astype(int) )
+                    sampling_maps_per_cat.append( ( (gt_lbl_img==cat_i)*(roi_mask>0) ).astype("int8") )
             else: # no weightmaps, gt provided and roi is not provided.
                 sampling_maps_per_cat = []
                 for cat_i in range( self.get_n_sampling_cats() ): # Should be same number as actual classes, including background.
-                    sampling_maps_per_cat.append( (gt_lbl_img==cat_i).astype(int) )
+                    sampling_maps_per_cat.append( (gt_lbl_img==cat_i).astype("int8") )
                 
         else:
             raise ValueError("Invalid value for sampling type.")
