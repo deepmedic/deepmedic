@@ -38,8 +38,8 @@ class TrainSessionParameters(object):
 
     # To be called from outside too.
     @staticmethod
-    def getSessionName(sessionName):
-        return sessionName if sessionName is not None else self.cfg_name
+    def getSessionName(sessionName, default='trainConfig'):
+        return sessionName if sessionName is not None else default
 
     # REQUIRED:
     @staticmethod
@@ -188,16 +188,14 @@ class TrainSessionParameters(object):
                  num_classes,
                  model_name,
                  cfg):
-
-        self.cfg_name = os.path.basename(cfg.get_abs_path_to_cfg())
-
         # Importants for running session.
         # From Session:
         self.log = log
         self.mainOutputAbsFolder = mainOutputAbsFolder
 
         # From Config:
-        self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME])
+        self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME],
+                                               default=os.path.basename(cfg.get_abs_path_to_cfg()))
 
         abs_path_to_cfg = cfg.get_abs_path_to_cfg()
         abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.SAVED_MODEL], abs_path_to_cfg) \
