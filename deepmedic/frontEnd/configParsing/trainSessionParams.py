@@ -38,7 +38,7 @@ class TrainSessionParameters(object):
 
     # To be called from outside too.
     @staticmethod
-    def getSessionName(sessionName, default='trainConfig'):
+    def getSessionName(sessionName, default):
         return sessionName if sessionName is not None else default
 
     # REQUIRED:
