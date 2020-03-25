@@ -7,6 +7,8 @@
 
 from __future__ import absolute_import, print_function, division
 
+import os
+
 from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
     parseFileLinesInList, check_and_adjust_path_to_ckpt
 from deepmedic.dataManagement import samplingType
@@ -37,7 +39,7 @@ class TrainSessionParameters(object):
     # To be called from outside too.
     @staticmethod
     def getSessionName(sessionName):
-        return sessionName if sessionName is not None else "trainSession"
+        return sessionName if sessionName is not None else self.cfg_name
 
     # REQUIRED:
     @staticmethod
@@ -186,6 +188,8 @@ class TrainSessionParameters(object):
                  num_classes,
                  model_name,
                  cfg):
+
+        self.cfg_name = os.path.basename(cfg.get_abs_path_to_cfg())
 
         # Importants for running session.
         # From Session:
