@@ -234,7 +234,7 @@ def choose_random_subjects(n_total_subjects,
 
 def get_n_samples_per_subj(n_samples, n_subjects):
     # Distribute samples of each cat to subjects.
-    n_samples_per_subj = np.ones([n_subjects], dtype="int32") * (n_samples // n_subjects)
+    n_samples_per_subj = np.ones([n_subjects], dtype='int32') * (n_samples // n_subjects)
     n_undistributed_samples = n_samples % n_subjects
     # Distribute samples that were left by inexact division.
     for idx in range(n_undistributed_samples):
@@ -492,6 +492,38 @@ def preproc_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_s
     return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_per_axis
 
 
+def sampling_cumsum(p_1darr, n_samples):
+    p_cumsum = p_1darr.cumsum(dtype='float64') # This is dangerous, final elements go below or beyond 1.
+    p_cumsum = np.clip(p_cumsum, a_min=None, a_max=1., out=p_cumsum)
+    #p_cumsum[p_cumsum>1.] = 1.
+    p_cumsum[-1] = 1.
+    random_ps = np.random.random(size=n_samples)
+    idxs_sampled = np.searchsorted(p_cumsum, random_ps)
+    return idxs_sampled
+
+def sample_with_appropriate_algorithm(n_samples, sampling_map_excl_near_edges, sum_sampl_map):
+    
+    p_sampling_flat = sampling_map_excl_near_edges.ravel() # Unnormalized
+    is_0 = p_sampling_flat == 0. # np.isclose(p_sampling_flat, 0.)
+    is_1 = p_sampling_flat == 1. # np.isclose(p_sampling_flat, 1.)
+    if np.all(np.logical_or(is_0, is_1)): # Whole sampling map is either 0 or 1. Do faster sampling only under valid idxs.
+        idxs = np.arange(p_sampling_flat.size, dtype='int32') # Unlikely large image size will need int64
+        valid_idxs = idxs[is_1>0]
+        idxs_sampled = np.random.choice(valid_idxs, size=n_samples, replace=True)
+    else: #if np.any( np.logical_and(sampling_map_excl_near_edges != 0., sampling_map_excl_near_edges != 1.)):
+        # Normalize, because sampling method np.random.choice requires it.
+        p_sampling_normed = np.multiply(p_sampling_flat, 1./sum_sampl_map, dtype='float64') # as before.
+        #idxs_sampled = sampling_cumsum(p_sampling_normed, n_samples)
+        idxs_sampled = np.random.choice(p_sampling_normed.size, size=n_samples, replace=True, p=p_sampling_normed)
+    
+    # np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), 
+    # where each of the array in the tuple has the same shape as the listOfIndices. 
+    # They have the r/c/z coords that correspond to the index of the flattened version.
+    # So, idxs_sampled will be array of shape: 3(rcz) x n_samples.
+    idxs_sampled = np.asarray(np.unravel_index(idxs_sampled, sampling_map_excl_near_edges.shape))
+    
+    return idxs_sampled
+
 # made for 3d
 def sample_idxs_of_segments(log,
                             job_id,
@@ -500,6 +532,7 @@ def sample_idxs_of_segments(log,
                             dims_of_scan,
                             sampling_map):
     """
+    sampling_map: np.array of shape (H,W,D), dtype="int16" or potentially float if weightmaps given by user.
     Returns: [ idxs_of_sampled_centers, slice_idxs_of_sampled_segms ]
              Coordinates (xyz indices) of the "central" voxel of sampled segments (1 voxel to the left if dimension is even).
              Also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
@@ -534,12 +567,12 @@ def sample_idxs_of_segments(log,
     # number of voxels to exclude from edges of the image, left and right in each axis, when sampling...
     # ...the center of a segment. So that the segment will be fully contained in the image. (half segm left & right)
     # dim1: 1 row per r,c,z. Dim2: left/right width not to sample from (=half segment).
-    n_vox_excl_left_right = np.zeros((len(dims_of_segment), 2), dtype='int32')
+    n_vox_excl_left_right = np.zeros((len(dims_of_segment), 2), dtype='int16')
 
     # The below starts all zero. Will be Multiplied by other true-false arrays expressing if the relevant
     # voxels are within boundaries.
     # In the end, the final vector will be true only for the indices of lesions that are within all boundaries.
-    mask_excl_near_edges = np.zeros(sampling_map.shape, dtype="int32")
+    mask_excl_near_edges = np.zeros(sampling_map.shape, dtype='int8')
 
     # This loop leads to mask_excl_near_edges to be true for the indices ...
     # ...that allow getting an imagePart CENTERED on them, and be safely within image boundaries. Note that ...
@@ -560,7 +593,7 @@ def sample_idxs_of_segments(log,
         n_vox_excl_left_right[1][0]: dims_of_scan[1] - n_vox_excl_left_right[1][1],
         n_vox_excl_left_right[2][0]: dims_of_scan[2] - n_vox_excl_left_right[2][1]] = 1
 
-    sampling_map_excl_near_edges = sampling_map * mask_excl_near_edges
+    sampling_map_excl_near_edges = np.multiply(sampling_map, mask_excl_near_edges, dtype=sampling_map.dtype)
     # normalize the probabilities to sum to 1, cause the function needs it as so.
     sum_sampl_map = np.sum(sampling_map_excl_near_edges)
     if np.isclose(sum_sampl_map, 0.) : # is zero
@@ -568,25 +601,12 @@ def sample_idxs_of_segments(log,
                    " No samples for category from subject!")
         return [ [[],[],[]], [[],[],[]] ]
     
-    sampling_map_excl_near_edges = sampling_map_excl_near_edges / (1.0 * sum_sampl_map)
-    sampling_map_excl_near_edges_flat = sampling_map_excl_near_edges.flatten()
-
-    # This is going to be a 3xNumberOfImagePartSamples array.
-    idxs_of_flat_map_sampled_as_centers = np.random.choice(
-        sampling_map_excl_near_edges.size,
-        size=n_samples,
-        replace=True,
-        p=sampling_map_excl_near_edges_flat)
-    # np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), 
-    # where each of the array in the tuple has the same shape as the listOfIndices. 
-    # They have the r/c/z coords that correspond to the index of the flattened version.
-    # So, idxs_of_sampled_centers will be array of shape: 3(rcz) x n_samples.
-    idxs_of_sampled_centers = np.asarray(np.unravel_index(idxs_of_flat_map_sampled_as_centers,
-                                                            sampling_map_excl_near_edges.shape)
-                                          )
+    # Sample indexes of pixels around which we should extract sample segments.
+    idxs_of_sampled_centers = sample_with_appropriate_algorithm(n_samples, sampling_map_excl_near_edges, sum_sampl_map)
+    
     # Array with shape: 3(rcz) x NumberOfImagePartSamples x 2.
     # Last dimension has [0] for lowest boundary of slice, and [1] for highest boundary. INCLUSIVE BOTH SIDES.
-    slice_idxs_of_sampled_segms = np.zeros(list(idxs_of_sampled_centers.shape) + [2], dtype="int32")
+    slice_idxs_of_sampled_segms = np.zeros(list(idxs_of_sampled_centers.shape) + [2], dtype='int32')
     # below, np.newaxis broadcasts. To broadcast the -+.
     slice_idxs_of_sampled_segms[:, :, 0] = idxs_of_sampled_centers - n_vox_excl_left_right[:, np.newaxis, 0]
     slice_idxs_of_sampled_segms[:, :, 1] = idxs_of_sampled_centers + n_vox_excl_left_right[:, np.newaxis, 1]
