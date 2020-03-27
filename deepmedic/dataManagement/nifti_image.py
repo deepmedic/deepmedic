@@ -298,24 +298,28 @@ class NiftiImage(object):
                 self.channels[channel].reorient()
 
     def get_mask(self, min_intensity, max_intensity, inplace=True, filename=None, channel=None):
-        if self.channels is not None and channel is not None:
+        if self.channels is not None:
+            if channel is None:
+                channel = 'Channel_0' if 'Channel_0' in self.channel_names else self.channel_names[0]
             image = self.channels[channel]
         else:
-            image = sitk.GetArrayFromImage(self.open())
+            image = self
 
-        mask = np.zeros(image.shape)
+        image_array = sitk.GetArrayFromImage(image.open())
+
+        mask = np.zeros(image_array.shape)
         if min_intensity is None:
-            min_intensity = min(image.flatten())
+            min_intensity = min(image_array.flatten())
 
         if max_intensity is None:
-            max_intensity = max(image.flatten())
+            max_intensity = max(image_array.flatten())
 
-        mask[(min_intensity < image) & (image < max_intensity)] = 1
+        mask[(min_intensity < image_array) & (image_array < max_intensity)] = 1
 
         mask_image = sitk.GetImageFromArray(mask.astype(np.uint8))
-        mask_image.SetOrigin(self.get_origin())
-        mask_image.SetSpacing(self.get_spacing())
-        mask_image.SetDirection(self.get_direction())
+        mask_image.SetOrigin(image.get_origin())
+        mask_image.SetSpacing(image.get_spacing())
+        mask_image.SetDirection(image.get_direction())
 
         if filename:
             save_nifti(mask_image, filename)

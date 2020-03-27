@@ -10,8 +10,10 @@ from PySide2 import QtWidgets, QtGui, QtCore
 
 
 def add_sufix(name, suffix):
-    name_split = name.split('.')
-    return name_split[0] + suffix + '.' + '.'.join(name_split[1:])
+    fname, extension = os.path.splitext(name)
+    if suffix is None:
+        suffix = ''
+    return fname + suffix + extension
 
 
 def get_save_name(image_path, output_dir, image_extension, base_dir=None, subj_id=None, channel_name=None):
@@ -253,7 +255,7 @@ class PreprocConfigWindow(ConfigWindow):
 
         if not create_mask:
             mask_suffix = ''
-        if not mask_suffix == '':
+        if not (mask_suffix == '' or mask_suffix is None):
             mask_suffix = '_' + mask_suffix
 
         channel_names = get_channel_names(image_list.columns)
@@ -309,11 +311,11 @@ class PreprocConfigWindow(ConfigWindow):
             if create_mask:
                 image.get_mask(thresh_low, thresh_high)
                 if mask_dir:
-                    mask_save_name = os.path.join(mask_dir, channel_save_names[0].split('/')[-1])
+                    mask_save_name = os.path.join(mask_dir, channel_save_names[channel_names[0]].split('/')[-1])
                 elif mask_suffix:
-                    mask_save_name = channel_save_names[0]
+                    mask_save_name = channel_save_names[channel_names[0]]
                 else:
-                    mask_save_name = get_save_name(channel_save_names[0], output_dir, None,
+                    mask_save_name = get_save_name(channel_save_names[channel_names[0]], output_dir, None,
                                                    base_dir=None, subj_id=subj_id, channel_name='Mask')
                 if not mask_extension:
                     mask_extension = image_extension
