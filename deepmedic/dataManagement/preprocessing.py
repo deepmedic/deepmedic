@@ -65,9 +65,10 @@ def pad_imgs_of_case(channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
     # Returns:
     # pad_left_right_axes: Padding added before and after each axis. All 0s if no padding.
     if not pad_input_imgs:
-        return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_axes
-    
-    # Padding added before and after each axis. ((0, 0), (0, 0), (0, 0)) if no pad.
+        pad_left_right_axis = [[0, 0], [0, 0], [0, 0]]
+        return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_axis
+                         
+    # Padding added before and after each axis.
     pad_left_right_per_axis = unpred_margin
     
     channels = pad_4d_arr(channels, pad_left_right_per_axis)
