@@ -235,12 +235,25 @@ def choose_random_subjects(n_total_subjects,
 
 def get_n_samples_per_subj(n_samples, n_subjects):
     # Distribute samples of each cat to subjects.
-    n_samples_per_subj = np.ones([n_subjects], dtype="int32") * (n_samples // n_subjects)
+    n_samples_per_subj = np.ones([n_subjects], dtype='int32') * (n_samples // n_subjects)
     n_undistributed_samples = n_samples % n_subjects
     # Distribute samples that were left by inexact division.
     for idx in range(n_undistributed_samples):
         n_samples_per_subj[random.randint(0, n_subjects - 1)] += 1
     return n_samples_per_subj
+
+
+def constrain_sampling_maps_near_edges(sample_maps_per_cat, dims_sample):
+    # We wish to sample pixels around which the samples we will extract will be centered.
+    # But we need to be CAREFUL and get only pixels that are NOT closer to the image boundaries than the dimensions of the
+    # samples we wish to extract permit.
+    constrained_maps = []
+    mask_excl_edges = comp_valid_sampling_mask_excluding_edges(dims_sample, sample_maps_per_cat[0].shape)
+    for cat_i in range(len(sample_maps_per_cat)):
+        sampling_map = sample_maps_per_cat[cat_i]
+        sampling_map_excl_near_edges = np.multiply(sampling_map, mask_excl_edges, dtype=sampling_map.dtype)
+        constrained_maps.append(sampling_map_excl_near_edges)
+    return constrained_maps
 
 
 def load_subj_and_sample(job_idx,
@@ -334,7 +347,9 @@ def load_subj_and_sample(job_idx,
                                                                        gt_lbl_img,
                                                                        roi_mask,
                                                                        dims_of_scan)
-
+    sampling_maps_per_cat = constrain_sampling_maps_near_edges(sampling_maps_per_cat, dims_hres_segment)
+    
+    
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
@@ -355,13 +370,10 @@ def load_subj_and_sample(job_idx,
             continue  # This should not be needed, the next func should also handle it. But whatever.
             
         time_sample_idx0 = time.time()
-        (idxs_sampl_centers,
-         slice_idxs_sampl_segms) = sample_idxs_of_segments(log,
-                                                           job_id,
-                                                           n_samples_for_cat,
-                                                           dims_hres_segment,
-                                                           dims_of_scan,
-                                                           sampling_map)
+        idxs_sampl_centers = sample_idxs_of_segments(log,
+                                                     job_id,
+                                                     n_samples_for_cat,
+                                                     sampling_map)
         time_sample_idxs += time.time() - time_sample_idx0
         str_samples_per_cat += "[" + cat_str + ": " + str(len(idxs_sampl_centers[0])) + "/" + str(n_samples_for_cat) + "] "
         
@@ -506,37 +518,7 @@ def preproc_imgs_of_subj(log, job_id, channels, gt_lbl_img, roi_mask, wmaps_to_s
     return channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat, pad_left_right_per_axis
 
 
-# made for 3d
-def sample_idxs_of_segments(log,
-                            job_id,
-                            n_samples,
-                            dims_of_segment,
-                            dims_of_scan,
-                            sampling_map):
-    """
-    Returns: [ idxs_of_sampled_centers, slice_idxs_of_sampled_segms ]
-             Coordinates (xyz indices) of the "central" voxel of sampled segments (1 voxel to the left if dimension is even).
-             Also returns the indices of the image parts, left and right indices, INCLUSIVE BOTH SIDES.
-    
-    > idxs_of_sampled_centers: array with shape: 3(xyz) x n_samples.
-        Example: [ xCoordsForCentralVoxelOfEachPart, yCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
-        >> x/y/z-CoordsForCentralVoxelOfEachPart: 1-dim array with n_samples, holding the x-indices of samples in image.
-    > slice_idxs_of_sampled_segms: 3(xyz) x NumberOfImagePartSamples x 2.
-        The last dimension has [0] for the lower boundary of the slice, and [1] for the higher boundary. INCLUSIVE BOTH SIDES.
-        Example: [ x-sliceCoordsOfImagePart, y-sliceCoordsOfImagePart, z-sliceCoordsOfImagePart ]
-    """
-    # Check if the weight map is fully-zeros. In this case, return no element.
-    # Note: Currently, the caller function is checking this case already and does not let this being called.
-    # Which is still fine.
-    if np.isclose(np.sum(sampling_map), 0.):
-        log.print3(job_id + " WARN: Sampling map for category is just zeros! " +\
-                   " No samples for category from subject!")
-        return [[[], [], []], [[], [], []]]
-
-    # Now out of these, I need to randomly select one, which will be an ImagePart's central voxel.
-    # But I need to be CAREFUL and get one that IS NOT closer to the image boundaries than the dimensions of the
-    # ImagePart permit.
-
+def comp_valid_sampling_mask_excluding_edges(dims_of_segment, shape):
     # I look for lesions that are not closer to the image boundaries than the ImagePart dimensions allow.
     # KernelDim is always odd. BUT ImagePart dimensions can be odd or even.
     # If odd, ok, floor(dim/2) from central.
@@ -544,16 +526,16 @@ def sample_idxs_of_segments(log,
     # Ie, "central" imagePart voxel is 1 closer to begining.
     # BTW imagePartDim takes kernel into account (ie if I want 9^3 voxels classified per imagePart with kernel 5x5,
     # I want 13 dim ImagePart)
-
+    
     # number of voxels to exclude from edges of the image, left and right in each axis, when sampling...
     # ...the center of a segment. So that the segment will be fully contained in the image. (half segm left & right)
     # dim1: 1 row per r,c,z. Dim2: left/right width not to sample from (=half segment).
-    n_vox_excl_left_right = np.zeros((len(dims_of_segment), 2), dtype='int32')
+    n_vox_excl_left_right = np.zeros((len(dims_of_segment), 2), dtype='int16')
 
     # The below starts all zero. Will be Multiplied by other true-false arrays expressing if the relevant
     # voxels are within boundaries.
     # In the end, the final vector will be true only for the indices of lesions that are within all boundaries.
-    mask_excl_near_edges = np.zeros(sampling_map.shape, dtype="int32")
+    mask_excl_near_edges = np.zeros(shape, dtype='int8')
 
     # This loop leads to mask_excl_near_edges to be true for the indices ...
     # ...that allow getting an imagePart CENTERED on them, and be safely within image boundaries. Note that ...
@@ -570,46 +552,71 @@ def sample_idxs_of_segments(log,
             # used to be [n_vox_excl_left_right[0][0]: -n_vox_excl_left_right[0][1]],
             # but in 2D case n_vox_excl_left_right might be ==0, causes problem and you get a null slice.
     mask_excl_near_edges[
-        n_vox_excl_left_right[0][0]: dims_of_scan[0] - n_vox_excl_left_right[0][1],
-        n_vox_excl_left_right[1][0]: dims_of_scan[1] - n_vox_excl_left_right[1][1],
-        n_vox_excl_left_right[2][0]: dims_of_scan[2] - n_vox_excl_left_right[2][1]] = 1
+        n_vox_excl_left_right[0][0]: shape[0] - n_vox_excl_left_right[0][1],
+        n_vox_excl_left_right[1][0]: shape[1] - n_vox_excl_left_right[1][1],
+        n_vox_excl_left_right[2][0]: shape[2] - n_vox_excl_left_right[2][1]] = 1
+        
+    return mask_excl_near_edges
+        
+def sampling_cumsum(p_1darr, n_samples):
+    p_cumsum = p_1darr.cumsum(dtype='float64') # This is dangerous, final elements go below or beyond 1.
+    p_cumsum = np.clip(p_cumsum, a_min=None, a_max=1., out=p_cumsum)
+    #p_cumsum[p_cumsum>1.] = 1.
+    p_cumsum[-1] = 1.
+    random_ps = np.random.random(size=n_samples)
+    idxs_sampled = np.searchsorted(p_cumsum, random_ps)
+    return idxs_sampled
 
-    sampling_map_excl_near_edges = sampling_map * mask_excl_near_edges
-    # normalize the probabilities to sum to 1, cause the function needs it as so.
-    sum_sampl_map = np.sum(sampling_map_excl_near_edges)
-    if np.isclose(sum_sampl_map, 0.) : # is zero
-        log.print3(job_id + " WARN: AFTER EXCLUDING NEAR EDGES, sampling map for category is just zeros! " +\
-                   " No samples for category from subject!")
-        return [ [[],[],[]], [[],[],[]] ]
+def sample_with_appropriate_algorithm(n_samples, sampling_map, sum_sampl_map):
     
-    sampling_map_excl_near_edges = sampling_map_excl_near_edges / (1.0 * sum_sampl_map)
-    sampling_map_excl_near_edges_flat = sampling_map_excl_near_edges.flatten()
-
-    # This is going to be a 3xNumberOfImagePartSamples array.
-    idxs_of_flat_map_sampled_as_centers = np.random.choice(
-        sampling_map_excl_near_edges.size,
-        size=n_samples,
-        replace=True,
-        p=sampling_map_excl_near_edges_flat)
+    p_sampling_flat = sampling_map.ravel() # Unnormalized
+    is_0 = p_sampling_flat == 0. # np.isclose(p_sampling_flat, 0.)
+    is_1 = p_sampling_flat == 1. # np.isclose(p_sampling_flat, 1.)
+    if np.all(np.logical_or(is_0, is_1)): # Whole sampling map is either 0 or 1. Do faster sampling only under valid idxs.
+        idxs = np.arange(p_sampling_flat.size, dtype='int32') # Unlikely large image size will need int64
+        valid_idxs = idxs[is_1>0]
+        idxs_sampled = np.random.choice(valid_idxs, size=n_samples, replace=True)
+    else: #if np.any( np.logical_and(sampling_map != 0., sampling_map != 1.)):
+        # Normalize, because sampling method np.random.choice requires it.
+        p_sampling_normed = np.multiply(p_sampling_flat, 1./sum_sampl_map, dtype='float64') # as before.
+        #idxs_sampled = sampling_cumsum(p_sampling_normed, n_samples)
+        idxs_sampled = np.random.choice(p_sampling_normed.size, size=n_samples, replace=True, p=p_sampling_normed)
+    
     # np.unravel_index([listOfIndicesInFlattened], dims) returns a tuple of arrays (eg 3 of them if 3 dimImage), 
     # where each of the array in the tuple has the same shape as the listOfIndices. 
     # They have the r/c/z coords that correspond to the index of the flattened version.
-    # So, idxs_of_sampled_centers will be array of shape: 3(rcz) x n_samples.
-    idxs_of_sampled_centers = np.asarray(np.unravel_index(idxs_of_flat_map_sampled_as_centers,
-                                                            sampling_map_excl_near_edges.shape)
-                                          )
-    # Array with shape: 3(rcz) x NumberOfImagePartSamples x 2.
-    # Last dimension has [0] for lowest boundary of slice, and [1] for highest boundary. INCLUSIVE BOTH SIDES.
-    slice_idxs_of_sampled_segms = np.zeros(list(idxs_of_sampled_centers.shape) + [2], dtype="int32")
-    # below, np.newaxis broadcasts. To broadcast the -+.
-    slice_idxs_of_sampled_segms[:, :, 0] = idxs_of_sampled_centers - n_vox_excl_left_right[:, np.newaxis, 0]
-    slice_idxs_of_sampled_segms[:, :, 1] = idxs_of_sampled_centers + n_vox_excl_left_right[:, np.newaxis, 1]
+    # So, idxs_sampled will be array of shape: 3(rcz) x n_samples.
+    idxs_sampled = np.asarray(np.unravel_index(idxs_sampled, sampling_map.shape))
+    
+    return idxs_sampled
 
-    # idxs_of_sampled_centers: Array of dimensions 3(rcz) x NumberOfImagePartSamples.
-    # slice_idxs_of_sampled_segms: Array of dimensions 3(rcz) x NumberOfImagePartSamples x 2. ...
-    # ... The last dim has [0] for the lower boundary of the slice, and [1] for the higher boundary.
-    # ... The slice coordinates returned are INCLUSIVE BOTH sides.
-    return (idxs_of_sampled_centers, slice_idxs_of_sampled_segms)
+# made for 3d
+def sample_idxs_of_segments(log,
+                            job_id,
+                            n_samples,
+                            sampling_map):
+    """
+    sampling_map: np.array of shape (H,W,D), dtype="int16" or potentially float if weightmaps given by user.
+    Returns: idxs_of_sampled_centers
+             Coordinates (xyz indices) of the "central" voxel of sampled segments (1 voxel to the left if dimension is even).
+    
+    > idxs_of_sampled_centers: array with shape: 3(xyz) x n_samples.
+        Example: [ xCoordsForCentralVoxelOfEachPart, yCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
+        >> x/y/z-CoordsForCentralVoxelOfEachPart: 1-dim array with n_samples, holding the x-indices of samples in image.
+    """
+    # Check if the weight map is fully-zeros. In this case, return no element.
+    # Note: Currently, the caller function is checking this case already and does not let this being called.
+    # Which is still fine.
+    sum_sampl_map = np.sum(sampling_map)
+    if np.isclose(sum_sampl_map, 0.) : # is zero
+        log.print3(job_id + " WARN: Sampling map for category (after excluding near edges) is just zeros! " +\
+                   " No samples for category from subject!")
+        return [ [[],[],[]], [[],[],[]] ]
+    
+    # Sample indexes of pixels around which we should extract sample segments.
+    idxs_of_sampled_centers = sample_with_appropriate_algorithm(n_samples, sampling_map, sum_sampl_map)
+    
+    return idxs_of_sampled_centers
 
 
 def get_subsampl_segment(channels, segment_hr_slice_coords, subs_factor, segment_lr_dims):
