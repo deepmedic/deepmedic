@@ -49,7 +49,6 @@ class SamplingType(object):
         else:
             raise ValueError("Invalid value for sampling type.")
 
-            
     def _normalize_percentages(self, list_of_weights):
         array_of_weights = np.asarray(list_of_weights, dtype="float32")
         print(array_of_weights)

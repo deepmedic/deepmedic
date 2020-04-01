@@ -36,7 +36,7 @@ class TrainSession(Session):
 
     def _make_sess_name(self):
         sess_name = TrainSessionParameters.getSessionName(self._cfg[self._cfg.SESSION_NAME],
-                                                          os.path.basename(self.get_abs_path_to_cfg()))
+                                                          os.path.splitext(os.path.basename(self.get_abs_path_to_cfg()))[0])
         return sess_name
 
     def make_output_folders(self):
