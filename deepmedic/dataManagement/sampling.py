@@ -293,7 +293,7 @@ def load_subj_and_sample(job_idx,
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
 
     dims_hres_segment = inp_shapes_per_path[0]
-    
+
     # Load images of subject
     time_load_0 = time.time()
     (channels,  # nparray [channels,dim0,dim1,dim2]

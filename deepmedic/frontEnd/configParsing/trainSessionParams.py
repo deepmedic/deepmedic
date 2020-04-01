@@ -195,7 +195,7 @@ class TrainSessionParameters(object):
 
         # From Config:
         self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME],
-                                               os.path.basename(cfg.get_abs_path_to_cfg()))
+                                               os.path.splitext(os.path.basename(cfg.get_abs_path_to_cfg()))[0])
 
         abs_path_to_cfg = cfg.get_abs_path_to_cfg()
         abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.SAVED_MODEL], abs_path_to_cfg) \

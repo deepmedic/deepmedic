@@ -261,7 +261,7 @@ class RandomAffineTransformation(RandomAugmentation):
                                                 self.cval)
 
         if wmaps is not None:
-            wmaps = self._apply_transformation(target,
+            wmaps = self._apply_transformation(wmaps,
                                                transf_mtx,
                                                self.interp_order_wmaps,
                                                self.boundary_mode,
