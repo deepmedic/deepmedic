@@ -305,7 +305,7 @@ def load_subj_and_sample(job_idx,
                                                      paths_to_lbls_per_subj,
                                                      paths_to_wmaps_per_sampl_cat_per_subj,
                                                      paths_to_masks_per_subj)
-     
+
     # Pre-process images of subject
     time_load = time.time() - time_load_0
     time_prep_0 = time.time()
@@ -322,15 +322,15 @@ def load_subj_and_sample(job_idx,
     
     # Augment at image level:
     time_augm_0 = time.time()
-    # (channels,
-    #  gt_lbl_img,
-    #  roi_mask,
-    #  wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
-    #                                                  gt_lbl_img,
-    #                                                  roi_mask,
-    #                                                  wmaps_to_sample_per_cat,
-    #                                                  augm_img_prms)
-
+    #(channels,
+    # gt_lbl_img,
+    # roi_mask,
+    # wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
+    #                                                 gt_lbl_img,
+    #                                                 roi_mask,
+    #                                                 wmaps_to_sample_per_cat,
+    #                                                 augm_img_prms)
+    
     (channels,
      gt_lbl_img,
      roi_mask,
@@ -340,16 +340,14 @@ def load_subj_and_sample(job_idx,
                                                     roi_mask,
                                                     wmaps_to_sample_per_cat)
     time_augm_img = time.time() - time_augm_0
-
-    # Sampling of segments (sub-volumes) from an image.
+    # Samplingof segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
     sampling_maps_per_cat = sampling_type.derive_sampling_maps_per_cat(wmaps_to_sample_per_cat,
                                                                        gt_lbl_img,
                                                                        roi_mask,
                                                                        dims_of_scan)
     sampling_maps_per_cat = constrain_sampling_maps_near_edges(sampling_maps_per_cat, dims_hres_segment)
-    
-    
+   
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
@@ -713,7 +711,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         pathwayInputShapeRcz = inp_shapes_per_path[path_idx]
         leftBoundaryRcz = [coord_center[d] - subs_factor[d] * (pathwayInputShapeRcz[d] - 1) // 2 for d in range(3)]
         rightBoundaryRcz = [leftBoundaryRcz[d] + subs_factor[d] * pathwayInputShapeRcz[d] - 1 for d in range(3)]
-
+        
         channelsForThisImagePart = channels[:,
                                             leftBoundaryRcz[0]: rightBoundaryRcz[0] + 1: subs_factor[0],
                                             leftBoundaryRcz[1]: rightBoundaryRcz[1] + 1: subs_factor[1],

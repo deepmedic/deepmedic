@@ -38,7 +38,6 @@ class SamplingType(object):
         if self._sampling_type in [0,3] and len(perc_of_samples_per_cat) != self.get_n_sampling_cats():
             self._log.print3("ERROR: The list perc_of_samples_per_cat had [" + str(len(perc_of_samples_per_cat)) + "] elements." +\
                              " For type [" + self._sampling_type_str + "], it requires [" + str(self.get_n_sampling_cats()) + "]! Exiting!"); exit(1)
-            
         if self._sampling_type == 0:
             self._perc_to_sample_per_cat = self._normalize_percentages(perc_of_samples_per_cat)
         elif self._sampling_type == 1:
@@ -49,9 +48,11 @@ class SamplingType(object):
             self._perc_to_sample_per_cat = self._normalize_percentages(perc_of_samples_per_cat)
         else:
             raise ValueError("Invalid value for sampling type.")
+
             
     def _normalize_percentages(self, list_of_weights):
         array_of_weights = np.asarray(list_of_weights, dtype="float32")
+        print(array_of_weights)
         return array_of_weights / (1.0*np.sum(array_of_weights))
     # API
     def get_type_as_int(self):
@@ -140,7 +141,7 @@ class SamplingType(object):
         # sampling_maps_per_cat: returned by self.derive_sampling_maps_per_cat(...)
         # The below is a list of booleans, where False if a sampling_map is all 0.
         valid_cats = [ np.sum(s_map) > 0 for s_map in sampling_maps_per_cat ]
-        
+
         # Set weight for sampling a category to 0 if it's not valid.
         perc_samples_per_valid_cat = [p if v else 0. for p,v in zip(self._perc_to_sample_per_cat, valid_cats) ]
         # Renormalize probabilities.

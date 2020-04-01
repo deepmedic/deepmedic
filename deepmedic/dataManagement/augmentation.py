@@ -218,33 +218,30 @@ class RandomAffineTransformation(RandomAugmentation):
             cval = np.min(image)
             mode = 'constant'
 
-        while image.ndim < 4:
-            image = np.expand_dims(image, axis=0)
-
         new_image = np.array(image, copy=True)
 
-        for img_i in range(len(image)):
-            # For recentering
-            centre_coords = 0.5 * np.asarray(image[img_i].shape, dtype=np.int32)
-            c_offset = centre_coords - centre_coords.dot(transf_mtx)
+        # For recentering
+        centre_coords = 0.5 * np.asarray(image.shape, dtype=np.int32)
+        c_offset = centre_coords - centre_coords.dot(transf_mtx)
 
-            new_image[img_i] = scipy.ndimage.affine_transform(image[img_i],
-                                                              transf_mtx.T,
-                                                              c_offset,
-                                                              order=interp_order,
-                                                              mode=mode,
-                                                              cval=cval)
+        new_image = scipy.ndimage.affine_transform(image,
+                                                   transf_mtx.T,
+                                                   c_offset,
+                                                   order=interp_order,
+                                                   mode=mode,
+                                                   cval=cval)
 
-        return np.squeeze(new_image)
+        return new_image
 
     def augment(self, image, target, mask, wmaps):
         transf_mtx = self._get_random_transformation()
-
-        image = self._apply_transformation(image,
-                                           transf_mtx,
-                                           self.interp_order_imgs,
-                                           self.boundary_mode,
-                                           self.cval)
+        
+        for img_i in range(len(image)):
+            image[img_i] = self._apply_transformation(image[img_i],
+                                                      transf_mtx,
+                                                      self.interp_order_imgs,
+                                                      self.boundary_mode,
+                                                      self.cval)
 
         if mask is not None:
             mask = self._apply_transformation(mask,
@@ -261,7 +258,7 @@ class RandomAffineTransformation(RandomAugmentation):
                                                 self.cval)
 
         if wmaps is not None:
-            wmaps = self._apply_transformation(target,
+            wmaps = self._apply_transformation(wmaps,
                                                transf_mtx,
                                                self.interp_order_wmaps,
                                                self.boundary_mode,
