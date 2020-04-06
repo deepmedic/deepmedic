@@ -10,7 +10,10 @@ from PySide2 import QtWidgets, QtGui, QtCore
 
 
 def add_sufix(name, suffix):
-    fname, extension = os.path.splitext(name)
+    # fname, extension = os.path.splitext(name)
+    split_text = name.split('.')
+    fname = split_text[0]
+    extension = '.' + '.'.join(split_text[1:])
     if suffix is None:
         suffix = ''
     return fname + suffix + extension
@@ -303,25 +306,6 @@ class PreprocConfigWindow(ConfigWindow):
             if resample_imgs:
                 image.resample(spacing=spacing)
 
-            # resize (intra-subject)
-            if resize_intra:
-                image.resample(ref_image=image.channels[resize_intra_col])
-
-            # create  <--------------------------------------------------------- R E V I E W --------------------
-            if create_mask:
-                image.get_mask(thresh_low, thresh_high)
-                if mask_dir:
-                    mask_save_name = os.path.join(mask_dir, channel_save_names[channel_names[0]].split('/')[-1])
-                elif mask_suffix:
-                    mask_save_name = channel_save_names[channel_names[0]]
-                else:
-                    mask_save_name = get_save_name(channel_save_names[channel_names[0]], output_dir, None,
-                                                   base_dir=None, subj_id=subj_id, channel_name='Mask')
-                if not mask_extension:
-                    mask_extension = image_extension
-                if mask_pixel_type:
-                    image.mask.change_pixel_type(mask_pixel_type)
-
             # resize
             if resize_imgs:
                 if not spacing and size_units == 'mm':
@@ -329,6 +313,26 @@ class PreprocConfigWindow(ConfigWindow):
                 else:
                     this_size = size
                 image.resize(this_size, centre_mass=use_centre_mass, use_mask=use_mask)
+
+            # resize (intra-subject)
+            if resize_intra:
+                image.resample(ref_image=image.channels[resize_intra_col])
+
+            # create  <--------------------------------------------------------- R E V I E W --------------------
+            if create_mask:
+                image.get_mask(thresh_low, thresh_high)
+                if not use_base_dir or not (mask_dir or mask_suffix):
+                    mask_save_name = get_save_name(channel_save_names[channel_names[0]], output_dir, None,
+                                                   base_dir=None, subj_id=subj_id, channel_name='Mask')
+                elif mask_dir:
+                    mask_save_name = os.path.join(mask_dir, channel_save_names[channel_names[0]].split('/')[-1])
+                elif mask_suffix:
+                    mask_save_name = channel_save_names[channel_names[0]]
+
+                if not mask_extension:
+                    mask_extension = image_extension
+                if mask_pixel_type:
+                    image.mask.change_pixel_type(mask_pixel_type)
 
             # cutoff
             if threshold:

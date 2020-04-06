@@ -531,18 +531,21 @@ class NiftiImage(object):
                 high = [high] * len(self.channels)
             for i in range(len(self.channels)):
                 channel = self.channel_names[i]
-                self.channels[channel].open()
-                array = sitk.GetArrayFromImage(self.channels[channel].image)
+                original = self.channels[channel].open()
+                array = sitk.GetArrayFromImage(original)
                 if low[i] is not None:
                     array[array < low[i]] = low[i]
                 if high[i] is not None:
                     array[array > high[i]] = high[i]
                 self.channels[channel].image = sitk.GetImageFromArray(array)
+                self.channels[channel].image.CopyInformation(original)
         else:
-            array = sitk.GetArrayFromImage(self.open())
+            original = self.open()
+            array = sitk.GetArrayFromImage(original)
             array[array < low] = low
             array[array > high] = high
             self.image = sitk.GetImageFromArray(array)
+            self.image.CopyInformation(original)
 
     def norm_range(self, orig_low, orig_high, target_low, target_high):
         if self.channels is not None:
