@@ -362,14 +362,16 @@ class NiftiImage(object):
         if self.mask:
             (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self.mask, origin, spacing,
                                                                              direction, size, standard)
-            resampled_mask = self.mask.apply_resample(origin_t, spacing_t, direction_t, size_t)
+            resampled_mask = self.mask.apply_resample(origin_t, spacing_t, direction_t, size_t,
+                                                      interpolator=sitk.sitkNearestNeighbor)
         else:
             resampled_mask = None
 
         if self.target:
             (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self.target, origin, spacing,
                                                                              direction, size, standard)
-            resampled_target = self.target.apply_resample(origin_t, spacing_t, direction_t, size_t)
+            resampled_target = self.target.apply_resample(origin_t, spacing_t, direction_t, size_t,
+                                                          interpolator=sitk.sitkNearestNeighbor)
         else:
             resampled_target = None
 
