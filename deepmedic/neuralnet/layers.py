@@ -77,10 +77,10 @@ class PoolingLayer(Layer):
         raise NotImplementedError()
     
     def calc_outp_dims_given_inp(self, inp_dims): # Same as conv.
-        if np.any([inp_dims[d] < self._window_size[d] for d in range(3)]):
+        padding = self._n_padding()
+        if np.any([inp_dims[d] + padding[d] < self._window_size[d] for d in range(3)]):
             return [0,0,0]
         else:
-            padding = self._n_padding()
             return [1 + (inp_dims[d] + padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
     
     def calc_inp_dims_given_outp(self, outp_dims):
@@ -124,10 +124,10 @@ class ConvolutionalLayer(Layer):
         return rf_out, stride_rf
     
     def calc_outp_dims_given_inp(self, inp_dims):
-        if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
+        padding = self._n_padding()
+        if np.any([inp_dims[d] + padding[d] < self._w.shape[2+d] for d in range(3)]):
             return [0,0,0]
         else:
-            padding = self._n_padding()
             return [1 + (inp_dims[d] + padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
     
     def calc_inp_dims_given_outp(self, outp_dims):
@@ -209,10 +209,10 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         return rf_out, stride_rf
     
     def calc_outp_dims_given_inp(self, inp_dims):
-        if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
+        padding = self._n_padding()
+        if np.any([inp_dims[d] + padding[d] < self._w.shape[2+d] for d in range(3)]):
             return [0,0,0]
         else:
-            padding = self._n_padding()
             return [1 + (inp_dims[0] + padding[0] - self._w_x.shape[2]) // self._strides[0],
                     1 + (inp_dims[1] + padding[1] - self._w_y.shape[3]) // self._strides[1],
                     1 + (inp_dims[2] + padding[2] - self._w_z.shape[4]) // self._strides[2]]

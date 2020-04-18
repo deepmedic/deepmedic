@@ -232,21 +232,19 @@ def do_training(sessionTf,
         while n_eps_trained_model < n_epochs:
             epoch = n_eps_trained_model
 
-            tb_log_tr = tensorboard_loggers['train'] if tensorboard_loggers is not None else None
             acc_monitor_ep_tr = AccuracyMonitorForEpSegm(log, 0,
                                                          n_eps_trained_model,
                                                          cnn3d.num_classes,
                                                          n_subepochs,
-                                                         tb_log_tr)
+                                                         tensorboard_loggers['train'])
 
-            tb_log_val = tensorboard_loggers['val'] if tensorboard_loggers is not None else None
             acc_monitor_ep_val = None
             if val_on_samples or val_on_whole_volumes:
                 acc_monitor_ep_val = AccuracyMonitorForEpSegm(log, 1,
                                                               n_eps_trained_model,
                                                               cnn3d.num_classes,
                                                               n_subepochs,
-                                                              tb_log_val)
+                                                              tensorboard_loggers['val'])
             
             val_on_whole_vols_after_this_ep = False
             if val_on_whole_volumes and (n_eps_trained_model + 1) % n_epochs_between_val_on_whole_vols == 0:
