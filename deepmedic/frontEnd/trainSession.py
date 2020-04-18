@@ -62,7 +62,6 @@ class TrainSession(Session):
                 tensorboard_loggers[logger_type] = None
             self._log.print3("Config flag to log to tensorboard not present.")
             self._log.print3("Skipping...")
-
         self._log.print3("-----------=============================-----------")
 
         return tensorboard_loggers

@@ -22,7 +22,9 @@ class AccuracyMonitorForEpSegm(object):
                  numberOfClasses,
                  numberOfSubepochsPerEpoch,
                  tensorboard_logger=None):
-
+        """
+        tensorboard_logger: None if no tb logging, otherwise instance of deepmedic.logging.tensorboard_logger.TensorboardLogger
+        """
         self.tensorboard_logger = tensorboard_logger
 
         self.log = log
