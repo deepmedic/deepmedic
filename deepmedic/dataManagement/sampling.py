@@ -21,8 +21,6 @@ import collections
 from deepmedic.dataManagement.io import load_volume
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.preprocessing import pad_imgs_of_case, normalize_int_of_subj, calc_border_int_of_3d_img
-from deepmedic.dataManagement.augmentSample import augment_sample
-from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
 from deepmedic.dataManagement.augmentation import apply_augmentations
 
 
