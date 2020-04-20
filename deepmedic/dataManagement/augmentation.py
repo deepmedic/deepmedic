@@ -2,7 +2,6 @@ import numpy as np
 from scipy.ndimage.filters import gaussian_filter
 from scipy.ndimage import zoom, rotate
 import warnings
-import SimpleITK as sitk
 import scipy.ndimage
 
 
@@ -24,23 +23,6 @@ def to_array(a, ndim):
 
 def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
     if augs is not None:
-        # if image.__class__ == list:
-        #     print('list')
-        #     for i in range(len(image)):
-        #         for aug in augs:
-        #             image_tmp, target_tmp, mask_tmp, wmaps_tmp = aug(image[i],
-        #                                                              target[i] if target is not None else None,
-        #                                                              mask[i] if mask is not None else None,
-        #                                                              wmaps[i] if wmaps is not None else None)
-        #             image[i] = image_tmp
-        #             if target is not None:
-        #                 target[i] = target_tmp
-        #             if mask is not None:
-        #                 mask[i] = mask_tmp
-        #             if wmaps is not None:
-        #                 wmaps[i] = wmaps_tmp
-        # else:
-        #     print('not list')
         for aug in augs:
             image, target, mask, wmaps = aug(image, target, mask, wmaps)
 
@@ -607,50 +589,3 @@ class RandomInvert(RandomAugmentation):
         image = -image
 
         return image, target, mask, wmaps
-
-# class RandomAffineTransformation(Augmentation):
-#     def __init__(self, prob, max_xy_rot=np.pi / 4, max_xz_rot=np.pi / 6, max_yz_rot=np.pi / 6, max_scaling=.1,
-#                  default_channel_value=-1., default_target_value=0., is_target_discrete=True):
-#         self.prob =  prob
-#         self.max_xy_rot = max_xy_rot
-#         self.max_xz_rot = max_xz_rot
-#         self.max_yz_rot = max_yz_rot
-#         self.max_scaling = max_scaling
-#         self.default_channel_value = default_channel_value
-#         self.default_target_value = default_target_value
-#         self.is_target_discrete = is_target_discrete
-#
-#     @staticmethod
-#     def resample(channel, transform, interpolation, default_value):
-#         im = sitk.GetImageFromArray(channel)
-#         return sitk.GetArrayFromImage(sitk.Resample(im, im, transform, interpolation, default_value))
-#
-#     def __call__(self, image, target=None, mask=None):
-#         if np.random.random_sample() > self.prob:
-#             return image, target, sampling_mask
-#
-#         transform = sitk.AffineTransform(3)
-#
-#         theta_xy = np.random.uniform(-self.max_xy_rot, self.max_xy_rot)
-#         rot_xy = np.array(
-#             [[np.cos(theta_xy), np.sin(theta_xy), 0], [-np.sin(theta_xy), np.cos(theta_xy), 0], [0, 0, 1]])
-#
-#         theta_xz = np.random.uniform(-self.max_xz_rot, self.max_xz_rot)
-#         rot_xz = np.array(
-#             [[np.cos(theta_xz), 0, np.sin(theta_xz)], [0, 1, 0], [-np.sin(theta_xy), 0, np.cos(theta_xy)]])
-#
-#         theta_yz = np.random.uniform(-self.max_yz_rot, self.max_yz_rot)
-#         rot_yz = np.array(
-#             [[1, 0, 0], [0, np.cos(theta_yz), np.sin(theta_yz)], [0, -np.sin(theta_yz), np.cos(theta_yz)]])
-#
-#         scale = np.eye(3, 3) * np.random.uniform(1 - self.max_scaling, 1 + self.max_scaling)
-#
-#         matrix = np.dot(scale, np.dot(np.dot(rot_xy, rot_xz), rot_yz))
-#         transform.SetMatrix(matrix.ravel())
-#
-#         image = np.array(
-#             [self.resample(channel, transform, sitk.sitkLinear, self.default_channel_value) for channel in image])
-#         target = np.array(self.resample(target, transform, sitk.sitkNearestNeighbor, self.default_target_value))
-#         sampling_mask = np.array(self.resample(sampling_mask.astype(np.uint8), transform, sitk.sitkNearestNeighbor, 0))
-#
-#         return image, target, sampling_mask
