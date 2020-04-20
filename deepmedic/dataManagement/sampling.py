@@ -320,15 +320,6 @@ def load_subj_and_sample(job_idx,
     
     # Augment at image level:
     time_augm_0 = time.time()
-    #(channels,
-    # gt_lbl_img,
-    # roi_mask,
-    # wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
-    #                                                 gt_lbl_img,
-    #                                                 roi_mask,
-    #                                                 wmaps_to_sample_per_cat,
-    #                                                 augm_img_prms)
-    
     (channels,
      gt_lbl_img,
      roi_mask,
@@ -338,7 +329,7 @@ def load_subj_and_sample(job_idx,
                                                     roi_mask,
                                                     wmaps_to_sample_per_cat)
     time_augm_img = time.time() - time_augm_0
-    # Samplingof segments (sub-volumes) from an image.
+    # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
     sampling_maps_per_cat = sampling_type.derive_sampling_maps_per_cat(wmaps_to_sample_per_cat,
                                                                        gt_lbl_img,
@@ -390,10 +381,6 @@ def load_subj_and_sample(job_idx,
             
             # Augmentation of segments
             time_augm_sample_0 = time.time()
-            # (channs_of_sample_per_path,
-            #  lbls_predicted_part_of_sample) = augment_sample(channs_of_sample_per_path,
-            #                                                  lbls_predicted_part_of_sample,
-            #                                                  augm_sample_prms)
             (channs_of_sample_per_path,
              lbls_predicted_part_of_sample, _, _) = apply_augmentations(augm_sample_prms,
                                                                         channs_of_sample_per_path,
