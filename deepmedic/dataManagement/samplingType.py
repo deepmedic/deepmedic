@@ -51,7 +51,6 @@ class SamplingType(object):
 
     def _normalize_percentages(self, list_of_weights):
         array_of_weights = np.asarray(list_of_weights, dtype="float32")
-        print(array_of_weights)
         return array_of_weights / (1.0*np.sum(array_of_weights))
     # API
     def get_type_as_int(self):
