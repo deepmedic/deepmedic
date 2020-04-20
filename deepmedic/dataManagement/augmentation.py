@@ -5,6 +5,27 @@ import warnings
 import scipy.ndimage
 
 
+def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
+    """
+    Apply augmentations to input image
+
+    Keyword arguments:
+    augs -- list of augmentations (parent RandomAugmentation)
+    image -- 4D array of image channels
+    target -- 3D array of segmentation target
+    mask -- 3D array of RoI mask
+    wmaps -- 3D array of wmaps
+    """
+    if augs is not None:
+        for aug in augs:
+            image, target, mask, wmaps = aug(image, target, mask, wmaps)
+
+    return image, target, mask, wmaps
+
+
+# -------------------
+# Auxiliary functions
+# -------------------
 def crop_rescale(image, slc, scale, order):
     image = image[tuple(slc)]
 
@@ -21,14 +42,9 @@ def to_array(a, ndim):
         return a
 
 
-def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
-    if augs is not None:
-        for aug in augs:
-            image, target, mask, wmaps = aug(image, target, mask, wmaps)
-
-    return image, target, mask, wmaps
-
-
+# --------------------
+# Augmentation Classes
+# --------------------
 class RandomAugmentation(object):
     """
     Abstract class for random patch augmentation, patch augmentation also works on full images
