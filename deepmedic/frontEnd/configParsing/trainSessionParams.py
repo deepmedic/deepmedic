@@ -288,19 +288,9 @@ class TrainSessionParameters(object):
 
         # ~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
         # Image level
-        self.augm_img_prms_tr = {'affine': None}  # If var is None, no augm at all.
-        if cfg[cfg.AUGM_IMG_PRMS_TR] is not None:
-            self.augm_img_prms_tr['affine'] = AugmenterAffineParams(cfg[cfg.AUGM_IMG_PRMS_TR]['affine'])
-
-        # Patch/Segment level
-        self.augm_sample_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
-        if cfg[cfg.AUGM_SAMPLE_PRMS_TR] is not None:
-            for key in cfg[cfg.AUGM_SAMPLE_PRMS_TR]:
-                # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
-                self.augm_sample_prms_tr[key] = cfg[cfg.AUGM_SAMPLE_PRMS_TR][key]
-
         self.augmentation_image = \
             get_augmentation(cfg[cfg.AUGMENTATION_IMAGE]) if cfg[cfg.AUGMENTATION_IMAGE] is not None else []
+        # Patch/Segment level
         self.augmentation_sample = \
             get_augmentation(cfg[cfg.AUGMENTATION_SAMPLE]) if cfg[cfg.AUGMENTATION_SAMPLE] is not None else []
 
