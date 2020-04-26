@@ -110,7 +110,6 @@ class TestSession(Session):
                 chkpt_fname = tf.train.latest_checkpoint( file_to_load_params_from ) if os.path.isdir( file_to_load_params_from ) else file_to_load_params_from
                 self._log.print3("Loading parameters from:" + str(chkpt_fname))
                 try:
-                    #tf.compat.v1.variables_initializer( var_list = collection_vars_net ).run()
                     saver_net.restore(sessionTf, chkpt_fname)
                     #TF2: ckpt_net.restore(chkpt_fname)
                     self._log.print3("Parameters were loaded.")

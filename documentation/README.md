@@ -3,10 +3,11 @@ DeepMedic
 
 ### News
 
-Apr 2020 (v0.8.2):
-* Major codebase changes for compatibility with Tensorflow 2.0.0 (and TF1.15.0) (not eager yet).
-* Redesign of deepmedic/neuralnet modules.
+26 Apr 2020 (v0.8.2):
+* Major codebase changes for compatibility with Tensorflow 2.0.0 (and TF1.15.0) (not Eager yet).
+* Redesign/refactor of ./deepmedic/neuralnet modules.
 * Improved sampling (faster when multiclass) and logging.
+* Changes to configs: ModelConfig: kernelDimFor1stFcLayer -> kernelDimPerLayerFC, new padTypePerLayerFC.
 
 14 Nov 2019 (v0.8.0):
 * Logging metrics to Tensorboard.
@@ -82,7 +83,7 @@ The system requires the following:
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
 - [scipy](http://www.scipy.org/) : Scientific packages. Used for image operations e.g. augmentation.
 
-Latest versions tested:  
+#### Latest versions tested:  
 As of Apr 2020, v0.8.2 was tested on using Python 3.5.2, Tensorflow 2.0.0 and Tensorflow 1.15.0, nibabel 3.0.2, numpy 1.18.2.  
 
 #### 1.2. Installation
