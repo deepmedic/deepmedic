@@ -209,8 +209,8 @@ class TrainSession(Session):
                 # TF2: ckpt_net.save(file_prefix = filename_to_save_with+".net.ckpt2")
                 # TF2: ckpt_trainer.save(file_prefix = filename_to_save_with+".trainer.ckpt2")
                 
-                # tf.train.write_graph( graph_or_graph_def=sessionTf.graph.as_graph_def(),
-                # logdir="", name=filename_to_save_with+".graph.pb", as_text=False)
+                # tf.train.write_graph(graph_or_graph_def=sessionTf.graph.as_graph_def(),
+                #                      logdir="", name=filename_to_save_with+".graph.pb", as_text=False)
 
             self._log.print3("")
             self._log.print3("=======================================================")

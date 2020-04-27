@@ -163,7 +163,7 @@ class AccuracyMonitorForEpSegm(object):
             for metric, value in metrics_dict.items():
                 if value == self.NA_PATTERN:
                     value = np.nan
-                self.tensorboard_logger.add_summary(value, metric + '_' + class_string, step_num)
+                self.tensorboard_logger.add_summary(value, metric + '/' + class_string, step_num)
 
     def log_acc_subep_to_tensorboard(self):
         currSubep = self.numberOfSubepochsForWhichUpdated - 1
@@ -186,8 +186,8 @@ class AccuracyMonitorForEpSegm(object):
             self.log.print3('--- Logging average metrics for all classes ---')
 
             # create metrics dictionary
-            metrics_dict = {'acc_samples': self.meanEmpiricalAccuracyOfEachSubep[currSubep],
-                            'cost_samples': self.meanCostOfEachSubep[currSubep]}
+            metrics_dict = {'samples: accuracy': self.meanEmpiricalAccuracyOfEachSubep[currSubep],
+                            'samples: cost': self.meanCostOfEachSubep[currSubep]}
             class_string = 'Class-all'
             self.log_to_tensorboard(metrics_dict, class_string, step_num)
 
@@ -206,11 +206,11 @@ class AccuracyMonitorForEpSegm(object):
                 self.listPerSubepForegrMeanAccSensSpecDsc[currSubep]  # If class-0, report foreground.
 
             # create metrics dictionary
-            metrics_dict = {'acc_samples': meanAccClassOfSubep,
-                            'sens_samples': meanAccOnPosOfSubep,
-                            'prec_samples': meanPrecOfSubep,
-                            'spec_samples': meanAccOnNegOfSubep,
-                            'dice_samples': meanDiceOfSubep}
+            metrics_dict = {'samples: accuracy': meanAccClassOfSubep,
+                            'samples: sensitivity': meanAccOnPosOfSubep,
+                            'samples: precision': meanPrecOfSubep,
+                            'samples: specificity': meanAccOnNegOfSubep,
+                            'samples: Dice': meanDiceOfSubep}
             self.log_to_tensorboard(metrics_dict, class_string, step_num)
 
         self.log.print3('Logged metrics: ' + str(list(metrics_dict.keys())))
@@ -236,9 +236,9 @@ class AccuracyMonitorForEpSegm(object):
         # Report mean metrics for each class_i:
         for class_i in range(self.numberOfClasses):
             # the keys for the below are defined in testing.py routine.
-            metrics_dict = {#'dice1_whole_scans': mean_metrics['dice1'][class_i],
-                            'dice2_whole_scans': mean_metrics['dice2'][class_i],
-                            #'dice3_whole_scans': mean_metrics['dice3'][class_i]
+            metrics_dict = {'whole scans: Dice1 (Prediction VS Truth)': mean_metrics['dice1'][class_i],
+                            'whole scans: Dice2 (Prediction within ROI mask VS Truth)': mean_metrics['dice2'][class_i],
+                            'whole scans: Dice3 (Prediction VS Truth, both within ROI mask)': mean_metrics['dice3'][class_i]
                             }
             class_string = 'Class-' + str(class_i)
             self.log_to_tensorboard(metrics_dict, class_string, step_num)
