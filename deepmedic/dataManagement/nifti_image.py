@@ -330,7 +330,8 @@ class NiftiImage(object):
         return mask_image
 
     def resample(self, origin=None, spacing=None, direction=None, size=None, standard=False,
-                 save=False, filename=None, copy=False, ref_image=None, ref_channel=None):
+                 save=False, filename=None, copy=False, ref_image=None, ref_channel=None,
+                 interpolator=sitk.sitkLinear):
 
         if ref_channel and ref_channel in self.channels.keys():
             ref_image = self.channels[ref_channel]
@@ -352,12 +353,13 @@ class NiftiImage(object):
             for channel_name in self.channel_names:
                 resampled[channel_name], _, _ = \
                     self.channels[channel_name].resample(origin, spacing, direction, size, standard,
-                                                         save, filename, copy, ref_image, None)
+                                                         save, filename, copy, ref_image, None,
+                                                         interpolator=interpolator)
         else:
             (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self, origin, spacing,
                                                                              direction, size, standard)
 
-            resampled = self.apply_resample(origin_t, spacing_t, direction_t, size_t)
+            resampled = self.apply_resample(origin_t, spacing_t, direction_t, size_t, interpolator=interpolator)
 
         if self.mask:
             (origin_t, spacing_t, direction_t, size_t) = get_resample_params(self.mask, origin, spacing,
@@ -542,8 +544,10 @@ class NiftiImage(object):
         else:
             original = self.open()
             array = sitk.GetArrayFromImage(original)
-            array[array < low] = low
-            array[array > high] = high
+            if low is not None:
+                array[array < low] = low
+            if high is not None:
+                array[array > high] = high
             self.image = sitk.GetImageFromArray(array)
             self.image.CopyInformation(original)
 

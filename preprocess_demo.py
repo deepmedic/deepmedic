@@ -1,14 +1,28 @@
 from deepmedic.dataManagement.nifti_image import NiftiImage, save_nifti
 import os
+import SimpleITK as sitk
 
 
-def preprocess(image_path, output_dir='.', orientation_corr=True, resample_imgs=True, change_pixel_type=True,
+def preprocess(image_path, output_dir='.', ref_image=None,
+               orientation_corr=True, resample_imgs=True, change_pixel_type=True,
                pixel_type='float32', thresh_low=None, thresh_high=None, mask_pixel_type='uint8',
                spacing=(1, 1, 1), create_mask=False, threshold=False, thresh_low_cut=None, thresh_high_cut=None,
                norm_range=False, low_range_orig=None, high_range_orig=None,
-               low_range_target=None, high_range_target=None):
+               low_range_target=None, high_range_target=None,
+               interpolator='linear'):
+
+    if interpolator == 'nn':
+        interpolator = sitk.sitkNearestNeighbor
+    else:
+        interpolator = sitk.sitkLinear
 
     image = NiftiImage(image_path, None, None, channel_names=['Channel_0'])
+    if ref_image:
+        ref = NiftiImage(ref_image, None, None, channel_names=['Channel_0'])
+        spacing = ref.get_spacing()
+        size = ref.get_size()
+    else:
+        size = None
 
     # convert type
     if change_pixel_type:
@@ -20,7 +34,7 @@ def preprocess(image_path, output_dir='.', orientation_corr=True, resample_imgs=
 
     # resample (spacing)
     if resample_imgs:
-        image.resample(spacing=spacing)
+        image.resample(spacing=spacing, size=size, interpolator=interpolator)
 
     # create  <--------------------------------------------------------- R E V I E W --------------------
     if create_mask:
