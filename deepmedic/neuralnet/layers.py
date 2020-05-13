@@ -278,10 +278,7 @@ class BatchNormLayer(Layer):
         self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._array_mus_for_moving_avg[self._tf_plchld_int32], self._new_mu_batch ) # Cant it just take tensor? self._latest_mu_batch?
         self._op_update_mtrx_bn_inf_var = tf.compat.v1.assign( self._array_vars_for_moving_avg[self._tf_plchld_int32], self._new_var_batch )
         
-        self._latest_mu_batch = None # I think this is useless
-        self._latest_var_batch = None # I think this is useless
-        
-        self._idx_where_moving_avg_is = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
+        self._idx_where_moving_avg_is = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch. Could be tf.Var.
 
     def trainable_params(self):
         return [self._g, self._b]

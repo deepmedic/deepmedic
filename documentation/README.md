@@ -110,13 +110,7 @@ Then continue with the steps below.
 **Install TensorFlow** (TF): Please follow instructions on (https://www.tensorflow.org/install/).
 By consulting the previous link, ensure that your system has **CUDA** version and **cuDNN** versions compatible with the tensorflow version you are installing.
 ```cshell
-$ pip install --upgrade tensorflow-gpu               # or plain tensorflow, if you dont have a capable GPU.2
-```
-**Problem installing TF on MacOS**: Seems there is often a problem installing TF on MacOS.
-If the above fails, eg giving a `Could not find version that satisfies requirement tensorflow`, see the appropriate documentation for MacOS of TF in the above link.
-Something I've found working on Macs is installing TF with the following:
-```
-pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py3-none-any.whl # adapt py3 to py2, or version of TF as required.
+$ pip install tensorflow==2.0               # or tensorflow-cpu==1.15 or tensorflow-gpu==1.15
 ```
 
 **Install DeepMedic** and rest of its dependencies:
