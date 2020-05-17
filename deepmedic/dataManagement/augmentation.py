@@ -605,3 +605,58 @@ class RandomInvert(RandomAugmentation):
         image = -image
 
         return image, target, mask, wmaps
+
+
+# -----------------------------------------------------------------
+# Augmentations below are adapted from https://github.com/MIC-DKFZ
+# -----------------------------------------------------------------
+class RandomGammaAugmentation(RandomAugmentation):
+    def __init__(self, prob, gamma_range=(0.5, 2), invert_image=False,
+                 epsilon=1e-7, per_channel=False, retain_stats=False):
+        super().__init__(prob)
+        self.gamma_range = gamma_range
+        self.invert_image = invert_image
+        self.epsilon = epsilon
+        self.per_channel = per_channel
+        self.retain_stats = retain_stats
+
+    def augment(self, image, target, mask, wmaps):
+        if self.invert_image:
+            for path_idx in range(len(image)):
+                image[path_idx] = - image[path_idx]
+        if not self.per_channel:
+            if np.random.random() < 0.5 and self.gamma_range[0] < 1:
+                gamma = np.random.uniform(self.gamma_range[0], 1)
+            else:
+                gamma = np.random.uniform(max(self.gamma_range[0], 1), self.gamma_range[1])
+            for path_idx in range(len(image)):
+                if self.retain_stats:
+                    mn = image[path_idx].mean()
+                    sd = image[path_idx].std()
+                minm = image[path_idx].min()
+                rnge = image[path_idx].max() - minm
+                image[path_idx] = np.power(((image[path_idx] - minm) / float(rnge + self.epsilon)), gamma) * rnge + minm
+                if self.retain_stats:
+                    image[path_idx] = image[path_idx] - image[path_idx].mean() + mn
+                    image[path_idx] = image[path_idx] / (image[path_idx].std() + 1e-8) * sd
+        else:
+            for path_idx in range(len(image)):
+
+                for c in range(image[path_idx].shape[0]):
+                    if self.retain_stats:
+                        mn = image[path_idx][c].mean()
+                        sd = image[path_idx][c].std()
+                    if np.random.random() < 0.5 and self.gamma_range[0] < 1:
+                        gamma = np.random.uniform(self.gamma_range[0], 1)
+                    else:
+                        gamma = np.random.uniform(max(self.gamma_range[0], 1), self.gamma_range[1])
+                    minm = image[path_idx][c].min()
+                    rnge = image[path_idx][c].max() - minm
+                    image[path_idx][c] = np.power(((image[path_idx][c] - minm) / float(rnge + self.epsilon)), gamma) * float(rnge + self.epsilon) + minm
+                    if self.retain_stats:
+                        image[path_idx][c] = image[path_idx][c] - image[path_idx][c].mean() + mn
+                        image[path_idx][c] = image[path_idx][c] / (image[path_idx][c].std() + 1e-8) * sd
+        if self.invert_image:
+            for path_idx in range(len(image)):
+                image[path_idx] = - image[path_idx]
+        return image, target, mask, wmaps
