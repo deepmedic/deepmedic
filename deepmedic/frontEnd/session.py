@@ -40,7 +40,7 @@ class Session(object):
         log_filepath = self._log_folder_abs + "/" + self._sess_name + ".txt"
         # Create logger.
         self._log = loggers.Logger(log_filepath)
-    
+
     def get_logger(self):
         return self._log
     
