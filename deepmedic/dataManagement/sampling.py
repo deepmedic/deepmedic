@@ -791,14 +791,14 @@ def get_slice_coords_of_all_img_tiles(log,
                 # In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
                 if isinstance(roi_mask, np.ndarray):
                     if not np.any(roi_mask[rLowBoundary:rFarBoundary,
-                                  cLowBoundary:cFarBoundary,
-                                  zLowBoundary:zFarBoundary]
+                                           cLowBoundary:cFarBoundary,
+                                           zLowBoundary:zFarBoundary]
                                   ):  # all of it is out of the brain so skip it.
                         continue
 
-                sliceCoordsOfSegmentsToReturn.append(
-                    [[rLowBoundary, rFarBoundary - 1], [cLowBoundary, cFarBoundary - 1],
-                     [zLowBoundary, zFarBoundary - 1]])
+                sliceCoordsOfSegmentsToReturn.append([[rLowBoundary, rFarBoundary - 1],
+                                                      [cLowBoundary, cFarBoundary - 1],
+                                                      [zLowBoundary, zFarBoundary - 1]])
 
     # I need to have a total number of image-parts that can be exactly-divided by the 'batch_size'.
     # For this reason, I add in the far end of the list multiple copies of the last element.
