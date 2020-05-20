@@ -422,30 +422,30 @@ def load_imgs_of_subject(log,
     
     log.print3(job_id + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
     
-    numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
+    n_channels = len(paths_per_chan_per_subj[0])
         
     # Load the channels of the patient.
     inp_chan_dims = None  # Dimensions of the (padded) input channels.
     channels = None
-    for channel_i in range(numberOfNormalScaleChannels):
-        fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
-        if fullFilenamePathOfChannel != "-":  # normal case, filepath was given.
-            channelData = load_volume(fullFilenamePathOfChannel)
+    for channel_i in range(n_channels):
+        path_to_chan = paths_per_chan_per_subj[subj_i][channel_i]
+        if path_to_chan != "-":  # normal case, filepath was given.
+            channel = load_volume(path_to_chan)
             
             if channels is None:
                 # Initialize the array in which all the channels for the patient will be placed.
-                inp_chan_dims = list(channelData.shape)
-                channels = np.zeros((numberOfNormalScaleChannels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
+                inp_chan_dims = list(channel.shape)
+                channels = np.zeros((n_channels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
 
-            channels[channel_i] = channelData
+            channels[channel_i] = channel
         else:  # "-" was given in the config-listing file. Do Min-fill!
             log.print3(job_id + " WARN: No modality #" + str(channel_i) + " given. Will make zero-filled channel.")
             channels[channel_i] = 0.0
     
     # Load the class labels.
     if paths_to_lbls_per_subj is not None:
-        fullFilenamePathOfGtLabels = paths_to_lbls_per_subj[subj_i]
-        gt_lbl_img = load_volume(fullFilenamePathOfGtLabels)
+        path_to_lbl = paths_to_lbls_per_subj[subj_i]
+        gt_lbl_img = load_volume(path_to_lbl)
 
         if gt_lbl_img.dtype.kind not in ['i', 'u']:
             dtype_gt_lbls = 'int16'
@@ -456,8 +456,8 @@ def load_imgs_of_subject(log,
         gt_lbl_img = None  # For validation and testing
 
     if paths_to_masks_per_subj is not None:
-        fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
-        roi_mask = load_volume(fullFilenamePathOfRoiMask)
+        path_to_roi_mask = paths_to_masks_per_subj[subj_i]
+        roi_mask = load_volume(path_to_roi_mask)
         
         if roi_mask.dtype.kind not in ['i','u']:
             dtype_roi_mask = 'int16'
@@ -472,13 +472,12 @@ def load_imgs_of_subject(log,
         n_sampl_categs = len(paths_to_wmaps_per_sampl_cat_per_subj)
         wmaps_to_sample_per_cat = np.zeros([n_sampl_categs] + list(channels[0].shape), dtype="float32")
         for cat_i in range(n_sampl_categs):
-            filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
-            filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[
-                subj_i]
-            weightedMapForThisCatData = load_volume(filepathToTheWeightMapOfThisPatientForThisCategory)
-            if not np.all(weightedMapForThisCatData >= 0):
+            path_to_wmaps_for_this_cat_per_subj = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
+            path_to_wmap_for_this_cat = path_to_wmaps_for_this_cat_per_subj[subj_i]
+            wmap_for_this_cat = load_volume(path_to_wmap_for_this_cat)
+            if not np.all(wmap_for_this_cat >= 0):
                 raise ValueError("Negative values found in weightmap. Unexpected. Zero or positives allowed.")
-            wmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
+            wmaps_to_sample_per_cat[cat_i] = wmap_for_this_cat
     else:
         wmaps_to_sample_per_cat = None
 
