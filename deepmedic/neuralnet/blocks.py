@@ -194,7 +194,7 @@ class SoftmaxBlock(Block):
     def build(self,
               rng,
               n_fms,
-              t = 1):
+              t=1):
         # t: temperature. Scalar
         
         self._n_fms_in = n_fms

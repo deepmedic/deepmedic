@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name = "deepmedic",
-    version = "0.8.2",
+    version = "0.8.3",
     author = "Konstantinos Kamnitsas",
     author_email = "konstantinos.kamnitsas12@ic.ac.uk",
     description = "Efficient Multi-Scale 3D Convolutional Neural Network for Brain Lesion Segmentation",
