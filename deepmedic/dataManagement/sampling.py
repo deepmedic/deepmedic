@@ -642,7 +642,6 @@ def get_subsampl_segment_new(channels, segment_hr_slice_coords, subs_factor, seg
 
 
 def get_subsampl_segment(recFieldCnn,
-
                          channels,
                          image_part_slices_coords,
                          subSamplingFactor,
