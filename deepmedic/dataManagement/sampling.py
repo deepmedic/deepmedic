@@ -641,23 +641,18 @@ def get_subsampl_segment_new(channels, segment_hr_slice_coords, subs_factor, seg
     return segment_lr
 
 
-def get_subsampl_segment(recFieldCnn,
-                         channels,
-                         image_part_slices_coords,
-                         subSamplingFactor,
-                         subsampledImagePartDimensions
-                         ):
+def get_subsampl_segment(recFieldCnn, channels, segment_hr_slice_coords, subs_factor, segment_lr_dims):
 
-    dimsOfPrimarySegment = [image_part_slices_coords[0][1] - image_part_slices_coords[0][0] + 1,
-                            image_part_slices_coords[1][1] - image_part_slices_coords[1][0] + 1,
-                            image_part_slices_coords[2][1] - image_part_slices_coords[2][0] + 1]
+    dimsOfPrimarySegment = [segment_hr_slice_coords[0][1] - segment_hr_slice_coords[0][0] + 1,
+                            segment_hr_slice_coords[1][1] - segment_hr_slice_coords[1][0] + 1,
+                            segment_hr_slice_coords[2][1] - segment_hr_slice_coords[2][0] + 1]
 
     subsampledImageDimensions = channels[0].shape
 
     subsampledChannelsForThisImagePart = np.ones((len(channels),
-                                                  subsampledImagePartDimensions[0],
-                                                  subsampledImagePartDimensions[1],
-                                                  subsampledImagePartDimensions[2]),
+                                                  segment_lr_dims[0],
+                                                  segment_lr_dims[1],
+                                                  segment_lr_dims[2]),
                                                  dtype='float32')
 
     numberOfCentralVoxelsClassifiedForEachImagePart_rDim = dimsOfPrimarySegment[0] - recFieldCnn[0] + 1
@@ -666,42 +661,39 @@ def get_subsampl_segment(recFieldCnn,
 
     # Calculate the slice that I should get, and where I should put it in the imagePart
     # (eg if near the borders, and I cant grab a whole slice-imagePart).
-    rSlotsPreviously = ((subSamplingFactor[0] - 1) // 2) * recFieldCnn[0] if subSamplingFactor[0] % 2 == 1 \
-        else (subSamplingFactor[0] - 2) // 2 * recFieldCnn[0] + recFieldCnn[0] // 2
-    cSlotsPreviously = ((subSamplingFactor[1] - 1) // 2) * recFieldCnn[1] if subSamplingFactor[1] % 2 == 1 \
-        else (subSamplingFactor[1] - 2) // 2 * recFieldCnn[1] + recFieldCnn[1] // 2
-    zSlotsPreviously = ((subSamplingFactor[2] - 1) // 2) * recFieldCnn[2] if subSamplingFactor[2] % 2 == 1 \
-        else (subSamplingFactor[2] - 2) // 2 * recFieldCnn[2] + recFieldCnn[2] // 2
+    rSlotsPreviously = ((subs_factor[0] - 1) // 2) * recFieldCnn[0] if subs_factor[0] % 2 == 1 \
+        else (subs_factor[0] - 2) // 2 * recFieldCnn[0] + recFieldCnn[0] // 2
+    cSlotsPreviously = ((subs_factor[1] - 1) // 2) * recFieldCnn[1] if subs_factor[1] % 2 == 1 \
+        else (subs_factor[1] - 2) // 2 * recFieldCnn[1] + recFieldCnn[1] // 2
+    zSlotsPreviously = ((subs_factor[2] - 1) // 2) * recFieldCnn[2] if subs_factor[2] % 2 == 1 \
+        else (subs_factor[2] - 2) // 2 * recFieldCnn[2] + recFieldCnn[2] // 2
     # 1*17
-    rToCentralVoxelOfAnAveragedArea = subSamplingFactor[0] // 2 if subSamplingFactor[0] % 2 == 1 else (
-            subSamplingFactor[
-                0] // 2 - 1)  # one closer to the beginning of dim. Same happens when I get parts of image.
-    cToCentralVoxelOfAnAveragedArea = subSamplingFactor[1] // 2 if subSamplingFactor[1] % 2 == 1 else (
-            subSamplingFactor[1] // 2 - 1)
-    zToCentralVoxelOfAnAveragedArea = subSamplingFactor[2] // 2 if subSamplingFactor[2] % 2 == 1 else (
-            subSamplingFactor[2] // 2 - 1)
+    # One pixel closer to the beginning of dim.
+    rToCentralVoxelOfAnAveragedArea = subs_factor[0] // 2 if subs_factor[0] % 2 == 1 else (subs_factor[ 0] // 2 - 1)
+    cToCentralVoxelOfAnAveragedArea = subs_factor[1] // 2 if subs_factor[1] % 2 == 1 else (subs_factor[1] // 2 - 1)
+    zToCentralVoxelOfAnAveragedArea = subs_factor[2] // 2 if subs_factor[2] % 2 == 1 else (subs_factor[2] // 2 - 1)
     # This is where to start taking voxels from the subsampled image. From the beginning of the imagePart(1 st patch)...
     # ... go forward a few steps to the voxel that is like the "central" in this subsampled (eg 3x3) area.
     # ...Then go backwards -Patchsize to find the first voxel of the subsampled.
 
     # These indices can run out of image boundaries. I ll correct them afterwards.
-    rlow = image_part_slices_coords[0][0] + rToCentralVoxelOfAnAveragedArea - rSlotsPreviously
+    rlow = segment_hr_slice_coords[0][0] + rToCentralVoxelOfAnAveragedArea - rSlotsPreviously
     # If the patch is 17x17, I want a 17x17 subsampled Patch. BUT if the imgPART is 25x25 (9voxClass),
     # I want 3 subsampledPatches in my subsampPart to cover this area!
     # That is what the last term below is taking care of.
     # CAST TO INT because ceil returns a float, and later on when computing
     # rHighNonInclToPutTheNotPaddedInSubsampledImPart I need to do INTEGER DIVISION.
-    rhighNonIncl = int(rlow + subSamplingFactor[0] * recFieldCnn[0] + (
-            math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_rDim * 1.0) / subSamplingFactor[0]) - 1) *
-                       subSamplingFactor[0])  # excluding index in segment
-    clow = image_part_slices_coords[1][0] + cToCentralVoxelOfAnAveragedArea - cSlotsPreviously
-    chighNonIncl = int(clow + subSamplingFactor[1] * recFieldCnn[1] + (
-            math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_cDim * 1.0) / subSamplingFactor[1]) - 1) *
-                       subSamplingFactor[1])
-    zlow = image_part_slices_coords[2][0] + zToCentralVoxelOfAnAveragedArea - zSlotsPreviously
-    zhighNonIncl = int(zlow + subSamplingFactor[2] * recFieldCnn[2] + (
-            math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_zDim * 1.0) / subSamplingFactor[2]) - 1) *
-                       subSamplingFactor[2])
+    rhighNonIncl = int(rlow + subs_factor[0] * recFieldCnn[0] + (
+            math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_rDim * 1.0) / subs_factor[0]) - 1) *
+                       subs_factor[0])  # excluding index in segment
+    clow = segment_hr_slice_coords[1][0] + cToCentralVoxelOfAnAveragedArea - cSlotsPreviously
+    chighNonIncl = int(clow + subs_factor[1] * recFieldCnn[1] + (
+            math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_cDim * 1.0) / subs_factor[1]) - 1) *
+                       subs_factor[1])
+    zlow = segment_hr_slice_coords[2][0] + zToCentralVoxelOfAnAveragedArea - zSlotsPreviously
+    zhighNonIncl = int(zlow + subs_factor[2] * recFieldCnn[2] + (
+            math.ceil((numberOfCentralVoxelsClassifiedForEachImagePart_zDim * 1.0) / subs_factor[2]) - 1) *
+                       subs_factor[2])
 
     rlowCorrected = max(rlow, 0)
     clowCorrected = max(clow, 0)
@@ -710,14 +702,14 @@ def get_subsampl_segment(recFieldCnn,
     chighNonInclCorrected = min(chighNonIncl, subsampledImageDimensions[1])
     zhighNonInclCorrected = min(zhighNonIncl, subsampledImageDimensions[2])  # This gave 7
 
-    rLowToPutTheNotPaddedInSubsampledImPart = 0 if rlow >= 0 else abs(rlow) // subSamplingFactor[0]
-    cLowToPutTheNotPaddedInSubsampledImPart = 0 if clow >= 0 else abs(clow) // subSamplingFactor[1]
-    zLowToPutTheNotPaddedInSubsampledImPart = 0 if zlow >= 0 else abs(zlow) // subSamplingFactor[2]
+    rLowToPutTheNotPaddedInSubsampledImPart = 0 if rlow >= 0 else abs(rlow) // subs_factor[0]
+    cLowToPutTheNotPaddedInSubsampledImPart = 0 if clow >= 0 else abs(clow) // subs_factor[1]
+    zLowToPutTheNotPaddedInSubsampledImPart = 0 if zlow >= 0 else abs(zlow) // subs_factor[2]
 
     dimensionsOfTheSliceOfSubsampledImageNotPadded = [
-        int(math.ceil((rhighNonInclCorrected - rlowCorrected) * 1.0 / subSamplingFactor[0])),
-        int(math.ceil((chighNonInclCorrected - clowCorrected) * 1.0 / subSamplingFactor[1])),
-        int(math.ceil((zhighNonInclCorrected - zlowCorrected) * 1.0 / subSamplingFactor[2]))
+        int(math.ceil((rhighNonInclCorrected - rlowCorrected) * 1.0 / subs_factor[0])),
+        int(math.ceil((chighNonInclCorrected - clowCorrected) * 1.0 / subs_factor[1])),
+        int(math.ceil((zhighNonInclCorrected - zlowCorrected) * 1.0 / subs_factor[2]))
     ]
 
     # I now have exactly where to get the slice from and where to put it in the new array.
@@ -726,9 +718,9 @@ def get_subsampl_segment(recFieldCnn,
         subsampledChannelsForThisImagePart[channel_i] *= intensityZeroOfChannel
 
         sliceOfSubsampledImageNotPadded = channels[channel_i][
-                                          rlowCorrected: rhighNonInclCorrected: subSamplingFactor[0],
-                                          clowCorrected: chighNonInclCorrected: subSamplingFactor[1],
-                                          zlowCorrected: zhighNonInclCorrected: subSamplingFactor[2]
+                                          rlowCorrected: rhighNonInclCorrected: subs_factor[0],
+                                          clowCorrected: chighNonInclCorrected: subs_factor[1],
+                                          zlowCorrected: zhighNonInclCorrected: subs_factor[2]
                                           ]
         subsampledChannelsForThisImagePart[
         channel_i,
@@ -740,7 +732,6 @@ def get_subsampl_segment(recFieldCnn,
                                                  dimensionsOfTheSliceOfSubsampledImageNotPadded[2]
         ] = sliceOfSubsampledImageNotPadded
 
-    # placeholderReturn = np.ones([3,19,19,19], dtype="float32") #channel, dims
     return subsampledChannelsForThisImagePart
 
 def shuffle_samples(channs_of_samples_per_path, lbls_predicted_part_of_samples):
