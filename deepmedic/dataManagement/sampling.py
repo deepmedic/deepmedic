@@ -603,43 +603,6 @@ def sample_idxs_of_segments(log,
     
     return idxs_of_sampled_centers
 
-# Deprecated
-def get_subsampl_segment_new(channels, segment_hr_slice_coords, subs_factor, dims_lr_segm):
-    """
-    New version, introduced in v0.8.2, but changed behaviour in comparison to old version.
-    Some users reported slightly reduced behaviour, so codebase was reversed in v0.8.3 to use old version for now.
-    """
-    img_dims = channels.shape[1:] # Channels: [batch, X, Y, Z]
-
-    segment_lr = np.ones((len(channels), dims_lr_segm[0], dims_lr_segm[1], dims_lr_segm[2]), dtype='float32')
-    
-    # Central voxel of input:
-    central_vox = [segment_hr_slice_coords[d][0] + (segment_hr_slice_coords[d][1]-segment_hr_slice_coords[d][0])//2 for d in range(3)]
-    low = [central_vox[d] - (dims_lr_segm[d]-1)//2 * subs_factor[d] for d in range(3)] # -1 to to deal with even sizes.
-    high_non_incl = [low[d] + subs_factor[d] * (dims_lr_segm[d]-1) + 1 for d in range(3)] # +1 to make it non inclusive
-    
-    low_corrected = [max(low[d], 0) for d in range(3)]
-    high_non_incl_corrected = [min(high_non_incl[d], img_dims[d]) for d in range(3)]
-
-    low_to_put_slice_in_segm = [0 if low[d] >= 0 else abs(low[d]) // subs_factor[d] for d in range(3)]
-    dims_of_slice_not_padded = [int(math.ceil((high_non_incl_corrected[d] - low_corrected[d]) / subs_factor[0])) for d in range(3)]
-    
-    # I now have exactly where to get the slice from and where to put it in the new array.
-    for channel_i in range(len(channels)):
-        segment_lr[channel_i] *= calc_border_int_of_3d_img(channels[channel_i]) # Make black.
-        # Can be smaller than that appropriate segment dimensions, due to sampling near boundary.
-        chan_slice_lr = channels[channel_i,
-                                 low_corrected[0]: high_non_incl_corrected[0]: subs_factor[0],
-                                 low_corrected[1]: high_non_incl_corrected[1]: subs_factor[1],
-                                 low_corrected[2]: high_non_incl_corrected[2]: subs_factor[2]]
-        segment_lr[channel_i,
-                   low_to_put_slice_in_segm[0]: low_to_put_slice_in_segm[0] + dims_of_slice_not_padded[0],
-                   low_to_put_slice_in_segm[1]: low_to_put_slice_in_segm[1] + dims_of_slice_not_padded[1],
-                   low_to_put_slice_in_segm[2]: low_to_put_slice_in_segm[2] + dims_of_slice_not_padded[2]
-                   ] = chan_slice_lr
-
-    return segment_lr
-
 
 def get_subsampl_segment(rec_field_hr_path, channels, segment_hr_slice_coords, subs_factor, dims_lr_segm):
     """
