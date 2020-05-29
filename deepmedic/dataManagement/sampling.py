@@ -647,17 +647,18 @@ def get_subsampl_segment(rec_field_hr_path, channels, segment_hr_slice_coords, s
     ends (inclusive), this returns the corresponding image segment of down-sampled context for the parallel path(s).
 
     (Actually, in this implementation, the right (end) part of segment_hr_slice_coords is not used.)
-    The way it works is NOT optimal. From the beginning of the high-resolution segment,
+    The way it works is NOT optimal. It ASSUMES that receptive field or high res and low-res paths are the same size.
+    From the beginning of the high-resolution segment,
     it goes further to the left 1 receptive-field and then forward subs_factor * receptive-fields.
     This stops it from being used with arbitrary size of subsampled segment (decoupled by the high-res segment).
     Now, the subsampled receptive-field has to be of the same size as the normal-scale.
-    To change this, I should find where THE FIRST TOP LEFT CENTRAL (predicted) VOXEL is,
+    To change this, I should find where THE FIRST TOP LEFT CENTRAL (predicted) VOXEL is, <=================
     and do the back-one-(sub)rec_field + front-3-(sub)ref_fields from there, not from the beginning of the patch.
 
     Current way it works (correct):
-    If I have eg subsample factor=3 and 9 central-pred-voxels, I get 3 "central" voxels/patches for the
-    subsampled-part. Straightforward. If I have a number of central voxels that is not an exact multiple of
-    the subfactor, eg 10 central-voxels, I get 3+1 central voxels in the subsampled-part.
+    If I have eg subsample factor=3 and 9 central-pred-voxels, I get 3 "central" voxels for the
+    subsampled-segment. Straightforward. If I have a number of central voxels that is not an exact multiple of
+    the subfactor, eg 10 central-voxels, I get 3+1 central voxels in the subsampled-segment.
     When the cnn is convolving them, they will get repeated to 4(last-layer-neurons)*3(factor) = 12,
     and will get sliced down to 10, in order to have same dimension with the 1st pathway.
     """
@@ -667,31 +668,27 @@ def get_subsampl_segment(rec_field_hr_path, channels, segment_hr_slice_coords, s
 
     segment_lr = np.ones((channels.shape[0], dims_lr_segm[0], dims_lr_segm[1], dims_lr_segm[2]), dtype='float32')
 
-    # Calculate the slice that I should get, and where I should put it in the segment
-    # (eg if near the borders, and I cant grab a whole slice-imagePart).
-    slotsPreviously = [None, None, None]
-    nVoxToCentralOfAnAveragedArea = [None, None, None]
+    n_vox_before = [None, None, None]
+    centre_of_downsampl_kernel = [None, None, None]
     for d in range(3):
         if subs_factor[d] % 2 == 1: # Odd
-            slotsPreviously[d] = ((subs_factor[d] - 1) // 2) * rec_field_hr_path[d] # 3===>1
-            nVoxToCentralOfAnAveragedArea[d] = subs_factor[d] // 2
+            n_vox_before[d] = ((subs_factor[d] - 1) // 2) * rec_field_hr_path[d] # TODO: Should be rec_field_lr_path
+            centre_of_downsampl_kernel[d] = subs_factor[d] // 2 # 3 ==> 1
         else:
-            slotsPreviously[d] = (subs_factor[d] - 2) // 2 * rec_field_hr_path[d] + rec_field_hr_path[d] // 2 # 2==>0.49
-            nVoxToCentralOfAnAveragedArea[d] = subs_factor[d] // 2 - 1 # One pixel closer to the beginning of dim.
+            n_vox_before[d] = (subs_factor[d] - 2) // 2 * rec_field_hr_path[d] + rec_field_hr_path[d] // 2
+            centre_of_downsampl_kernel[d] = subs_factor[d] // 2 - 1 # One pixel closer to the beginning of dim.
 
-    # This is where to start taking voxels from the subsampled image. From the beginning of the imagePart(1 st patch)...
+    # This is where to start taking voxels from the subsampled image: From the beginning of the hr_segment...
     # ... go forward a few steps to the voxel that is like the "central" in this subsampled (eg 3x3) area.
     # ...Then go backwards -Patchsize to find the first voxel of the subsampled.
 
     # These indices can run out of image boundaries. I ll correct them afterwards.
-    low = [segment_hr_slice_coords[d][0] + nVoxToCentralOfAnAveragedArea[d] - slotsPreviously[d] for d in range(3)]
-    # If the patch is 17x17, I want a 17x17 subsampled Patch. BUT if the segment is 25x25 (9voxClass),
-    # I want 3 subsampledPatches in my subsampPart to cover this area!
+    low = [segment_hr_slice_coords[d][0] + centre_of_downsampl_kernel[d] - n_vox_before[d] for d in range(3)]
+    # If the rec_field is 17x17, I want a 17x17 subsampled Patch. BUT if the segment is 25x25 (9voxClass),
+    # I want 3 voxels in my subsampled-segment to cover this area!
     # That is what the last term below is taking care of.
-    # CAST TO INT because ceil returns a float, and later on when computing
-    # rHighNonInclToPutTheNotPaddedInSubsampledImPart I need to do INTEGER DIVISION.
     high_non_incl = [int(low[d] + subs_factor[d] * rec_field_hr_path[d] + (
-            math.ceil((dims_outp_hr_path[d] * 1.0) / subs_factor[d]) - 1) * subs_factor[d]) for d in range(3)]
+            math.ceil(dims_outp_hr_path[d] / subs_factor[d]) - 1) * subs_factor[d]) for d in range(3)]
 
     low_corrected = [max(low[d], 0) for d in range(3)]
     high_non_incl_corrected = [min(high_non_incl[d], dims_img[d]) for d in range(3)]
@@ -715,6 +712,7 @@ def get_subsampl_segment(rec_field_hr_path, channels, segment_hr_slice_coords, s
                   ] = chan_slice_lr
 
     return segment_lr
+
 
 def shuffle_samples(channs_of_samples_per_path, lbls_predicted_part_of_samples):
     n_paths_taking_inp = len(channs_of_samples_per_path)
