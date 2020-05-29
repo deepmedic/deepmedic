@@ -3,6 +3,10 @@ DeepMedic
 
 ### News
 
+29 May 2020 (v0.8.3):
+* Reverted back to old algorithm (pre-v0.8.2) for getting down-sampled context, to preserve exact behaviour. 
+* Models trained with v0.8.3 should now be fully compatible with versions v0.8.1 and before.
+
 26 Apr 2020 (v0.8.2):
 * Major codebase changes for compatibility with Tensorflow 2.0.0 (and TF1.15.0) (not Eager yet).
 * Redesign/refactor of ./deepmedic/neuralnet modules.

@@ -15,12 +15,15 @@ class PathwayWrapperForSampling(object):
     def __init__(self, pathwayInstance):
         self._pType = pathwayInstance.pType()
         self._subs_factor = pathwayInstance.subs_factor()
+        self._rec_field = pathwayInstance.rec_field()
 
     def pType(self):
         return self._pType
     def subs_factor(self):
         return self._subs_factor
-        
+    def rec_field(self): # Used by sampling of low-res context (old version) during training.
+        return self._rec_field
+
 class CnnWrapperForSampling(object):
     # Only for the parallel process used during training. So that it won't re-load theano/tensorflow etc.
     # There was a problem with cnmem when reloading theano.
