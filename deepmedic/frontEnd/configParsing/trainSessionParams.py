@@ -40,7 +40,7 @@ class TrainSessionParameters(object):
     @staticmethod
     def errorRequireValidCsvTraining():
         print(
-            "ERROR: Train CSV file \"channelsTraining\" does not exist. Exiting.")
+            "ERROR: Train CSV file \"csvTraining\" does not exist. Exiting.")
         exit(1)
 
     errReqCsvTrain = errorRequireValidCsvTraining
@@ -49,7 +49,7 @@ class TrainSessionParameters(object):
     @staticmethod
     def errorRequireValidCsvValidation():
         print(
-            "ERROR: Validation CSV file \"channelsTraining\" does not exist. Exiting.")
+            "ERROR: Validation CSV file \"csvValidation\" does not exist. Exiting.")
         exit(1)
 
     errReqCsvVal = errorRequireValidCsvValidation
