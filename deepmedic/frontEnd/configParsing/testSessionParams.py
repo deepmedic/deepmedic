@@ -7,7 +7,11 @@
 
 from __future__ import absolute_import, print_function, division
 
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt
+import pandas as pd
+import os
+
+from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_csv
+
 
 class TestSessionParameters(object) :
     #To be called from outside too.
@@ -21,6 +25,14 @@ class TestSessionParameters(object) :
               "\n\tOtherwise, requires ['apply_to_all_channels': False] if ['apply_per_channel': [..list..] ]"
               "\n\tExiting!")
         exit(1)
+
+    @staticmethod
+    def errorRequireValidCsvTest():
+        print(
+            "ERROR: Test CSV file \"csvTest\" does not exist. Exiting.")
+        exit(1)
+
+    errReqCsvTest = errorRequireValidCsvTest
     
     def __init__(self,
                 log,
@@ -42,14 +54,32 @@ class TestSessionParameters(object) :
         self.savedModelFilepath = check_and_adjust_path_to_ckpt( self.log, abs_path_to_saved) if abs_path_to_saved is not None else None
         
         #Input:
-        #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
-        listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
-        self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-        self.gtLabelsFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS] is not None else None
-        self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS] is not None else None
-        
-        #Output:
-        self.namesToSavePredictionsAndFeatures = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
+        self.csv_test_fname = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.CSV_TEST], abs_path_to_cfg) \
+            if cfg[cfg.CSV_TEST] is not None else None
+        if self.csv_test_fname is not None:
+            try:
+                self.csv_test = pd.read_csv(self.csv_test_fname)
+            except FileNotFoundError:
+                self.errReqCsvTest()
+        else:
+            self.csv_test = None
+
+        if self.csv_test is None:
+            #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
+            listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
+            self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+            self.gtLabelsFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS] is not None else None
+            self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS] is not None else None
+
+            #Output:
+            self.namesToSavePredictionsAndFeatures = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
+        else:
+            (self.channelsFilepaths,
+             self.gtLabelsFilepaths,
+             self.roiMasksFilepaths,
+             self.namesToSavePredictionsAndFeatures) = get_paths_from_csv(self.csv_test,
+                                                                          os.path.dirname(self.csv_test_fname))
+
         #predictions
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
         self.saveProbMapsBoolPerClass = cfg[cfg.SAVE_PROBMAPS_PER_CLASS] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS] != []) else [True]*num_classes

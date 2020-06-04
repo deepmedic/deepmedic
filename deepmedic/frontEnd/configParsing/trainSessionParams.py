@@ -13,6 +13,7 @@ from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
 
 import pandas as pd
+import os
 
 
 def get_default(value, default, required=False):
@@ -36,7 +37,6 @@ class TrainSessionParameters(object):
     def getSessionName(sessionName):
         return sessionName if sessionName is not None else "trainSession"
 
-    # REQUIRED:
     @staticmethod
     def errorRequireValidCsvTraining():
         print(
@@ -45,7 +45,6 @@ class TrainSessionParameters(object):
 
     errReqCsvTrain = errorRequireValidCsvTraining
 
-    # REQUIRED:
     @staticmethod
     def errorRequireValidCsvValidation():
         print(
@@ -249,10 +248,11 @@ class TrainSessionParameters(object):
             self.gtLabelsFilepathsTrain = \
                 parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_TR], abs_path_to_cfg))
         else:
+            print(os.path.dirname(self.csv_train_fname))
             (self.channelsFilepathsTrain,
              self.gtLabelsFilepathsTrain,
              self.roiMasksFilepathsTrain,
-             _) = get_paths_from_csv(self.csv_train)
+             _) = get_paths_from_csv(self.csv_train, os.path.dirname(self.csv_train_fname))
 
         # [Optionals]
         # ~~~~~~~~~Sampling~~~~~~~
@@ -365,7 +365,8 @@ class TrainSessionParameters(object):
                 (self.channelsFilepathsVal,
                  self.gtLabelsFilepathsVal,
                  self.roiMasksFilepathsVal,
-                 self.namesToSavePredictionsAndFeaturesVal) = get_paths_from_csv(self.csv_val)
+                 self.namesToSavePredictionsAndFeaturesVal) = get_paths_from_csv(self.csv_val,
+                                                                                 os.path.dirname(self.csv_val_fname))
 
         else:
             self.channelsFilepathsVal = []

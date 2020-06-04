@@ -20,6 +20,8 @@ class TestConfig(Config):
     FOLDER_OUTP = "folderForOutput" #MUST BE GIVEN
     SAVED_MODEL = "cnnModelFilePath" #MUST BE GIVEN
     CHANNELS = "channels" #MUST BE GIVEN
+
+    CSV_TEST = "csvTest"
     
     NAMES_FOR_PRED_PER_CASE = "namesForPredictionsPerCase"
     

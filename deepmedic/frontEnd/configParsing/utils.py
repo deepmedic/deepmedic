@@ -94,19 +94,27 @@ def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
     return filepath_to_ckpt
 
 
-def get_paths_from_csv(csv, no_target_okay=False):
+def normfullpath(abspath, relpath):
+    if os.path.isabs(relpath):
+        return relpath
+    else:
+        return os.path.normpath(os.path.join(abspath, relpath))
+
+
+def get_paths_from_csv(csv, abs_path, no_target_okay=False):
     # channels are sorted alphabetically to ensure consistency
     c_names = sorted([c for c in list(csv.columns) if c.startswith('channel_')])
+
     if not c_names:
         # no channels error raise - move to function later
         print('No channel columns on csv. Columns should be named "channel_[channel_name]". Exiting')
         exit(1)
 
     # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-    channels = [list(item[c_names]) for _, item in csv.iterrows()]
+    channels = [[normfullpath(abs_path, c) for c in list(item[c_names])] for _, item in csv.iterrows()]
 
     try:
-        target = [list(csv['gt'])]
+        target = [normfullpath(abs_path, g) for g in list(csv['gt'])]
     except KeyError:
         target = None
         if not no_target_okay:
@@ -115,13 +123,13 @@ def get_paths_from_csv(csv, no_target_okay=False):
             exit(1)
 
     try:
-        roi = [list(csv['roi'])]
+        roi = [normfullpath(abs_path, r) for r in list(csv['roi'])]
     except KeyError:
         print('No "roi" column in input csv, not using roi masks.')
         roi = None
 
     try:
-        pred = [list(csv['pred'])]
+        pred = [normfullpath(abs_path, p) for p in list(csv['pred'])]
     except KeyError:
         pred = None
 
