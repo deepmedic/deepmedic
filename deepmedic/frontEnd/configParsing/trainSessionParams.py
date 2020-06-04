@@ -639,7 +639,7 @@ class TrainSessionParameters(object):
         logPrint("Number of Cases for Validation = " + str(self.numberOfCasesVal))
 
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
-        if self.csv_train_fname is None:
+        if self.csv_train_fname is not None:
             logPrint("CSV with file paths = " + str(self.csv_train_fname))
         logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
         logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
@@ -696,7 +696,7 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
-        if self.csv_val_fname is None:
+        if self.csv_val_fname is not None:
             logPrint("CSV with file paths = " + str(self.csv_val_fname))
         logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " +
                  str(self.channelsFilepathsVal))
