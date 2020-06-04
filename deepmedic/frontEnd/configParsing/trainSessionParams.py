@@ -639,14 +639,13 @@ class TrainSessionParameters(object):
         logPrint("Number of Cases for Validation = " + str(self.numberOfCasesVal))
 
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
-        logPrint("CSV with file paths = " + str(self.csv_train_fname))
         if self.csv_train_fname is None:
-            logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
-            logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
+            logPrint("CSV with file paths = " + str(self.csv_train_fname))
+        logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
+        logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
 
         logPrint("~~ Sampling (train) ~~")
-        if self.csv_train_fname is None:
-            logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
+        logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
 
         logPrint("Type of Sampling = " + str(self.sampling_type_inst_tr.get_type_as_str()) +
                  " (" + str(self.sampling_type_inst_tr.get_type_as_int()) + ")")
@@ -697,12 +696,12 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
-        logPrint("CSV with file paths = " + str(self.csv_val_fname))
         if self.csv_val_fname is None:
-            logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " +
-                     str(self.channelsFilepathsVal))
-            logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
-            logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
+            logPrint("CSV with file paths = " + str(self.csv_val_fname))
+        logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " +
+                 str(self.channelsFilepathsVal))
+        logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
+        logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
 
         logPrint("~~~~~~~Validation on Samples throughout Training~~~~~~~")
         logPrint("Number of Segments loaded per subepoch for Validation = " + str(self.n_samples_per_subep_val))
