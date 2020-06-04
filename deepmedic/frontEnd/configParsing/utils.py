@@ -92,6 +92,37 @@ def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
             log.print3("Continuing without doing anything.")
             
     return filepath_to_ckpt
-    
 
-    
+
+def get_paths_from_csv(csv, no_target_okay=False):
+    # channels are sorted alphabetically to ensure consistency
+    c_names = sorted([c for c in list(csv.columns) if c.startswith('channel_')])
+    if not c_names:
+        # no channels error raise - move to function later
+        print('No channel columns on csv. Columns should be named "channel_[channel_name]". Exiting')
+        exit(1)
+
+    # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+    channels = [list(item[c_names]) for _, item in csv.iterrows()]
+
+    try:
+        target = [list(csv['gt'])]
+    except KeyError:
+        target = None
+        if not no_target_okay:
+            # no gt error raise - move to function later
+            print('No ground truth column on csv. Column should be named "gt". Exiting.')
+            exit(1)
+
+    try:
+        roi = [list(csv['roi'])]
+    except KeyError:
+        print('No "roi" column in input csv, not using roi masks.')
+        roi = None
+
+    try:
+        pred = [list(csv['pred'])]
+    except KeyError:
+        pred = None
+
+    return channels, target, roi, pred

@@ -8,7 +8,7 @@
 from __future__ import absolute_import, print_function, division
 
 from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
-    parseFileLinesInList, check_and_adjust_path_to_ckpt
+    parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_csv
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
 
@@ -27,35 +27,6 @@ def get_default(value, default, required=False):
 
 def get_config_value(cfg, elem):
     return get_default(cfg[elem.name], elem.default, elem.required)
-
-
-def get_paths_from_csv(csv, no_target_okay=False):
-    # channels are sorted alphabetically to ensure consistency
-    c_names = sorted([c for c in list(csv.columns) if c.startswith('channel_')])
-    if not c_names:
-        # no channels error raise - move to function later
-        print('No channel columns on csv. Columns should be named "channel_[channel_name]". Exiting')
-        exit(1)
-
-    # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-    channels = [list(item[c_names]) for _, item in csv.iterrows()]
-
-    try:
-        target = [list(csv['gt'])]
-    except KeyError:
-        target = None
-        if not no_target_okay:
-            # no gt error raise - move to function later
-            print('No ground truth column on csv. Column should be named "gt". Exiting.')
-            exit(1)
-
-    try:
-        roi = [list(csv['roi'])]
-    except KeyError:
-        print('No "roi" column in input csv, not using roi masks.')
-        roi = None
-
-    return channels, target, roi
 
 
 class TrainSessionParameters(object):
@@ -198,7 +169,8 @@ class TrainSessionParameters(object):
             "(segmentation maps, probability maps or feature maps), either manually or by default. For this, it is "
             "required to specify the path to a file, which should contain names to give to the results. "
             "Please specify the path to such a file in the format: namesForPredictionsPerCaseVal = "
-            "\"./validation/validationNamesOfPredictionsSimple.cfg\" (python-style string). Exiting!")
+            "\"./validation/validationNamesOfPredictionsSimple.cfg\" (python-style string), "
+            "or in the column 'pred' of the input csv, if that's the chosen option. Exiting!")
         exit(1)
 
     @staticmethod
@@ -279,7 +251,8 @@ class TrainSessionParameters(object):
         else:
             (self.channelsFilepathsTrain,
              self.gtLabelsFilepathsTrain,
-             self.roiMasksFilepathsTrain) = get_paths_from_csv(self.csv_train)
+             self.roiMasksFilepathsTrain,
+             _) = get_paths_from_csv(self.csv_train)
 
         # [Optionals]
         # ~~~~~~~~~Sampling~~~~~~~
@@ -391,7 +364,8 @@ class TrainSessionParameters(object):
             else:
                 (self.channelsFilepathsVal,
                  self.gtLabelsFilepathsVal,
-                 self.roiMasksFilepathsVal) = get_paths_from_csv(self.csv_val)
+                 self.roiMasksFilepathsVal,
+                 self.namesToSavePredictionsAndFeaturesVal) = get_paths_from_csv(self.csv_val)
 
         else:
             self.channelsFilepathsVal = []
@@ -472,11 +446,12 @@ class TrainSessionParameters(object):
         # Output:
         # Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient
         # and filepathsToSaveFeaturesForEachPatient.
-        self.namesToSavePredictionsAndFeaturesVal = \
-            parseFileLinesInList(
-                getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg)) \
-            if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] \
-            else None  # CAREFUL: Here we use a different parsing function!
+        if self.csv_val_fname is None:  # the csv input overrides all others, even if missing
+            self.namesToSavePredictionsAndFeaturesVal = \
+                parseFileLinesInList(
+                    getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg)) \
+                if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] \
+                else None  # CAREFUL: Here we use a different parsing function!
         if not self.namesToSavePredictionsAndFeaturesVal and self.val_on_whole_volumes \
                 and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal
                      or self.save_fms_flag_val):
