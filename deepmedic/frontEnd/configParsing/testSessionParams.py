@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function, division
 import os
 import pandas as pd
 
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parseAbsFileLinesInList, \
     parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_df
 
 
@@ -28,11 +28,11 @@ class TestSessionParameters(object) :
         exit(1)
 
     @staticmethod
-    def errorRequireValidCsvTest():
+    def errorRequireValidCsv():
         print("ERROR: Test CSV file \"csvTest\" does not exist. Exiting.")
         exit(1)
 
-    errReqCsvTest = errorRequireValidCsvTest
+    errReqCsv = errorRequireValidCsv
     
     def __init__(self,
                 log,
@@ -49,30 +49,29 @@ class TestSessionParameters(object) :
         # From test config:
         self.sessionName = self.getSessionName( cfg[cfg.SESSION_NAME] )
         
-        abs_path_to_cfg = cfg.get_abs_path_to_cfg()
-        abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven( cfg[cfg.SAVED_MODEL], abs_path_to_cfg ) if cfg[cfg.SAVED_MODEL] is not None else None # Where to load the model from.
-        self.savedModelFilepath = check_and_adjust_path_to_ckpt( self.log, abs_path_to_saved) if abs_path_to_saved is not None else None
+        abs_path_cfg = cfg.get_abs_path_to_cfg()
+        path_model = abs_from_rel_path(cfg[cfg.SAVED_MODEL], abs_path_cfg) if cfg[cfg.SAVED_MODEL] is not None else None
+        self.model_ckpt_path = check_and_adjust_path_to_ckpt(self.log, path_model) if path_model is not None else None
         
         #Input:
-        self.csv_fname = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.DATAFRAME], abs_path_to_cfg) \
-            if cfg[cfg.DATAFRAME] is not None else None
+        self.csv_fname = abs_from_rel_path(cfg[cfg.DATAFRAME], abs_path_cfg) if cfg[cfg.DATAFRAME] is not None else None
         if self.csv_fname is not None:
             try:
                 self.dataframe = pd.read_csv(self.csv_fname, skipinitialspace=True)
             except FileNotFoundError:
-                self.errReqCsvTest()
+                self.errReqCsv()
         else:
             self.dataframe = None
 
         if self.dataframe is None:
             #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
-            listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
-            self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-            self.gtLabelsFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS] is not None else None
-            self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS] is not None else None
+            listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
+            self.channelsFilepaths = [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases))] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+            self.gtLabelsFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg)) if cfg[cfg.GT_LABELS] is not None else None
+            self.roiMasksFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg)) if cfg[cfg.ROI_MASKS] is not None else None
 
             #Output:
-            self.out_preds_fnames = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
+            self.out_preds_fnames = parseFileLinesInList(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_cfg)) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None
         else:
             (self.channelsFilepaths,
              self.gtLabelsFilepaths,
@@ -151,7 +150,7 @@ class TestSessionParameters(object) :
     
     
     def get_path_to_load_model_from(self):
-        return self.savedModelFilepath
+        return self.model_ckpt_path
     
     
     def print_params(self) :
@@ -161,7 +160,7 @@ class TestSessionParameters(object) :
         logPrint("=========== PARAMETERS OF THIS TESTING SESSION ==============")
         logPrint("=============================================================")
         logPrint("sessionName = " + str(self.sessionName))
-        logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
+        logPrint("Model will be loaded from save = " + str(self.model_ckpt_path))
         logPrint("~~~~~~~~~~~~~~~~~~~~INPUT~~~~~~~~~~~~~~~~")
         logPrint("Dataframe (csv) filename = " + str(self.csv_fname))
         logPrint("Number of cases to perform inference on = " + str(self.numberOfCases))

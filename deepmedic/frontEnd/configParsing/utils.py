@@ -10,7 +10,7 @@ from six.moves import input
 import os
 
 
-def getAbsPathEvenIfRelativeIsGiven(pathGiven, absolutePathToWhereRelativePathRelatesTo) :
+def abs_from_rel_path(pathGiven, absolutePathToWhereRelativePathRelatesTo):
     #os.path.normpath "cleans" Additional ../.// etc.
     if os.path.isabs(pathGiven) : 
         return os.path.normpath(pathGiven)

@@ -6,10 +6,6 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-import os
-
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven
-from deepmedic.frontEnd.sessHelpers import createMainOutputFolder, createLogsFolder
 
 from deepmedic.logging import loggers
 

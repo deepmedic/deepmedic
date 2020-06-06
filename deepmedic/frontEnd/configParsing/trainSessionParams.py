@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function, division
 import os
 import pandas as pd
 
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parseAbsFileLinesInList, \
     parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_df
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
@@ -210,18 +210,15 @@ class TrainSessionParameters(object):
         # From Config:
         self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME])
 
-        abs_path_to_cfg = cfg.get_abs_path_to_cfg()
-        abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.SAVED_MODEL], abs_path_to_cfg) \
-            if cfg[cfg.SAVED_MODEL] is not None else None  # Load pretrained model.
-
-        self.savedModelFilepath = check_and_adjust_path_to_ckpt(self.log, abs_path_to_saved) \
-            if abs_path_to_saved is not None else None
+        abs_path_cfg = cfg.get_abs_path_to_cfg()
+        path_model = abs_from_rel_path(cfg[cfg.SAVED_MODEL], abs_path_cfg) if cfg[cfg.SAVED_MODEL] is not None else None
+        self.model_ckpt_path = check_and_adjust_path_to_ckpt(self.log, path_model) if path_model is not None else None
 
         self.tensorboardLog = cfg[cfg.TENSORBOARD_LOG] if cfg[cfg.TENSORBOARD_LOG] is not None else False
 
         # ====================TRAINING==========================
         self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
-        self.csv_fname_train = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.DATAFRAME_TR], abs_path_to_cfg) \
+        self.csv_fname_train = abs_from_rel_path(cfg[cfg.DATAFRAME_TR], abs_path_cfg) \
             if cfg[cfg.DATAFRAME_TR] is not None else None
         if self.csv_fname_train is not None:
             try:
@@ -239,18 +236,17 @@ class TrainSessionParameters(object):
 
             # [[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
             listOfAListPerChannelWithFilepathsOfAllCasesTrain = [
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg))
+                parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg))
                 for channelConfPath in cfg[cfg.CHANNELS_TR]
             ]
             # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
             self.channelsFilepathsTrain = \
                 [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesTrain))]
-            self.gtLabelsFilepathsTrain = \
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_TR], abs_path_to_cfg))
+            self.gt_lbls_fpaths_train = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg))
         else:
             print(os.path.dirname(self.csv_fname_train))
             (self.channelsFilepathsTrain,
-             self.gtLabelsFilepathsTrain,
+             self.gt_lbls_fpaths_train,
              self.roiMasksFilepathsTrain,
              _) = get_paths_from_df(self.dataframe_tr, os.path.dirname(self.csv_fname_train))
 
@@ -258,7 +254,7 @@ class TrainSessionParameters(object):
         # ~~~~~~~~~Sampling~~~~~~~
         if self.dataframe_tr is None:
             self.roiMasksFilepathsTrain = \
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg)) \
+                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg)) \
                 if cfg[cfg.ROI_MASKS_TR] is not None else None
 
         sampling_type_flag_tr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
@@ -274,7 +270,7 @@ class TrainSessionParameters(object):
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None:
             # [[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_train = [
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg))
+                parseAbsFileLinesInList(abs_from_rel_path(weightMapConfPath, abs_path_cfg))
                 for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]
             ]
 
@@ -339,7 +335,7 @@ class TrainSessionParameters(object):
             cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
 
         # Input:
-        self.csv_fname_val = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.DATAFRAME_VAL], abs_path_to_cfg) \
+        self.csv_fname_val = abs_from_rel_path(cfg[cfg.DATAFRAME_VAL], abs_path_cfg) \
             if cfg[cfg.DATAFRAME_VAL] is not None else None
         if self.val_on_samples_during_train or self.val_on_whole_volumes:
             if self.csv_fname_val is not None:
@@ -353,7 +349,7 @@ class TrainSessionParameters(object):
             if self.dataframe_val is None:
                 if cfg[cfg.CHANNELS_VAL]:
                     listOfAListPerChannelWithFilepathsOfAllCasesVal = [
-                        parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg))
+                        parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg))
                         for channelConfPath in cfg[cfg.CHANNELS_VAL]
                     ]
                     # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
@@ -372,11 +368,11 @@ class TrainSessionParameters(object):
 
         if self.val_on_samples_during_train:
             self.gtLabelsFilepathsVal = \
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg)) \
+                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg)) \
                 if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
         elif self.val_on_whole_volumes:
             self.gtLabelsFilepathsVal = \
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_VAL], abs_path_to_cfg)) \
+                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg)) \
                 if cfg[ cfg.GT_LABELS_VAL] is not None else []
         else:  # Dont perform either of the two validations.
             self.gtLabelsFilepathsVal = []
@@ -384,7 +380,7 @@ class TrainSessionParameters(object):
         # [Optionals]
         if self.csv_fname_val is None:
             self.roiMasksFilepathsVal = \
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_VAL], abs_path_to_cfg)) \
+                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg)) \
                 if cfg[cfg.ROI_MASKS_VAL] is not None else None  # For fast inf.
 
         # ~~~~~Validation on Samples~~~~~~~~
@@ -405,7 +401,7 @@ class TrainSessionParameters(object):
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
             # [[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_val = [
-                parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(weightMapConfPath, abs_path_to_cfg))
+                parseAbsFileLinesInList(abs_from_rel_path(weightMapConfPath, abs_path_cfg))
                 for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]
             ]
 
@@ -449,7 +445,7 @@ class TrainSessionParameters(object):
         if self.csv_fname_val is None:  # the csv input overrides all others, even if missing
             self.out_preds_fnames_val = \
                 parseFileLinesInList(
-                    getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg)) \
+                    abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
                 if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] \
                 else None  # CAREFUL: Here we use a different parsing function!
         if not self.out_preds_fnames_val and self.val_on_whole_volumes \
@@ -615,7 +611,7 @@ class TrainSessionParameters(object):
                 self.filepathsToSaveFeaturesForEachPatientVal.append(absPathToFolderForPredictionsFromSession)
 
     def get_path_to_load_model_from(self):
-        return self.savedModelFilepath
+        return self.model_ckpt_path
 
     def get_tensorboard_bool(self):
         return self.tensorboardLog
@@ -627,7 +623,7 @@ class TrainSessionParameters(object):
         logPrint("========= PARAMETERS FOR THIS TRAINING SESSION ==============")
         logPrint("=============================================================")
         logPrint("Session's name = " + str(self.sessionName))
-        logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
+        logPrint("Model will be loaded from save = " + str(self.model_ckpt_path))
         logPrint("~~Output~~")
         logPrint("Main output folder = " + str(self.mainOutputAbsFolder))
         logPrint("Log performance metrics for tensorboard = " + str(self.tensorboardLog))
@@ -640,7 +636,7 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
         logPrint("Dataframe (csv) filename = " + str(self.csv_fname_train))
         logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
-        logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
+        logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gt_lbls_fpaths_train))
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
 
         logPrint("~~ Sampling (train) ~~")
@@ -773,7 +769,7 @@ class TrainSessionParameters(object):
                 self.channelsFilepathsTrain,
                 self.channelsFilepathsVal,
 
-                self.gtLabelsFilepathsTrain,
+                self.gt_lbls_fpaths_train,
                 self.gtLabelsFilepathsVal,
 
                 self.paths_to_wmaps_per_sampl_cat_per_subj_train,
