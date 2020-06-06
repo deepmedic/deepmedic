@@ -12,4 +12,3 @@ class TensorboardLogger(object):
         self.logger.add_summary(tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag=name, simple_value=value)]),
                                 global_step=step_num)
         self.logger.flush()
-

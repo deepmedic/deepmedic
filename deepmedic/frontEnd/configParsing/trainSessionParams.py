@@ -7,10 +7,13 @@
 
 from __future__ import absolute_import, print_function, division
 
+import os
+
 from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
     parseFileLinesInList, check_and_adjust_path_to_ckpt
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
+import deepmedic.dataManagement.augmentation as augmentation
 
 
 def get_default(value, default, required=False):
@@ -27,12 +30,16 @@ def get_config_value(cfg, elem):
     return get_default(cfg[elem.name], elem.default, elem.required)
 
 
+def get_augmentation(cfg_entry):
+    return [getattr(augmentation, name)(**kwargs) for name, kwargs in cfg_entry.items()]
+
+
 class TrainSessionParameters(object):
 
     # To be called from outside too.
     @staticmethod
-    def getSessionName(sessionName):
-        return sessionName if sessionName is not None else "trainSession"
+    def getSessionName(sessionName, default):
+        return sessionName if sessionName is not None else default
 
     # REQUIRED:
     @staticmethod
@@ -181,14 +188,14 @@ class TrainSessionParameters(object):
                  num_classes,
                  model_name,
                  cfg):
-
         # Importants for running session.
         # From Session:
         self.log = log
         self.mainOutputAbsFolder = mainOutputAbsFolder
 
         # From Config:
-        self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME])
+        self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME],
+                                               os.path.splitext(os.path.basename(cfg.get_abs_path_to_cfg()))[0])
 
         abs_path_to_cfg = cfg.get_abs_path_to_cfg()
         abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.SAVED_MODEL], abs_path_to_cfg) \
@@ -281,16 +288,11 @@ class TrainSessionParameters(object):
 
         # ~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
         # Image level
-        self.augm_img_prms_tr = {'affine': None}  # If var is None, no augm at all.
-        if cfg[cfg.AUGM_IMG_PRMS_TR] is not None:
-            self.augm_img_prms_tr['affine'] = AugmenterAffineParams(cfg[cfg.AUGM_IMG_PRMS_TR]['affine'])
-
+        self.augmentation_image = \
+            get_augmentation(cfg[cfg.AUGMENTATION_IMAGE]) if cfg[cfg.AUGMENTATION_IMAGE] is not None else []
         # Patch/Segment level
-        self.augm_sample_prms_tr = {'hist_dist': None, 'reflect': None, 'rotate90': None}
-        if cfg[cfg.AUGM_SAMPLE_PRMS_TR] is not None:
-            for key in cfg[cfg.AUGM_SAMPLE_PRMS_TR]:
-                # For exact form of parameters, see ./deepmedic/dataManagement/augmentation.py
-                self.augm_sample_prms_tr[key] = cfg[cfg.AUGM_SAMPLE_PRMS_TR][key]
+        self.augmentation_sample = \
+            get_augmentation(cfg[cfg.AUGMENTATION_SAMPLE]) if cfg[cfg.AUGMENTATION_SAMPLE] is not None else []
 
         # ===================VALIDATION========================
         self.val_on_samples_during_train = \
@@ -624,6 +626,18 @@ class TrainSessionParameters(object):
         logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
 
         logPrint("~~Data Augmentation During Training~~")
+        logPrint("Image-level Augmentation (new):")
+        if self.augmentation_image == []:
+            logPrint("None")
+        else:
+            for aug in self.augmentation_image:
+                logPrint(aug.get_attrs_str())
+        logPrint("Sample-level Augmentation (new):")
+        if self.augmentation_sample == []:
+            logPrint("None")
+        else:
+            for aug in self.augmentation_sample:
+                logPrint(aug.get_attrs_str())
         logPrint("Image level augmentation:")
         logPrint("Parameters for image-level augmentation: " + str(self.augm_img_prms_tr))
         if self.augm_img_prms_tr is not None:
@@ -740,8 +754,10 @@ class TrainSessionParameters(object):
                 self.batchsize_val_whole,
                 
                 # -------Data Augmentation-------
-                self.augm_img_prms_tr,
-                self.augm_sample_prms_tr,
+                # self.augm_img_prms_tr,
+                self.augmentation_image,
+                self.augmentation_sample,
+                # self.augm_sample_prms_tr,
 
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,

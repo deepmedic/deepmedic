@@ -21,8 +21,7 @@ import collections
 from deepmedic.dataManagement.io import load_volume
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.dataManagement.preprocessing import pad_imgs_of_case, normalize_int_of_subj, calc_border_int_of_3d_img
-from deepmedic.dataManagement.augmentSample import augment_sample
-from deepmedic.dataManagement.augmentImage import augment_imgs_of_case
+from deepmedic.dataManagement.augmentation import apply_augmentations
 
 
 # Order of calls:
@@ -292,7 +291,7 @@ def load_subj_and_sample(job_idx,
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
 
     dims_hres_segment = inp_shapes_per_path[0]
-    
+
     # Load images of subject
     time_load_0 = time.time()
     (channels,  # nparray [channels,dim0,dim1,dim2]
@@ -304,7 +303,7 @@ def load_subj_and_sample(job_idx,
                                                      paths_to_lbls_per_subj,
                                                      paths_to_wmaps_per_sampl_cat_per_subj,
                                                      paths_to_masks_per_subj)
-     
+
     # Pre-process images of subject
     time_load = time.time() - time_load_0
     time_prep_0 = time.time()
@@ -324,13 +323,12 @@ def load_subj_and_sample(job_idx,
     (channels,
      gt_lbl_img,
      roi_mask,
-     wmaps_to_sample_per_cat) = augment_imgs_of_case(channels,
-                                                     gt_lbl_img,
-                                                     roi_mask,
-                                                     wmaps_to_sample_per_cat,
-                                                     augm_img_prms)
+     wmaps_to_sample_per_cat) = apply_augmentations(augm_img_prms,
+                                                    channels,
+                                                    gt_lbl_img,
+                                                    roi_mask,
+                                                    wmaps_to_sample_per_cat)
     time_augm_img = time.time() - time_augm_0
-
     # Sampling of segments (sub-volumes) from an image.
     dims_of_scan = channels[0].shape
     sampling_maps_per_cat = sampling_type.derive_sampling_maps_per_cat(wmaps_to_sample_per_cat,
@@ -338,8 +336,7 @@ def load_subj_and_sample(job_idx,
                                                                        roi_mask,
                                                                        dims_of_scan)
     sampling_maps_per_cat = constrain_sampling_maps_near_edges(sampling_maps_per_cat, dims_hres_segment)
-    
-    
+   
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
@@ -357,7 +354,7 @@ def load_subj_and_sample(job_idx,
             log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_str +
                         "] samples from this subject!")
             assert n_samples_for_cat == 0
-            continue # This should not be needed, the next func should also handle it. But whatever.
+            continue  # This should not be needed, the next func should also handle it. But whatever.
             
         time_sample_idx0 = time.time()
         idxs_sampl_centers = sample_idxs_of_segments(log,
@@ -385,9 +382,9 @@ def load_subj_and_sample(job_idx,
             # Augmentation of segments
             time_augm_sample_0 = time.time()
             (channs_of_sample_per_path,
-             lbls_predicted_part_of_sample) = augment_sample(channs_of_sample_per_path,
-                                                             lbls_predicted_part_of_sample,
-                                                             augm_sample_prms)
+             lbls_predicted_part_of_sample, _, _) = apply_augmentations(augm_sample_prms,
+                                                                        channs_of_sample_per_path,
+                                                                        lbls_predicted_part_of_sample)
             time_augm_samples += time.time() - time_augm_sample_0
             
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
@@ -719,7 +716,7 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
         pathwayInputShapeRcz = inp_shapes_per_path[path_idx]
         leftBoundaryRcz = [coord_center[d] - subs_factor[d] * (pathwayInputShapeRcz[d] - 1) // 2 for d in range(3)]
         rightBoundaryRcz = [leftBoundaryRcz[d] + subs_factor[d] * pathwayInputShapeRcz[d] - 1 for d in range(3)]
-
+        
         channelsForThisImagePart = channels[:,
                                             leftBoundaryRcz[0]: rightBoundaryRcz[0] + 1: subs_factor[0],
                                             leftBoundaryRcz[1]: rightBoundaryRcz[1] + 1: subs_factor[1],
