@@ -7,10 +7,11 @@
 
 from __future__ import absolute_import, print_function, division
 
-import pandas as pd
 import os
+import pandas as pd
 
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_csv
+from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
+    parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_df
 
 
 class TestSessionParameters(object) :
@@ -71,13 +72,12 @@ class TestSessionParameters(object) :
             self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS] is not None else None
 
             #Output:
-            self.namesToSavePredictionsAndFeatures = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
+            self.out_preds_fnames = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
         else:
             (self.channelsFilepaths,
              self.gtLabelsFilepaths,
              self.roiMasksFilepaths,
-             self.namesToSavePredictionsAndFeatures) = get_paths_from_csv(self.dataframe,
-                                                                          os.path.dirname(self.csv_fname))
+             self.out_preds_fnames) = get_paths_from_df(self.dataframe, os.path.dirname(self.csv_fname))
 
         #predictions
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
@@ -134,11 +134,11 @@ class TestSessionParameters(object) :
                                                 ) :
         self.filepathsToSavePredictionsForEachPatient = []
         self.filepathsToSaveFeaturesForEachPatient = []
-        if self.namesToSavePredictionsAndFeatures is not None : # standard behavior
+        if self.out_preds_fnames is not None : # standard behavior
             for case_i in range(self.numberOfCases) :
-                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
+                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.out_preds_fnames[case_i]
                 self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
-                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
+                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.out_preds_fnames[case_i]
                 self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
         else : # Names for predictions not given. Special handling...
             if self.numberOfCases > 1 : # Many cases, create corresponding namings for files.
@@ -172,7 +172,7 @@ class TestSessionParameters(object) :
         
         logPrint("~~~~~~~~~~~~~~~~~~~OUTPUT~~~~~~~~~~~~~~~")
         logPrint("Path to the main output-folder = " + str(self.mainOutputAbsFolder))
-        logPrint("Provided names to use to save results for each case = " + str(self.namesToSavePredictionsAndFeatures))
+        logPrint("Provided names to use to save results for each case = " + str(self.out_preds_fnames))
         
         logPrint("~~~~~~~Ouput-parameters for Predictions (segmentation and probability maps)~~~~")
         logPrint("Save the predicted segmentation = " + str(self.saveSegmentation))

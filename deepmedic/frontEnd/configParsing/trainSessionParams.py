@@ -7,14 +7,13 @@
 
 from __future__ import absolute_import, print_function, division
 
+import os
+import pandas as pd
+
 from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, \
-    parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_csv
+    parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_df
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
-
-import pandas as pd
-import os
-
 
 def get_default(value, default, required=False):
     if value is not None:
@@ -252,7 +251,7 @@ class TrainSessionParameters(object):
             (self.channelsFilepathsTrain,
              self.gtLabelsFilepathsTrain,
              self.roiMasksFilepathsTrain,
-             _) = get_paths_from_csv(self.dataframe_tr, os.path.dirname(self.csv_fname_train))
+             _) = get_paths_from_df(self.dataframe_tr, os.path.dirname(self.csv_fname_train))
 
         # [Optionals]
         # ~~~~~~~~~Sampling~~~~~~~
@@ -365,8 +364,7 @@ class TrainSessionParameters(object):
                 (self.channelsFilepathsVal,
                  self.gtLabelsFilepathsVal,
                  self.roiMasksFilepathsVal,
-                 self.namesToSavePredictionsAndFeaturesVal) = get_paths_from_csv(self.dataframe_val,
-                                                                                 os.path.dirname(self.csv_fname_val))
+                 self.out_preds_fnames_val) = get_paths_from_df(self.dataframe_val, os.path.dirname(self.csv_fname_val))
 
         else:
             self.channelsFilepathsVal = []
@@ -448,12 +446,12 @@ class TrainSessionParameters(object):
         # Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient
         # and filepathsToSaveFeaturesForEachPatient.
         if self.csv_fname_val is None:  # the csv input overrides all others, even if missing
-            self.namesToSavePredictionsAndFeaturesVal = \
+            self.out_preds_fnames_val = \
                 parseFileLinesInList(
                     getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg)) \
                 if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] \
                 else None  # CAREFUL: Here we use a different parsing function!
-        if not self.namesToSavePredictionsAndFeaturesVal and self.val_on_whole_volumes \
+        if not self.out_preds_fnames_val and self.val_on_whole_volumes \
                 and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal
                      or self.save_fms_flag_val):
             self.errorRequireNamesOfPredictionsVal()
@@ -596,13 +594,13 @@ class TrainSessionParameters(object):
                                                    ):
         self.filepathsToSavePredictionsForEachPatientVal = []
         self.filepathsToSaveFeaturesForEachPatientVal = []
-        if self.namesToSavePredictionsAndFeaturesVal is not None:  # standard behavior
+        if self.out_preds_fnames_val is not None:  # standard behavior
             for case_i in range(self.numberOfCasesVal):
                 filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + \
-                                            self.namesToSavePredictionsAndFeaturesVal[case_i]
+                                            self.out_preds_fnames_val[case_i]
                 self.filepathsToSavePredictionsForEachPatientVal.append(filepathForCasePrediction)
                 filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + \
-                                          self.namesToSavePredictionsAndFeaturesVal[case_i]
+                                          self.out_preds_fnames_val[case_i]
                 self.filepathsToSaveFeaturesForEachPatientVal.append(filepathForCaseFeatures)
         else:  # Names for predictions not given. Special handling...
             if self.numberOfCasesVal > 1:  # Many cases, create corresponding namings for files.
