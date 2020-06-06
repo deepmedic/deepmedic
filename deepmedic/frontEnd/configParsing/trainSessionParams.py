@@ -221,17 +221,17 @@ class TrainSessionParameters(object):
 
         # ====================TRAINING==========================
         self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
-        self.csv_train_fname = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.CSV_TR], abs_path_to_cfg) \
-            if cfg[cfg.CSV_TR] is not None else None
-        if self.csv_train_fname is not None:
+        self.csv_fname_train = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.DATAFRAME_TR], abs_path_to_cfg) \
+            if cfg[cfg.DATAFRAME_TR] is not None else None
+        if self.csv_fname_train is not None:
             try:
-                self.csv_train = pd.read_csv(self.csv_train_fname)
+                self.dataframe_tr = pd.read_csv(self.csv_fname_train)
             except FileNotFoundError:
                 self.errReqCsvTrain()
         else:
-            self.csv_train = None
+            self.dataframe_tr = None
 
-        if self.csv_train is None:
+        if self.dataframe_tr is None:
             if cfg[cfg.CHANNELS_TR] is None:
                 self.errReqChansTr()
             if cfg[cfg.GT_LABELS_TR] is None:
@@ -248,15 +248,15 @@ class TrainSessionParameters(object):
             self.gtLabelsFilepathsTrain = \
                 parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS_TR], abs_path_to_cfg))
         else:
-            print(os.path.dirname(self.csv_train_fname))
+            print(os.path.dirname(self.csv_fname_train))
             (self.channelsFilepathsTrain,
              self.gtLabelsFilepathsTrain,
              self.roiMasksFilepathsTrain,
-             _) = get_paths_from_csv(self.csv_train, os.path.dirname(self.csv_train_fname))
+             _) = get_paths_from_csv(self.dataframe_tr, os.path.dirname(self.csv_fname_train))
 
         # [Optionals]
         # ~~~~~~~~~Sampling~~~~~~~
-        if self.csv_train is None:
+        if self.dataframe_tr is None:
             self.roiMasksFilepathsTrain = \
                 parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_TR], abs_path_to_cfg)) \
                 if cfg[cfg.ROI_MASKS_TR] is not None else None
@@ -339,18 +339,18 @@ class TrainSessionParameters(object):
             cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
 
         # Input:
-        self.csv_val_fname = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.CSV_VAL], abs_path_to_cfg) \
-            if cfg[cfg.CSV_VAL] is not None else None
+        self.csv_fname_val = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.DATAFRAME_VAL], abs_path_to_cfg) \
+            if cfg[cfg.DATAFRAME_VAL] is not None else None
         if self.val_on_samples_during_train or self.val_on_whole_volumes:
-            if self.csv_val_fname is not None:
+            if self.csv_fname_val is not None:
                 try:
-                    self.csv_val = pd.read_csv(self.csv_val_fname)
+                    self.dataframe_val = pd.read_csv(self.csv_fname_val)
                 except FileNotFoundError:
                     self.errReqCsvVal()
             else:
-                self.csv_val = None
+                self.dataframe_val = None
 
-            if self.csv_val is None:
+            if self.dataframe_val is None:
                 if cfg[cfg.CHANNELS_VAL]:
                     listOfAListPerChannelWithFilepathsOfAllCasesVal = [
                         parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg))
@@ -365,8 +365,8 @@ class TrainSessionParameters(object):
                 (self.channelsFilepathsVal,
                  self.gtLabelsFilepathsVal,
                  self.roiMasksFilepathsVal,
-                 self.namesToSavePredictionsAndFeaturesVal) = get_paths_from_csv(self.csv_val,
-                                                                                 os.path.dirname(self.csv_val_fname))
+                 self.namesToSavePredictionsAndFeaturesVal) = get_paths_from_csv(self.dataframe_val,
+                                                                                 os.path.dirname(self.csv_fname_val))
 
         else:
             self.channelsFilepathsVal = []
@@ -383,7 +383,7 @@ class TrainSessionParameters(object):
             self.gtLabelsFilepathsVal = []
 
         # [Optionals]
-        if self.csv_val_fname is None:
+        if self.csv_fname_val is None:
             self.roiMasksFilepathsVal = \
                 parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS_VAL], abs_path_to_cfg)) \
                 if cfg[cfg.ROI_MASKS_VAL] is not None else None  # For fast inf.
@@ -447,7 +447,7 @@ class TrainSessionParameters(object):
         # Output:
         # Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient
         # and filepathsToSaveFeaturesForEachPatient.
-        if self.csv_val_fname is None:  # the csv input overrides all others, even if missing
+        if self.csv_fname_val is None:  # the csv input overrides all others, even if missing
             self.namesToSavePredictionsAndFeaturesVal = \
                 parseFileLinesInList(
                     getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_to_cfg)) \
@@ -639,7 +639,7 @@ class TrainSessionParameters(object):
         logPrint("Number of Cases for Validation = " + str(self.numberOfCasesVal))
 
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
-        logPrint("CSV with data = " + str(self.csv_train_fname))
+        logPrint("Dataframe (csv) filename = " + str(self.csv_fname_train))
         logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
         logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
@@ -694,7 +694,7 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
-        logPrint("CSV with data = " + str(self.csv_val_fname))
+        logPrint("Dataframe (csv) filename = " + str(self.csv_fname_val))
         logPrint("Filepaths to Channels of Validation Cases = " + str(self.channelsFilepathsVal))
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
         logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))

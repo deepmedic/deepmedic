@@ -21,7 +21,7 @@ class TestConfig(Config):
     SAVED_MODEL = "cnnModelFilePath" #MUST BE GIVEN
     CHANNELS = "channels" #MUST BE GIVEN
 
-    CSV_TEST = "csvTest"
+    DATAFRAME = "dataframe"
     
     NAMES_FOR_PRED_PER_CASE = "namesForPredictionsPerCase"
     

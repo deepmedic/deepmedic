@@ -53,17 +53,17 @@ class TestSessionParameters(object) :
         self.savedModelFilepath = check_and_adjust_path_to_ckpt( self.log, abs_path_to_saved) if abs_path_to_saved is not None else None
         
         #Input:
-        self.csv_test_fname = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.CSV_TEST], abs_path_to_cfg) \
-            if cfg[cfg.CSV_TEST] is not None else None
-        if self.csv_test_fname is not None:
+        self.csv_fname = getAbsPathEvenIfRelativeIsGiven(cfg[cfg.DATAFRAME], abs_path_to_cfg) \
+            if cfg[cfg.DATAFRAME] is not None else None
+        if self.csv_fname is not None:
             try:
-                self.csv_test = pd.read_csv(self.csv_test_fname)
+                self.dataframe = pd.read_csv(self.csv_fname)
             except FileNotFoundError:
                 self.errReqCsvTest()
         else:
-            self.csv_test = None
+            self.dataframe = None
 
-        if self.csv_test is None:
+        if self.dataframe is None:
             #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
             listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
             self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
@@ -76,8 +76,8 @@ class TestSessionParameters(object) :
             (self.channelsFilepaths,
              self.gtLabelsFilepaths,
              self.roiMasksFilepaths,
-             self.namesToSavePredictionsAndFeatures) = get_paths_from_csv(self.csv_test,
-                                                                          os.path.dirname(self.csv_test_fname))
+             self.namesToSavePredictionsAndFeatures) = get_paths_from_csv(self.dataframe,
+                                                                          os.path.dirname(self.csv_fname))
 
         #predictions
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
@@ -163,7 +163,7 @@ class TestSessionParameters(object) :
         logPrint("sessionName = " + str(self.sessionName))
         logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
         logPrint("~~~~~~~~~~~~~~~~~~~~INPUT~~~~~~~~~~~~~~~~")
-        logPrint("CSV with data = " + str(self.csv_test_fname))
+        logPrint("Dataframe (csv) filename = " + str(self.csv_fname))
         logPrint("Number of cases to perform inference on = " + str(self.numberOfCases))
         logPrint("Paths to the channels of each case = " + str(self.channelsFilepaths))
         logPrint("Paths to provided GT labels per case = " + str(self.gtLabelsFilepaths))
