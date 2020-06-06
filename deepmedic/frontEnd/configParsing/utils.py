@@ -6,6 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
+from six.moves import input
 import os
 
 
@@ -77,10 +78,10 @@ def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
                        "\n\t Note that you should not point to the .data, .index or .meta files that are saved. Rather, shorten their names till the .ckpt"+\
                        "\n\t Given path seemed longer: " + str(filepath_to_ckpt)
         try:
-            user_input = raw_input(">>\t " + string_warn +\
+            user_input = input(">>\t " + string_warn +\
                                    "\n\t Do you wish that we shorten the path to end with [.ckpt] as expected? [y/n] : ")
             while user_input not in ['y','n']: 
-                user_input = raw_input("Please specify 'y' or 'n': ")
+                user_input = input("Please specify 'y' or 'n': ")
         except:
             log.print3("\nWARN:\t " + string_warn +\
                        "\n\t We tried to request command line input from user whether to shorten it after [.ckpt] but failed (remote use? nohup?"+\
