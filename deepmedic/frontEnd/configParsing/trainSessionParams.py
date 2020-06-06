@@ -639,14 +639,12 @@ class TrainSessionParameters(object):
         logPrint("Number of Cases for Validation = " + str(self.numberOfCasesVal))
 
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
-        if self.csv_train_fname is not None:
-            logPrint("CSV with file paths = " + str(self.csv_train_fname))
+        logPrint("CSV with data = " + str(self.csv_train_fname))
         logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
         logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gtLabelsFilepathsTrain))
-
-        logPrint("~~ Sampling (train) ~~")
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
 
+        logPrint("~~ Sampling (train) ~~")
         logPrint("Type of Sampling = " + str(self.sampling_type_inst_tr.get_type_as_str()) +
                  " (" + str(self.sampling_type_inst_tr.get_type_as_int()) + ")")
         logPrint("Sampling Categories = " + str(self.sampling_type_inst_tr.get_sampling_cats_as_str()))
@@ -696,10 +694,8 @@ class TrainSessionParameters(object):
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
-        if self.csv_val_fname is not None:
-            logPrint("CSV with file paths = " + str(self.csv_val_fname))
-        logPrint("Filepaths to Channels of the Validation Cases (Req for either of the above) = " +
-                 str(self.channelsFilepathsVal))
+        logPrint("CSV with data = " + str(self.csv_val_fname))
+        logPrint("Filepaths to Channels of Validation Cases = " + str(self.channelsFilepathsVal))
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
         logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
 

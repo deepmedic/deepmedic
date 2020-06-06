@@ -163,8 +163,7 @@ class TestSessionParameters(object) :
         logPrint("sessionName = " + str(self.sessionName))
         logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
         logPrint("~~~~~~~~~~~~~~~~~~~~INPUT~~~~~~~~~~~~~~~~")
-        if self.csv_test_fname is not None:
-            logPrint("CSV with file paths = " + str(self.csv_test_fname))
+        logPrint("CSV with data = " + str(self.csv_test_fname))
         logPrint("Number of cases to perform inference on = " + str(self.numberOfCases))
         logPrint("Paths to the channels of each case = " + str(self.channelsFilepaths))
         logPrint("Paths to provided GT labels per case = " + str(self.gtLabelsFilepaths))
