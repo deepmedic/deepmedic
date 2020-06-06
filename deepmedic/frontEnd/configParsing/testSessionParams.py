@@ -28,8 +28,7 @@ class TestSessionParameters(object) :
 
     @staticmethod
     def errorRequireValidCsvTest():
-        print(
-            "ERROR: Test CSV file \"csvTest\" does not exist. Exiting.")
+        print("ERROR: Test CSV file \"csvTest\" does not exist. Exiting.")
         exit(1)
 
     errReqCsvTest = errorRequireValidCsvTest
