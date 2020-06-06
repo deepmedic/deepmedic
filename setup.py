@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name = "deepmedic",
-    version = "0.8.3",
+    version = "0.8.4",
     author = "Konstantinos Kamnitsas",
     author_email = "konstantinos.kamnitsas12@ic.ac.uk",
     description = "Efficient Multi-Scale 3D Convolutional Neural Network for Brain Lesion Segmentation",
@@ -30,5 +30,5 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Programming Language :: Python",
     ],
-    install_requires=['nibabel', 'numpy>=1.7.1', 'scipy', 'six>=1.9.0']
+    install_requires=['nibabel', 'numpy>=1.7.1', 'scipy', 'six>=1.9.0', 'pandas']
 )
