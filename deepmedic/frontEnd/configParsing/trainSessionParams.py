@@ -15,6 +15,7 @@ from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiv
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
 
+
 def get_default(value, default, required=False):
     if value is not None:
         return value
@@ -224,7 +225,7 @@ class TrainSessionParameters(object):
             if cfg[cfg.DATAFRAME_TR] is not None else None
         if self.csv_fname_train is not None:
             try:
-                self.dataframe_tr = pd.read_csv(self.csv_fname_train)
+                self.dataframe_tr = pd.read_csv(self.csv_fname_train, skipinitialspace=True)
             except FileNotFoundError:
                 self.errReqCsvTrain()
         else:
@@ -343,7 +344,7 @@ class TrainSessionParameters(object):
         if self.val_on_samples_during_train or self.val_on_whole_volumes:
             if self.csv_fname_val is not None:
                 try:
-                    self.dataframe_val = pd.read_csv(self.csv_fname_val)
+                    self.dataframe_val = pd.read_csv(self.csv_fname_val, skipinitialspace=True)
                 except FileNotFoundError:
                     self.errReqCsvVal()
             else:

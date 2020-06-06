@@ -58,7 +58,7 @@ class TestSessionParameters(object) :
             if cfg[cfg.DATAFRAME] is not None else None
         if self.csv_fname is not None:
             try:
-                self.dataframe = pd.read_csv(self.csv_fname)
+                self.dataframe = pd.read_csv(self.csv_fname, skipinitialspace=True)
             except FileNotFoundError:
                 self.errReqCsvTest()
         else:
