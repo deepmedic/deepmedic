@@ -172,6 +172,7 @@ class ModelParameters(object) :
             self.kernDimPerLayerSubsampled = []
             self.receptiveFieldSubsampled = []
             self.subsampleFactor = []
+            self.pad_mode_per_l_subs = []
             residConnAtLayersSubsampled = []
             lowerRankLayersSubsampled = []
             
