@@ -102,37 +102,32 @@ def normfullpath(abspath, relpath):
         return os.path.normpath(os.path.join(abspath, relpath))
 
 
-def get_paths_from_df(df, abs_path, no_target_okay=False):
+def get_paths_from_df(log, df, abs_path, req_gt=True):
     # df: Pandas dataframe, or one with same API.
     # channels are sorted alphabetically to ensure consistency
     c_names = sorted([c for c in list(df.columns) if c.startswith('channel_')])
-
-    if not c_names:
+    if len(c_names) == 0:
         # no channels error raise - move to function later
-        print('No channel columns in dataframe. Columns should be named "channel_[channel_name]". Exiting')
+        log.print3('No channel columns in dataframe. Columns should be named "channel_[channel_name]". Exiting')
         exit(1)
-
     # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
     channels = [[normfullpath(abs_path, c) for c in list(item[c_names])] for _, item in df.iterrows()]
 
     try:
-        target = [normfullpath(abs_path, g) for g in list(df['ground_truth'])]
+        gt = [normfullpath(abs_path, g) for g in list(df['ground_truth'])]
     except KeyError:
-        target = None
-        if not no_target_okay:
-            # no gt error raise - move to function later
-            print('No ground truth column in dataframe. Column should be named "gt". Exiting.')
-            exit(1)
-
+        gt = None
+        if req_gt:
+            raise Exception('No ground truth column in dataframe, as required. Column should be named "ground_truth".')
     try:
         roi = [normfullpath(abs_path, r) for r in list(df['roi_mask'])]
     except KeyError:
-        print('No "roi" column in input dataframe, not using roi masks.')
         roi = None
+        log.print3('No roi masks column in dataframe. Column should be named "roi_mask".')
 
     try:
         pred = [normfullpath(abs_path, p) for p in list(df['prediction_filename'])]
     except KeyError:
         pred = None
 
-    return channels, target, roi, pred
+    return channels, gt, roi, pred

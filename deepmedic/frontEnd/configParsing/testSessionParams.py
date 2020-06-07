@@ -27,12 +27,6 @@ class TestSessionParameters(object) :
               "\n\tExiting!")
         exit(1)
 
-    @staticmethod
-    def errorRequireValidCsv():
-        print("ERROR: Test CSV file \"csvTest\" does not exist. Exiting.")
-        exit(1)
-
-    errReqCsv = errorRequireValidCsv
     
     def __init__(self,
                 log,
@@ -54,29 +48,28 @@ class TestSessionParameters(object) :
         self.model_ckpt_path = check_and_adjust_path_to_ckpt(self.log, path_model) if path_model is not None else None
         
         #Input:
-        self.csv_fname = abs_from_rel_path(cfg[cfg.DATAFRAME], abs_path_cfg) if cfg[cfg.DATAFRAME] is not None else None
-        if self.csv_fname is not None:
+        if cfg[cfg.DATAFRAME] is not None:  # get data from csv/dataframe
+            self.csv_fname = abs_from_rel_path(cfg[cfg.DATAFRAME], abs_path_cfg)
             try:
                 self.dataframe = pd.read_csv(self.csv_fname, skipinitialspace=True)
-            except FileNotFoundError:
-                self.errReqCsv()
-        else:
-            self.dataframe = None
-
-        if self.dataframe is None:
-            #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
-            listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
-            self.channelsFilepaths = [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases))] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-            self.gtLabelsFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg)) if cfg[cfg.GT_LABELS] is not None else None
-            self.roiMasksFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg)) if cfg[cfg.ROI_MASKS] is not None else None
-
-            #Output:
-            self.out_preds_fnames = parseFileLinesInList(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_cfg)) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None
-        else:
+            except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
+                raise OSError("File given for dataframe does not exist: " + self.csv_fname)
             (self.channelsFilepaths,
              self.gtLabelsFilepaths,
              self.roiMasksFilepaths,
-             self.out_preds_fnames) = get_paths_from_df(self.dataframe, os.path.dirname(self.csv_fname))
+             self.out_preds_fnames) = get_paths_from_df(self.log,
+                                                        self.dataframe,
+                                                        os.path.dirname(self.csv_fname),
+                                                        req_gt=False)
+        else:  # Get data input data from old variables.
+            self.csv_fname = None
+            self.dataframe = None
+            # [[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
+            listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
+            self.channelsFilepaths = [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases))]  # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+            self.gtLabelsFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg)) if cfg[cfg.GT_LABELS] is not None else None
+            self.roiMasksFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg)) if cfg[cfg.ROI_MASKS] is not None else None
+            self.out_preds_fnames = parseFileLinesInList(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_cfg)) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None
 
         #predictions
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True

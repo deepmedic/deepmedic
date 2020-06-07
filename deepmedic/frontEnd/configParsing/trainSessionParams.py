@@ -37,21 +37,6 @@ class TrainSessionParameters(object):
     def getSessionName(sessionName):
         return sessionName if sessionName is not None else "trainSession"
 
-    @staticmethod
-    def errorRequireValidCsvTraining():
-        print(
-            "ERROR: Train CSV file \"csvTraining\" does not exist. Exiting.")
-        exit(1)
-
-    errReqCsvTrain = errorRequireValidCsvTraining
-
-    @staticmethod
-    def errorRequireValidCsvValidation():
-        print(
-            "ERROR: Validation CSV file \"csvValidation\" does not exist. Exiting.")
-        exit(1)
-
-    errReqCsvVal = errorRequireValidCsvValidation
 
     # REQUIRED:
     @staticmethod
@@ -218,22 +203,24 @@ class TrainSessionParameters(object):
 
         # ====================TRAINING==========================
         self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
-        self.csv_fname_train = abs_from_rel_path(cfg[cfg.DATAFRAME_TR], abs_path_cfg) \
-            if cfg[cfg.DATAFRAME_TR] is not None else None
-        if self.csv_fname_train is not None:
+
+        if cfg[cfg.DATAFRAME_TR] is not None:
+            self.csv_fname_train = abs_from_rel_path(cfg[cfg.DATAFRAME_TR], abs_path_cfg)
             try:
                 self.dataframe_tr = pd.read_csv(self.csv_fname_train, skipinitialspace=True)
-            except FileNotFoundError:
-                self.errReqCsvTrain()
+            except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
+                raise OSError("File given for dataframe (train) does not exist: " + self.csv_fname_train)
+            (self.channelsFilepathsTrain,
+             self.gt_lbls_fpaths_train,
+             self.roiMasksFilepathsTrain,
+             _) = get_paths_from_df(self.log, self.dataframe_tr, os.path.dirname(self.csv_fname_train), req_gt=True)
         else:
+            self.csv_fname_train = None
             self.dataframe_tr = None
-
-        if self.dataframe_tr is None:
             if cfg[cfg.CHANNELS_TR] is None:
                 self.errReqChansTr()
             if cfg[cfg.GT_LABELS_TR] is None:
                 self.errReqGtTr()
-
             # [[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
             listOfAListPerChannelWithFilepathsOfAllCasesTrain = [
                 parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg))
@@ -243,20 +230,12 @@ class TrainSessionParameters(object):
             self.channelsFilepathsTrain = \
                 [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesTrain))]
             self.gt_lbls_fpaths_train = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg))
-        else:
-            print(os.path.dirname(self.csv_fname_train))
-            (self.channelsFilepathsTrain,
-             self.gt_lbls_fpaths_train,
-             self.roiMasksFilepathsTrain,
-             _) = get_paths_from_df(self.dataframe_tr, os.path.dirname(self.csv_fname_train))
-
-        # [Optionals]
-        # ~~~~~~~~~Sampling~~~~~~~
-        if self.dataframe_tr is None:
             self.roiMasksFilepathsTrain = \
                 parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg)) \
                 if cfg[cfg.ROI_MASKS_TR] is not None else None
 
+        # [Optionals]
+        # ~~~~~~~~~Sampling~~~~~~~
         sampling_type_flag_tr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
         self.sampling_type_inst_tr = samplingType.SamplingType(self.log, sampling_type_flag_tr, num_classes)
         if sampling_type_flag_tr in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None:
@@ -281,7 +260,7 @@ class TrainSessionParameters(object):
             cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.n_samples_per_subep_train = \
             cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] if cfg[cfg.NUM_TR_SEGMS_LOADED_PERSUB] is not None else 1000
-        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else errReqBatchSizeTr()
+        self.batchsize_train = cfg[cfg.BATCHSIZE_TR] if cfg[cfg.BATCHSIZE_TR] is not None else self.errReqBatchSizeTr()
         self.num_parallel_proc_sampling = cfg[cfg.NUM_OF_PROC_SAMPL] if cfg[cfg.NUM_OF_PROC_SAMPL] is not None else 0
 
         # ~~~~~~~ Learning Rate Schedule ~~~~~~~~
@@ -335,53 +314,45 @@ class TrainSessionParameters(object):
             cfg[cfg.PERFORM_VAL_INFERENCE] if cfg[cfg.PERFORM_VAL_INFERENCE] is not None else False
 
         # Input:
-        self.csv_fname_val = abs_from_rel_path(cfg[cfg.DATAFRAME_VAL], abs_path_cfg) \
-            if cfg[cfg.DATAFRAME_VAL] is not None else None
-        if self.val_on_samples_during_train or self.val_on_whole_volumes:
-            if self.csv_fname_val is not None:
-                try:
-                    self.dataframe_val = pd.read_csv(self.csv_fname_val, skipinitialspace=True)
-                except FileNotFoundError:
-                    self.errReqCsvVal()
-            else:
-                self.dataframe_val = None
-
-            if self.dataframe_val is None:
-                if cfg[cfg.CHANNELS_VAL]:
-                    listOfAListPerChannelWithFilepathsOfAllCasesVal = [
-                        parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg))
-                        for channelConfPath in cfg[cfg.CHANNELS_VAL]
-                    ]
-                    # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-                    self.channelsFilepathsVal = \
-                        [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesVal))]
-                else:
-                    self.errReqChannsVal()
-            else:
-                (self.channelsFilepathsVal,
-                 self.gtLabelsFilepathsVal,
-                 self.roiMasksFilepathsVal,
-                 self.out_preds_fnames_val) = get_paths_from_df(self.dataframe_val, os.path.dirname(self.csv_fname_val))
-
-        else:
+        if (not self.val_on_samples_during_train) and (not self.val_on_whole_volumes):
+            self.csv_fname_val = None
+            self.dataframe_val = None
             self.channelsFilepathsVal = []
+            self.gtLabelsFilepathsVal = None
+            self.roiMasksFilepathsVal = None
+            self.out_preds_fnames_val = None
+        elif cfg[cfg.DATAFRAME_VAL] is not None:  # doing one of validations, and given dataframe.
+            self.csv_fname_val = abs_from_rel_path(cfg[cfg.DATAFRAME_VAL], abs_path_cfg)
+            try:
+                self.dataframe_val = pd.read_csv(self.csv_fname_val, skipinitialspace=True)
+            except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
+                raise OSError("File given for dataframe (validation) does not exist: " + self.csv_fname_val)
+            (self.channelsFilepathsVal,
+             self.gtLabelsFilepathsVal,
+             self.roiMasksFilepathsVal,
+             self.out_preds_fnames_val) = get_paths_from_df(self.log,
+                                                            self.dataframe_val,
+                                                            os.path.dirname(self.csv_fname_val),
+                                                            req_gt=True)
+        else:  # Doing one of validations, and not given dataframe.
+            self.csv_fname_val = None
+            self.dataframe_val = None
 
-        if self.val_on_samples_during_train:
+            if cfg[cfg.CHANNELS_VAL]:
+                listOfAListPerChannelWithFilepathsOfAllCasesVal = [
+                    parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg)) for channelConfPath in cfg[cfg.CHANNELS_VAL] ]
+                # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+                self.channelsFilepathsVal = [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesVal))]
+            else:
+                self.errReqChannsVal()
+
             self.gtLabelsFilepathsVal = \
                 parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg)) \
                 if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
-        elif self.val_on_whole_volumes:
-            self.gtLabelsFilepathsVal = \
-                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg)) \
-                if cfg[ cfg.GT_LABELS_VAL] is not None else []
-        else:  # Dont perform either of the two validations.
-            self.gtLabelsFilepathsVal = []
-
-        # [Optionals]
-        if self.csv_fname_val is None:
-            self.roiMasksFilepathsVal = \
-                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg)) \
-                if cfg[cfg.ROI_MASKS_VAL] is not None else None  # For fast inf.
+            self.roiMasksFilepathsVal = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg)) \
+                if cfg[cfg.ROI_MASKS_VAL] is not None else None
+            self.out_preds_fnames_val = parseFileLinesInList(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
+                if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None
 
         # ~~~~~Validation on Samples~~~~~~~~
         self.n_samples_per_subep_val = \
@@ -419,8 +390,6 @@ class TrainSessionParameters(object):
             cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] \
             if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) \
             else [True] * num_classes
-        # Filled by call to self.makeFilepathsForPredictionsAndFeatures()
-        self.filepathsToSavePredictionsForEachPatientVal = None
         self.suffixForSegmAndProbsDictVal = cfg[cfg.SUFFIX_SEGM_PROB_VAL] \
             if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None \
             else {"segm": "Segm", "prob": "ProbMapClass"}
@@ -436,18 +405,12 @@ class TrainSessionParameters(object):
                 [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save]
         else:
             self.indices_fms_per_pathtype_per_layer_to_save = None
-        # Filled by call to self.makeFilepathsForPredictionsAndFeatures()
-        self.filepathsToSaveFeaturesForEachPatientVal = None
 
         # Output:
-        # Given by the config file, and is then used to fill filepathsToSavePredictionsForEachPatient
-        # and filepathsToSaveFeaturesForEachPatient.
-        if self.csv_fname_val is None:  # the csv input overrides all others, even if missing
-            self.out_preds_fnames_val = \
-                parseFileLinesInList(
-                    abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
-                if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] \
-                else None  # CAREFUL: Here we use a different parsing function!
+        # Filled by call to self.makeFilepathsForPredictionsAndFeatures()
+        self.filepathsToSavePredictionsForEachPatientVal = None
+        self.filepathsToSaveFeaturesForEachPatientVal = None
+        # Checks on output params:
         if not self.out_preds_fnames_val and self.val_on_whole_volumes \
                 and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal
                      or self.save_fms_flag_val):
