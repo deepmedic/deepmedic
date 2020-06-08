@@ -17,16 +17,7 @@ class ModelParameters(object):
     @staticmethod
     def get_default_model_name():
         return "deepmedic"
-    @staticmethod
-    def defaultDropFcList(numFMsInExtraFcs) :
-        numberOfExtraFcs = len(numFMsInExtraFcs)
-        dropoutRatesForFcsIncludingClassLayer = []
-        if numberOfExtraFcs > 0:
-            dropoutForExtraFcs = [0.0] + [0.5]*(numberOfExtraFcs-1) + [0.5]
-        else :
-            dropoutForExtraFcs = [0.5]
-        return dropoutForExtraFcs
-
+    
     #ERRORS
     @staticmethod
     def errorSegmDimensionsSmallerThanReceptiveF(rec_field_norm, segmentDimensions, train_val_test) :
@@ -68,7 +59,7 @@ class ModelParameters(object):
         print("ERROR: Parameter \"convWeightsInit\" has been given invalid value. Exiting!"); exit(1)
     @staticmethod
     def errorReqActivFunction() :
-        print("ERROR: Parameter \"activationFunction\" has been given invalid value. Exiting!"); exit(1)
+        print("ERROR: Parameter \"activ_function\" has been given invalid value. Exiting!"); exit(1)
 
     @staticmethod
     def errReqSameNumOfLayersPerSubPathway():
@@ -145,6 +136,17 @@ class ModelParameters(object):
             self.errorResLayer1("Subsampled")
         if 1 in res_conn_at_layers_fc:
             self.errorResLayer1("Fully Connected")
+
+
+    def _default_drop_fc(self, n_fms_in_extra_fcs):
+        # n_fms_in_extra_fcs: List of integers, 1 per layer in the final classification path, except final classif layer
+        n_extra_fcs = len(n_fms_in_extra_fcs)
+        if n_extra_fcs > 0:
+            dropout_for_each_l_including_classifier = [0.0] + [0.5] * (n_extra_fcs - 1) + [0.5]
+        else:
+            dropout_for_each_l_including_classifier = [0.5]
+        return dropout_for_each_l_including_classifier
+
 
     def __init__(self, log, cfg):
         self.log = log
@@ -226,78 +228,89 @@ class ModelParameters(object):
             lower_rank_layers_subs = cfg[cfg.LOWER_RANK_LAYERS_SUBS] if cfg[cfg.LOWER_RANK_LAYERS_SUBS] is not None \
                 else lower_rank_layers_norm
             
-        #==FC Layers==
-        self.numFMsInExtraFcs = cfg[cfg.N_FMS_FC] if cfg[cfg.N_FMS_FC] is not None else []
-        self.kernelDimensionsFc = cfg[cfg.KERN_DIM_FC] if cfg[cfg.KERN_DIM_FC] is not None else [[1,1,1]]
-        assert len(self.kernelDimensionsFc) == (len(self.numFMsInExtraFcs) + 1), 'Need one Kernel-Dimensions per layer of FC path, equal to length of number-of-FMs-in-FC +1 (for classif layer)'
-        self.pad_mode_per_l_fc = cfg[cfg.PAD_MODE_FC] if cfg[cfg.PAD_MODE_FC] is not None else ['VALID']*(len(self.numFMsInExtraFcs)+1)
+        # == FC Layers ==
+        self.n_fms_in_extra_fcs = cfg[cfg.N_FMS_FC] if cfg[cfg.N_FMS_FC] is not None else []
+        n_layers_fc = len(self.n_fms_in_extra_fcs) + 1
+        self.kern_dims_fc = cfg[cfg.KERN_DIM_FC] if cfg[cfg.KERN_DIM_FC] is not None \
+            else [[1, 1, 1] for l in range(n_layers_fc)]
+        assert len(self.kern_dims_fc) == n_layers_fc, 'Need one Kernel-Dimensions per layer of FC path, ' \
+                                                      'equal to length of number-of-FMs-in-FC +1 (for classif layer)'
+        self.pad_mode_per_l_fc = cfg[cfg.PAD_MODE_FC] if cfg[cfg.PAD_MODE_FC] is not None else ['VALID'] * n_layers_fc
         res_conn_at_layers_fc = cfg[cfg.RESID_CONN_LAYERS_FC] if cfg[cfg.RESID_CONN_LAYERS_FC] is not None else []
                                         
-        #==Size of Image Segments ==
+        # == Size of Image Segments ==
         self._inp_dims_hr_path = {'train': None, 'val': None, 'test': None}
-        self._inp_dims_hr_path['train'] = cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None else self.errReqSegmDimTrain()
-        self._inp_dims_hr_path['val'] = cfg[cfg.SEG_DIM_VAL] if cfg[cfg.SEG_DIM_VAL] is not None else rec_field_norm
-        self._inp_dims_hr_path['test'] = cfg[cfg.SEG_DIM_INFER] if cfg[cfg.SEG_DIM_INFER] is not None else self._inp_dims_hr_path['train']
-        self.segmDimNormalTrain = 1
-        self.segmDimNormalVal = 2
-        self.segmDimNormalInfer = 3
+        self._inp_dims_hr_path['train'] = cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None \
+            else self.errReqSegmDimTrain()
+        self._inp_dims_hr_path['val'] = cfg[cfg.SEG_DIM_VAL] if cfg[cfg.SEG_DIM_VAL] is not None \
+            else rec_field_norm
+        self._inp_dims_hr_path['test'] = cfg[cfg.SEG_DIM_INFER] if cfg[cfg.SEG_DIM_INFER] is not None \
+            else self._inp_dims_hr_path['train']
         for train_val_test in ['train', 'val', 'test']:
             if not check_rec_field_vs_inp_dims(rec_field_norm, self._inp_dims_hr_path[train_val_test]):
                 self.errorSegmDimensionsSmallerThanReceptiveF(rec_field_norm, self._inp_dims_hr_path, train_val_test)
 
         
-        #=== Dropout rates ===
-        self.dropNormal = cfg[cfg.DROP_NORM] if cfg[cfg.DROP_NORM] is not None else []
-        self.dropSubsampled = cfg[cfg.DROP_SUBS] if cfg[cfg.DROP_SUBS] is not None else []
-        self.dropFc = cfg[cfg.DROP_FC] if cfg[cfg.DROP_FC] is not None else self.defaultDropFcList(self.numFMsInExtraFcs) #default = [0.0, 0.5, ..., 0.5]
-        self.dropoutRatesForAllPathways = [self.dropNormal, self.dropSubsampled, self.dropFc]
+        # === Dropout rates ===
+        drop_norm = cfg[cfg.DROP_NORM] if cfg[cfg.DROP_NORM] is not None else []
+        drop_subs = cfg[cfg.DROP_SUBS] if cfg[cfg.DROP_SUBS] is not None else []
+        drop_fc = cfg[cfg.DROP_FC] if cfg[cfg.DROP_FC] is not None else self._default_drop_fc(self.n_fms_in_extra_fcs)
+        self.dropout_per_pathtype = [drop_norm, drop_subs, drop_fc]
         
-        #== Weight Initialization==
-        self.convWInitMethod = cfg[cfg.CONV_W_INIT] if cfg[cfg.CONV_W_INIT] is not None else ["fanIn", 2]
-        if not self.convWInitMethod[0] in ["normal", "fanIn"]:
+        # == Weight Initialization ==
+        self.conv_w_init_type = cfg[cfg.CONV_W_INIT] if cfg[cfg.CONV_W_INIT] is not None else ["fanIn", 2]
+        if not self.conv_w_init_type[0] in ["normal", "fanIn"]:
             self.errorReqInitializationMethod()
-        #== Activation Function ==
-        self.activationFunc = cfg[cfg.ACTIV_FUNC] if cfg[cfg.ACTIV_FUNC] is not None else "prelu"
-        if not self.activationFunc in ["linear", "relu", "prelu", "elu", "selu"]:
+        # == Activation Function ==
+        self.activ_func = cfg[cfg.ACTIV_FUNC] if cfg[cfg.ACTIV_FUNC] is not None else "prelu"
+        if not self.activ_func in ["linear", "relu", "prelu", "elu", "selu"]:
             self.errorReqActivFunction()
             
-        #==BATCH NORMALIZATION==
-        self.applyBnToInputOfPathways = [False, False, True] # Per pathway type. The 3rd entry, for FC, should always be True.
-        self.bnRollAverOverThatManyBatches = cfg[cfg.BN_ROLL_AV_BATCHES] if cfg[cfg.BN_ROLL_AV_BATCHES] is not None else 60
+        # == BATCH NORMALIZATION ==
+        self.apply_bn_to_inp_of_paths = [False, False, True] # Per pathway type. 3rd entry for FC should always be True
+        self.n_batches_for_bn_mov_avg = cfg[cfg.BN_ROLL_AV_BATCHES] if cfg[cfg.BN_ROLL_AV_BATCHES] is not None else 60
         
-        #==============CALCULATED=====================
+        # ============== CALCULATED =====================
         # Residual Connections backwards, per pathway type :
         self._check_no_res_conn_at_1st_layer(res_conn_at_layers_norm, res_conn_at_layers_subs, res_conn_at_layers_fc)
         # The following variable passed to the system takes indices, ie number starts from 0. User specifies from 1.
-        self.indicesOfLayersToConnectResidualsInOutput = [[layerNum - 1 for layerNum in res_conn_at_layers_norm],
-                                                          [layerNum - 1 for layerNum in res_conn_at_layers_subs],
-                                                          [layerNum - 1 for layerNum in res_conn_at_layers_fc],
-                                                          []
-                                                        ]
+        self.inds_layers_for_res_conn_at_outp = [[layer_num - 1 for layer_num in res_conn_at_layers_norm],
+                                                 [layer_num - 1 for layer_num in res_conn_at_layers_subs],
+                                                 [layer_num - 1 for layer_num in res_conn_at_layers_fc],
+                                                 []
+                                                 ]
         
-        self.indicesOfLowerRankLayersPerPathway = [[layerNum - 1 for layerNum in lower_rank_layers_norm],
-                                                   [layerNum - 1 for layerNum in lower_rank_layers_subs],
-                                                   [], #FC doesn't make sense to be lower rank. It's 1x1x1 anyway.
-                                                   []
-                                                   ]
-        self.ranksOfLowerRankLayersForEachPathway = [[2 for layer_i in self.indicesOfLowerRankLayersPerPathway[0]],
-                                                     [2 for layer_i in self.indicesOfLowerRankLayersPerPathway[1]],
-                                                     [],
-                                                     []
-                                                     ]
-        #============= HIDDENS ======================
+        self.inds_layers_low_rank_per_pathtype = [[layer_num - 1 for layer_num in lower_rank_layers_norm],
+                                                  [layer_num - 1 for layer_num in lower_rank_layers_subs],
+                                                  [], #FC doesn't make sense to be lower rank. It's 1x1x1 anyway.
+                                                  []
+                                                  ]
+        self.ranks_of_low_rank_l_per_pathtype = [[2 for layer_i in self.inds_layers_low_rank_per_pathtype[0]],
+                                                 [2 for layer_i in self.inds_layers_low_rank_per_pathtype[1]],
+                                                 [],
+                                                 []
+                                                 ]
+        # ============= HIDDENS ===============
         
-        #-------POOLING---------- (not fully supported currently)
-        #One entry per pathway-type. leave [] if the pathway does not exist or there is no mp there AT ALL.
-        #Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there. But FOR EACH LAYER.
-        #MP is applied >>AT THE INPUT of the layer<<. To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each dimension for padding (give 0 for none), the mode (usually 'max' pool). Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
-        #If a pathway is not used (eg subsampled), put an empty list in the first dimension entry. 
-        mpParamsNorm = [ [] for layeri in range(len(self.n_fms_per_l_norm)) ] #[[[2,2,2], [1,1,1], 'MIRROR', 'MAX'], [],[],[],[],[],[], []], #first pathway
-        mpParamsSubs = [ [] for layeri in range(len(self.n_fms_per_l_subs[0])) ] if self.use_subs_paths else [] # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
-        mpParamsFc = [ [] for layeri in range(len(self.numFMsInExtraFcs) + 1) ] #FC. This should NEVER be used for segmentation. Possible for classification though.
-        self.maxPoolingParamsStructure = [ mpParamsNorm, mpParamsSubs, mpParamsFc]
+        # ------- POOLING ---------- (not fully supported currently)
+        # One entry per pathway-type. leave [] if the pathway does not exist or there is no mp there AT ALL.
+        # Inside each entry, put a list FOR EACH LAYER. It should be [] for the layer if no mp there.
+        # MP is applied >> AT INPUT of the layer <<.
+        # To use mp to a layer, put a list of [[dsr,dsc,dsz], [strr,strc,strz], [mirrorPad-r,-c,-z], mode] ...
+        # ... which give the dimensions of the mp window, the stride, how many times to mirror the last slot at each...
+        # ... dimension for padding (give 0 for none), the mode (usually 'max' pool).
+        # Eg [[2,2,2],[1,1,1]] or [[2,2,2],[2,2,2]] usually.
+        # If a pathway is not used (eg subsampled), put an empty list in the first dimension entry.
+
+        # [[[2,2,2], [1,1,1], 'MIRROR', 'MAX'], [],[],[],[],[],[], []], # first pathway
+        mp_prms_norm = [[] for layer_i in range(len(self.n_fms_per_l_norm))]
+        # CAREFUL about the [0]. Only here till this structure is made different per pathway and not pathwayType.
+        mp_prms_subs = [[] for layer_i in range(len(self.n_fms_per_l_subs[0]))] if self.use_subs_paths else []
+        # FC. This should NEVER be used for segmentation. Possible for classification though.
+        mp_prms_fc = [[] for layer_i in range(len(self.n_fms_in_extra_fcs) + 1)]
+        self.max_pool_prms_per_pathtype = [mp_prms_norm, mp_prms_subs, mp_prms_fc]
         
-        self.softmax_tempertature = 1.0  # Higher temperatures make the probabilities LESS distinctable.
+        self.softmax_temperature = 1.0  # Higher temperatures make the probabilities LESS distinctable.
         
     
     def print_params(self) :
@@ -315,10 +328,9 @@ class ModelParameters(object):
         logPrint("Number of Feature Maps per layer = " + str(self.n_fms_per_l_norm))
         logPrint("Kernel Dimensions per layer = " + str(self.kern_dims_per_l_norm))
         logPrint("Padding mode of convs per layer = " + str(self.pad_mode_per_l_norm))
-        logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[0]))
-        logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[0]))
-        logPrint("Lower Rank layers will be made of rank = " + str(self.ranksOfLowerRankLayersForEachPathway[0]))
-        # logPrint("Parameters for pooling in this pathway = " +  + str(self.maxPoolingParamsStructure[0]))
+        logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.inds_layers_for_res_conn_at_outp[0]))
+        logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.inds_layers_low_rank_per_pathtype[0]))
+        logPrint("Lower Rank layers will be made of rank = " + str(self.ranks_of_low_rank_l_per_pathtype[0]))
         
         logPrint("~~Subsampled Pathway~~")
         logPrint("Use subsampled Pathway = " + str(self.use_subs_paths))
@@ -328,19 +340,17 @@ class ModelParameters(object):
         logPrint("Kernel Dimensions per layer = " + str(self.kern_dims_per_l_subs))
         logPrint("Padding mode of convs per layer = " + str(self.pad_mode_per_l_subs))
         logPrint("Subsampling Factor per dimension (per sub-pathway) = " + str(self.subsample_factors))
-        logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[1]))
-        logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[1]))
-        logPrint("Lower Rank layers will be made of rank = " + str(self.ranksOfLowerRankLayersForEachPathway[1]))
-        #logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[1]))
-        
+        logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.inds_layers_for_res_conn_at_outp[1]))
+        logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.inds_layers_low_rank_per_pathtype[1]))
+        logPrint("Lower Rank layers will be made of rank = " + str(self.ranks_of_low_rank_l_per_pathtype[1]))
+
         logPrint("~~Fully Connected Pathway~~")
-        logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.numFMsInExtraFcs)))
-        logPrint("Number of Feature Maps in the additional FC layers = " + str(self.numFMsInExtraFcs))
+        logPrint("Number of additional FC layers (Excluding the Classif. Layer) = " + str(len(self.n_fms_in_extra_fcs)))
+        logPrint("Number of Feature Maps in the additional FC layers = " + str(self.n_fms_in_extra_fcs))
         logPrint("Padding mode of convs per layer = " + str(self.pad_mode_per_l_fc))
-        logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.indicesOfLayersToConnectResidualsInOutput[2]))
-        logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.indicesOfLowerRankLayersPerPathway[2]))
-        #logPrint("Parameters for pooling before convolutions in this pathway = " +  + str(self.maxPoolingParamsStructure[2]))
-        logPrint("Dimensions of Kernels in final FC path before classification = " + str(self.kernelDimensionsFc))
+        logPrint("Residual connections added at the output of layers (indices from 0) = " + str(self.inds_layers_for_res_conn_at_outp[2]))
+        logPrint("Layers that will be made of Lower Rank (indices from 0) = " + str(self.inds_layers_low_rank_per_pathtype[2]))
+        logPrint("Dimensions of Kernels in final FC path before classification = " + str(self.kern_dims_fc))
         
         logPrint("~~Size Of Image Segments~~")
         logPrint("Size of Segments for Training = " + str(self._inp_dims_hr_path['train']))
@@ -348,19 +358,19 @@ class ModelParameters(object):
         logPrint("Size of Segments for Testing = " + str(self._inp_dims_hr_path['test']))
         
         logPrint("~~Dropout Rates~~")
-        logPrint("Drop.R. for each layer in Normal Pathway = " + str(self.dropoutRatesForAllPathways[0]))
-        logPrint("Drop.R. for each layer in Subsampled Pathway = " + str(self.dropoutRatesForAllPathways[1]))
-        logPrint("Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = " + str(self.dropoutRatesForAllPathways[2]))
+        logPrint("Drop.R. for each layer in Normal Pathway = " + str(self.dropout_per_pathtype[0]))
+        logPrint("Drop.R. for each layer in Subsampled Pathway = " + str(self.dropout_per_pathtype[1]))
+        logPrint("Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = " + str(self.dropout_per_pathtype[2]))
         
         logPrint("~~Weight Initialization~~")
-        logPrint("Initialization method and params for the conv kernel weights = " + str(self.convWInitMethod))
+        logPrint("Initialization method and params for the conv kernel weights = " + str(self.conv_w_init_type))
         
         logPrint("~~Activation Function~~")
-        logPrint("Activation function to use = " + str(self.activationFunc))
+        logPrint("Activation function to use = " + str(self.activ_func))
         
         logPrint("~~Batch Normalization~~")
-        logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.applyBnToInputOfPathways))
-        logPrint("Batch Normalization uses a rolling average for inference, over this many batches = " + str(self.bnRollAverOverThatManyBatches))
+        logPrint("Apply BN straight on pathways' inputs (eg straight on segments) = " + str(self.apply_bn_to_inp_of_paths))
+        logPrint("Batch Normalization uses a rolling average for inference, over this many batches = " + str(self.n_batches_for_bn_mov_avg))
         
         logPrint("========== Done with printing session's parameters ==========")
         logPrint("=============================================================")
@@ -384,29 +394,29 @@ class ModelParameters(object):
                         self.subsample_factors,
                         
                         #=== FC Layers ===
-                        self.numFMsInExtraFcs,
-                        self.kernelDimensionsFc,
+                        self.n_fms_in_extra_fcs,
+                        self.kern_dims_fc,
                         self.pad_mode_per_l_fc,
-                        self.softmax_tempertature,
+                        self.softmax_temperature,
                         
                         #=== Other Architectural params ===
-                        self.activationFunc,
+                        self.activ_func,
                         #---Residual Connections----
-                        self.indicesOfLayersToConnectResidualsInOutput,
+                        self.inds_layers_for_res_conn_at_outp,
                         #--Lower Rank Layer Per Pathway---
-                        self.indicesOfLowerRankLayersPerPathway,
-                        self.ranksOfLowerRankLayersForEachPathway,
+                        self.inds_layers_low_rank_per_pathtype,
+                        self.ranks_of_low_rank_l_per_pathtype,
                         #---Pooling---
-                        self.maxPoolingParamsStructure,
+                        self.max_pool_prms_per_pathtype,
                         
                         #=== Others ====
                         #Dropout
-                        self.dropoutRatesForAllPathways,
+                        self.dropout_per_pathtype,
                         #Initialization
-                        self.convWInitMethod,
+                        self.conv_w_init_type,
                         #Batch Normalization
-                        self.applyBnToInputOfPathways,
-                        self.bnRollAverOverThatManyBatches
+                        self.apply_bn_to_inp_of_paths,
+                        self.n_batches_for_bn_mov_avg
 
                         ]
         
@@ -414,7 +424,7 @@ class ModelParameters(object):
 
 
     def get_inp_dims_hr_path(self, train_val_test): # TODO: Move config in train/test cfg.
-        #==Size of Image Segments ==
+        # == Size of Image Segments ==
         assert train_val_test in ['train', 'val', 'test']
         return self._inp_dims_hr_path[train_val_test]
         
