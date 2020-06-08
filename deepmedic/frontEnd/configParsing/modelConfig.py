@@ -18,11 +18,11 @@ class ModelConfig(Config):
     FOLDER_OUTP = "folderForOutput" #MUST BE GIVEN
     
     #================ MODEL PARAMETERS =================
-    NUM_CLASSES = "numberOfOutputClasses"
-    NUM_INPUT_CHANS = "numberOfInputChannels"
+    N_CLASSES = "numberOfOutputClasses"
+    N_INP_CHANS = "numberOfInputChannels"
     
     #===Normal pathway===
-    N_FMS_NORM = "numberFMsPerLayerNormal"
+    N_FM_NORM = "numberFMsPerLayerNormal"
     KERN_DIM_NORM = "kernelDimPerLayerNormal"
     PAD_MODE_NORM = "padTypePerLayerNormal"
     RESID_CONN_LAYERS_NORM = "layersWithResidualConnNormal"
@@ -30,7 +30,7 @@ class ModelConfig(Config):
     
     #==Subsampled pathway==
     USE_SUBSAMPLED = "useSubsampledPathway"
-    N_FMS_SUBS = "numberFMsPerLayerSubsampled"
+    N_FM_SUBS = "numberFMsPerLayerSubsampled"
     KERN_DIM_SUBS = "kernelDimPerLayerSubsampled"
     PAD_MODE_SUBS = "padTypePerLayerSubsampled"
     SUBS_FACTOR = "subsampleFactor"
@@ -38,7 +38,7 @@ class ModelConfig(Config):
     LOWER_RANK_LAYERS_SUBS = "lowerRankLayersSubsampled"
     
     #==Extra hidden FC Layers. Final Classification layer is not included in here.
-    N_FMS_FC = "numberFMsPerLayerFC"
+    N_FM_FC = "numberFMsPerLayerFC"
     KERN_DIM_FC = "kernelDimPerLayerFC"
     PAD_MODE_FC = "padTypePerLayerFC"
     RESID_CONN_LAYERS_FC = "layersWithResidualConnFC"
