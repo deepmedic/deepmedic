@@ -6,17 +6,17 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
+from six.moves import input
 import os
 
+import tensorflow as tf
 from deepmedic.frontEnd.session import Session
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.testSessionParams import TestSessionParameters
 from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTestingSession, handle_exception_tf_restore
-
 from deepmedic.neuralnet.cnn3d import Cnn3d
 from deepmedic.routines.testing import inference_on_whole_volumes
 
-import tensorflow as tf
 
 class TestSession(Session):
     
@@ -31,8 +31,7 @@ class TestSession(Session):
         return sess_name
     
     def make_output_folders(self):
-        self._main_out_folder_abs = getAbsPathEvenIfRelativeIsGiven( self._cfg[self._cfg.FOLDER_OUTP],
-                                                                     self.get_abs_path_to_cfg() )
+        self._main_out_folder_abs = abs_from_rel_path( self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg() )
         [self._log_folder_abs,
          self._out_folder_preds,
          self._out_folder_fms] = makeFoldersNeededForTestingSession( self._main_out_folder_abs, self._sess_name )
@@ -60,12 +59,12 @@ class TestSession(Session):
     def _ask_user_if_test_with_random(self):
         user_input = None
         try:
-            user_input = raw_input("WARN:\t Testing was requested, but without specifying a pretrained, saved model to load.\n"+\
+            user_input = input("WARN:\t Testing was requested, but without specifying a pretrained, saved model to load.\n"+\
                                    "\t A saved model can be specified via the command line or the test-config file.\n" +\
                                    "\t Please see documentation or run ./deepMedicRun -h for help on how to load a model.\n"+\
                                    "\t Do you wish to continue and test inference with a randomly initialized model? [y/n] : ")
             while user_input not in ['y','n']: 
-                user_input = raw_input("Please specify 'y' or 'n': ")
+                user_input = input("Please specify 'y' or 'n': ")
         except:
             print("\nERROR:\tTesting was requested, but without specifying a pretrained, saved model to load."+\
                   "\n\tTried to ask for user input whether to continue testing with a randomly initialized model, but failed."+\

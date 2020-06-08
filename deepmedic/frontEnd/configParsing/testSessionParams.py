@@ -7,7 +7,12 @@
 
 from __future__ import absolute_import, print_function, division
 
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven, parseAbsFileLinesInList, parseFileLinesInList, check_and_adjust_path_to_ckpt
+import os
+import pandas as pd
+
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parseAbsFileLinesInList, \
+    parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_df
+
 
 class TestSessionParameters(object) :
     #To be called from outside too.
@@ -21,6 +26,7 @@ class TestSessionParameters(object) :
               "\n\tOtherwise, requires ['apply_to_all_channels': False] if ['apply_per_channel': [..list..] ]"
               "\n\tExiting!")
         exit(1)
+
     
     def __init__(self,
                 log,
@@ -37,19 +43,34 @@ class TestSessionParameters(object) :
         # From test config:
         self.sessionName = self.getSessionName( cfg[cfg.SESSION_NAME] )
         
-        abs_path_to_cfg = cfg.get_abs_path_to_cfg()
-        abs_path_to_saved = getAbsPathEvenIfRelativeIsGiven( cfg[cfg.SAVED_MODEL], abs_path_to_cfg ) if cfg[cfg.SAVED_MODEL] is not None else None # Where to load the model from.
-        self.savedModelFilepath = check_and_adjust_path_to_ckpt( self.log, abs_path_to_saved) if abs_path_to_saved is not None else None
+        abs_path_cfg = cfg.get_abs_path_to_cfg()
+        path_model = abs_from_rel_path(cfg[cfg.SAVED_MODEL], abs_path_cfg) if cfg[cfg.SAVED_MODEL] is not None else None
+        self.model_ckpt_path = check_and_adjust_path_to_ckpt(self.log, path_model) if path_model is not None else None
         
         #Input:
-        #[[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
-        listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(getAbsPathEvenIfRelativeIsGiven(channelConfPath, abs_path_to_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
-        self.channelsFilepaths = [ list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases)) ] # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-        self.gtLabelsFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.GT_LABELS], abs_path_to_cfg) ) if cfg[cfg.GT_LABELS] is not None else None
-        self.roiMasksFilepaths = parseAbsFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.ROI_MASKS], abs_path_to_cfg) ) if cfg[cfg.ROI_MASKS] is not None else None
-        
-        #Output:
-        self.namesToSavePredictionsAndFeatures = parseFileLinesInList( getAbsPathEvenIfRelativeIsGiven(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_to_cfg) ) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None #CAREFUL: different parser! #Optional. Not required if not saving results.
+        if cfg[cfg.DATAFRAME] is not None:  # get data from csv/dataframe
+            self.csv_fname = abs_from_rel_path(cfg[cfg.DATAFRAME], abs_path_cfg)
+            try:
+                self.dataframe = pd.read_csv(self.csv_fname, skipinitialspace=True)
+            except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
+                raise OSError("File given for dataframe does not exist: " + self.csv_fname)
+            (self.channelsFilepaths,
+             self.gtLabelsFilepaths,
+             self.roiMasksFilepaths,
+             self.out_preds_fnames) = get_paths_from_df(self.log,
+                                                        self.dataframe,
+                                                        os.path.dirname(self.csv_fname),
+                                                        req_gt=False)
+        else:  # Get data input data from old variables.
+            self.csv_fname = None
+            self.dataframe = None
+            # [[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
+            listOfAListPerChannelWithFilepathsOfAllCases = [parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg)) for channelConfPath in cfg[cfg.CHANNELS]]
+            self.channelsFilepaths = [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCases))]  # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+            self.gtLabelsFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg)) if cfg[cfg.GT_LABELS] is not None else None
+            self.roiMasksFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg)) if cfg[cfg.ROI_MASKS] is not None else None
+            self.out_preds_fnames = parseFileLinesInList(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_cfg)) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None
+
         #predictions
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
         self.saveProbMapsBoolPerClass = cfg[cfg.SAVE_PROBMAPS_PER_CLASS] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS] != []) else [True]*num_classes
@@ -105,11 +126,11 @@ class TestSessionParameters(object) :
                                                 ) :
         self.filepathsToSavePredictionsForEachPatient = []
         self.filepathsToSaveFeaturesForEachPatient = []
-        if self.namesToSavePredictionsAndFeatures is not None : # standard behavior
+        if self.out_preds_fnames is not None : # standard behavior
             for case_i in range(self.numberOfCases) :
-                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
+                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + self.out_preds_fnames[case_i]
                 self.filepathsToSavePredictionsForEachPatient.append( filepathForCasePrediction )
-                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.namesToSavePredictionsAndFeatures[case_i]
+                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + self.out_preds_fnames[case_i]
                 self.filepathsToSaveFeaturesForEachPatient.append( filepathForCaseFeatures )
         else : # Names for predictions not given. Special handling...
             if self.numberOfCases > 1 : # Many cases, create corresponding namings for files.
@@ -122,7 +143,7 @@ class TestSessionParameters(object) :
     
     
     def get_path_to_load_model_from(self):
-        return self.savedModelFilepath
+        return self.model_ckpt_path
     
     
     def print_params(self) :
@@ -132,8 +153,9 @@ class TestSessionParameters(object) :
         logPrint("=========== PARAMETERS OF THIS TESTING SESSION ==============")
         logPrint("=============================================================")
         logPrint("sessionName = " + str(self.sessionName))
-        logPrint("Model will be loaded from save = " + str(self.savedModelFilepath))
+        logPrint("Model will be loaded from save = " + str(self.model_ckpt_path))
         logPrint("~~~~~~~~~~~~~~~~~~~~INPUT~~~~~~~~~~~~~~~~")
+        logPrint("Dataframe (csv) filename = " + str(self.csv_fname))
         logPrint("Number of cases to perform inference on = " + str(self.numberOfCases))
         logPrint("Paths to the channels of each case = " + str(self.channelsFilepaths))
         logPrint("Paths to provided GT labels per case = " + str(self.gtLabelsFilepaths))
@@ -142,7 +164,7 @@ class TestSessionParameters(object) :
         
         logPrint("~~~~~~~~~~~~~~~~~~~OUTPUT~~~~~~~~~~~~~~~")
         logPrint("Path to the main output-folder = " + str(self.mainOutputAbsFolder))
-        logPrint("Provided names to use to save results for each case = " + str(self.namesToSavePredictionsAndFeatures))
+        logPrint("Provided names to use to save results for each case = " + str(self.out_preds_fnames))
         
         logPrint("~~~~~~~Ouput-parameters for Predictions (segmentation and probability maps)~~~~")
         logPrint("Save the predicted segmentation = " + str(self.saveSegmentation))

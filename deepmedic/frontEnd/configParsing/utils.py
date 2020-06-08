@@ -6,10 +6,11 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
+from six.moves import input
 import os
 
 
-def getAbsPathEvenIfRelativeIsGiven(pathGiven, absolutePathToWhereRelativePathRelatesTo) :
+def abs_from_rel_path(pathGiven, absolutePathToWhereRelativePathRelatesTo):
     #os.path.normpath "cleans" Additional ../.// etc.
     if os.path.isabs(pathGiven) : 
         return os.path.normpath(pathGiven)
@@ -77,10 +78,10 @@ def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
                        "\n\t Note that you should not point to the .data, .index or .meta files that are saved. Rather, shorten their names till the .ckpt"+\
                        "\n\t Given path seemed longer: " + str(filepath_to_ckpt)
         try:
-            user_input = raw_input(">>\t " + string_warn +\
+            user_input = input(">>\t " + string_warn +\
                                    "\n\t Do you wish that we shorten the path to end with [.ckpt] as expected? [y/n] : ")
             while user_input not in ['y','n']: 
-                user_input = raw_input("Please specify 'y' or 'n': ")
+                user_input = input("Please specify 'y' or 'n': ")
         except:
             log.print3("\nWARN:\t " + string_warn +\
                        "\n\t We tried to request command line input from user whether to shorten it after [.ckpt] but failed (remote use? nohup?"+\
@@ -92,6 +93,41 @@ def check_and_adjust_path_to_ckpt( log, filepath_to_ckpt ):
             log.print3("Continuing without doing anything.")
             
     return filepath_to_ckpt
-    
 
-    
+
+def normfullpath(abspath, relpath):
+    if os.path.isabs(relpath):
+        return relpath
+    else:
+        return os.path.normpath(os.path.join(abspath, relpath))
+
+
+def get_paths_from_df(log, df, abs_path, req_gt=True):
+    # df: Pandas dataframe, or one with same API.
+    # channels are sorted alphabetically to ensure consistency
+    c_names = sorted([c for c in list(df.columns) if c.startswith('channel_')])
+    if len(c_names) == 0:
+        # no channels error raise - move to function later
+        log.print3('No channel columns in dataframe. Columns should be named "channel_[channel_name]". Exiting')
+        exit(1)
+    # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
+    channels = [[normfullpath(abs_path, c) for c in list(item[c_names])] for _, item in df.iterrows()]
+
+    try:
+        gt = [normfullpath(abs_path, g) for g in list(df['ground_truth'])]
+    except KeyError:
+        gt = None
+        if req_gt:
+            raise Exception('No ground truth column in dataframe, as required. Column should be named "ground_truth".')
+    try:
+        roi = [normfullpath(abs_path, r) for r in list(df['roi_mask'])]
+    except KeyError:
+        roi = None
+        log.print3('No roi masks column in dataframe. Column should be named "roi_mask".')
+
+    try:
+        pred = [normfullpath(abs_path, p) for p in list(df['prediction_filename'])]
+    except KeyError:
+        pred = None
+
+    return channels, gt, roi, pred

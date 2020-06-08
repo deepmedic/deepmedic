@@ -14,7 +14,7 @@ import traceback
 
 sys.setrecursionlimit(20000)
 
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 
 from deepmedic.frontEnd.configParsing.modelConfig import ModelConfig
 from deepmedic.frontEnd.configParsing.trainConfig import TrainConfig
@@ -81,10 +81,10 @@ def setup_arg_parser() :
     return parser
 
 
-def check_dev_passed_correctly(devArg) :
+def check_dev_passed_correctly(devArg):
     if devArg == ARG_CPU_PROC: return
     if devArg == ARG_GPU_PROC: return
-    if devArg.startswith(ARG_GPU_PROC) and str_is_int(devArg[ len(ARG_GPU_PROC) : ]) : return
+    if devArg.startswith(ARG_GPU_PROC) and str_is_int(devArg[len(ARG_GPU_PROC):]): return
     
     print(  "ERROR: Value for the [" + OPT_DEVICE + "] option was not specified correctly. Specify the device to run the process on. \n"+\
             "\tValues: [" + ARG_CPU_PROC + "] or [" + ARG_GPU_PROC + "] (Default = " + DEF_DEV_PROC + ").\n"+\
@@ -100,8 +100,8 @@ def set_environment(dev_string):
         sess_device = "/CPU:0"
     elif dev_string == ARG_GPU_PROC:
         sess_device = None # With None, TF will get all cuda devices and assign to the first.
-    if dev_string.startswith(ARG_GPU_PROC) and str_is_int( dev_string[ len(ARG_GPU_PROC): ] ):
-        os.environ["CUDA_VISIBLE_DEVICES"] = dev_string[ len(ARG_GPU_PROC) : ]
+    if dev_string.startswith(ARG_GPU_PROC) and str_is_int(dev_string[ len(ARG_GPU_PROC):]):
+        os.environ["CUDA_VISIBLE_DEVICES"] = dev_string[len(ARG_GPU_PROC):]
         sess_device = "/device:GPU:0"
         
     return (sess_device)
@@ -137,16 +137,16 @@ if __name__ == '__main__':
     
     # Parse main files.
     if args.model_cfg:
-        abs_path_model_cfg = getAbsPathEvenIfRelativeIsGiven(args.model_cfg, cwd)
-        model_cfg = ModelConfig( abs_path_model_cfg )
+        abs_path_model_cfg = abs_from_rel_path(args.model_cfg, cwd)
+        model_cfg = ModelConfig(abs_path_model_cfg)
         
     # Create session.
     if args.train_cfg:
-        abs_path_train_cfg = getAbsPathEvenIfRelativeIsGiven(args.train_cfg, cwd)
-        session = TrainSession( TrainConfig(abs_path_train_cfg) )
+        abs_path_train_cfg = abs_from_rel_path(args.train_cfg, cwd)
+        session = TrainSession(TrainConfig(abs_path_train_cfg))
     elif args.test_cfg:
-        abs_path_test_cfg = getAbsPathEvenIfRelativeIsGiven(args.test_cfg, cwd)
-        session = TestSession( TestConfig(abs_path_test_cfg) )
+        abs_path_test_cfg = abs_from_rel_path(args.test_cfg, cwd)
+        session = TestSession(TestConfig(abs_path_test_cfg))
         
     #Create output folders and logger.
     session.make_output_folders()
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     
     log.print3("")
     log.print3("======================== Starting new session ============================")
-    log.print3("Command line arguments given: \n" + str(args) )
+    log.print3("Command line arguments given: \n" + str(args))
     
     check_dev_passed_correctly(args.device)
     (sess_device) = set_environment(args.device)
@@ -165,12 +165,12 @@ if __name__ == '__main__':
     try:
         #Find out what session we are being asked to perform:
         if args.model_cfg: # Should be always true.
-            log.print3("CONFIG: The configuration file for the [model] given is: " + str( model_cfg.get_abs_path_to_cfg() ))
-            model_params = ModelParameters( log, model_cfg )
+            log.print3("CONFIG: The configuration file for the [model] given is: " + str(model_cfg.get_abs_path_to_cfg()))
+            model_params = ModelParameters(log, model_cfg)
             model_params.print_params()
             
         # Sessions
-        log.print3("CONFIG: The configuration file for the [session] was loaded from: " + str(session.get_abs_path_to_cfg() ))
+        log.print3("CONFIG: The configuration file for the [session] was loaded from: " + str(session.get_abs_path_to_cfg()))
         session.override_file_cfg_with_cmd_line_cfg(args)
         _ = session.compile_session_params_from_cfg(model_params)
         
@@ -181,9 +181,9 @@ if __name__ == '__main__':
         # All done.
     except (Exception, KeyboardInterrupt) as e:
         log.print3("")
-        log.print3("ERROR: Caught exception from main process: " + str(e) )
-        log.print3( traceback.format_exc() )
+        log.print3("ERROR: Caught exception from main process: " + str(e))
+        log.print3(traceback.format_exc())
         
     log.print3("Finished.")
     
-        
+

@@ -21,6 +21,7 @@ class TrainConfig(Config):
     TENSORBOARD_LOG = "tensorboard_log"
 
     # =============TRAINING========================
+    DATAFRAME_TR = "dataframe_train"
     CHANNELS_TR = "channelsTraining"
     GT_LABELS_TR = "gtLabelsTraining"
     ROI_MASKS_TR = "roiMasksTraining"
@@ -57,6 +58,7 @@ class TrainConfig(Config):
     # ============== VALIDATION ===================
     PERFORM_VAL_SAMPLES = "performValidationOnSamplesThroughoutTraining"
     PERFORM_VAL_INFERENCE = "performFullInferenceOnValidationImagesEveryFewEpochs"
+    DATAFRAME_VAL = "dataframe_val"
     CHANNELS_VAL = "channelsValidation"
     GT_LABELS_VAL = "gtLabelsValidation"
     ROI_MASKS_VAL = "roiMasksValidation"
