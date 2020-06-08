@@ -33,8 +33,6 @@ class Session(object):
     
     # Call only after calling make_output_folders()
     def setup_logger(self):
-        print(self._out_folder_logs)
-        print(self._session_name)
         log_filepath = self._out_folder_logs + "/" + self._session_name + ".txt"
         # Create logger.
         self._log = loggers.Logger(log_filepath)

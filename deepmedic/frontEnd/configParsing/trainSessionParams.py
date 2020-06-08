@@ -10,8 +10,8 @@ from __future__ import absolute_import, print_function, division
 import os
 import pandas as pd
 
-from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parseAbsFileLinesInList, \
-    parse_filelist, check_and_adjust_path_to_ckpt, get_paths_from_df, parse_fpaths_of_channs_from_filelists
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parse_filelist, check_and_adjust_path_to_ckpt, \
+    get_paths_from_df, parse_fpaths_of_channs_from_filelists
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
 
@@ -223,9 +223,8 @@ class TrainSessionParameters(object):
                 self.errReqGtTr()
 
             self.channels_fpaths_tr = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS_TR], abs_path_cfg)
-            self.gt_lbls_fpaths_train = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg))
-            self.roiMasksFilepathsTrain = \
-                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg)) \
+            self.gt_lbls_fpaths_train = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg), make_abs=True)
+            self.roiMasksFilepathsTrain = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg), make_abs=True) \
                 if cfg[cfg.ROI_MASKS_TR] is not None else None
 
         # [Optionals]
@@ -243,7 +242,7 @@ class TrainSessionParameters(object):
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR] is not None:
             # [[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_train = [
-                parseAbsFileLinesInList(abs_from_rel_path(weightMapConfPath, abs_path_cfg))
+                parse_filelist(abs_from_rel_path(weightMapConfPath, abs_path_cfg), make_abs=True)
                 for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_TR]
             ]
 
@@ -337,9 +336,9 @@ class TrainSessionParameters(object):
                 self.errReqChannsVal()
 
             self.gtLabelsFilepathsVal = \
-                parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg)) \
+                parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg), make_abs=True) \
                 if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
-            self.roiMasksFilepathsVal = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg)) \
+            self.roiMasksFilepathsVal = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg), make_abs=True) \
                 if cfg[cfg.ROI_MASKS_VAL] is not None else None
             self.out_preds_fnames_val = parse_filelist(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
                 if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None
@@ -362,7 +361,7 @@ class TrainSessionParameters(object):
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
             # [[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_val = [
-                parseAbsFileLinesInList(abs_from_rel_path(weightMapConfPath, abs_path_cfg))
+                parse_filelist(abs_from_rel_path(weightMapConfPath, abs_path_cfg), make_abs=True)
                 for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]
             ]
 

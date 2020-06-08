@@ -24,35 +24,30 @@ def abs_from_rel_path(pathGiven, absolutePathToWhereRelativePathRelatesTo):
         return os.path.normpath(relativePathToWhatGiven + "/" + pathGiven)
 
 
-def checkIfAllElementsOfAListAreFilesAndExitIfNot(pathToTheListingFile, list1) :
+def checkIfAllElementsOfAListAreFilesAndExitIfNot(pathToTheListingFile, list1):
     for filepath in list1 :
         if not os.path.isfile(filepath) :
             print("ERROR: in [checkIfAllElementsOfAListExistAndExitIfNot()] path:", filepath, " given in :", pathToTheListingFile," does not correspond to a file. Exiting!")
             exit(1)
-            
-def parse_filelist(pathToListingFile):
-    list1 = []
-    with open(pathToListingFile, "r") as inp:
-        for line in inp:
-            if not line.startswith("#") and line.strip() != "":
-                list1.append(line.strip())
-    return list1
 
-def parseAbsFileLinesInList(pathToListingFile):
+
+def parse_filelist(filelist_path, make_abs=False):
     # os.path.normpath below is to "clean" the paths from ./..//...
-    pathToFolderContainingThisListFile = os.path.dirname(pathToListingFile)
+    path_to_folder_w_filelist = os.path.dirname(filelist_path)
     list1 = []
-    with open(pathToListingFile, "r") as inp:
+    with open(filelist_path, "r") as inp:
         for line in inp:
             if line.strip() == "-":  # Special char. E.g. indicating the non existence of channel, to be zero-filled.
                 list1.append("-")
             elif not line.startswith("#") and line.strip() != "":
                 path_to_file = line.strip()
-                if os.path.isabs(path_to_file):  # abs path
+
+                if (not make_abs) or os.path.isabs(path_to_file):
                     list1.append(os.path.normpath(path_to_file))
                 else:  # relative path to this listing-file.
-                    list1.append(os.path.normpath(pathToFolderContainingThisListFile + "/" + path_to_file))
+                    list1.append(os.path.normpath(path_to_folder_w_filelist + "/" + path_to_file))
     return list1
+
 
 def checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCasesPreviously, pathToGivenListFile, listOfFilepathsToChannelIForEachCase) :
     numberOfContainedCasesInList = len(listOfFilepathsToChannelIForEachCase)
@@ -60,7 +55,8 @@ def checkListContainsCorrectNumberOfCasesOtherwiseExitWithError(numberOfCasesPre
         raise IOError("ERROR: Given file:", pathToGivenListFile +\
               "\n\t contains #", numberOfContainedCasesInList," entries, whereas previously checked files contained #", numberOfCasesPreviously,"."+\
               "\n\t All listing-files for channels, masks, etc, should contain the same number of entries, one for each case.")
-        
+
+
 def checkThatAllEntriesOfAListFollowNameConventions(listOfPredictionNamesForEachCaseInListingFile) :
     for entry in listOfPredictionNamesForEachCaseInListingFile :
         if entry.find("/") > -1 or entry.startswith(".") :
@@ -145,7 +141,7 @@ def parse_fpaths_of_channs_from_filelists(list_of_filelists, abs_path_root):
     for path_to_filelist_for_chan in list_of_filelists:
         # The below: [[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
         abs_path_to_filelist_for_chan = abs_from_rel_path(path_to_filelist_for_chan, abs_path_root)
-        chan_fpaths_per_chan_per_case.append(parseAbsFileLinesInList(abs_path_to_filelist_for_chan))
+        chan_fpaths_per_chan_per_case.append(parse_filelist(abs_path_to_filelist_for_chan, make_abs=True))
         # The below [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
     channels_fpaths = [list(item) for item in zip(*tuple(chan_fpaths_per_chan_per_case))]
     return channels_fpaths

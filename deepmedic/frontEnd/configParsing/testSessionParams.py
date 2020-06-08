@@ -10,8 +10,8 @@ from __future__ import absolute_import, print_function, division
 import os
 import pandas as pd
 
-from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parseAbsFileLinesInList, \
-    parse_filelist, check_and_adjust_path_to_ckpt, get_paths_from_df, parse_fpaths_of_channs_from_filelists
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parse_filelist, check_and_adjust_path_to_ckpt, \
+    get_paths_from_df, parse_fpaths_of_channs_from_filelists
 
 
 class TestSessionParameters(object) :
@@ -27,7 +27,7 @@ class TestSessionParameters(object) :
               "\n\tExiting!")
         exit(1)
 
-    
+
     def __init__(self,
                  log,
                  main_outp_folder,
@@ -39,14 +39,14 @@ class TestSessionParameters(object) :
         # From Session:
         self.log = log
         self.main_outp_folder = main_outp_folder
-        
+
         # From test config:
         self._session_name = self.get_session_name(cfg[cfg.SESSION_NAME])
-        
+
         abs_path_cfg = cfg.get_abs_path_to_cfg()
         path_model = abs_from_rel_path(cfg[cfg.SAVED_MODEL], abs_path_cfg) if cfg[cfg.SAVED_MODEL] is not None else None
         self.model_ckpt_path = check_and_adjust_path_to_ckpt(self.log, path_model) if path_model is not None else None
-        
+
         #Input:
         if cfg[cfg.DATAFRAME] is not None:  # get data from csv/dataframe
             self.csv_fname = abs_from_rel_path(cfg[cfg.DATAFRAME], abs_path_cfg)
@@ -65,14 +65,14 @@ class TestSessionParameters(object) :
             self.csv_fname = None
             self.dataframe = None
             self.channels_fpaths = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS], abs_path_cfg)
-            self.gtLabelsFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg)) if cfg[cfg.GT_LABELS] is not None else None
-            self.roiMasksFilepaths = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg)) if cfg[cfg.ROI_MASKS] is not None else None
+            self.gtLabelsFilepaths = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg), make_abs=True) if cfg[cfg.GT_LABELS] is not None else None
+            self.roiMasksFilepaths = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg), make_abs=True) if cfg[cfg.ROI_MASKS] is not None else None
             self.out_preds_fnames = parse_filelist(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_cfg)) if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None
 
         #predictions
         self.saveSegmentation = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
         self.saveProbMapsBoolPerClass = cfg[cfg.SAVE_PROBMAPS_PER_CLASS] if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS] != []) else [True]*n_classes
-        self.filepathsToSavePredictionsForEachPatient = None #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
+        self.filepathsToSavePredictionsForEachPatient = None  #Filled by call to self.makeFilepathsForPredictionsAndFeatures()
         self.suffixForSegmAndProbsDict = cfg[cfg.SUFFIX_SEGM_PROB] if cfg[cfg.SUFFIX_SEGM_PROB] is not None else {"segm": "Segm", "prob": "ProbMapClass"}
         self.batchsize = cfg[cfg.BATCHSIZE] if cfg[cfg.BATCHSIZE] is not None else 10
         #features:
