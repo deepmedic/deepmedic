@@ -34,17 +34,17 @@ class TrainSession(Session):
         self._params = None  # Compiled from cfg. Required for run()
         Session.__init__(self, cfg)
 
-    def _make_sess_name(self):
-        sess_name = TrainSessionParameters.getSessionName(self._cfg[self._cfg.SESSION_NAME])
-        return sess_name
+    def _make_session_name(self):
+        session_name = TrainSessionParameters.get_session_name(self._cfg[self._cfg.SESSION_NAME])
+        return session_name
 
     def make_output_folders(self):
         self._main_out_folder_abs = abs_from_rel_path(self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg())
-        [self._log_folder_abs,
+        [self._out_folder_logs,
          self._out_folder_models,
          self._out_folder_preds,
          self._out_folder_fms,
-         self._out_folder_tensorboard] = make_folders_for_train_session(self._main_out_folder_abs, self._sess_name)
+         self._out_folder_tensorboard] = make_folders_for_train_session(self._main_out_folder_abs, self._session_name)
 
     def create_tensorboard_loggers(self, logger_types, tf_graph, create_log=False):
         tensorboard_loggers = {}
@@ -75,15 +75,14 @@ class TrainSession(Session):
     def compile_session_params_from_cfg(self, *args):
         (model_params,) = args
 
-        self._params = TrainSessionParameters(
-                                    log=self._log,
-                                    mainOutputAbsFolder=self._main_out_folder_abs,
-                                    folderForSessionCnnModels=self._out_folder_models,
-                                    folderForPredictionsVal=self._out_folder_preds,
-                                    folderForFeaturesVal=self._out_folder_fms,
-                                    num_classes=model_params.numberClasses,
-                                    model_name=model_params.cnnModelName,
-                                    cfg=self._cfg)
+        self._params = TrainSessionParameters(self._log,
+                                              self._main_out_folder_abs,
+                                              self._out_folder_models,
+                                              self._out_folder_preds,
+                                              self._out_folder_fms,
+                                              model_params.numberClasses,
+                                              model_params.cnnModelName,
+                                              self._cfg)
 
         self._log.print3("")
         self._log.print3("=============   NEW TRAINING SESSION     ==============\n")

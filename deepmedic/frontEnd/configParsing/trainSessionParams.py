@@ -11,7 +11,7 @@ import os
 import pandas as pd
 
 from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parseAbsFileLinesInList, \
-    parseFileLinesInList, check_and_adjust_path_to_ckpt, get_paths_from_df
+    parse_filelist, check_and_adjust_path_to_ckpt, get_paths_from_df, parse_fpaths_of_channs_from_filelists
 from deepmedic.dataManagement import samplingType
 from deepmedic.dataManagement.augmentImage import AugmenterAffineParams
 
@@ -34,7 +34,7 @@ class TrainSessionParameters(object):
 
     # To be called from outside too.
     @staticmethod
-    def getSessionName(sessionName):
+    def get_session_name(sessionName):
         return sessionName if sessionName is not None else "trainSession"
 
 
@@ -179,21 +179,21 @@ class TrainSessionParameters(object):
 
     def __init__(self,
                  log,
-                 mainOutputAbsFolder,
-                 folderForSessionCnnModels,
-                 folderForPredictionsVal,
-                 folderForFeaturesVal,
-                 num_classes,
+                 main_outp_folder,
+                 out_folder_models,
+                 out_folder_preds,
+                 out_folder_fms,
+                 n_classes,
                  model_name,
                  cfg):
 
         # Importants for running session.
         # From Session:
         self.log = log
-        self.mainOutputAbsFolder = mainOutputAbsFolder
+        self.main_outp_folder = main_outp_folder  # absolute
 
         # From Config:
-        self.sessionName = self.getSessionName(cfg[cfg.SESSION_NAME])
+        self._session_name = self.get_session_name(cfg[cfg.SESSION_NAME])
 
         abs_path_cfg = cfg.get_abs_path_to_cfg()
         path_model = abs_from_rel_path(cfg[cfg.SAVED_MODEL], abs_path_cfg) if cfg[cfg.SAVED_MODEL] is not None else None
@@ -202,7 +202,7 @@ class TrainSessionParameters(object):
         self.tensorboardLog = cfg[cfg.TENSORBOARD_LOG] if cfg[cfg.TENSORBOARD_LOG] is not None else False
 
         # ====================TRAINING==========================
-        self.filepath_to_save_models = folderForSessionCnnModels + "/" + model_name + "." + self.sessionName
+        self.filepath_to_save_models = out_folder_models + "/" + model_name + "." + self._session_name
 
         if cfg[cfg.DATAFRAME_TR] is not None:
             self.csv_fname_train = abs_from_rel_path(cfg[cfg.DATAFRAME_TR], abs_path_cfg)
@@ -210,7 +210,7 @@ class TrainSessionParameters(object):
                 self.dataframe_tr = pd.read_csv(self.csv_fname_train, skipinitialspace=True)
             except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
                 raise OSError("File given for dataframe (train) does not exist: " + self.csv_fname_train)
-            (self.channelsFilepathsTrain,
+            (self.channels_fpaths_tr,
              self.gt_lbls_fpaths_train,
              self.roiMasksFilepathsTrain,
              _) = get_paths_from_df(self.log, self.dataframe_tr, os.path.dirname(self.csv_fname_train), req_gt=True)
@@ -221,14 +221,8 @@ class TrainSessionParameters(object):
                 self.errReqChansTr()
             if cfg[cfg.GT_LABELS_TR] is None:
                 self.errReqGtTr()
-            # [[case1-ch1, ..., caseN-ch1], [case1-ch2,...,caseN-ch2]]
-            listOfAListPerChannelWithFilepathsOfAllCasesTrain = [
-                parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg))
-                for channelConfPath in cfg[cfg.CHANNELS_TR]
-            ]
-            # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-            self.channelsFilepathsTrain = \
-                [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesTrain))]
+
+            self.channels_fpaths_tr = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS_TR], abs_path_cfg)
             self.gt_lbls_fpaths_train = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg))
             self.roiMasksFilepathsTrain = \
                 parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg)) \
@@ -237,7 +231,7 @@ class TrainSessionParameters(object):
         # [Optionals]
         # ~~~~~~~~~Sampling~~~~~~~
         sampling_type_flag_tr = cfg[cfg.TYPE_OF_SAMPLING_TR] if cfg[cfg.TYPE_OF_SAMPLING_TR] is not None else 3
-        self.sampling_type_inst_tr = samplingType.SamplingType(self.log, sampling_type_flag_tr, num_classes)
+        self.sampling_type_inst_tr = samplingType.SamplingType(self.log, sampling_type_flag_tr, n_classes)
         if sampling_type_flag_tr in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR] is not None:
             self.sampling_type_inst_tr.set_perc_of_samples_per_cat(cfg[cfg.PROP_OF_SAMPLES_PER_CAT_TR])
         else:
@@ -317,7 +311,7 @@ class TrainSessionParameters(object):
         if (not self.val_on_samples_during_train) and (not self.val_on_whole_volumes):
             self.csv_fname_val = None
             self.dataframe_val = None
-            self.channelsFilepathsVal = []
+            self.channels_fpaths_val = []
             self.gtLabelsFilepathsVal = None
             self.roiMasksFilepathsVal = None
             self.out_preds_fnames_val = None
@@ -327,7 +321,7 @@ class TrainSessionParameters(object):
                 self.dataframe_val = pd.read_csv(self.csv_fname_val, skipinitialspace=True)
             except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
                 raise OSError("File given for dataframe (validation) does not exist: " + self.csv_fname_val)
-            (self.channelsFilepathsVal,
+            (self.channels_fpaths_val,
              self.gtLabelsFilepathsVal,
              self.roiMasksFilepathsVal,
              self.out_preds_fnames_val) = get_paths_from_df(self.log,
@@ -337,12 +331,8 @@ class TrainSessionParameters(object):
         else:  # Doing one of validations, and not given dataframe.
             self.csv_fname_val = None
             self.dataframe_val = None
-
             if cfg[cfg.CHANNELS_VAL]:
-                listOfAListPerChannelWithFilepathsOfAllCasesVal = [
-                    parseAbsFileLinesInList(abs_from_rel_path(channelConfPath, abs_path_cfg)) for channelConfPath in cfg[cfg.CHANNELS_VAL] ]
-                # [[case1-ch1, case1-ch2], ..., [caseN-ch1, caseN-ch2]]
-                self.channelsFilepathsVal = [list(item) for item in zip(*tuple(listOfAListPerChannelWithFilepathsOfAllCasesVal))]
+                self.channels_fpaths_val = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS_VAL], abs_path_cfg)
             else:
                 self.errReqChannsVal()
 
@@ -351,7 +341,7 @@ class TrainSessionParameters(object):
                 if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
             self.roiMasksFilepathsVal = parseAbsFileLinesInList(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg)) \
                 if cfg[cfg.ROI_MASKS_VAL] is not None else None
-            self.out_preds_fnames_val = parseFileLinesInList(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
+            self.out_preds_fnames_val = parse_filelist(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
                 if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None
 
         # ~~~~~Validation on Samples~~~~~~~~
@@ -361,7 +351,7 @@ class TrainSessionParameters(object):
 
         # ~~~~~~~~~ Sampling (Validation) ~~~~~~~~~~~
         sampling_type_flag_val = cfg[cfg.TYPE_OF_SAMPLING_VAL] if cfg[cfg.TYPE_OF_SAMPLING_VAL] is not None else 1
-        self.sampling_type_inst_val = samplingType.SamplingType(self.log, sampling_type_flag_val, num_classes)
+        self.sampling_type_inst_val = samplingType.SamplingType(self.log, sampling_type_flag_val, n_classes)
         if sampling_type_flag_val in [0, 3] and cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL] is not None:
             self.sampling_type_inst_val.set_perc_of_samples_per_cat(cfg[cfg.PROP_OF_SAMPLES_PER_CAT_VAL])
         else:
@@ -389,7 +379,7 @@ class TrainSessionParameters(object):
         self.saveProbMapsBoolPerClassVal = \
             cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] \
             if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) \
-            else [True] * num_classes
+            else [True] * n_classes
         self.suffixForSegmAndProbsDictVal = cfg[cfg.SUFFIX_SEGM_PROB_VAL] \
             if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None \
             else {"segm": "Segm", "prob": "ProbMapClass"}
@@ -442,8 +432,8 @@ class TrainSessionParameters(object):
         
         # ============= OTHERS ==========
         # Others useful internally or for reporting:
-        self.numberOfCasesTrain = len(self.channelsFilepathsTrain)
-        self.numberOfCasesVal = len(self.channelsFilepathsVal)
+        self.numberOfCasesTrain = len(self.channels_fpaths_tr)
+        self.numberOfCasesVal = len(self.channels_fpaths_val)
         
         # ========= HIDDENS =============
         # no config allowed for these at the moment:
@@ -462,9 +452,9 @@ class TrainSessionParameters(object):
                   "schedule": [0, self.numberOfEpochs]
                   }
         if self.reweight_classes_in_cost["type"] == "per_c":
-            assert len(self.reweight_classes_in_cost["prms"]) == num_classes
+            assert len(self.reweight_classes_in_cost["prms"]) == n_classes
 
-        self._makeFilepathsForPredictionsAndFeaturesVal(folderForPredictionsVal, folderForFeaturesVal)
+        self._makeFilepathsForPredictionsAndFeaturesVal(out_folder_preds, out_folder_fms)
 
         # ====Optimization=====
         self.learningRate = cfg[cfg.LRATE] if cfg[cfg.LRATE] is not None else 0.001
@@ -585,10 +575,10 @@ class TrainSessionParameters(object):
         logPrint("=============================================================")
         logPrint("========= PARAMETERS FOR THIS TRAINING SESSION ==============")
         logPrint("=============================================================")
-        logPrint("Session's name = " + str(self.sessionName))
+        logPrint("Session's name = " + str(self._session_name))
         logPrint("Model will be loaded from save = " + str(self.model_ckpt_path))
         logPrint("~~Output~~")
-        logPrint("Main output folder = " + str(self.mainOutputAbsFolder))
+        logPrint("Main output folder = " + str(self.main_outp_folder))
         logPrint("Log performance metrics for tensorboard = " + str(self.tensorboardLog))
         logPrint("Path and filename to save trained models = " + str(self.filepath_to_save_models))
 
@@ -598,7 +588,7 @@ class TrainSessionParameters(object):
 
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
         logPrint("Dataframe (csv) filename = " + str(self.csv_fname_train))
-        logPrint("Filepaths to Channels of the Training Cases = " + str(self.channelsFilepathsTrain))
+        logPrint("Filepaths to Channels of the Training Cases = " + str(self.channels_fpaths_tr))
         logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gt_lbls_fpaths_train))
         logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
 
@@ -653,7 +643,7 @@ class TrainSessionParameters(object):
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
         logPrint("Dataframe (csv) filename = " + str(self.csv_fname_val))
-        logPrint("Filepaths to Channels of Validation Cases = " + str(self.channelsFilepathsVal))
+        logPrint("Filepaths to Channels of Validation Cases = " + str(self.channels_fpaths_val))
         logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
         logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
 
@@ -729,8 +719,8 @@ class TrainSessionParameters(object):
                 self.filepathsToSavePredictionsForEachPatientVal,
                 self.suffixForSegmAndProbsDictVal,
 
-                self.channelsFilepathsTrain,
-                self.channelsFilepathsVal,
+                self.channels_fpaths_tr,
+                self.channels_fpaths_val,
 
                 self.gt_lbls_fpaths_train,
                 self.gtLabelsFilepathsVal,

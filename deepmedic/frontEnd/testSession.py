@@ -26,27 +26,26 @@ class TestSession(Session):
         
         Session.__init__(self, cfg)
         
-    def _make_sess_name(self):
-        sess_name = TestSessionParameters.getSessionName( self._cfg[self._cfg.SESSION_NAME] )
-        return sess_name
+    def _make_session_name(self):
+        session_name = TestSessionParameters.get_session_name(self._cfg[self._cfg.SESSION_NAME])
+        return session_name
     
     def make_output_folders(self):
-        self._main_out_folder_abs = abs_from_rel_path( self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg() )
-        [self._log_folder_abs,
+        self._main_out_folder_abs = abs_from_rel_path(self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg())
+        [self._out_folder_logs,
          self._out_folder_preds,
-         self._out_folder_fms] = make_folders_for_test_session(self._main_out_folder_abs, self._sess_name)
+         self._out_folder_fms] = make_folders_for_test_session(self._main_out_folder_abs, self._session_name)
          
          
     def compile_session_params_from_cfg(self, *args):
         (model_params,) = args
         
-        self._params = TestSessionParameters(
-                                    log = self._log,
-                                    mainOutputAbsFolder = self._main_out_folder_abs,
-                                    folderForPredictions = self._out_folder_preds,
-                                    folderForFeatures = self._out_folder_fms,
-                                    num_classes = model_params.numberClasses,
-                                    cfg = self._cfg )
+        self._params = TestSessionParameters(self._log,
+                                             self._main_out_folder_abs,
+                                             self._out_folder_preds,
+                                             self._out_folder_fms,
+                                             model_params.numberClasses,
+                                             self._cfg)
         
         self._log.print3("")
         self._log.print3("============     NEW TESTING SESSION    ===============")

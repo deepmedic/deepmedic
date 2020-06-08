@@ -6,9 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-import os
 
-from deepmedic.frontEnd.configParsing.utils import *
 from deepmedic.frontEnd.configParsing.config import Config
 
 
@@ -32,7 +30,6 @@ class ModelConfig(Config):
     
     #==Subsampled pathway==
     USE_SUBSAMPLED = "useSubsampledPathway"
-    #The below should be mirroring the pathway, otherwise let them specify them but throw warning all around that receptive field should stay the same!
     N_FMS_SUBS = "numberFMsPerLayerSubsampled"
     KERN_DIM_SUBS = "kernelDimPerLayerSubsampled"
     PAD_MODE_SUBS = "padTypePerLayerSubsampled"
@@ -74,9 +71,11 @@ class ModelConfig(Config):
         msg_part2 = "]. Please update config and use the new corresponding variable "
         msg_part3 = "]. Exiting."
         if self.get("initializeClassic0orDelving1") is not None:
-            print(msg_part1 + "initializeClassic0orDelving1" + msg_part2 + "convWeightsInit" + msg_part3); exit(1)
+            print(msg_part1 + "initializeClassic0orDelving1" + msg_part2 + "convWeightsInit" + msg_part3)
+            exit(1)
         if self.get("relu0orPrelu1") is not None:
-            print(msg_part1 + "relu0orPrelu1" + msg_part2 + "activationFunction" + msg_part3); exit(1)
+            print(msg_part1 + "relu0orPrelu1" + msg_part2 + "activationFunction" + msg_part3)
+            exit(1)
     
     
 

@@ -24,9 +24,6 @@ class ModelParameters(object) :
         
     #To be called from outside too.
     @staticmethod
-    def getDefaultSessionName() :
-        return getDefaultModelName()
-    @staticmethod
     def getDefaultModelName() :
         return "deepmedic"
     @staticmethod
@@ -142,15 +139,11 @@ class ModelParameters(object) :
             if lengthOfFirst != len(listWithSublists[subList_i]) :
                 return False
         return True
-           
-           
-    def __init__(   self,
-                    log,
-                    cfg
-                    ):
-        
+
+
+    def __init__(self, log, cfg):
         self.log = log        
-        self.cnnModelName = cfg[cfg.MODEL_NAME] if cfg[cfg.MODEL_NAME] is not None else getDefaultModelName()
+        self.cnnModelName = cfg[cfg.MODEL_NAME] if cfg[cfg.MODEL_NAME] is not None else self.getDefaultModelName()
         
         #===========MODEL PARAMETERS==========
         self.numberClasses = cfg[cfg.NUM_CLASSES] if cfg[cfg.NUM_CLASSES] is not None else self.errReqNumClasses()
