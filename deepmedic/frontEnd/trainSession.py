@@ -11,7 +11,7 @@ import os
 from deepmedic.frontEnd.session import Session
 from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.trainSessionParams import TrainSessionParameters
-from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTrainingSession, handle_exception_tf_restore
+from deepmedic.frontEnd.sessHelpers import make_folders_for_train_session, handle_exception_tf_restore
 
 from deepmedic.logging.utils import datetime_now_str
 from deepmedic.neuralnet.cnn3d import Cnn3d
@@ -44,7 +44,7 @@ class TrainSession(Session):
          self._out_folder_models,
          self._out_folder_preds,
          self._out_folder_fms,
-         self._out_folder_tensorboard] = makeFoldersNeededForTrainingSession(self._main_out_folder_abs, self._sess_name)
+         self._out_folder_tensorboard] = make_folders_for_train_session(self._main_out_folder_abs, self._sess_name)
 
     def create_tensorboard_loggers(self, logger_types, tf_graph, create_log=False):
         tensorboard_loggers = {}

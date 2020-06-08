@@ -13,7 +13,7 @@ import tensorflow as tf
 from deepmedic.frontEnd.session import Session
 from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.testSessionParams import TestSessionParameters
-from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTestingSession, handle_exception_tf_restore
+from deepmedic.frontEnd.sessHelpers import make_folders_for_test_session, handle_exception_tf_restore
 from deepmedic.neuralnet.cnn3d import Cnn3d
 from deepmedic.routines.testing import inference_on_whole_volumes
 
@@ -34,7 +34,7 @@ class TestSession(Session):
         self._main_out_folder_abs = abs_from_rel_path( self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg() )
         [self._log_folder_abs,
          self._out_folder_preds,
-         self._out_folder_fms] = makeFoldersNeededForTestingSession( self._main_out_folder_abs, self._sess_name )
+         self._out_folder_fms] = make_folders_for_test_session(self._main_out_folder_abs, self._sess_name)
          
          
     def compile_session_params_from_cfg(self, *args):
