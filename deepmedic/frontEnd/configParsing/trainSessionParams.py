@@ -219,13 +219,13 @@ class TrainSessionParameters(object):
             self.dataframe_tr = None
             if cfg[cfg.CHANNELS_TR] is None:
                 self.errReqChansTr()
-            if cfg[cfg.GT_LABELS_TR] is None:
+            if cfg[cfg.GT_LBLS_TR] is None:
                 self.errReqGtTr()
 
             self.channels_fpaths_tr = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS_TR], abs_path_cfg)
-            self.gt_fpaths_tr = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg), make_abs=True)
-            self.roi_fpaths_tr = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg), make_abs=True) \
-                if cfg[cfg.ROI_MASKS_TR] is not None else None
+            self.gt_fpaths_tr = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LBLS_TR], abs_path_cfg), make_abs=True)
+            self.roi_fpaths_tr = parse_filelist(abs_from_rel_path(cfg[cfg.ROIS_TR], abs_path_cfg), make_abs=True) \
+                if cfg[cfg.ROIS_TR] is not None else None
 
         # [Optionals]
         # ~~~~~~~~~Sampling~~~~~~~
@@ -335,12 +335,12 @@ class TrainSessionParameters(object):
             else:
                 self.errReqChannsVal()
 
-            self.gt_fpaths_val = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg), make_abs=True) \
-                if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
-            self.roi_fpaths_val = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg), make_abs=True) \
-                if cfg[cfg.ROI_MASKS_VAL] is not None else None
-            self.out_preds_fnames_val = parse_filelist(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
-                if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None
+            self.gt_fpaths_val = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LBLS_VAL], abs_path_cfg), make_abs=True) \
+                if cfg[cfg.GT_LBLS_VAL] is not None else self.errorReqGtLabelsVal()
+            self.roi_fpaths_val = parse_filelist(abs_from_rel_path(cfg[cfg.ROIS_VAL], abs_path_cfg), make_abs=True) \
+                if cfg[cfg.ROIS_VAL] is not None else None
+            self.out_preds_fnames_val = parse_filelist(abs_from_rel_path(cfg[cfg.FNAMES_PREDS_VAL], abs_path_cfg)) \
+                if cfg[cfg.FNAMES_PREDS_VAL] else None
 
         # ~~~~~Validation on Samples~~~~~~~~
         self.n_samples_per_subep_val = \

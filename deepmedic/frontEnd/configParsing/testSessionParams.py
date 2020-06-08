@@ -65,12 +65,12 @@ class TestSessionParameters(object) :
             self.csv_fname = None
             self.dataframe = None
             self.channels_fpaths = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS], abs_path_cfg)
-            self.gt_fpaths = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS], abs_path_cfg), make_abs=True) \
-                if cfg[cfg.GT_LABELS] is not None else None
-            self.roi_fpaths = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS], abs_path_cfg), make_abs=True) \
-                if cfg[cfg.ROI_MASKS] is not None else None
-            self.out_preds_fnames = parse_filelist(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE], abs_path_cfg)) \
-                if cfg[cfg.NAMES_FOR_PRED_PER_CASE] is not None else None
+            self.gt_fpaths = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LBLS], abs_path_cfg), make_abs=True) \
+                if cfg[cfg.GT_LBLS] is not None else None
+            self.roi_fpaths = parse_filelist(abs_from_rel_path(cfg[cfg.ROIS], abs_path_cfg), make_abs=True) \
+                if cfg[cfg.ROIS] is not None else None
+            self.out_preds_fnames = parse_filelist(abs_from_rel_path(cfg[cfg.FNAMES_PREDS], abs_path_cfg)) \
+                if cfg[cfg.FNAMES_PREDS] is not None else None
 
         #predictions
         self.save_segms = cfg[cfg.SAVE_SEGM] if cfg[cfg.SAVE_SEGM] is not None else True
@@ -148,7 +148,7 @@ class TestSessionParameters(object) :
         return self.model_ckpt_path
 
 
-    def print_params(self) :
+    def print_params(self):
         logPrint = self.log.print3
         logPrint("")
         logPrint("=============================================================")

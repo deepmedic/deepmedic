@@ -24,8 +24,8 @@ class TrainConfig(Config):
     # =============TRAINING========================
     DATAFRAME_TR = "dataframe_train"
     CHANNELS_TR = "channelsTraining"
-    GT_LABELS_TR = "gtLabelsTraining"
-    ROI_MASKS_TR = "roiMasksTraining"
+    GT_LBLS_TR = "gtLabelsTraining"
+    ROIS_TR = "roiMasksTraining"
     
     # ~~~~ Sampling (training) ~~~~~
     TYPE_OF_SAMPLING_TR = "typeOfSamplingForTraining"
@@ -61,8 +61,8 @@ class TrainConfig(Config):
     PERFORM_VAL_INFERENCE = "performFullInferenceOnValidationImagesEveryFewEpochs"
     DATAFRAME_VAL = "dataframe_val"
     CHANNELS_VAL = "channelsValidation"
-    GT_LABELS_VAL = "gtLabelsValidation"
-    ROI_MASKS_VAL = "roiMasksValidation"
+    GT_LBLS_VAL = "gtLabelsValidation"
+    ROIS_VAL = "roiMasksValidation"
     NUM_VAL_SEGMS_LOADED_PERSUB = "numberValidationSegmentsLoadedOnGpuPerSubep"  # For val on samples.
     BATCHSIZE_VAL_SAMPL = "batchsize_val_samples"
     
@@ -74,7 +74,7 @@ class TrainConfig(Config):
     # ~~~~~~~~~ Validation by fully inferring whole validation cases ~~~~~~~~
     NUM_EPOCHS_BETWEEN_VAL_INF = "numberOfEpochsBetweenFullInferenceOnValImages"
     BATCHSIZE_VAL_WHOLE = "batchsize_val_whole"
-    NAMES_FOR_PRED_PER_CASE_VAL = "namesForPredictionsPerCaseVal"
+    FNAMES_PREDS_VAL = "namesForPredictionsPerCaseVal"
     SAVE_SEGM_VAL = "saveSegmentationVal"
     SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
     SUFFIX_SEGM_PROB_VAL = "suffixForSegmAndProbsDictVal"

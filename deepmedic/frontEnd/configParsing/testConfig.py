@@ -17,19 +17,15 @@ class TestConfig(Config):
     #Optional but highly suggested.
     SESSION_NAME = "sessionName"
     #[REQUIRED]
-    FOLDER_OUTP = "folderForOutput" #MUST BE GIVEN
-    SAVED_MODEL = "cnnModelFilePath" #MUST BE GIVEN
-    CHANNELS = "channels" #MUST BE GIVEN
-
+    FOLDER_OUTP = "folderForOutput"
+    SAVED_MODEL = "cnnModelFilePath"
     DATAFRAME = "dataframe"
-    
-    NAMES_FOR_PRED_PER_CASE = "namesForPredictionsPerCase"
-    
+    CHANNELS = "channels"
+    FNAMES_PREDS = "namesForPredictionsPerCase"
     
     #[OPTIONALS]
-    ROI_MASKS = "roiMasks"
-    
-    GT_LABELS = "gtLabels"
+    ROIS = "roiMasks"
+    GT_LBLS = "gtLabels"
     
     SAVE_SEGM = "saveSegmentation" # Default True
     SAVE_PROBMAPS_PER_CLASS = "saveProbMapsForEachClass" # Default True
@@ -37,7 +33,7 @@ class TestConfig(Config):
     
     BATCHSIZE = "batchsize"
     
-    #optionals, cause default is False.
+    # optionals, cause default is False.
     SAVE_INDIV_FMS = "saveIndividualFms"
     
     INDICES_OF_FMS_TO_SAVE_NORMAL = "minMaxIndicesOfFmsToSaveFromEachLayerOfNormalPathway"
