@@ -80,12 +80,12 @@ class TrainSession(Session):
                                               self._out_folder_models,
                                               self._out_folder_preds,
                                               self._out_folder_fms,
-                                              model_params.numberClasses,
-                                              model_params.cnnModelName,
+                                              model_params.get_n_classes(),
+                                              model_params.get_model_name(),
                                               self._cfg)
 
         self._log.print3("")
-        self._log.print3("=============   NEW TRAINING SESSION     ==============\n")
+        self._log.print3("=============    NEW TRAINING SESSION    ==============\n")
         self._params.print_params()
         self._log.print3("=======================================================\n")
 

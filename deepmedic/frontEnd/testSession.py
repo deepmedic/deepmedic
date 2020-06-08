@@ -44,7 +44,7 @@ class TestSession(Session):
                                              self._main_out_folder_abs,
                                              self._out_folder_preds,
                                              self._out_folder_fms,
-                                             model_params.numberClasses,
+                                             model_params.get_n_classes(),
                                              self._cfg)
         
         self._log.print3("")
@@ -87,7 +87,7 @@ class TestSession(Session):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model( *model_params.get_args_for_arch() ) # Creates the network's graph (without optimizer).
+                    cnn3d.make_cnn_model(*model_params.get_args_for_arch())  # Creates network's graph (no optimizer)
                     inp_plchldrs, inp_shapes_per_path = cnn3d.create_inp_plchldrs(model_params.get_inp_dims_hr_path('test'), 'test')
                     p_y_given_x = cnn3d.apply(inp_plchldrs, 'infer', 'test', verbose=True, log=self._log)
                     
