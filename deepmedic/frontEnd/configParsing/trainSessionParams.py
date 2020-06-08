@@ -136,12 +136,12 @@ class TrainSessionParameters(object):
 
     # VALIDATION
     @staticmethod
-    def errorReqNumberOfEpochsBetweenFullValInfGreaterThan0():
+    def errorReqn_epochsBetweenFullValInfGreaterThan0():
         print(
             "ERROR: It was requested to perform full-inference on validation images by setting parameter "
             "\"performFullInferenceOnValidationImagesEveryFewEpochs\" to True. For this, it is required to specify "
             "the number of epochs between two full-inference procedures. This number was given equal to 0. "
-            "Please specify a number greater than 0, in the format: numberOfEpochsBetweenFullInferenceOnValImages = 1 "
+            "Please specify a number greater than 0, in the format: n_epochsBetweenFullInferenceOnValImages = 1 "
             "(Any integer. Default is 1). Exiting!")
         exit(1)
 
@@ -211,8 +211,8 @@ class TrainSessionParameters(object):
             except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
                 raise OSError("File given for dataframe (train) does not exist: " + self.csv_fname_train)
             (self.channels_fpaths_tr,
-             self.gt_lbls_fpaths_train,
-             self.roiMasksFilepathsTrain,
+             self.gt_fpaths_tr,
+             self.roi_fpaths_tr,
              _) = get_paths_from_df(self.log, self.dataframe_tr, os.path.dirname(self.csv_fname_train), req_gt=True)
         else:
             self.csv_fname_train = None
@@ -223,8 +223,8 @@ class TrainSessionParameters(object):
                 self.errReqGtTr()
 
             self.channels_fpaths_tr = parse_fpaths_of_channs_from_filelists(cfg[cfg.CHANNELS_TR], abs_path_cfg)
-            self.gt_lbls_fpaths_train = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg), make_abs=True)
-            self.roiMasksFilepathsTrain = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg), make_abs=True) \
+            self.gt_fpaths_tr = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_TR], abs_path_cfg), make_abs=True)
+            self.roi_fpaths_tr = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_TR], abs_path_cfg), make_abs=True) \
                 if cfg[cfg.ROI_MASKS_TR] is not None else None
 
         # [Optionals]
@@ -247,8 +247,8 @@ class TrainSessionParameters(object):
             ]
 
         # ~~~~~~~~ Training Cycle ~~~~~~~~~~~
-        self.numberOfEpochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
-        self.numberOfSubepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
+        self.n_epochs = cfg[cfg.NUM_EPOCHS] if cfg[cfg.NUM_EPOCHS] is not None else 35
+        self.n_subepochs = cfg[cfg.NUM_SUBEP] if cfg[cfg.NUM_SUBEP] is not None else 20
         self.max_n_cases_per_subep_train = \
             cfg[cfg.NUM_CASES_LOADED_PERSUB] if cfg[cfg.NUM_CASES_LOADED_PERSUB] is not None else 50
         self.n_samples_per_subep_train = \
@@ -270,12 +270,12 @@ class TrainSessionParameters(object):
                      'div_lr_by': cfg[cfg.DIV_LR_BY] if cfg[cfg.DIV_LR_BY] is not None else 2.0
                      },
             'poly': {'epochs_wait_before_decr':
-                         cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else self.numberOfEpochs / 3,
-                     'final_ep_for_sch': self.numberOfEpochs
+                         cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else self.n_epochs / 3,
+                     'final_ep_for_sch': self.n_epochs
                      },
             'expon': {'epochs_wait_before_decr':
-                          cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else self.numberOfEpochs / 3,
-                      'final_ep_for_sch': self.numberOfEpochs,
+                          cfg[cfg.NUM_EPOCHS_WAIT] if cfg[cfg.NUM_EPOCHS_WAIT] is not None else self.n_epochs / 3,
+                      'final_ep_for_sch': self.n_epochs,
                       'lr_to_reach_at_last_ep':
                           cfg[cfg.EXPON_SCH][0] if cfg[cfg.EXPON_SCH] is not None else 1.0 / (2 ** 8),
                       'mom_to_reach_at_last_ep': cfg[cfg.EXPON_SCH][1] if cfg[cfg.EXPON_SCH] is not None else 0.9
@@ -311,8 +311,8 @@ class TrainSessionParameters(object):
             self.csv_fname_val = None
             self.dataframe_val = None
             self.channels_fpaths_val = []
-            self.gtLabelsFilepathsVal = None
-            self.roiMasksFilepathsVal = None
+            self.gt_fpaths_val = None
+            self.roi_fpaths_val = None
             self.out_preds_fnames_val = None
         elif cfg[cfg.DATAFRAME_VAL] is not None:  # doing one of validations, and given dataframe.
             self.csv_fname_val = abs_from_rel_path(cfg[cfg.DATAFRAME_VAL], abs_path_cfg)
@@ -321,8 +321,8 @@ class TrainSessionParameters(object):
             except OSError:  # FileNotFoundError exception only in Py3, which is child of OSError.
                 raise OSError("File given for dataframe (validation) does not exist: " + self.csv_fname_val)
             (self.channels_fpaths_val,
-             self.gtLabelsFilepathsVal,
-             self.roiMasksFilepathsVal,
+             self.gt_fpaths_val,
+             self.roi_fpaths_val,
              self.out_preds_fnames_val) = get_paths_from_df(self.log,
                                                             self.dataframe_val,
                                                             os.path.dirname(self.csv_fname_val),
@@ -335,10 +335,9 @@ class TrainSessionParameters(object):
             else:
                 self.errReqChannsVal()
 
-            self.gtLabelsFilepathsVal = \
-                parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg), make_abs=True) \
+            self.gt_fpaths_val = parse_filelist(abs_from_rel_path(cfg[cfg.GT_LABELS_VAL], abs_path_cfg), make_abs=True) \
                 if cfg[cfg.GT_LABELS_VAL] is not None else self.errorReqGtLabelsVal()
-            self.roiMasksFilepathsVal = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg), make_abs=True) \
+            self.roi_fpaths_val = parse_filelist(abs_from_rel_path(cfg[cfg.ROI_MASKS_VAL], abs_path_cfg), make_abs=True) \
                 if cfg[cfg.ROI_MASKS_VAL] is not None else None
             self.out_preds_fnames_val = parse_filelist(abs_from_rel_path(cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL], abs_path_cfg)) \
                 if cfg[cfg.NAMES_FOR_PRED_PER_CASE_VAL] else None
@@ -361,47 +360,43 @@ class TrainSessionParameters(object):
         if cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL] is not None:
             # [[case1-weightMap1, ..., caseN-weightMap1], [case1-weightMap2,...,caseN-weightMap2]]
             self.paths_to_wmaps_per_sampl_cat_per_subj_val = [
-                parse_filelist(abs_from_rel_path(weightMapConfPath, abs_path_cfg), make_abs=True)
-                for weightMapConfPath in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]
+                parse_filelist(abs_from_rel_path(wmap_conf_path, abs_path_cfg), make_abs=True)
+                for wmap_conf_path in cfg[cfg.WEIGHT_MAPS_PER_CAT_FILEPATHS_VAL]
             ]
 
         # ~~~~~~Full inference on validation image~~~~~~
         self.num_epochs_between_val_on_whole_volumes = \
             cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] if cfg[cfg.NUM_EPOCHS_BETWEEN_VAL_INF] is not None else 1
         if self.num_epochs_between_val_on_whole_volumes == 0 and self.val_on_whole_volumes:
-            self.errorReqNumberOfEpochsBetweenFullValInfGreaterThan0()
+            self.errorReqn_epochsBetweenFullValInfGreaterThan0()
 
         self.batchsize_val_whole = cfg[cfg.BATCHSIZE_VAL_WHOLE] if cfg[cfg.BATCHSIZE_VAL_WHOLE] is not None else 10
 
         # predictions
-        self.saveSegmentationVal = cfg[cfg.SAVE_SEGM_VAL] if cfg[cfg.SAVE_SEGM_VAL] is not None else True
-        self.saveProbMapsBoolPerClassVal = \
-            cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] \
+        self.save_segms_val = cfg[cfg.SAVE_SEGM_VAL] if cfg[cfg.SAVE_SEGM_VAL] is not None else True
+        self.save_probs_per_cl_val = cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] \
             if (cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] is not None and cfg[cfg.SAVE_PROBMAPS_PER_CLASS_VAL] != []) \
             else [True] * n_classes
-        self.suffixForSegmAndProbsDictVal = cfg[cfg.SUFFIX_SEGM_PROB_VAL] \
-            if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None \
+        self.suffixes_for_outp_val = cfg[cfg.SUFFIX_SEGM_PROB_VAL] if cfg[cfg.SUFFIX_SEGM_PROB_VAL] is not None \
             else {"segm": "Segm", "prob": "ProbMapClass"}
         # features:
-        self.save_fms_flag_val = \
-            cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
+        self.save_fms_flag_val = cfg[cfg.SAVE_INDIV_FMS_VAL] if cfg[cfg.SAVE_INDIV_FMS_VAL] is not None else False
         if self.save_fms_flag_val is True:
-            indices_fms_per_pathtype_per_layer_to_save = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] + \
-                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] + \
-                                                         [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
+            inds_fms = [cfg[cfg.INDICES_OF_FMS_TO_SAVE_NORMAL_VAL]] + \
+                       [cfg[cfg.INDICES_OF_FMS_TO_SAVE_SUBSAMPLED_VAL]] + \
+                       [cfg[cfg.INDICES_OF_FMS_TO_SAVE_FC_VAL]]
             # By default, save none.
-            self.indices_fms_per_pathtype_per_layer_to_save = \
-                [item if item is not None else [] for item in indices_fms_per_pathtype_per_layer_to_save]
+            self.inds_fms_per_pathtype_per_layer_to_save = [item if item is not None else [] for item in inds_fms]
         else:
-            self.indices_fms_per_pathtype_per_layer_to_save = None
+            self.inds_fms_per_pathtype_per_layer_to_save = None
 
         # Output:
         # Filled by call to self.makeFilepathsForPredictionsAndFeatures()
-        self.filepathsToSavePredictionsForEachPatientVal = None
-        self.filepathsToSaveFeaturesForEachPatientVal = None
+        self.out_preds_fpaths_val = None
+        self.out_fms_fpaths_val = None
         # Checks on output params:
         if not self.out_preds_fnames_val and self.val_on_whole_volumes \
-                and (self.saveSegmentationVal or True in self.saveProbMapsBoolPerClassVal
+                and (self.save_segms_val or True in self.save_probs_per_cl_val
                      or self.save_fms_flag_val):
             self.errorRequireNamesOfPredictionsVal()
 
@@ -431,8 +426,8 @@ class TrainSessionParameters(object):
         
         # ============= OTHERS ==========
         # Others useful internally or for reporting:
-        self.numberOfCasesTrain = len(self.channels_fpaths_tr)
-        self.numberOfCasesVal = len(self.channels_fpaths_val)
+        self.n_cases_tr = len(self.channels_fpaths_tr)
+        self.n_cases_val = len(self.channels_fpaths_val)
         
         # ========= HIDDENS =============
         # no config allowed for these at the moment:
@@ -443,17 +438,12 @@ class TrainSessionParameters(object):
         # Type, prms combinations: "freq", None || "per_c", [0., 2., 1., ...] (as many as classes)
         # "schedule": Constant before epoch [0], linear change towards equal weight (=1) until epoch [1],
         # constant equal weights (=1) afterwards.
-        self.reweight_classes_in_cost = \
-            cfg[cfg.W_C_IN_COST] \
-            if cfg[cfg.W_C_IN_COST] is not None \
-            else {"type": None,
-                  "prms": None,
-                  "schedule": [0, self.numberOfEpochs]
-                  }
+        self.reweight_classes_in_cost = cfg[cfg.W_C_IN_COST] if cfg[cfg.W_C_IN_COST] is not None \
+            else {"type": None, "prms": None, "schedule": [0, self.n_epochs]}
         if self.reweight_classes_in_cost["type"] == "per_c":
             assert len(self.reweight_classes_in_cost["prms"]) == n_classes
 
-        self._makeFilepathsForPredictionsAndFeaturesVal(out_folder_preds, out_folder_fms)
+        self._make_fpaths_for_preds_and_fms(out_folder_preds, out_folder_fms)
 
         # ====Optimization=====
         self.learningRate = cfg[cfg.LRATE] if cfg[cfg.LRATE] is not None else 0.001
@@ -496,20 +486,19 @@ class TrainSessionParameters(object):
 
         # ============= HIDDENS ==============
         # Indices of layers that should not be trained (kept fixed).
-        layersToFreezePerPathwayType = [cfg[cfg.LAYERS_TO_FREEZE_NORM],
-                                        cfg[cfg.LAYERS_TO_FREEZE_SUBS],
-                                        cfg[cfg.LAYERS_TO_FREEZE_FC]]
-        indicesOfLayersToFreezeNorm = \
-            [l - 1 for l in layersToFreezePerPathwayType[0]] if layersToFreezePerPathwayType[0] is not None else []
-        indicesOfLayersToFreezeSubs = \
-            [l - 1 for l in layersToFreezePerPathwayType[1]] \
-            if layersToFreezePerPathwayType[1] is not None \
-            else indicesOfLayersToFreezeNorm
-        indicesOfLayersToFreezeFc = \
-            [l - 1 for l in layersToFreezePerPathwayType[2]] if layersToFreezePerPathwayType[2] is not None else []
+        layers_to_freeze_per_pathtype = [cfg[cfg.LAYERS_TO_FREEZE_NORM],
+                                         cfg[cfg.LAYERS_TO_FREEZE_SUBS],
+                                         cfg[cfg.LAYERS_TO_FREEZE_FC]]
+        inds_layers_freeze_norm = \
+            [l - 1 for l in layers_to_freeze_per_pathtype[0]] if layers_to_freeze_per_pathtype[0] is not None else []
+        inds_layers_freeze_subs = \
+            [l - 1 for l in layers_to_freeze_per_pathtype[1]] \
+            if layers_to_freeze_per_pathtype[1] is not None \
+            else inds_layers_freeze_norm
+        inds_layers_freeze_fc = \
+            [l - 1 for l in layers_to_freeze_per_pathtype[2]] if layers_to_freeze_per_pathtype[2] is not None else []
         # Three sublists, one per pathway type: Normal, Subsampled, FC. eg: [[0,1,2],[0,1,2],[]
-        self.indicesOfLayersPerPathwayTypeToFreeze = [indicesOfLayersToFreezeNorm, indicesOfLayersToFreezeSubs,
-                                                      indicesOfLayersToFreezeFc]
+        self.inds_layers_per_pathtype_freeze = [inds_layers_freeze_norm, inds_layers_freeze_subs, inds_layers_freeze_fc]
 
         self.losses_and_weights = cfg[cfg.LOSSES_WEIGHTS] if cfg[cfg.LOSSES_WEIGHTS] is not None else {"xentr": 1.0,
                                                                                                        "iou": None,
@@ -520,8 +509,8 @@ class TrainSessionParameters(object):
 
         """
         #NOTES: variables that have to do with number of pathways: 
-                self.indicesOfLayersPerPathwayTypeToFreeze (="all" always currently. Hardcoded)
-                indices_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
+                self.inds_layers_per_pathtype_freeze (="all" always currently. Hardcoded)
+                inds_fms_per_pathtype_per_layer_to_save (Repeat subsampled!)
         """
 
     def _backwards_compat_with_deprecated_cfg(self, cfg):
@@ -537,30 +526,24 @@ class TrainSessionParameters(object):
                 "ERROR: In training's config, variable \'augm_params_tr\' is deprecated. "
                 "Replace it with \'augm_sample_prms_tr\'.")
 
-    def _makeFilepathsForPredictionsAndFeaturesVal(self,
-                                                   absPathToFolderForPredictionsFromSession,
-                                                   absPathToFolderForFeaturesFromSession
-                                                   ):
-        self.filepathsToSavePredictionsForEachPatientVal = []
-        self.filepathsToSaveFeaturesForEachPatientVal = []
+    def _make_fpaths_for_preds_and_fms(self, out_folder_preds, out_folder_fms):
+        # TODO: Merge with same in testSessionParams
+        self.out_preds_fpaths_val = []
+        self.out_fms_fpaths_val = []
         if self.out_preds_fnames_val is not None:  # standard behavior
-            for case_i in range(self.numberOfCasesVal):
-                filepathForCasePrediction = absPathToFolderForPredictionsFromSession + "/" + \
-                                            self.out_preds_fnames_val[case_i]
-                self.filepathsToSavePredictionsForEachPatientVal.append(filepathForCasePrediction)
-                filepathForCaseFeatures = absPathToFolderForFeaturesFromSession + "/" + \
-                                          self.out_preds_fnames_val[case_i]
-                self.filepathsToSaveFeaturesForEachPatientVal.append(filepathForCaseFeatures)
+            for case_i in range(self.n_cases_val):
+                fpaths_for_case_pred = out_folder_preds + "/" + self.out_preds_fnames_val[case_i]
+                self.out_preds_fpaths_val.append(fpaths_for_case_pred)
+                fpaths_for_case_fms = out_folder_fms + "/" + self.out_preds_fnames_val[case_i]
+                self.out_fms_fpaths_val.append(fpaths_for_case_fms)
         else:  # Names for predictions not given. Special handling...
-            if self.numberOfCasesVal > 1:  # Many cases, create corresponding namings for files.
-                for case_i in range(self.numberOfCasesVal):
-                    self.filepathsToSavePredictionsForEachPatientVal.append(
-                        absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz")
-                    self.filepathsToSaveFeaturesForEachPatientVal.append(
-                        absPathToFolderForPredictionsFromSession + "/pred_case" + str(case_i) + ".nii.gz")
+            if self.n_cases_val > 1:  # Many cases, create corresponding namings for files.
+                for case_i in range(self.n_cases_val):
+                    self.out_preds_fpaths_val.append(out_folder_preds + "/pred_case" + str(case_i) + ".nii.gz")
+                    self.out_fms_fpaths_val.append(out_folder_preds + "/pred_case" + str(case_i) + ".nii.gz")
             else:  # Only one case. Just give the output prediction folder, the io.py will save output accordingly.
-                self.filepathsToSavePredictionsForEachPatientVal.append(absPathToFolderForPredictionsFromSession)
-                self.filepathsToSaveFeaturesForEachPatientVal.append(absPathToFolderForPredictionsFromSession)
+                self.out_preds_fpaths_val.append(out_folder_preds)
+                self.out_fms_fpaths_val.append(out_folder_preds)
 
     def get_path_to_load_model_from(self):
         return self.model_ckpt_path
@@ -582,14 +565,14 @@ class TrainSessionParameters(object):
         logPrint("Path and filename to save trained models = " + str(self.filepath_to_save_models))
 
         logPrint("~~~~~~~~~~~~~~~~~~Generic Information~~~~~~~~~~~~~~~~")
-        logPrint("Number of Cases for Training = " + str(self.numberOfCasesTrain))
-        logPrint("Number of Cases for Validation = " + str(self.numberOfCasesVal))
+        logPrint("Number of Cases for Training = " + str(self.n_cases_tr))
+        logPrint("Number of Cases for Validation = " + str(self.n_cases_val))
 
         logPrint("~~~~~~~~~~~~~~~~~~Training parameters~~~~~~~~~~~~~~~~")
         logPrint("Dataframe (csv) filename = " + str(self.csv_fname_train))
         logPrint("Filepaths to Channels of the Training Cases = " + str(self.channels_fpaths_tr))
-        logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gt_lbls_fpaths_train))
-        logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roiMasksFilepathsTrain))
+        logPrint("Filepaths to Ground-Truth labels of the Training Cases = " + str(self.gt_fpaths_tr))
+        logPrint("Filepaths to ROI Masks of the Training Cases = " + str(self.roi_fpaths_tr))
 
         logPrint("~~ Sampling (train) ~~")
         logPrint("Type of Sampling = " + str(self.sampling_type_inst_tr.get_type_as_str()) +
@@ -601,8 +584,8 @@ class TrainSessionParameters(object):
                  str(self.paths_to_wmaps_per_sampl_cat_per_subj_train))
 
         logPrint("~~Training Cycle~~")
-        logPrint("Number of Epochs = " + str(self.numberOfEpochs))
-        logPrint("Number of Subepochs per epoch = " + str(self.numberOfSubepochs))
+        logPrint("Number of Epochs = " + str(self.n_epochs))
+        logPrint("Number of Subepochs per epoch = " + str(self.n_subepochs))
         logPrint("Number of cases to load per Subepoch (for extracting the samples for this subepoch) = " +
                  str(self.max_n_cases_per_subep_train))
         logPrint("Number of Segments loaded per subepoch for Training = " + str(self.n_samples_per_subep_train) +
@@ -643,8 +626,8 @@ class TrainSessionParameters(object):
         logPrint("Perform Full Inference on validation cases every few epochs? = " + str(self.val_on_whole_volumes))
         logPrint("Dataframe (csv) filename = " + str(self.csv_fname_val))
         logPrint("Filepaths to Channels of Validation Cases = " + str(self.channels_fpaths_val))
-        logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gtLabelsFilepathsVal))
-        logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roiMasksFilepathsVal))
+        logPrint("Filepaths to Ground-Truth labels of the Validation Cases = " + str(self.gt_fpaths_val))
+        logPrint("Filepaths to ROI masks for Validation Cases = " + str(self.roi_fpaths_val))
 
         logPrint("~~~~~~~Validation on Samples throughout Training~~~~~~~")
         logPrint("Number of Segments loaded per subepoch for Validation = " + str(self.n_samples_per_subep_val))
@@ -664,16 +647,16 @@ class TrainSessionParameters(object):
                  str(self.num_epochs_between_val_on_whole_volumes))
         logPrint("Batch size (val on whole volumes) = " + str(self.batchsize_val_whole))
         logPrint("~~Predictions (segmentations and prob maps on val. cases)~~")
-        logPrint("Save Segmentations = " + str(self.saveSegmentationVal))
-        logPrint("Save Probability Maps for each class = " + str(self.saveProbMapsBoolPerClassVal))
-        logPrint("Filepaths to save results per case = " + str(self.filepathsToSavePredictionsForEachPatientVal))
+        logPrint("Save Segmentations = " + str(self.save_segms_val))
+        logPrint("Save Probability Maps for each class = " + str(self.save_probs_per_cl_val))
+        logPrint("Filepaths to save results per case = " + str(self.out_preds_fpaths_val))
         logPrint("Suffixes with which to save segmentations and probability maps = " +
-                 str(self.suffixForSegmAndProbsDictVal))
+                 str(self.suffixes_for_outp_val))
         logPrint("~~Feature Maps~~")
         logPrint("Save Feature Maps = " + str(self.save_fms_flag_val))
         logPrint("Min/Max Indices of FMs to visualise per pathway-type and per layer = " +
-                 str(self.indices_fms_per_pathtype_per_layer_to_save))
-        logPrint("Filepaths to save FMs per case = " + str(self.filepathsToSaveFeaturesForEachPatientVal))
+                 str(self.inds_fms_per_pathtype_per_layer_to_save))
+        logPrint("Filepaths to save FMs per case = " + str(self.out_fms_fpaths_val))
 
         logPrint("~~Optimization~~")
         logPrint("Initial Learning rate = " + str(self.learningRate))
@@ -691,9 +674,9 @@ class TrainSessionParameters(object):
         logPrint("L2 Regularization term = " + str(self.L2_reg_weight))
         logPrint("~~Freeze Weights of Certain Layers~~")
         logPrint("Indices of layers from each type of pathway that will be kept fixed (first layer is 0):")
-        logPrint("Normal pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[0]))
-        logPrint("Subsampled pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[1]))
-        logPrint("FC pathway's layers to freeze = " + str(self.indicesOfLayersPerPathwayTypeToFreeze[2]))
+        logPrint("Normal pathway's layers to freeze = " + str(self.inds_layers_per_pathtype_freeze[0]))
+        logPrint("Subsampled pathway's layers to freeze = " + str(self.inds_layers_per_pathtype_freeze[1]))
+        logPrint("FC pathway's layers to freeze = " + str(self.inds_layers_per_pathtype_freeze[2]))
 
         logPrint("~~~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~")
         logPrint("~~Data Compabitibility Checks~~")
@@ -713,25 +696,25 @@ class TrainSessionParameters(object):
                 self.filepath_to_save_models,
 
                 self.val_on_samples_during_train,
-                {"segm": self.saveSegmentationVal, "prob": self.saveProbMapsBoolPerClassVal},
+                {"segm": self.save_segms_val, "prob": self.save_probs_per_cl_val},
 
-                self.filepathsToSavePredictionsForEachPatientVal,
-                self.suffixForSegmAndProbsDictVal,
+                self.out_preds_fpaths_val,
+                self.suffixes_for_outp_val,
 
                 self.channels_fpaths_tr,
                 self.channels_fpaths_val,
 
-                self.gt_lbls_fpaths_train,
-                self.gtLabelsFilepathsVal,
+                self.gt_fpaths_tr,
+                self.gt_fpaths_val,
 
                 self.paths_to_wmaps_per_sampl_cat_per_subj_train,
                 self.paths_to_wmaps_per_sampl_cat_per_subj_val,
 
-                self.roiMasksFilepathsTrain,
-                self.roiMasksFilepathsVal,
+                self.roi_fpaths_tr,
+                self.roi_fpaths_val,
 
-                self.numberOfEpochs,
-                self.numberOfSubepochs,
+                self.n_epochs,
+                self.n_subepochs,
                 self.max_n_cases_per_subep_train,
                 self.n_samples_per_subep_train,
                 self.n_samples_per_subep_val,
@@ -754,8 +737,8 @@ class TrainSessionParameters(object):
 
                 # --------For FM visualisation---------
                 self.save_fms_flag_val,
-                self.indices_fms_per_pathtype_per_layer_to_save,
-                self.filepathsToSaveFeaturesForEachPatientVal,
+                self.inds_fms_per_pathtype_per_layer_to_save,
+                self.out_fms_fpaths_val,
 
                 # --- Data compatibility checks ---
                 self.run_input_checks,
@@ -768,7 +751,7 @@ class TrainSessionParameters(object):
 
     def get_args_for_trainer(self):
         args = [self.log,
-                self.indicesOfLayersPerPathwayTypeToFreeze,
+                self.inds_layers_per_pathtype_freeze,
                 self.losses_and_weights,
                 # Regularisation
                 self.L1_reg_weight,

@@ -140,18 +140,18 @@ class TrainSession(Session):
 
             self._log.print3("=========== Compiling the Testing Function ============")
             # For validation with full segmentation
-            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, p_y_given_x_test, self._params.indices_fms_per_pathtype_per_layer_to_save)
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, p_y_given_x_test, self._params.inds_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers
             saver_all = tf.compat.v1.train.Saver()  # Will be used during training for saving everything.
             # Alternative: tf.train.Saver([v for v in tf.all_variables() if v.name.startswith("net"])
-            collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
-            saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net)  # Used to load the net's parameters.
-            collection_vars_trainer = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
-            saver_trainer = tf.compat.v1.train.Saver(var_list=collection_vars_trainer)  # Used to load the trainer's parameters.
+            coll_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
+            saver_net = tf.compat.v1.train.Saver(var_list=coll_vars_net)  # Used to load the net's parameters.
+            coll_vars_trainer = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
+            saver_trainer = tf.compat.v1.train.Saver(var_list=coll_vars_trainer)  # to load the trainer's params
             
-            # TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(collection_vars_net)}
-            # TF2: dict_vars_trainer = {'trainer_var'+str(i): v for i, v in enumerate(collection_vars_trainer)}
+            # TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(coll_vars_net)}
+            # TF2: dict_vars_trainer = {'trainer_var'+str(i): v for i, v in enumerate(coll_vars_trainer)}
             # TF2: dict_vars_all = dict_vars_net.copy()
             # TF2: for key in dict_vars_trainer:
             # TF2:     dict_vars_all[key] = dict_vars_trainer[key]
@@ -159,8 +159,8 @@ class TrainSession(Session):
             # TF2: ckpt_net = tf.train.Checkpoint(**dict_vars_net)
             # TF2: ckpt_trainer = tf.train.Checkpoint(**dict_vars_trainer)
             
-        # self._print_vars_in_collection(collection_vars_net, "net")
-        # self._print_vars_in_collection(collection_vars_trainer, "trainer")
+        # self._print_vars_in_collection(coll_vars_net, "net")
+        # self._print_vars_in_collection(coll_vars_trainer, "trainer")
 
         with tf.compat.v1.Session(graph=graphTf,
                         config=tf.compat.v1.ConfigProto(log_device_placement=False,
@@ -188,15 +188,15 @@ class TrainSession(Session):
                     self._log.print3("Trainer parameters were loaded.")
                 else:
                     self._log.print3("Reset of trainer parameters was requested. Re-initializing them...")
-                    tf.compat.v1.variables_initializer(var_list=collection_vars_trainer).run()
+                    tf.compat.v1.variables_initializer(var_list=coll_vars_trainer).run()
                     self._log.print3("Trainer parameters re-initialized.")
             else:
                 self._log.print3("=========== Initializing network and trainer variables  ===============")
                 # Initializes all.
                 # tf.variables_initializer(var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) ).run()
                 # Initialize separate as below, so that in case I miss a variable, I will get an error and I will know.
-                tf.compat.v1.variables_initializer(var_list=collection_vars_net).run()
-                tf.compat.v1.variables_initializer(var_list=collection_vars_trainer).run()
+                tf.compat.v1.variables_initializer(var_list=coll_vars_net).run()
+                tf.compat.v1.variables_initializer(var_list=coll_vars_trainer).run()
                 self._log.print3("All variables were initialized.")
 
                 filename_to_save_with = self._params.filepath_to_save_models + ".initial." + datetime_now_str()
@@ -214,8 +214,8 @@ class TrainSession(Session):
             self._log.print3("============== Training the CNN model =================")
             self._log.print3("=======================================================")
 
-            do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] +\
-                          self._params.get_args_for_train_routine() +\
+            do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] +
+                          self._params.get_args_for_train_routine() +
                           [inp_shapes_per_path_train, inp_shapes_per_path_val, inp_shapes_per_path_test]))
 
             # TF2: ckpt_all.save(file_prefix = filename_to_save_with+".all.FINAL.ckpt2")

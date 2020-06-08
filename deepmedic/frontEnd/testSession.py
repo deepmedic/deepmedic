@@ -94,30 +94,30 @@ class TestSession(Session):
             self._log.print3("=========== Compiling the Testing Function ============")
             self._log.print3("=======================================================\n")
             
-            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs, p_y_given_x, self._params.indices_fms_per_pathtype_per_layer_to_save )
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs, p_y_given_x, self._params.inds_fms_per_pathtype_per_layer_to_save)
             # Create the saver
-            collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
-            saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net) # saver_net would suffice
-            #TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(collection_vars_net)}
-            #TF2: ckpt_net = tf.train.Checkpoint(**dict_vars_net)
+            coll_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
+            saver_net = tf.compat.v1.train.Saver(var_list=coll_vars_net)  # saver_net would suffice
+            # TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(coll_vars_net)}
+            # TF2: ckpt_net = tf.train.Checkpoint(**dict_vars_net)
             
-        with tf.compat.v1.Session( graph=graphTf, config=tf.compat.v1.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99}) ) as sessionTf:
+        with tf.compat.v1.Session(graph=graphTf, config=tf.compat.v1.ConfigProto(log_device_placement=False, device_count={'CPU':999, 'GPU':99})) as sessionTf:
             file_to_load_params_from = self._params.get_path_to_load_model_from()
             if file_to_load_params_from is not None: # Load params
                 self._log.print3("=========== Loading parameters from specified saved model ===============")
-                chkpt_fname = tf.train.latest_checkpoint( file_to_load_params_from ) if os.path.isdir( file_to_load_params_from ) else file_to_load_params_from
+                chkpt_fname = tf.train.latest_checkpoint(file_to_load_params_from) if os.path.isdir(file_to_load_params_from) else file_to_load_params_from
                 self._log.print3("Loading parameters from:" + str(chkpt_fname))
                 try:
                     saver_net.restore(sessionTf, chkpt_fname)
-                    #TF2: ckpt_net.restore(chkpt_fname)
+                    # TF2: ckpt_net.restore(chkpt_fname)
                     self._log.print3("Parameters were loaded.")
                 except Exception as e: handle_exception_tf_restore(self._log, e)
                 
             else:
-                self._ask_user_if_test_with_random() # Asks user whether to continue with randomly initialized model. It exits if no is given.
+                self._ask_user_if_test_with_random()  # Asks user whether to continue with randomly initialized model.
                 self._log.print3("")
                 self._log.print3("=========== Initializing network variables  ===============")
-                tf.compat.v1.variables_initializer(var_list = collection_vars_net).run()
+                tf.compat.v1.variables_initializer(var_list=coll_vars_net).run()
                 self._log.print3("Model variables were initialized.")
                 
                 
@@ -126,8 +126,8 @@ class TestSession(Session):
             self._log.print3("=========== Testing with the CNN model ===============")
             self._log.print3("======================================================")
             
-            res_code = inference_on_whole_volumes(*([sessionTf, cnn3d] +\
-                                                    self._params.get_args_for_testing() +\
+            res_code = inference_on_whole_volumes(*([sessionTf, cnn3d] +
+                                                    self._params.get_args_for_testing() +
                                                     [inp_shapes_per_path]))
         
         self._log.print3("")
