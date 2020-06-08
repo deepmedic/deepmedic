@@ -3,6 +3,10 @@ DeepMedic
 
 ### News
 
+July 2020 (v0.8.4):
+* Input files (images, channels, ground truth, roi masks) can be defined in a csv dataframe.
+* Refactored front end modules for easier readability.
+
 29 May 2020 (v0.8.3):
 * Reverted back to old algorithm (pre-v0.8.2) for getting down-sampled context, to preserve exact behaviour. 
 * Models trained with v0.8.3 should now be fully compatible with versions v0.8.1 and before.
