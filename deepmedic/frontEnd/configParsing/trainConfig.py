@@ -6,8 +6,9 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
+import os
 
-from deepmedic.frontEnd.configParsing.utils import *
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.config import Config
 
 
@@ -128,7 +129,7 @@ class TrainConfig(Config):
     # If certain config args are given in command line, completely override the corresponding ones in the config files.
     def override_file_cfg_with_cmd_line_cfg(self, log, args):
         if args.saved_model is not None:
-            abs_path_model_cmd_line = getAbsPathEvenIfRelativeIsGiven(args.saved_model, os.getcwd())
+            abs_path_model_cmd_line = abs_from_rel_path(args.saved_model, os.getcwd())
             if self.get(self.SAVED_MODEL) is not None:
                 log.print3("WARN: A model to load was specified both in the command line and in the train-config file!"
                            "\n\t The input by the command line will be used: " + str(abs_path_model_cmd_line))
