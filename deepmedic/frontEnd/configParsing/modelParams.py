@@ -24,7 +24,7 @@ class ModelParameters(object):
 
     # ERRORS
     @staticmethod
-    def errorSegmDimensionsSmallerThanReceptiveF(rec_field_norm, inp_dims, train_val_test):
+    def error_segm_dimensions_smaller_than_receptive_f(rec_field_norm, inp_dims, train_val_test):
         print(
             "ERROR: The segment-size (input) should be at least as big as the receptive field of the model! "
             "The network was made with a receptive field of dimensions: ",
@@ -38,7 +38,7 @@ class ModelParameters(object):
         exit(1)
 
     @staticmethod
-    def errorRequireNumberOfClasses():
+    def error_require_number_of_classes():
         print(
             "ERROR: Number of classses not specified in the config file, which is required. "
             "Please specify in the format: numberOfOutputClasses = 3 (any integer). This number should be including "
@@ -46,10 +46,10 @@ class ModelParameters(object):
         )
         exit(1)
 
-    errReqNumClasses = errorRequireNumberOfClasses
+    err_req_num_classes = error_require_number_of_classes
 
     @staticmethod
-    def errorRequireNumberOfChannels():
+    def error_require_number_of_channels():
         print(
             'ERROR: Parameter "numberOfInputChannels" not specified or specified smaller than 1. '
             "Please specify the number of input channels that will be used as input to the CNN, "
@@ -57,10 +57,10 @@ class ModelParameters(object):
         )
         exit(1)
 
-    errReqNumChannels = errorRequireNumberOfChannels
+    err_req_num_channels = error_require_number_of_channels
 
     @staticmethod
-    def errorRequireFMsNormalPathwayGreaterThanNothing():
+    def error_require_FMs_normal_pathway_greater_than_nothing():
         print(
             'ERROR: The required parameter "numberFMsPerLayerNormal" was either not given, or given an empty list. '
             "This parameter should be given in the format: "
@@ -72,10 +72,10 @@ class ModelParameters(object):
         )
         exit(1)
 
-    errReqFMsNormal = errorRequireFMsNormalPathwayGreaterThanNothing
+    err_req_FMs_normal = error_require_FMs_normal_pathway_greater_than_nothing
 
     @staticmethod
-    def errorRequireKernelDimensionsPerLayerNormal():
+    def error_require_kernel_dimensions_per_layer_normal():
         print(
             'ERROR: The required parameter "kernelDimPerLayerNormal" was not provided, or provided incorrectly. '
             "It should be provided in the format: "
@@ -91,10 +91,10 @@ class ModelParameters(object):
         )
         exit(1)
 
-    errReqKernDimNormal = errorRequireKernelDimensionsPerLayerNormal
+    err_req_kern_dim_normal = error_require_kernel_dimensions_per_layer_normal
 
     @staticmethod
-    def errorRequireKernelDimensionsSubsampled(n_fms_per_l_norm, n_fms_per_l_subs):
+    def error_require_kernel_dimensions_subsampled(n_fms_per_l_norm, n_fms_per_l_subs):
         print(
             "ERROR: It was requested to use the 2-scale architecture, with a subsampled pathway. "
             "Because of limitations in current version, the two pathways must have the save size of receptive field. "
@@ -113,12 +113,12 @@ class ModelParameters(object):
             "specifying kernel dimensions in the subsampled pathway, in a fashion that results in same size "
             "of receptive field as the normal pathway.",
         )
-        ModelParameters.warnForSameReceptiveField()
+        ModelParameters.warn_for_same_receptive_field()
         print("Exiting!")
         exit(1)
 
     @staticmethod
-    def errorRequireKernelDimensionsPerLayerSubsampledCorrect():
+    def error_require_kernel_dimensions_per_layer_subsampled_correct():
         print(
             'ERROR: The parameter "kernelDimPerLayerSubsampled" was not provided, or provided incorrectly. '
             "It should be provided in the format: "
@@ -134,14 +134,14 @@ class ModelParameters(object):
             "Please fix and retry. (WARN: The kernel dimensions should be ODD-NUMBERS. "
             "System was not thoroughly tested for kernels of even dimensions!)"
         )
-        ModelParameters.warnForSameReceptiveField()
+        ModelParameters.warn_for_same_receptive_field()
         print("Exiting!")
         exit(1)
 
-    errReqKernDimNormalCorr = errorRequireKernelDimensionsPerLayerSubsampledCorrect
+    err_req_kern_dim_normal_corr = error_require_kernel_dimensions_per_layer_subsampled_correct
 
     @staticmethod
-    def errorReceptiveFieldsOfNormalAndSubsampledDifferent(kern_dims_per_l_norm, rec_field_subs):
+    def error_receptive_fields_of_normal_and_subsampled_different(kern_dims_per_l_norm, rec_field_subs):
         print(
             "ERROR: The receptive field of the normal pathway was calculated = ",
             len(kern_dims_per_l_norm),
@@ -161,17 +161,17 @@ class ModelParameters(object):
         exit(1)
 
     @staticmethod
-    def errorReqInitializationMethod():
+    def error_req_initialization_method():
         print('ERROR: Parameter "convWeightsInit" has been given invalid value. Exiting!')
         exit(1)
 
     @staticmethod
-    def errorReqActivFunction():
+    def error_req_activ_function():
         print('ERROR: Parameter "activ_function" has been given invalid value. Exiting!')
         exit(1)
 
     @staticmethod
-    def errReqSameNumOfLayersPerSubPathway():
+    def err_req_same_num_of_layers_per_sub_pathway():
         print(
             'ERROR: Parameter "numberFMsPerLayerSubsampled" has been given as a list of sublists of integers. '
             "This triggers the construction of multiple low-scale pathways."
@@ -185,18 +185,18 @@ class ModelParameters(object):
         exit(1)
 
     @staticmethod
-    def errorSubFactor3d():
+    def error_sub_factor_3d():
         print(
             'ERROR: The parameter "subsample_factors" must have 3 entries, one for each of the 3 dimensions. '
             "Please provide it in the format: subsample_factors = [subFactor-dim1, subFactor-dim2, subFactor-dim3]. "
             "Each of the entries should be an integer, eg [3, 3, 3]."
         )
-        ModelParameters.warnSubFactorOdd()
+        ModelParameters.warn_sub_factor_odd()
         print("Exiting!")
         exit(1)
 
     @staticmethod
-    def errorRequireSegmentDimensionsTrain():
+    def error_require_segment_dimensions_train():
         print(
             'ERROR: The parameter "segmentsDimTrain" was is required but not given. '
             "It specifies the size of the 3D segment that is given as input to the network. "
@@ -205,13 +205,13 @@ class ModelParameters(object):
         )
         exit(1)
 
-    errReqSegmDimTrain = errorRequireSegmentDimensionsTrain
+    err_req_segm_dim_train = error_require_segment_dimensions_train
 
     @staticmethod
-    def errorResLayer1(strPathwayType):
+    def error_res_layer1(str_pathway_type):
         print(
             'ERROR: The parameter "layersWithResidualConn" for the [',
-            strPathwayType,
+            str_pathway_type,
             "] pathway was " "specified to include the number 1, ie the 1st layer.",
         )
         print(
@@ -225,7 +225,7 @@ class ModelParameters(object):
         exit(1)
 
     @staticmethod
-    def warnForSameReceptiveField():
+    def warn_for_same_receptive_field():
         print(
             "WARN: Because of limitations in the current version, the two pathways must have the same "
             "size of receptive field. If unsure of how to proceed, "
@@ -238,7 +238,7 @@ class ModelParameters(object):
         )
 
     @staticmethod
-    def warnSubFactorOdd():
+    def warn_sub_factor_odd():
         print("WARN: The system was only thoroughly tested for odd subsampling factor! Eg subsample_factors = [3,3,3].")
 
     # OTHERS
@@ -288,11 +288,11 @@ class ModelParameters(object):
 
     def _check_no_res_conn_at_1st_layer(self, res_conn_at_layers_norm, res_conn_at_layers_subs, res_conn_at_layers_fc):
         if 1 in res_conn_at_layers_norm:
-            self.errorResLayer1("Normal")
+            self.error_res_layer1("Normal")
         if 1 in res_conn_at_layers_subs:
-            self.errorResLayer1("Subsampled")
+            self.error_res_layer1("Subsampled")
         if 1 in res_conn_at_layers_fc:
-            self.errorResLayer1("Fully Connected")
+            self.error_res_layer1("Fully Connected")
 
     def _default_drop_fc(self, n_fms_in_extra_fcs):
         # n_fms_in_extra_fcs: List of integers, 1 per layer in the final classification path, except final classif layer
@@ -308,20 +308,20 @@ class ModelParameters(object):
         self._model_name = cfg[cfg.MODEL_NAME] if cfg[cfg.MODEL_NAME] is not None else self.get_default_model_name()
 
         # =========== MODEL PARAMETERS ==========
-        self._n_classes = cfg[cfg.N_CLASSES] if cfg[cfg.N_CLASSES] is not None else self.errReqNumClasses()
-        self._n_in_chans = cfg[cfg.N_INP_CHANS] if cfg[cfg.N_INP_CHANS] is not None else self.errReqNumChannels()
+        self._n_classes = cfg[cfg.N_CLASSES] if cfg[cfg.N_CLASSES] is not None else self.err_req_num_classes()
+        self._n_in_chans = cfg[cfg.N_INP_CHANS] if cfg[cfg.N_INP_CHANS] is not None else self.err_req_num_channels()
         assert self._n_in_chans > 0, "Number of input channels should be greater than 0."
         # === Normal pathway ===
         self._n_fms_per_l_norm = (
             cfg[cfg.N_FM_NORM]
             if cfg[cfg.N_FM_NORM] is not None and len(cfg[cfg.N_FM_NORM]) > 0
-            else self.errReqFMsNormal()
+            else self.err_req_FMs_normal()
         )
         n_layers_norm = len(self._n_fms_per_l_norm)
         self._kern_dims_per_l_norm = (
             cfg[cfg.KERN_DIM_NORM]
             if check_kern_dims_per_l_correct_3d_and_n_layers(cfg[cfg.KERN_DIM_NORM], n_layers_norm)
-            else self.errReqKernDimNormal()
+            else self.err_req_kern_dim_normal()
         )
         # The below rec_field is ONLY for checking correctness of the passed parameters. TODO: Remove
         rec_field_norm = calc_rec_field_of_path_assuming_strides_1(self._kern_dims_per_l_norm)
@@ -349,22 +349,22 @@ class ModelParameters(object):
             # Check that all subsampled pathways have the same number of layers.
             # Limitation in the code currently, because I use kern_dims_per_l_subs for all of them.
             if not self._check_sublists_have_same_length(self._n_fms_per_l_subs):
-                self.errReqSameNumOfLayersPerSubPathway()
+                self.err_req_same_num_of_layers_per_sub_pathway()
 
             n_layers_subs = len(self._n_fms_per_l_subs[0])
             if cfg[cfg.KERN_DIM_SUBS] is None and n_layers_subs == n_layers_norm:
                 self._kern_dims_per_l_subs = self._kern_dims_per_l_norm
                 rec_field_subs = rec_field_norm
             elif cfg[cfg.KERN_DIM_SUBS] is None and n_layers_subs != n_layers_norm:
-                self.errorRequireKernelDimensionsSubsampled(self._kern_dims_per_l_norm, cfg[cfg.N_FM_SUBS])
+                self.error_require_kernel_dimensions_subsampled(self._kern_dims_per_l_norm, cfg[cfg.N_FM_SUBS])
             # KERN_DIM_SUBS was specified. Now it's going to be tricky to make sure everything alright.
             elif not check_kern_dims_per_l_correct_3d_and_n_layers(cfg[cfg.KERN_DIM_SUBS], n_layers_subs):
-                self.errReqKernDimNormalCorr()
+                self.err_req_kern_dim_normal_corr()
             else:  # kernel dimensions specified and are correct. Check the two receptive fields and ensure correctness.
                 self._kern_dims_per_l_subs = cfg[cfg.KERN_DIM_SUBS]
                 rec_field_subs = calc_rec_field_of_path_assuming_strides_1(self._kern_dims_per_l_subs)
                 if rec_field_norm != rec_field_subs:
-                    self.errorReceptiveFieldsOfNormalAndSubsampledDifferent(rec_field_norm, rec_field_subs)
+                    self.error_receptive_fields_of_normal_and_subsampled_different(rec_field_norm, rec_field_subs)
                 # Everything alright, finally. Proceed safely...
             self._pad_mode_per_l_subs = (
                 cfg[cfg.PAD_MODE_SUBS] if cfg[cfg.PAD_MODE_SUBS] is not None else ["VALID"] * n_layers_subs
@@ -375,9 +375,9 @@ class ModelParameters(object):
             n_subs_paths = len(self._subsample_factors)
             for subs_path_i in range(n_subs_paths):
                 if len(self._subsample_factors[subs_path_i]) != 3:
-                    self.errorSubFactor3d()
+                    self.error_sub_factor_3d()
                 if not subsample_factor_is_even(self._subsample_factors[subs_path_i]):
-                    self.warnSubFactorOdd()
+                    self.warn_sub_factor_odd()
             # Default behaviour:
             # If less sublists in n_fms_per_l_subs were given than n_subs_paths, add one for each subsampled pathway.
             for _ in range(n_subs_paths - len(self._n_fms_per_l_subs)):
@@ -412,7 +412,7 @@ class ModelParameters(object):
         # == Size of Image Segments ==
         self._inp_dims_hr_path = {"train": None, "val": None, "test": None}
         self._inp_dims_hr_path["train"] = (
-            cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None else self.errReqSegmDimTrain()
+            cfg[cfg.SEG_DIM_TRAIN] if cfg[cfg.SEG_DIM_TRAIN] is not None else self.err_req_segm_dim_train()
         )
         self._inp_dims_hr_path["val"] = cfg[cfg.SEG_DIM_VAL] if cfg[cfg.SEG_DIM_VAL] is not None else rec_field_norm
         self._inp_dims_hr_path["test"] = (
@@ -420,7 +420,7 @@ class ModelParameters(object):
         )
         for train_val_test in ["train", "val", "test"]:
             if not check_rec_field_vs_inp_dims(rec_field_norm, self._inp_dims_hr_path[train_val_test]):
-                self.errorSegmDimensionsSmallerThanReceptiveF(rec_field_norm, self._inp_dims_hr_path, train_val_test)
+                self.error_segm_dimensions_smaller_than_receptive_f(rec_field_norm, self._inp_dims_hr_path, train_val_test)
 
         # === Dropout rates ===
         drop_norm = cfg[cfg.DROP_NORM] if cfg[cfg.DROP_NORM] is not None else []
@@ -431,11 +431,11 @@ class ModelParameters(object):
         # == Weight Initialization ==
         self._conv_w_init_type = cfg[cfg.CONV_W_INIT] if cfg[cfg.CONV_W_INIT] is not None else ["fanIn", 2]
         if not self._conv_w_init_type[0] in ["normal", "fanIn"]:
-            self.errorReqInitializationMethod()
+            self.error_req_initialization_method()
         # == Activation Function ==
         self._activ_func = cfg[cfg.ACTIV_FUNC] if cfg[cfg.ACTIV_FUNC] is not None else "prelu"
         if not self._activ_func in ["linear", "relu", "prelu", "elu", "selu"]:
-            self.errorReqActivFunction()
+            self.error_req_activ_function()
 
         # == BATCH NORMALIZATION ==
         self._apply_bn_to_inp_of_paths = [False, False, True]  # Per pathway type. 3rd entry for FC must always be True
