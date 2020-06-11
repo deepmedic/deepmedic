@@ -39,7 +39,7 @@ def create_folder_for_segm_and_prob_maps(folder_for_segm_and_prob_maps):
         print("\t>>Created folder for segmentations and probability maps: ", folder_for_segm_and_prob_maps)
 
 
-def createFolderForFeatures(folder_for_features):
+def create_folder_for_features(folder_for_features):
     if not os.path.exists(folder_for_features):
         os.mkdir(folder_for_features)
         print("\t>>Created folder for features: ", folder_for_features)
@@ -63,7 +63,7 @@ def make_folders_for_test_session(abs_main_output_folder, session_name):
     create_folder_for_segm_and_prob_maps(folder_for_segm_and_prob_maps)
 
     folder_for_features = folder_for_session_results + "/features/"
-    createFolderForFeatures(folder_for_features)
+    create_folder_for_features(folder_for_features)
 
     return [folder_for_logs, folder_for_segm_and_prob_maps, folder_for_features]
 
@@ -109,10 +109,10 @@ def make_folders_for_train_session(abs_main_output_folder, session_name):
     create_folder_for_predictions(folder_for_predictions)
     folder_for_session_results = folder_for_predictions + "/" + session_name
     create_folder_for_session_results(folder_for_session_results)
-    folderForSegmAndProbMaps = folder_for_session_results + "/predictions/"
-    create_folder_for_segm_and_prob_maps(folderForSegmAndProbMaps)
-    folderForFeatures = folder_for_session_results + "/features/"
-    createFolderForFeatures(folderForFeatures)
+    folder_for_segm_and_prob_maps = folder_for_session_results + "/predictions/"
+    create_folder_for_segm_and_prob_maps(folder_for_segm_and_prob_maps)
+    folder_for_features = folder_for_session_results + "/features/"
+    create_folder_for_features(folder_for_features)
 
     folder_for_tensorboard = abs_main_output_folder + "/tensorboard/"
     create_folder_for_tensorboard(folder_for_tensorboard)
@@ -122,8 +122,8 @@ def make_folders_for_train_session(abs_main_output_folder, session_name):
     return [
         folder_for_logs,
         folder_for_session_cnn_models,
-        folderForSegmAndProbMaps,
-        folderForFeatures,
+        folder_for_segm_and_prob_maps,
+        folder_for_features,
         folder_for_session_tensorboard,
     ]
 
