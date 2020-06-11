@@ -9,140 +9,140 @@ from __future__ import absolute_import, print_function, division
 import os
 
 
-def createMainOutputFolder(absMainOutputFolder):
-    if not os.path.exists(absMainOutputFolder):
-        os.mkdir(absMainOutputFolder)
-        print("\t>>Created main output folder: ", absMainOutputFolder)
+def create_main_output_folder(abs_main_output_folder):
+    if not os.path.exists(abs_main_output_folder):
+        os.mkdir(abs_main_output_folder)
+        print("\t>>Created main output folder: ", abs_main_output_folder)
 
 
-def createLogsFolder(folderForLogs):
-    if not os.path.exists(folderForLogs):
-        os.mkdir(folderForLogs)
-        print("\t>>Created folder for logs: ", folderForLogs)
+def create_logs_folder(folder_for_logs):
+    if not os.path.exists(folder_for_logs):
+        os.mkdir(folder_for_logs)
+        print("\t>>Created folder for logs: ", folder_for_logs)
 
 
-def createFolderForPredictions(folderForPredictions):
-    if not os.path.exists(folderForPredictions):
-        os.mkdir(folderForPredictions)
-        print("\t>>Created folder for predictions: ", folderForPredictions)
+def create_folder_for_predictions(folder_for_predictions):
+    if not os.path.exists(folder_for_predictions):
+        os.mkdir(folder_for_predictions)
+        print("\t>>Created folder for predictions: ", folder_for_predictions)
 
 
-def createFolderForSessionResults(folderForSessionResults):
-    if not os.path.exists(folderForSessionResults):
-        os.mkdir(folderForSessionResults)
-        print("\t>>Created folder for session: ", folderForSessionResults)
+def create_folder_for_session_results(folder_for_session_results):
+    if not os.path.exists(folder_for_session_results):
+        os.mkdir(folder_for_session_results)
+        print("\t>>Created folder for session: ", folder_for_session_results)
 
 
-def createFolderForSegmAndProbMaps(folderForSegmAndProbMaps):
-    if not os.path.exists(folderForSegmAndProbMaps):
-        os.mkdir(folderForSegmAndProbMaps)
-        print("\t>>Created folder for segmentations and probability maps: ", folderForSegmAndProbMaps)
+def create_folder_for_segm_and_prob_maps(folder_for_segm_and_prob_maps):
+    if not os.path.exists(folder_for_segm_and_prob_maps):
+        os.mkdir(folder_for_segm_and_prob_maps)
+        print("\t>>Created folder for segmentations and probability maps: ", folder_for_segm_and_prob_maps)
 
 
-def createFolderForFeatures(folderForFeatures):
-    if not os.path.exists(folderForFeatures):
-        os.mkdir(folderForFeatures)
-        print("\t>>Created folder for features: ", folderForFeatures)
+def createFolderForFeatures(folder_for_features):
+    if not os.path.exists(folder_for_features):
+        os.mkdir(folder_for_features)
+        print("\t>>Created folder for features: ", folder_for_features)
 
 
-def make_folders_for_test_session(absMainOutputFolder, sessionName):
+def make_folders_for_test_session(abs_main_output_folder, session_name):
     # Create folders for saving the prediction images:
     print("Creating necessary folders for testing session...")
-    createMainOutputFolder(absMainOutputFolder)
+    create_main_output_folder(abs_main_output_folder)
 
-    folderForLogs = absMainOutputFolder + "/logs/"
-    createLogsFolder(folderForLogs)
+    folder_for_logs = abs_main_output_folder + "/logs/"
+    create_logs_folder(folder_for_logs)
 
-    folderForPredictions = absMainOutputFolder + "/predictions"
-    createFolderForPredictions(folderForPredictions)
+    folder_for_predictions = abs_main_output_folder + "/predictions"
+    create_folder_for_predictions(folder_for_predictions)
 
-    folderForSessionResults = folderForPredictions + "/" + sessionName
-    createFolderForSessionResults(folderForSessionResults)
+    folder_for_session_results = folder_for_predictions + "/" + session_name
+    create_folder_for_session_results(folder_for_session_results)
 
-    folderForSegmAndProbMaps = folderForSessionResults + "/predictions/"
-    createFolderForSegmAndProbMaps(folderForSegmAndProbMaps)
+    folder_for_segm_and_prob_maps = folder_for_session_results + "/predictions/"
+    create_folder_for_segm_and_prob_maps(folder_for_segm_and_prob_maps)
 
-    folderForFeatures = folderForSessionResults + "/features/"
-    createFolderForFeatures(folderForFeatures)
+    folder_for_features = folder_for_session_results + "/features/"
+    createFolderForFeatures(folder_for_features)
 
-    return [folderForLogs, folderForSegmAndProbMaps, folderForFeatures]
-
-
-def createFolderForCnnModels(folderForCnnModels):
-    if not os.path.exists(folderForCnnModels):
-        os.mkdir(folderForCnnModels)
-        print("\t>>Created folder to save cnn-models as they get trained: ", folderForCnnModels)
+    return [folder_for_logs, folder_for_segm_and_prob_maps, folder_for_features]
 
 
-def createFolderForSessionCnnModels(folderForSessionCnnModels):
-    if not os.path.exists(folderForSessionCnnModels):
-        os.mkdir(folderForSessionCnnModels)
-        print("\t>>Created folder to save session's cnn-models as they get trained: ", folderForSessionCnnModels)
+def create_folder_for_cnn_models(folder_for_cnn_models):
+    if not os.path.exists(folder_for_cnn_models):
+        os.mkdir(folder_for_cnn_models)
+        print("\t>>Created folder to save cnn-models as they get trained: ", folder_for_cnn_models)
 
 
-def createFolderForTensorboard(folderForTensorboard):
-    if not os.path.exists(folderForTensorboard):
-        os.mkdir(folderForTensorboard)
-        print("\t>>Created folder to log tensorboard metrics/events: ", folderForTensorboard)
+def create_folder_for_session_cnn_models(folder_for_session_cnn_models):
+    if not os.path.exists(folder_for_session_cnn_models):
+        os.mkdir(folder_for_session_cnn_models)
+        print("\t>>Created folder to save session's cnn-models as they get trained: ", folder_for_session_cnn_models)
 
 
-def createFolderForSessionTensorboard(folderForSessionTensorboard):
-    if not os.path.exists(folderForSessionTensorboard):
-        os.mkdir(folderForSessionTensorboard)
-        print("\t>>Created folder to log session's tensorboard metrics/events: ", folderForSessionTensorboard)
+def create_folder_for_tensorboard(folder_for_tensorboard):
+    if not os.path.exists(folder_for_tensorboard):
+        os.mkdir(folder_for_tensorboard)
+        print("\t>>Created folder to log tensorboard metrics/events: ", folder_for_tensorboard)
 
 
-def make_folders_for_train_session(absMainOutputFolder, sessionName):
+def create_folder_for_session_tensorboard(folder_for_session_tensorboard):
+    if not os.path.exists(folder_for_session_tensorboard):
+        os.mkdir(folder_for_session_tensorboard)
+        print("\t>>Created folder to log session's tensorboard metrics/events: ", folder_for_session_tensorboard)
+
+
+def make_folders_for_train_session(abs_main_output_folder, session_name):
     # Create folders for saving the prediction images:
     print("Creating necessary folders for training session...")
-    createMainOutputFolder(absMainOutputFolder)
+    create_main_output_folder(abs_main_output_folder)
 
-    folderForLogs = absMainOutputFolder + "/logs/"
-    createLogsFolder(folderForLogs)
+    folder_for_logs = abs_main_output_folder + "/logs/"
+    create_logs_folder(folder_for_logs)
 
-    folderForCnnModels = absMainOutputFolder + "/saved_models/"
-    createFolderForCnnModels(folderForCnnModels)
-    folderForSessionCnnModels = folderForCnnModels + "/" + sessionName + "/"
-    createFolderForSessionCnnModels(folderForSessionCnnModels)
+    folder_for_cnn_models = abs_main_output_folder + "/saved_models/"
+    create_folder_for_cnn_models(folder_for_cnn_models)
+    folder_for_session_cnn_models = folder_for_cnn_models + "/" + session_name + "/"
+    create_folder_for_session_cnn_models(folder_for_session_cnn_models)
 
-    folderForPredictions = absMainOutputFolder + "/predictions"
-    createFolderForPredictions(folderForPredictions)
-    folderForSessionResults = folderForPredictions + "/" + sessionName
-    createFolderForSessionResults(folderForSessionResults)
-    folderForSegmAndProbMaps = folderForSessionResults + "/predictions/"
-    createFolderForSegmAndProbMaps(folderForSegmAndProbMaps)
-    folderForFeatures = folderForSessionResults + "/features/"
+    folder_for_predictions = abs_main_output_folder + "/predictions"
+    create_folder_for_predictions(folder_for_predictions)
+    folder_for_session_results = folder_for_predictions + "/" + session_name
+    create_folder_for_session_results(folder_for_session_results)
+    folderForSegmAndProbMaps = folder_for_session_results + "/predictions/"
+    create_folder_for_segm_and_prob_maps(folderForSegmAndProbMaps)
+    folderForFeatures = folder_for_session_results + "/features/"
     createFolderForFeatures(folderForFeatures)
 
-    folderForTensorboard = absMainOutputFolder + "/tensorboard/"
-    createFolderForTensorboard(folderForTensorboard)
-    folderForSessionTensorboard = folderForTensorboard + "/" + sessionName + "/"
-    createFolderForSessionTensorboard(folderForSessionTensorboard)
+    folder_for_tensorboard = abs_main_output_folder + "/tensorboard/"
+    create_folder_for_tensorboard(folder_for_tensorboard)
+    folder_for_session_tensorboard = folder_for_tensorboard + "/" + session_name + "/"
+    create_folder_for_session_tensorboard(folder_for_session_tensorboard)
 
     return [
-        folderForLogs,
-        folderForSessionCnnModels,
+        folder_for_logs,
+        folder_for_session_cnn_models,
         folderForSegmAndProbMaps,
         folderForFeatures,
-        folderForSessionTensorboard,
+        folder_for_session_tensorboard,
     ]
 
 
-def makeFoldersNeededForCreateModelSession(absMainOutputFolder, modelName):
+def make_folders_needed_for_create_model_session(abs_main_output_folder, model_name):
     # Create folders for saving the prediction images:
     print("Creating necessary folders for create-new-model session...")
-    createMainOutputFolder(absMainOutputFolder)
+    create_main_output_folder(abs_main_output_folder)
 
-    folderForLogs = absMainOutputFolder + "/logs/"
-    createLogsFolder(folderForLogs)
+    folder_for_logs = abs_main_output_folder + "/logs/"
+    create_logs_folder(folder_for_logs)
 
-    folderForCnnModels = absMainOutputFolder + "/saved_models/"
-    createFolderForCnnModels(folderForCnnModels)
+    folder_for_cnn_models = abs_main_output_folder + "/saved_models/"
+    create_folder_for_cnn_models(folder_for_cnn_models)
 
-    folderForSessionCnnModels = folderForCnnModels + "/" + modelName + "/"
-    createFolderForSessionCnnModels(folderForSessionCnnModels)
+    folder_for_session_cnn_models = folder_for_cnn_models + "/" + model_name + "/"
+    create_folder_for_session_cnn_models(folder_for_session_cnn_models)
 
-    return [folderForLogs, folderForSessionCnnModels]
+    return [folder_for_logs, folder_for_session_cnn_models]
 
 
 def handle_exception_tf_restore(log, exc):
