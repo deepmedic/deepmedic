@@ -250,7 +250,7 @@ class ModelConfig(Config):
                                   "should have as many entries as the number of layers in the FC layers.\n"
                                   "Example: 0 = no dropout. 1= 100% drop of the neurons. Empty list for no dropout.\n"
                                   "Note: The list for FC rates should have one additional entry in comparison "
-                                  "to \"" + N_FMS_FC.description + "\", for the classification layer.\n"
+                                  "to \"" + N_FM_FC.description + "\", for the classification layer.\n"
                                   "(default: 50% dropout on every Fully Connected layer except for the "
                                   "first one after the concatenation)")
 
