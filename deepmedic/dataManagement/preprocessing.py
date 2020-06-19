@@ -151,8 +151,14 @@ def get_img_stats(img, calc_mean=True, calc_std=True, calc_max=True):
 
 
 def get_cutoff_mask(img, low, high):
-    low_mask = img > low
-    high_mask = img < high
+    if low is not None:
+        low_mask = img > low
+    else:
+        low_mask = 1
+    if high is not None:
+        high_mask = img < high
+    else:
+        high_mask = 1
     return low_mask * high_mask
 
 
