@@ -208,3 +208,4 @@ venv.bak/
 
 .idea/
 examples/output/
+tests/output
