@@ -1,15 +1,17 @@
 from typing import List
 
+from deepmedic.logging import loggers
+from deepmedic.config import BaseConfig
 from deepmedic.config.utils import calc_rec_field_of_path_assuming_strides_1
 
 
-class PathWayConfig:
+class PathWayConfig(BaseConfig):
     def __init__(
         self,
         n_FMs_per_layer: List[int],
         kernel_dims_per_layer: List[List[int]],
         pad_mode_per_layer: List[str] = None,
-        dropout: float = None,
+        dropout: List[float] = None,
         apply_bn: bool = None,
         mp_params: List = None,
         res_conn: List[int] = None,
@@ -17,22 +19,14 @@ class PathWayConfig:
     ):
         self.n_FMs_per_layer = n_FMs_per_layer
         self.kernel_dims_per_layer = kernel_dims_per_layer
-        if pad_mode_per_layer is None:
-            pad_mode_per_layer = ["VALID"] * len(self.n_FMs_per_layer)
-        self.pad_mode_per_layer = pad_mode_per_layer
-        if dropout is None:
-            dropout = self.default_dropout()
-        self.dropout = dropout
-        self.apply_bn = apply_bn if apply_bn is not None else False
-        if mp_params is None:
-            mp_params = [[] for _ in range(len(self.n_FMs_per_layer))]
-        self.mp_params = mp_params
-        if res_conn is None:
-            res_conn = []
-        self.res_conn = res_conn
-        if lower_rank is None:
-            lower_rank = []
-        self.lower_rank = lower_rank
+        self.pad_mode_per_layer = self._get_list_of_str(
+            pad_mode_per_layer, default=["VALID"] * len(self.n_FMs_per_layer)
+        )
+        self.dropout = self._get_list_of_float(dropout, default=self.default_dropout())
+        self.apply_bn = self._get_bool(apply_bn, default=False)
+        self.mp_params = self._get_list(mp_params, default=[[] for _ in range(len(self.n_FMs_per_layer))])
+        self.res_conn = self._get_list_of_int(res_conn, default=[])
+        self.lower_rank = self._get_list_of_int(lower_rank, default=[])
         self.rank_of_lower_rank = 2
 
     def default_dropout(self):
@@ -45,47 +39,30 @@ class SubsampledPathwayConfig(PathWayConfig):
         n_FMs_per_layer: List[int],
         kernel_dims_per_layer: List[List[int]],
         pad_mode_per_layer: List[str] = None,
-        subsample_factors: List[List[int]] = None,
-        dropout: float = None,
+        subsample_factor: List[int] = None,
+        dropout: List[float] = None,
         apply_bn: bool = None,
         mp_params: List = None,
         res_conn: List[int] = None,
         lower_rank: List[int] = None,
-        use_subsampled_path: bool = None,
     ):
-        # TODO: is n_fms here list of list of in or list of int?
-        if use_subsampled_path is None:
-            use_subsampled_path = False
-        self.use_subsampled_path = use_subsampled_path
-        if not self.use_subsampled_path:
-            res_conn = []
-            lower_rank = []
-        apply_bn = apply_bn if apply_bn is not None else False
-        pad_mode_per_layer = (
-            pad_mode_per_layer if pad_mode_per_layer is not None else ["VALID"] * len(n_FMs_per_layer[0])
+        super().__init__(
+            n_FMs_per_layer,
+            kernel_dims_per_layer,
+            pad_mode_per_layer,
+            dropout,
+            apply_bn,
+            mp_params,
+            res_conn,
+            lower_rank,
         )
-        if subsample_factors is not None:
-            if all(not isinstance(e, list) for e in subsample_factors):
-                subsample_factors = [subsample_factors]
-        else:
-            subsample_factors = [[3, 3, 3]]
-        self.subsample_factors = subsample_factors
-        for _ in range(len(self.subsample_factors) - len(n_FMs_per_layer)):
-            n_fms_per_l_in_prev_path = n_FMs_per_layer[-1]
-            n_FMs_per_layer.append([max(1, int(n_fms_in_l_i)) for n_fms_in_l_i in n_fms_per_l_in_prev_path])
-        if mp_params is None:
-            mp_params = (
-                [[] for _ in range(len(self.n_FMs_per_layer[0]))]
-                if self.use_subsampled_path
-                else []
-            )
-        super().__init__(n_FMs_per_layer, kernel_dims_per_layer, pad_mode_per_layer, dropout, apply_bn, mp_params, res_conn, lower_rank)
+        self.subsample_factor = self._get_list(subsample_factor, default=[3, 3, 3])
 
 
 class FCLayersConfig(PathWayConfig):
     def __init__(
         self,
-        n_FMs_per_layer: List[List[int]] = None,
+        n_FMs_per_layer: List[int] = None,
         kernel_dims_per_layer: List[List[int]] = None,
         pad_mode_per_layer: List[str] = None,
         softmax_temperature: float = None,
@@ -95,27 +72,28 @@ class FCLayersConfig(PathWayConfig):
         res_conn: List[int] = None,
         lower_rank: List[int] = None,
     ):
-        if n_FMs_per_layer is None:
-            n_FMs_per_layer = []
-        n_layers_fc = len(n_FMs_per_layer) + 1
-        if kernel_dims_per_layer is None:
-            kernel_dims_per_layer = [[1, 1, 1] for _ in range(n_layers_fc)]
-        if pad_mode_per_layer is None:
-            pad_mode_per_layer = ["VALID"] * n_layers_fc
-        if mp_params is None:
-            mp_params = [[] for _ in range(len(self.n_FMs_per_layer) + 1)]
-        apply_bn = apply_bn if apply_bn is not None else True
-        if res_conn is None:
-            res_conn = []
-        if lower_rank is None:
-            lower_rank = []
-        super().__init__(n_FMs_per_layer, kernel_dims_per_layer, pad_mode_per_layer, dropout, apply_bn, mp_params, res_conn, lower_rank)
-        if softmax_temperature is None:
-            softmax_temperature = 1.0
-        self.softmax_temperature = softmax_temperature
+        super().__init__(
+            n_FMs_per_layer,
+            kernel_dims_per_layer,
+            pad_mode_per_layer,
+            dropout,
+            apply_bn,
+            mp_params,
+            res_conn,
+            lower_rank,
+        )
+        self.n_FMs_per_layer = self._get_list_of_int(n_FMs_per_layer, default=[])
+        n_layers_fc = len(self.n_FMs_per_layer) + 1
+        self.kernel_dims_per_layer = self._get_list_of_list_int(
+            kernel_dims_per_layer, default=[[1, 1, 1] for _ in range(n_layers_fc)]
+        )
+        self.pad_mode_per_layer = self._get_list_of_str(pad_mode_per_layer, default=["VALID"] * n_layers_fc)
+        self.mp_params = self._get_list(mp_params, default=[[] for _ in range(len(n_FMs_per_layer) + 1)])
+        self.apply_bn = self._get_bool(apply_bn, default=True)
+        self.softmax_temperature = self._get_float(softmax_temperature, default=1.0)
         self.rank_of_lower_rank = None
 
-    def default_dropout(self):
+    def default_dropout(self) -> List[float]:
         # n_fms_in_extra_fcs: List of integers, 1 per layer in the final classification path, except final classif layer
         n_extra_fcs = len(self.n_FMs_per_layer)
         if n_extra_fcs > 0:
@@ -125,14 +103,14 @@ class FCLayersConfig(PathWayConfig):
         return dropout_for_each_l_including_classifier
 
 
-class ModelConfig:
+class ModelConfig(BaseConfig):
     def __init__(
         self,
         n_classes: int,
         n_input_channels: int,
         normal_pathway_config: PathWayConfig,
         use_subsampled_path: bool,
-        subsampled_pathway_config: SubsampledPathwayConfig,
+        subsampled_pathway_configs: List[SubsampledPathwayConfig],
         fc_layers_config: FCLayersConfig,
         segment_dim_train: List[int],
         model_name: str = None,
@@ -142,24 +120,138 @@ class ModelConfig:
         segment_dim_val: List[int] = None,
         segment_dim_inference: List[int] = None,
     ):
-        self.model_name = model_name if model_name is not None else "deepmedic"
+        self.model_name = self._get_str(model_name, default="deepmedic")
         self.n_classes = n_classes
         self.n_input_channels = n_input_channels
         self.normal_pathway_config = normal_pathway_config
         self.use_subsampled_path = use_subsampled_path
-        self.subsampled_pathway_config = subsampled_pathway_config
+        self.subsampled_pathway_configs = subsampled_pathway_configs
         self.fc_layers_config = fc_layers_config
-        self.activation_function = activation_function if activation_function is not None else "prelu"
+        self.activation_function = self._get_str(activation_function, default="prelu")
         # Initialization
-        self.conv_w_init_type = conv_w_init_type if conv_w_init_type is not None else ["fanIn", 2]
+        self.conv_w_init_type = self._get_list(conv_w_init_type, default=["fanIn", 2])
         # Batch Normalization
-        self.n_batches_for_bn_mov_avg = n_batches_for_bn_mov_avg if n_batches_for_bn_mov_avg is not None else 60
+        self.n_batches_for_bn_mov_avg = self._get_int(n_batches_for_bn_mov_avg, default=60)
         self.segment_dim_train = segment_dim_train
-        if segment_dim_val is None:
-            segment_dim_val = calc_rec_field_of_path_assuming_strides_1(
-                self.normal_pathway_config.kernel_dims_per_layer
+        self.segment_dim_val = self._get_list_of_int(
+            segment_dim_val,
+            default=calc_rec_field_of_path_assuming_strides_1(self.normal_pathway_config.kernel_dims_per_layer),
+        )
+        self.segment_dim_inference = self._get_list_of_int(segment_dim_inference, self.segment_dim_train)
+
+    def print_params(self, logger: loggers.Logger = None):
+        if logger is None:
+            logger = loggers.Logger()
+
+        logger_print = logger.print3
+        logger_print("=============================================================")
+        logger_print("========== PARAMETERS FOR MAKING THE ARCHITECTURE ===========")
+        logger_print("=============================================================")
+        logger_print("CNN model's name = " + str(self.model_name))
+
+        logger_print("~~~~~~~~~~~~~~~~~~Model parameters~~~~~~~~~~~~~~~~")
+        logger_print("Number of Classes (including background) = " + str(self.n_classes))
+        logger_print("~~Normal Pathway~~")
+        logger_print("Number of Input Channels = " + str(self.n_input_channels))
+        logger_print("Number of Layers = " + str(len(self.normal_pathway_config.n_FMs_per_layer)))
+        logger_print("Number of Feature Maps per layer = " + str(self.normal_pathway_config.n_FMs_per_layer))
+        logger_print("Kernel Dimensions per layer = " + str(self.normal_pathway_config.kernel_dims_per_layer))
+        logger_print("Padding mode of convs per layer = " + str(self.normal_pathway_config.pad_mode_per_layer))
+        logger_print(
+            "Residual connections added at the output of layers (indices from 0) = "
+            + str(self.normal_pathway_config.res_conn)
+        )
+        logger_print(
+            "Layers that will be made of Lower Rank (indices from 0) = " + str(self.normal_pathway_config.lower_rank)
+        )
+        logger_print("Lower Rank layers will be made of rank = " + str(self.normal_pathway_config.rank_of_lower_rank))
+
+        logger_print("~~Subsampled Pathway~~")
+        logger_print("Use subsampled Pathway = " + str(self.use_subsampled_path))
+        logger_print("Number of subsampled pathways that will be built = " + str(len(self.subsampled_pathway_configs)))
+        logger_print(
+            "Number of Layers (per sub-pathway) = "
+            + str([len(config.n_FMs_per_layer) for config in self.subsampled_pathway_configs])
+        )
+        logger_print(
+            "Number of Feature Maps per layer (per sub-pathway) = "
+            + str([config.n_FMs_per_layer for config in self.subsampled_pathway_configs])
+        )
+        logger_print("Kernel Dimensions per layer = " + str(self.subsampled_pathway_configs[0].kernel_dims_per_layer))
+        logger_print("Padding mode of convs per layer = " + str(self.subsampled_pathway_configs[0].pad_mode_per_layer))
+        logger_print(
+            "Subsampling Factor per dimension (per sub-pathway) = "
+            + str([config.subsample_factor for config in self.subsampled_pathway_configs])
+        )
+        logger_print(
+            "Residual connections added at the output of layers (indices from 0) = "
+            + str(self.subsampled_pathway_configs[0].res_conn)
+        )
+        logger_print(
+            "Layers that will be made of Lower Rank (indices from 0) = "
+            + str(self.subsampled_pathway_configs[0].lower_rank)
+        )
+        logger_print(
+            "Lower Rank layers will be made of rank = " + str(self.subsampled_pathway_configs[0].rank_of_lower_rank)
+        )
+
+        logger_print("~~Fully Connected Pathway~~")
+        logger_print(
+            "Number of additional FC layers (Excluding the Classif. Layer) = "
+            + str(len(self.fc_layers_config.n_FMs_per_layer))
+        )
+        logger_print(
+            "Number of Feature Maps in the additional FC layers = " + str(self.fc_layers_config.n_FMs_per_layer)
+        )
+        logger_print("Padding mode of convs per layer = " + str(self.fc_layers_config.pad_mode_per_layer))
+        logger_print(
+            "Residual connections added at the output of layers (indices from 0) = "
+            + str(self.fc_layers_config.res_conn)
+        )
+        logger_print(
+            "Layers that will be made of Lower Rank (indices from 0) = " + str(self.fc_layers_config.lower_rank)
+        )
+        logger_print(
+            "Dimensions of Kernels in final FC path before classification = "
+            + str(self.fc_layers_config.kernel_dims_per_layer)
+        )
+
+        logger_print("~~Size Of Image Segments~~")
+        logger_print("Size of Segments for Training = " + str(self.segment_dim_train))
+        logger_print("Size of Segments for Validation = " + str(self.segment_dim_val))
+        logger_print("Size of Segments for Testing = " + str(self.segment_dim_inference))
+
+        logger_print("~~Dropout Rates~~")
+        logger_print("Drop.R. for each layer in Normal Pathway = " + str(self.normal_pathway_config.dropout))
+        logger_print(
+            "Drop.R. for each layer in Subsampled Pathway = " + str(self.subsampled_pathway_configs[0].dropout)
+        )
+        logger_print(
+            "Drop.R. for each layer in FC Pathway (additional FC layers + Classific.Layer at end) = "
+            + str(self.fc_layers_config.dropout)
+        )
+
+        logger_print("~~Weight Initialization~~")
+        logger_print("Initialization method and params for the conv kernel weights = " + str(self.conv_w_init_type))
+
+        logger_print("~~Activation Function~~")
+        logger_print("Activation function to use = " + str(self.activation_function))
+
+        logger_print("~~Batch Normalization~~")
+        logger_print(
+            "Apply BN straight on pathways' inputs (eg straight on segments) = "
+            + str(
+                [
+                    self.normal_pathway_config.apply_bn,
+                    self.subsampled_pathway_configs[0].apply_bn,
+                    self.fc_layers_config.apply_bn,
+                ]
             )
-        self.segment_dim_val = segment_dim_val
-        if segment_dim_inference is None:
-            segment_dim_inference = self.segment_dim_train
-        self.segment_dim_inference = segment_dim_inference
+        )
+        logger_print(
+            "Batch Normalization uses a rolling average for inference, over this many batches = "
+            + str(self.n_batches_for_bn_mov_avg)
+        )
+
+        logger_print("========== Done with printing session's parameters ==========")
+        logger_print("=============================================================")
