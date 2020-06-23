@@ -6,6 +6,18 @@ from deepmedic.config.utils import calc_rec_field_of_path_assuming_strides_1
 
 
 class PathWayConfig(BaseConfig):
+    __slots__ = [
+        "n_FMs_per_layer",
+        "kernel_dims_per_layer",
+        "pad_mode_per_layer",
+        "dropout",
+        "apply_bn",
+        "mp_params",
+        "res_conn",
+        "lower_rank",
+        "rank_of_lower_rank",
+    ]
+
     def __init__(
         self,
         n_FMs_per_layer: List[int],
@@ -34,6 +46,19 @@ class PathWayConfig(BaseConfig):
 
 
 class SubsampledPathwayConfig(PathWayConfig):
+    __slots__ = [
+        "n_FMs_per_layer",
+        "kernel_dims_per_layer",
+        "pad_mode_per_layer",
+        "dropout",
+        "apply_bn",
+        "mp_params",
+        "res_conn",
+        "lower_rank",
+        "rank_of_lower_rank",
+        "subsample_factor",
+    ]
+
     def __init__(
         self,
         n_FMs_per_layer: List[int],
@@ -60,18 +85,37 @@ class SubsampledPathwayConfig(PathWayConfig):
 
 
 class FCLayersConfig(PathWayConfig):
+    __slots__ = [
+        "n_FMs_per_layer",
+        "kernel_dims_per_layer",
+        "pad_mode_per_layer",
+        "dropout",
+        "apply_bn",
+        "mp_params",
+        "res_conn",
+        "lower_rank",
+        "rank_of_lower_rank",
+        "softmax_temperature"
+    ]
+
     def __init__(
         self,
         n_FMs_per_layer: List[int] = None,
         kernel_dims_per_layer: List[List[int]] = None,
         pad_mode_per_layer: List[str] = None,
         softmax_temperature: float = None,
-        dropout: float = None,
+        dropout: List[float] = None,
         apply_bn: bool = None,
         mp_params: List = None,
         res_conn: List[int] = None,
         lower_rank: List[int] = None,
     ):
+        n_FMs_per_layer = self._get_list_of_int(n_FMs_per_layer, default=[])
+        n_layers_fc = len(n_FMs_per_layer) + 1
+        kernel_dims_per_layer = self._get_list_of_list_int(
+            kernel_dims_per_layer, default=[[1, 1, 1] for _ in range(n_layers_fc)]
+        )
+        pad_mode_per_layer = self._get_list_of_str(pad_mode_per_layer, default=["VALID"] * n_layers_fc)
         super().__init__(
             n_FMs_per_layer,
             kernel_dims_per_layer,
@@ -82,12 +126,6 @@ class FCLayersConfig(PathWayConfig):
             res_conn,
             lower_rank,
         )
-        self.n_FMs_per_layer = self._get_list_of_int(n_FMs_per_layer, default=[])
-        n_layers_fc = len(self.n_FMs_per_layer) + 1
-        self.kernel_dims_per_layer = self._get_list_of_list_int(
-            kernel_dims_per_layer, default=[[1, 1, 1] for _ in range(n_layers_fc)]
-        )
-        self.pad_mode_per_layer = self._get_list_of_str(pad_mode_per_layer, default=["VALID"] * n_layers_fc)
         self.mp_params = self._get_list(mp_params, default=[[] for _ in range(len(n_FMs_per_layer) + 1)])
         self.apply_bn = self._get_bool(apply_bn, default=True)
         self.softmax_temperature = self._get_float(softmax_temperature, default=1.0)
@@ -104,6 +142,22 @@ class FCLayersConfig(PathWayConfig):
 
 
 class ModelConfig(BaseConfig):
+    __slots__ = [
+        "model_name",
+        "n_classes",
+        "n_input_channels",
+        "normal_pathway_config",
+        "use_subsampled_path",
+        "subsampled_pathway_configs",
+        "fc_layers_config",
+        "activation_function",
+        "conv_w_init_type",
+        "n_batches_for_bn_mov_avg",
+        "segment_dim_train",
+        "segment_dim_val",
+        "segment_dim_inference",
+    ]
+
     def __init__(
         self,
         n_classes: int,
