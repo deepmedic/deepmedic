@@ -2,6 +2,7 @@ from typing import List
 from pathlib import Path
 from collections import defaultdict
 from deepmedic.config.model import ModelConfig, PathWayConfig, SubsampledPathwayConfig, FCLayersConfig
+from deepmedic.exceptions import ModelCfgListOfListException
 
 
 class InputModelConfig:
@@ -71,19 +72,24 @@ class InputModelConfig:
         self.bn_roll_av_batches = bn_roll_av_batches
 
     @classmethod
-    def from_cfg_file(cls, cfg_path: Path) -> "InputModelConfig":
-        cfg = defaultdict(lambda: None)
-        exec(open(str(cfg_path)).read(), cfg)
+    def from_cfg(cls, cfg: dict) -> 'InputModelConfig':
         if cfg["numberFMsPerLayerSubsampled"] is not None:
             n_fms_per_l_subs = cfg["numberFMsPerLayerSubsampled"]
         else:
             n_fms_per_l_subs = cfg["numberFMsPerLayerNormal"]
-        if all(not isinstance(e, list) for e in n_fms_per_l_subs):
-            n_fms_per_l_subs = [n_fms_per_l_subs]
+        if isinstance(n_fms_per_l_subs, list):
+            if all(not isinstance(e, list) for e in n_fms_per_l_subs):
+                n_fms_per_l_subs = [n_fms_per_l_subs]
+        else:
+            raise ModelCfgListOfListException(n_fms_per_l_subs)
         subs_factors = cfg["subsampleFactor"]
         if subs_factors is not None:
-            if all(not isinstance(e, list) for e in subs_factors):
-                subs_factors = [subs_factors]
+            if isinstance(subs_factors, list):
+                if all(not isinstance(e, list) for e in subs_factors):
+                    subs_factors = [subs_factors]
+            else:
+                raise ModelCfgListOfListException(n_fms_per_l_subs)
+
         input_config = cls(
             model_name=cfg["modelName"],
             n_classes=cfg["numberOfOutputClasses"],
@@ -116,6 +122,12 @@ class InputModelConfig:
         )
         return input_config
 
+    @classmethod
+    def from_cfg_file(cls, cfg_path: Path) -> "InputModelConfig":
+        cfg = defaultdict(lambda: None)
+        exec(open(str(cfg_path)).read(), cfg)
+        return cls.from_cfg(cfg)
+
     def to_model_config(self) -> ModelConfig:
         res_conn_norm = (
             [i - 1 for i in self.resid_conn_layers_norm] if self.resid_conn_layers_norm is not None else None
@@ -138,6 +150,7 @@ class InputModelConfig:
             if self.kern_dim_subs is None and n_layers_subs == len(normal_pathway_config.n_FMs_per_layer):
                 kern_dims_per_l_subs = normal_pathway_config.kernel_dims_per_layer
             else:
+                # condition where kern_dim_subs is not None and n_layers_subs != len, is covered in assertion.
                 kern_dims_per_l_subs = self.kern_dim_subs
             subsample_factors = self.subs_factor
             if self.subs_factor is None:
