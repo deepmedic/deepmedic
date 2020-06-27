@@ -3,12 +3,7 @@ import warnings
 
 from deepmedic.config.input import InputModelConfig
 from deepmedic.config.utils import calc_rec_field_of_path_assuming_strides_1
-from deepmedic.controller.utils import (
-    check_kern_dims_per_l_correct_3d_and_n_layers,
-    subsample_factor_is_even,
-    check_rec_field_vs_inp_dims,
-)
-from deepmedic.exceptions import (
+from deepmedic.config.input.exceptions import (
     FCKernDimFMLengthNotEqualException,
     NumClassInputException,
     NumChannelsInputException,
@@ -64,6 +59,25 @@ def assert_input_model_config(input_config: InputModelConfig):
         assert_conv_w_init_type(input_config.conv_w_init)
     if input_config.activ_func is not None:
         assert_activation_func(input_config.activ_func)
+
+
+def check_kern_dims_per_l_correct_3d_and_n_layers(kern_dims_per_layer, n_layers):
+    # kern_dims_per_layer : a list with sublists. One sublist per layer.
+    # Each sublist should have 3 integers, specifying the dimensions of the kernel at the corresponding layer of
+    # the pathway. eg: kern_dims_per_layer = [ [3,3,3], [3,3,3], [5,5,5] ]
+    if kern_dims_per_layer is None or len(kern_dims_per_layer) != n_layers:
+        return False
+    for kern_dims in kern_dims_per_layer:
+        if len(kern_dims) != 3:
+            return False
+    return True
+
+
+def subsample_factor_is_even(subs_factor):
+    for dim_i in range(len(subs_factor)):
+        if subs_factor[dim_i] % 2 != 1:
+            return False
+    return True
 
 
 def warn_for_same_receptive_field():
@@ -267,7 +281,9 @@ def assert_inp_dims_hr_path(inp_dims_hr_path, rec_field_norm):
                     "ERROR: The segment-size (input) should be at least as big as the receptive field of the model! "
                     "The network was made with a receptive field of dimensions: {}"
                     ". But in the case of: [{}] the dimensions of the input segment were specified smaller: {}. "
-                    "Please fix this by adjusting number of layer and kernel dimensions! Exiting!".format(rec_field_norm, train_val_test, inp_dims_hr_path),
+                    "Please fix this by adjusting number of layer and kernel dimensions! Exiting!".format(
+                        rec_field_norm, train_val_test, inp_dims_hr_path
+                    ),
                 )
 
 

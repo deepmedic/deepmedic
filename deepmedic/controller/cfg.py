@@ -1,5 +1,5 @@
 from pathlib import Path
-from deepmedic.controller.assertion import assert_input_model_config
+from deepmedic.config.input.assertion import assert_input_model_config
 from deepmedic.config.input import InputModelConfig
 
 

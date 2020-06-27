@@ -2,7 +2,8 @@ from typing import List
 from pathlib import Path
 from collections import defaultdict
 from deepmedic.config.model import ModelConfig, PathWayConfig, SubsampledPathwayConfig, FCLayersConfig
-from deepmedic.exceptions import ModelCfgListOfListException
+from deepmedic.config.input.exceptions import ModelCfgListOfListException
+from deepmedic.config.input.assertion import assert_input_model_config
 
 
 class InputModelConfig:
@@ -205,3 +206,6 @@ class InputModelConfig:
             segment_dim_val=self.seg_dim_val,
             segment_dim_inference=self.seg_dim_infer,
         )
+
+    def assert_config(self):
+        assert_input_model_config(self)
