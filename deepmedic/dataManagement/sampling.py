@@ -83,7 +83,7 @@ def get_samples_for_subepoch(log,
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
-    channs_of_samples_per_path = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
+    channs_of_samples_per_path = [[] for i in range(cnn3d.get_num_pathways_that_require_input())]
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
     # Can be different than max_n_cases_per_subep, because of available images number.
     n_subjs_for_subep = len(idxs_of_subjs_for_subep)
@@ -123,7 +123,7 @@ def get_samples_for_subepoch(log,
         for job_idx in jobs_idxs_to_do:
             (channs_samples_from_job_per_path,
              lbls_predicted_part_samples_from_job) = load_subj_and_sample(*([job_idx] + args_sampling_job))
-            for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
+            for pathway_i in range(cnn3d.get_num_pathways_that_require_input()):
                 # concat does not copy.
                 channs_of_samples_per_path[pathway_i] += channs_samples_from_job_per_path[pathway_i]
             lbls_predicted_part_of_samples += lbls_predicted_part_samples_from_job  # concat does not copy.
@@ -150,7 +150,7 @@ def get_samples_for_subepoch(log,
                         # timeout in case process for some reason never started (happens in py3)
                         (channs_samples_from_job_per_path,
                          lbls_predicted_part_samples_from_job) = jobs[job_idx].get(timeout=60)
-                        for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
+                        for pathway_i in range(cnn3d.get_num_pathways_that_require_input()):
                             # concat does not copy.
                             channs_of_samples_per_path[pathway_i] += channs_samples_from_job_per_path[pathway_i]
                         # concat does not copy.
@@ -288,7 +288,7 @@ def load_subj_and_sample(job_idx,
 
     # List, with [numberOfPathwaysThatTakeInput] sublists.
     # Each sublist is list of [partImagesLoadedPerSubepoch] arrays [channels, R,C,Z].
-    channs_of_samples_per_path = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
+    channs_of_samples_per_path = [[] for i in range(cnn3d.get_num_pathways_that_require_input())]
     lbls_predicted_part_of_samples = []  # Labels only for the central/predicted part of segments.
 
     dims_hres_segment = inp_shapes_per_path[0]
@@ -390,7 +390,7 @@ def load_subj_and_sample(job_idx,
                                                              augm_sample_prms)
             time_augm_samples += time.time() - time_augm_sample_0
             
-            for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
+            for pathway_i in range(cnn3d.get_num_pathways_that_require_input()):
                 channs_of_samples_per_path[pathway_i].append(channs_of_sample_per_path[pathway_i])
             lbls_predicted_part_of_samples.append(lbls_predicted_part_of_sample)
         
@@ -851,7 +851,7 @@ def extractSegmentsGivenSliceCoords(cnn3d,
     # TODO: Change result to a list of arrays [num_segments, channs, r, c, z]
 
     numberOfSegmentsToExtract = len(sliceCoordsOfSegmentsToExtract)
-    channsForSegmentsPerPathToReturn = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
+    channsForSegmentsPerPathToReturn = [[] for i in range(cnn3d.get_num_pathways_that_require_input())]
     
     for segment_i in range(numberOfSegmentsToExtract):
         rLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][0]

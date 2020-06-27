@@ -11,6 +11,7 @@ import os
 from deepmedic.frontEnd.session import Session
 from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.trainSessionParams import TrainSessionParameters
+from deepmedic.frontEnd.configParsing.modelParams import ModelParameters
 from deepmedic.frontEnd.sessHelpers import make_folders_for_train_session, handle_exception_tf_restore
 
 from deepmedic.logging.utils import datetime_now_str
@@ -94,9 +95,7 @@ class TrainSession(Session):
 
         return self._params
 
-    def run_session(self, *args):
-        (sess_device, model_params, reset_trainer) = args
-
+    def run_session(self, sess_device: str, model_params: ModelParameters, reset_trainer: bool):
         graphTf = tf.Graph()
 
         with graphTf.as_default():

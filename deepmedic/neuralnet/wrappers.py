@@ -31,7 +31,7 @@ class CnnWrapperForSampling(object):
         # Cnn
         self.num_classes = cnn3d.num_classes
         # Pathways related
-        self._numPathwaysThatRequireInput = cnn3d.getNumPathwaysThatRequireInput()
+        self._numPathwaysThatRequireInput = cnn3d.get_num_pathways_that_require_input()
         self.numSubsPaths = cnn3d.numSubsPaths
         
         self.pathways = []
