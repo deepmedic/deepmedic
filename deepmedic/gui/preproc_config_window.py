@@ -80,7 +80,7 @@ class ProgressBar(object):
 
     def increase_value(self):
         self.bar.setValue(self.bar.value() + 1)
-        QtGui.qApp.processEvents()
+        QtCore.QCoreApplication.processEvents()
 
     def show(self):
         self.bar.show()
