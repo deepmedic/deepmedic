@@ -8,6 +8,10 @@ import os
 
 from PySide2 import QtWidgets, QtGui, QtCore
 
+TARGET = 'ground_truth'
+MASK = 'roi_mask'
+CHANNEL = 'channel'
+
 
 def add_sufix(name, suffix):
     # fname, extension = os.path.splitext(name)
@@ -44,7 +48,7 @@ def get_save_name(image_path, output_dir, image_extension, base_dir=None, subj_i
 def get_channel_names(data_columns):
     channels = []
     for col in data_columns:
-        if col.startswith('Channel_') or col == 'Image':
+        if col.startswith(CHANNEL + '_') or col == 'Image':
             channels += [col]
     if not channels:
         channels = None
@@ -58,12 +62,12 @@ def get_image_paths(row, channels):
         channel_paths[channel] = row[channel]
 
     try:
-        mask_path = row['Mask']
+        mask_path = row[MASK]
     except KeyError:
         mask_path = None
 
     try:
-        target_path = row['Target']
+        target_path = row[TARGET]
     except KeyError:
         target_path = None
 
@@ -271,7 +275,7 @@ class PreprocConfigWindow(ConfigWindow):
              target_path) = get_image_paths(row, channel_names)
 
             try:
-                subj_id = str(row['Id'])
+                subj_id = str(row['case_index'])
             except KeyError:
                 subj_id = str(i)
 
@@ -288,11 +292,11 @@ class PreprocConfigWindow(ConfigWindow):
 
             if mask_path:
                 mask_save_name = get_save_name(mask_path, output_dir, None,
-                                               base_dir=base_dir, subj_id=subj_id, channel_name='Mask')
+                                               base_dir=base_dir, subj_id=subj_id, channel_name=MASK)
 
             if target_path:
                 target_save_name = get_save_name(target_path, output_dir, None,
-                                                 base_dir=base_dir, subj_id=subj_id, channel_name='Target')
+                                                 base_dir=base_dir, subj_id=subj_id, channel_name=TARGET)
 
             # convert type
             if change_pixel_type:
@@ -323,7 +327,7 @@ class PreprocConfigWindow(ConfigWindow):
                 image.get_mask(thresh_low, thresh_high)
                 if not use_base_dir or not (mask_dir or mask_suffix):
                     mask_save_name = get_save_name(channel_save_names[channel_names[0]], output_dir, None,
-                                                   base_dir=None, subj_id=subj_id, channel_name='Mask')
+                                                   base_dir=None, subj_id=subj_id, channel_name=MASK)
                 elif mask_dir:
                     mask_save_name = os.path.join(mask_dir, channel_save_names[channel_names[0]].split('/')[-1])
                 elif mask_suffix:
@@ -353,11 +357,11 @@ class PreprocConfigWindow(ConfigWindow):
                 if image.mask:
                     new_mask_name = add_sufix(mask_save_name, mask_suffix)
                     save_nifti(image.mask.open(), new_mask_name)
-                    image_list.at[i, 'Mask'] = new_mask_name
+                    image_list.at[i, MASK] = new_mask_name
                 if image.target:
                     new_target_name = target_save_name
                     save_nifti(image.target.open(), new_target_name)
-                    image_list.at[i, 'Target'] = new_target_name
+                    image_list.at[i, TARGET] = new_target_name
 
             if self.resample_progress is not None:
                 self.resample_progress.increase_value()
