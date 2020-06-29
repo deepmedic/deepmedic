@@ -87,19 +87,17 @@ class TestSession(Session):
         with graphTf.as_default():
             with graphTf.device(sess_device):  # Throws an error if GPU is specified but not available.
                 self._log.print3("=========== Making the CNN graph... ===============")
-                cnn3d = Cnn3d()
+                cnn3d = Cnn3d(config=model_config, log=self._log)
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model(model_config, self._log)  # Creates network's graph (no optimizer)
-                    inp_plchldrs, inp_shapes_per_path = cnn3d.create_inp_plchldrs(
-                        model_config.segment_dim_inference, "test"
-                    )
-                    p_y_given_x = cnn3d.apply(inp_plchldrs, "infer", "test", verbose=True, log=self._log)
+                    cnn3d.make_cnn_model()  # Creates network's graph (no optimizer)
+                    input_placeholders, inp_shapes_per_path = cnn3d.create_input_placeholders("test")
+                    p_y_given_x = cnn3d.apply(input_placeholders, "infer", "test", verbose=True, log=self._log)
 
             self._log.print3("=========== Compiling the Testing Function ============")
             self._log.print3("=======================================================\n")
 
             cnn3d.setup_ops_n_feeds_to_test(
-                self._log, inp_plchldrs, p_y_given_x, self._params.inds_fms_per_pathtype_per_layer_to_save
+                self._log, input_placeholders, p_y_given_x, self._params.inds_fms_per_pathtype_per_layer_to_save
             )
             # Create the saver
             coll_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")

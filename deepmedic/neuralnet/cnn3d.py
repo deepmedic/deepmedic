@@ -14,6 +14,7 @@ from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
 from deepmedic.config.model import ModelConfig
+from deepmedic.logging.loggers import Logger
 
 ##################################################
 ##################################################
@@ -22,17 +23,19 @@ from deepmedic.config.model import ModelConfig
 ##################################################
 
 
-class Cnn3d(object):
-    def __init__(self):
-
-        self.cnn_model_name = None
+class Cnn3d:
+    def __init__(self, config: ModelConfig, log: Logger = None):
+        if log is None:
+            log = Logger()
+        self.log = log
+        self.config = config
 
         self.pathways = []  # There should be only 1 normal and only one FC pathway. Eg, see self.getFcPathway()
-        self.num_subs_paths = 0
+        self.num_subs_paths = len(self.config.subsampled_pathway_configs)
 
-        self.final_target_layer = ""
+        self.final_target_layer = None
 
-        self.num_classes = None
+        self.num_classes = self.config.n_classes
 
         # ======= Output tensors Y_GT ========
         # For each targetLayer, I should be placing a y_gt placeholder/feed.
@@ -71,8 +74,10 @@ class Cnn3d(object):
                 block.update_arrays_of_bn_moving_avg(sessionTf)  # Will do nothing if no BN.
 
     def _get_update_ops_for_bn_moving_avg(self):
-        # These are not the variables of the normalization of the FMs' distributions that are optimized during training. These are only the Mu and Stds that are used during inference,
-        # ... and here we update the sharedVariable which is used "from the outside during do_training()" to update the rolling-average-matrix for inference. Do for all layers.
+        # These are not the variables of the normalization of the FMs' distributions that are optimized during training.
+        # These are only the Mu and Stds that are used during inference,
+        # ... and here we update the sharedVariable which is used "from the outside during do_training()"
+        # to update the rolling-average-matrix for inference. Do for all layers.
         updates_for_bn_rolling_average = []
         for pathway in self.pathways:
             for block in pathway.get_blocks():
@@ -186,11 +191,20 @@ class Cnn3d(object):
 
         log.print3("Done.")
 
-    def create_inp_plchldrs(self, inp_dims, train_val_test):  # TODO: Remove for eager
+    def create_input_placeholders(self, train_val_test: str):  # TODO: Remove for eager
+        assert train_val_test in ["train", "val", "test"]
+        if train_val_test == "train":
+            inp_dims = self.config.segment_dim_train
+        elif train_val_test == "val":
+            inp_dims = self.config.segment_dim_val
+        elif train_val_test == "test":
+            inp_dims = self.config.segment_dim_inference
+        else:
+            raise ValueError("train_val_test must be in [\"train\", \"val\", \"test\"]")
         inp_shapes_per_path = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims)
-        return self._setup_inp_plchldrs(train_val_test, inp_shapes_per_path), inp_shapes_per_path
+        return self._setup_input_placeholders(train_val_test, inp_shapes_per_path), inp_shapes_per_path
 
-    def _setup_inp_plchldrs(self, train_val_test, inp_shapes_per_path):  # TODO: REMOVE for eager
+    def _setup_input_placeholders(self, train_val_test, inp_shapes_per_path):  # TODO: REMOVE for eager
         assert train_val_test in ["train", "val", "test"]
         input_placeholders = {}
         input_placeholders["x"] = tf.compat.v1.placeholder(
@@ -206,43 +220,40 @@ class Cnn3d(object):
             )
         return input_placeholders
 
-    def make_cnn_model(self, model_config: ModelConfig, log):
-        self.num_classes = model_config.n_classes
-        self.num_subs_paths = len(model_config.subsampled_pathway_configs)  # do I want this as attribute? Or function is ok?
-        # ==============================
+    def make_cnn_model(self):
         rng = np.random.RandomState(seed=None)
 
         ######################
         # BUILD ACTUAL MODEL #
         ######################
-        log.print3("...Building the CNN model...")
+        self.log.print3("...Building the CNN model...")
 
         # =======================Make the NORMAL PATHWAY of the CNN=======================
         this_pathway = NormalPathway()
         self.pathways.append(this_pathway)
         this_pathway.build(
-            log,
+            self.log,
             rng,
-            model_config.n_input_channels,
-            model_config.conv_w_init_type,
-            model_config.n_batches_for_bn_mov_avg,
-            model_config.activation_function,
-            model_config.normal_pathway_config
+            self.config.n_input_channels,
+            self.config.conv_w_init_type,
+            self.config.n_batches_for_bn_mov_avg,
+            self.config.activation_function,
+            self.config.normal_pathway_config
         )
 
         # =======================Make the SUBSAMPLED PATHWAYs of the CNN=============================
-        for subpath_config in model_config.subsampled_pathway_configs:
+        for subpath_config in self.config.subsampled_pathway_configs:
             this_pathway = SubsampledPathway(subpath_config.subsample_factor)
             self.pathways.append(
                 this_pathway
             )  # There will be at least an entry as a secondary pathway. But it won't have any layers if it was not actually used.
             this_pathway.build(
-                log,
+                self.log,
                 rng,
-                model_config.n_input_channels,
-                model_config.conv_w_init_type,
-                model_config.n_batches_for_bn_mov_avg,
-                model_config.activation_function,
+                self.config.n_input_channels,
+                self.config.conv_w_init_type,
+                self.config.n_batches_for_bn_mov_avg,
+                self.config.activation_function,
                 subpath_config,
             )
 
@@ -254,23 +265,23 @@ class Cnn3d(object):
         # ======================= Make the Fully Connected Layers =======================
         this_pathway = FcPathway()
         self.pathways.append(this_pathway)
-        fc_layers_config = model_config.fc_layers_config
+        fc_layers_config = self.config.fc_layers_config
         fc_layers_config.n_FMs_per_layer += [self.num_classes]
         this_pathway.build(
-            log,
+            self.log,
             rng,
             n_fms_inp_to_fc_path,
-            model_config.conv_w_init_type,
-            model_config.n_batches_for_bn_mov_avg,
-            model_config.activation_function,
+            self.config.conv_w_init_type,
+            self.config.n_batches_for_bn_mov_avg,
+            self.config.activation_function,
             fc_layers_config
         )
 
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
-        log.print3("Adding the final Softmax layer...")
+        self.log.print3("Adding the final Softmax layer...")
 
         self.final_target_layer = SoftmaxBlock()
-        self.final_target_layer.build(rng, self.get_fc_pathway().get_n_fms_out(), model_config.fc_layers_config.softmax_temperature)
+        self.final_target_layer.build(rng, self.get_fc_pathway().get_n_fms_out(), self.config.fc_layers_config.softmax_temperature)
         self.get_fc_pathway().get_block(-1).connect_target_block(self.final_target_layer)
 
         # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================
@@ -281,7 +292,7 @@ class Cnn3d(object):
             dtype="int32", shape=[None, None, None, None], name="y_val"
         )
 
-        log.print3("Finished building the CNN's model.")
+        self.log.print3("Finished building the CNN's model.")
 
     def apply(self, inputs_per_pathw, mode, train_val_test, verbose=True, log=None):
         # Currently applies it on the placeholders. TODO: On actual input.

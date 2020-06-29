@@ -102,19 +102,13 @@ class TrainSession(Session):
             # Explicit device assignment, throws an error if GPU is specified but not available.
             with tf.device(sess_device):
                 self._log.print3("=========== Making the CNN graph... ===============")
-                cnn3d = Cnn3d()
+                cnn3d = Cnn3d(config=model_config, log=self._log)
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model(model_config, self._log)
+                    cnn3d.make_cnn_model()
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
-                    inp_plchldrs_train, inp_shapes_per_path_train = cnn3d.create_inp_plchldrs(
-                        model_config.segment_dim_train, "train"
-                    )
-                    inp_plchldrs_val, inp_shapes_per_path_val = cnn3d.create_inp_plchldrs(
-                        model_config.segment_dim_val, "val"
-                    )
-                    inp_plchldrs_test, inp_shapes_per_path_test = cnn3d.create_inp_plchldrs(
-                        model_config.segment_dim_inference, "test"
-                    )
+                    inp_plchldrs_train, inp_shapes_per_path_train = cnn3d.create_input_placeholders("train")
+                    inp_plchldrs_val, inp_shapes_per_path_val = cnn3d.create_input_placeholders("val")
+                    inp_plchldrs_test, inp_shapes_per_path_test = cnn3d.create_input_placeholders("test")
                     p_y_given_x_train = cnn3d.apply(inp_plchldrs_train, "train", "train", verbose=True, log=self._log)
                     p_y_given_x_val = cnn3d.apply(inp_plchldrs_val, "infer", "val", verbose=True, log=self._log)
                     p_y_given_x_test = cnn3d.apply(inp_plchldrs_test, "infer", "test", verbose=True, log=self._log)
