@@ -13,7 +13,7 @@ import tensorflow as tf
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
 from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway
 from deepmedic.neuralnet.blocks import SoftmaxBlock
-
+from deepmedic.config.model import ModelConfig
 
 ##################################################
 ##################################################
@@ -28,7 +28,7 @@ class Cnn3d(object):
         self.cnn_model_name = None
 
         self.pathways = []  # There should be only 1 normal and only one FC pathway. Eg, see self.getFcPathway()
-        self.numSubsPaths = 0
+        self.num_subs_paths = 0
 
         self.final_target_layer = ""
 
@@ -129,7 +129,7 @@ class Cnn3d(object):
         self._ops_main["train"]["updates_grouped_op"] = updates_grouped_op
 
         self._feeds_main["train"]["x"] = inp_plchldrs["x"]
-        for subpath_i in range(self.numSubsPaths):  # if there are subsampled paths...
+        for subpath_i in range(self.num_subs_paths):  # if there are subsampled paths...
             self._feeds_main["train"]["x_sub_" + str(subpath_i)] = inp_plchldrs["x_sub_" + str(subpath_i)]
         self._feeds_main["train"]["y_gt"] = y_gt
 
@@ -147,7 +147,7 @@ class Cnn3d(object):
 
         self._feeds_main["val"] = {}
         self._feeds_main["val"]["x"] = inp_plchldrs["x"]
-        for subpath_i in range(self.numSubsPaths):  # if there are subsampled paths...
+        for subpath_i in range(self.num_subs_paths):  # if there are subsampled paths...
             self._feeds_main["val"]["x_sub_" + str(subpath_i)] = inp_plchldrs["x_sub_" + str(subpath_i)]
         self._feeds_main["val"]["y_gt"] = y_gt
 
@@ -181,7 +181,7 @@ class Cnn3d(object):
 
         self._feeds_main["test"] = {}
         self._feeds_main["test"]["x"] = inp_plchldrs["x"]
-        for subpath_i in range(self.numSubsPaths):  # if there are subsampled paths...
+        for subpath_i in range(self.num_subs_paths):  # if there are subsampled paths...
             self._feeds_main["test"]["x_sub_" + str(subpath_i)] = inp_plchldrs["x_sub_" + str(subpath_i)]
 
         log.print3("Done.")
@@ -198,7 +198,7 @@ class Cnn3d(object):
             shape=[None, self.pathways[0].get_n_fms_in()] + inp_shapes_per_path[0],
             name="inp_x_" + train_val_test,
         )
-        for subpath_i in range(self.numSubsPaths):  # if there are subsampled paths...
+        for subpath_i in range(self.num_subs_paths):  # if there are subsampled paths...
             input_placeholders["x_sub_" + str(subpath_i)] = tf.compat.v1.placeholder(
                 dtype="float32",
                 shape=[None, self.pathways[0].get_n_fms_in()] + inp_shapes_per_path[subpath_i + 1],
@@ -206,50 +206,9 @@ class Cnn3d(object):
             )
         return input_placeholders
 
-    def make_cnn_model(
-        self,
-        log,
-        cnn_model_name,
-        # === Model Parameters ===
-        number_of_output_classes,
-        n_img_channs,
-        # === Normal Pathway ===
-        nkerns,
-        kernel_dimensions,
-        pad_mode_per_l_norm,
-        # === Subsampled Pathway ===
-        # THESE NEXT TWO, ALONG WITH THE ONES FOR FC, COULD BE PUT IN ONE STRUCTURE WITH NORMAL, EG LIKE kerns = [ [kernsNorm], [kernsSub], [kernsFc]]
-        nkerns_subsampled,  # Used to control if secondary pathways: [] if no secondary pathways. Now its the "factors"
-        kernel_dimensions_subsampled,
-        pad_mode_per_l_subs,
-        subsample_factors_per_sub_path,  # Controls how many pathways: [] if no secondary pathways. Else, List of lists. One sublist per secondary pathway. Each sublist has 3 ints, the rcz subsampling factors.
-        # === FC Layers ===
-        fc_layers_FMs,
-        kernel_dimensions_fc,
-        pad_mode_per_l_fc,
-        softmax_temperature,
-        # === Other Architectural params ===
-        activation_func,
-        # ---Residual Connections----
-        indices_of_layers_to_connect_residuals_in_output,
-        # --Lower Rank Layer Per Pathway---
-        indices_of_lower_rank_layers_per_pathway,
-        ranks_of_lower_rank_layers_for_each_pathway,
-        # ---Pooling---
-        max_pooling_params_structure,
-        # === Others ===
-        # Dropout
-        dropout_rates_for_all_pathways,  # list of sublists, one for each pathway. Each either empty or full with the dropout rates of all the layers in the path.
-        # Initialization
-        conv_w_init_method,
-        # Batch Normalization
-        apply_bn_to_input_of_pathways,  # one Boolean flag per pathway type. Placeholder for the FC pathway.
-        moving_av_for_bn_over_x_batches,
-    ):
-
-        self.cnn_model_name = cnn_model_name
-        self.num_classes = number_of_output_classes
-        self.numSubsPaths = len(subsample_factors_per_sub_path)  # do I want this as attribute? Or function is ok?
+    def make_cnn_model(self, model_config: ModelConfig, log):
+        self.num_classes = model_config.n_classes
+        self.num_subs_paths = len(model_config.subsampled_pathway_configs)  # do I want this as attribute? Or function is ok?
         # ==============================
         rng = np.random.RandomState(seed=None)
 
@@ -261,74 +220,30 @@ class Cnn3d(object):
         # =======================Make the NORMAL PATHWAY of the CNN=======================
         this_pathway = NormalPathway()
         self.pathways.append(this_pathway)
-        this_pathway_type = this_pathway.pType()
-        this_pathway_n_kerns = nkerns
-        this_pathway_kernel_dimensions = kernel_dimensions
-        this_pathway_num_of_layers = len(this_pathway_n_kerns)
-        this_pathway_conv_pad_mode_per_layer = pad_mode_per_l_norm
-        this_pathway_use_bn_per_layer = [moving_av_for_bn_over_x_batches > 0] * this_pathway_num_of_layers
-        this_pathway_use_bn_per_layer[0] = (
-            apply_bn_to_input_of_pathways[this_pathway_type] if moving_av_for_bn_over_x_batches > 0 else False
-        )  # For the 1st layer, ask specific flag.
-        this_pathway_activ_func_per_layer = [activation_func] * this_pathway_num_of_layers
-        this_pathway_activ_func_per_layer[0] = (
-            "linear" if this_pathway_type != pt.FC else activation_func
-        )  # To not apply activation on raw input. -1 is linear activation.
-
         this_pathway.build(
             log,
             rng,
-            n_img_channs,
-            this_pathway_n_kerns,
-            this_pathway_kernel_dimensions,
-            conv_w_init_method,
-            this_pathway_conv_pad_mode_per_layer,
-            this_pathway_use_bn_per_layer,
-            moving_av_for_bn_over_x_batches,
-            this_pathway_activ_func_per_layer,
-            dropout_rates_for_all_pathways[this_pathway_type],
-            max_pooling_params_structure[this_pathway_type],
-            indices_of_lower_rank_layers_per_pathway[this_pathway_type],
-            ranks_of_lower_rank_layers_for_each_pathway[this_pathway_type],
-            indices_of_layers_to_connect_residuals_in_output[this_pathway_type],
+            model_config.n_input_channels,
+            model_config.conv_w_init_type,
+            model_config.n_batches_for_bn_mov_avg,
+            model_config.activation_function,
+            model_config.normal_pathway_config
         )
 
         # =======================Make the SUBSAMPLED PATHWAYs of the CNN=============================
-        for subpath_i in range(self.numSubsPaths):
-            this_pathway = SubsampledPathway(subsample_factors_per_sub_path[subpath_i])
+        for subpath_config in model_config.subsampled_pathway_configs:
+            this_pathway = SubsampledPathway(subpath_config.subsample_factor)
             self.pathways.append(
                 this_pathway
             )  # There will be at least an entry as a secondary pathway. But it won't have any layers if it was not actually used.
-            this_pathway_type = this_pathway.pType()
-            this_pathway_n_kerns = nkerns_subsampled[subpath_i]
-            this_pathway_kernel_dimensions = kernel_dimensions_subsampled
-            this_pathway_num_of_layers = len(this_pathway_n_kerns)
-            this_pathway_conv_pad_mode_per_layer = pad_mode_per_l_subs
-            this_pathway_use_bn_per_layer = [moving_av_for_bn_over_x_batches > 0] * this_pathway_num_of_layers
-            this_pathway_use_bn_per_layer[0] = (
-                apply_bn_to_input_of_pathways[this_pathway_type] if moving_av_for_bn_over_x_batches > 0 else False
-            )  # For the 1st layer, ask specific flag.
-            this_pathway_activ_func_per_layer = [activation_func] * this_pathway_num_of_layers
-            this_pathway_activ_func_per_layer[0] = (
-                "linear" if this_pathway_type != pt.FC else activation_func
-            )  # To not apply activation on raw input. -1 is linear activation.
-
             this_pathway.build(
                 log,
                 rng,
-                n_img_channs,
-                this_pathway_n_kerns,
-                this_pathway_kernel_dimensions,
-                conv_w_init_method,
-                this_pathway_conv_pad_mode_per_layer,
-                this_pathway_use_bn_per_layer,
-                moving_av_for_bn_over_x_batches,
-                this_pathway_activ_func_per_layer,
-                dropout_rates_for_all_pathways[this_pathway_type],
-                max_pooling_params_structure[this_pathway_type],
-                indices_of_lower_rank_layers_per_pathway[this_pathway_type],
-                ranks_of_lower_rank_layers_for_each_pathway[this_pathway_type],
-                indices_of_layers_to_connect_residuals_in_output[this_pathway_type],
+                model_config.n_input_channels,
+                model_config.conv_w_init_type,
+                model_config.n_batches_for_bn_mov_avg,
+                model_config.activation_function,
+                subpath_config,
             )
 
         # ====================================CONCATENATE the output of the 2 cnn-pathways=============================
@@ -339,43 +254,23 @@ class Cnn3d(object):
         # ======================= Make the Fully Connected Layers =======================
         this_pathway = FcPathway()
         self.pathways.append(this_pathway)
-        this_pathway_type = this_pathway.pType()
-        this_pathway_n_kerns = fc_layers_FMs + [self.num_classes]
-        this_pathway_kernel_dimensions = kernel_dimensions_fc
-        this_pathway_num_of_layers = len(this_pathway_n_kerns)
-        this_pathway_conv_pad_mode_per_layer = pad_mode_per_l_fc
-        this_pathway_use_bn_per_layer = [moving_av_for_bn_over_x_batches > 0] * this_pathway_num_of_layers
-        this_pathway_use_bn_per_layer[0] = (
-            apply_bn_to_input_of_pathways[this_pathway_type] if moving_av_for_bn_over_x_batches > 0 else False
-        )  # For the 1st layer, ask specific flag.
-        this_pathway_activ_func_per_layer = [activation_func] * this_pathway_num_of_layers
-        this_pathway_activ_func_per_layer[0] = (
-            "linear" if this_pathway_type != pt.FC else activation_func
-        )  # To not apply activation on raw input. -1 is linear activation.
-
+        fc_layers_config = model_config.fc_layers_config
+        fc_layers_config.n_FMs_per_layer += [self.num_classes]
         this_pathway.build(
             log,
             rng,
             n_fms_inp_to_fc_path,
-            this_pathway_n_kerns,
-            this_pathway_kernel_dimensions,
-            conv_w_init_method,
-            this_pathway_conv_pad_mode_per_layer,
-            this_pathway_use_bn_per_layer,
-            moving_av_for_bn_over_x_batches,
-            this_pathway_activ_func_per_layer,
-            dropout_rates_for_all_pathways[this_pathway_type],
-            max_pooling_params_structure[this_pathway_type],
-            indices_of_lower_rank_layers_per_pathway[this_pathway_type],
-            ranks_of_lower_rank_layers_for_each_pathway[this_pathway_type],
-            indices_of_layers_to_connect_residuals_in_output[this_pathway_type],
+            model_config.conv_w_init_type,
+            model_config.n_batches_for_bn_mov_avg,
+            model_config.activation_function,
+            fc_layers_config
         )
 
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
         log.print3("Adding the final Softmax layer...")
 
         self.final_target_layer = SoftmaxBlock()
-        self.final_target_layer.build(rng, self.get_fc_pathway().get_n_fms_out(), softmax_temperature)
+        self.final_target_layer.build(rng, self.get_fc_pathway().get_n_fms_out(), model_config.fc_layers_config.softmax_temperature)
         self.get_fc_pathway().get_block(-1).connect_target_block(self.final_target_layer)
 
         # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================
@@ -400,7 +295,7 @@ class Cnn3d(object):
         fms_from_paths_to_concat = [out]
 
         # === Subsampled pathways =========
-        for subpath_i in range(self.numSubsPaths):
+        for subpath_i in range(self.num_subs_paths):
             input = inputs_per_pathw["x_sub_" + str(subpath_i)]
             this_pathway = self.pathways[subpath_i + 1]
             out_lr = this_pathway.apply(input, mode, train_val_test, verbose, log)

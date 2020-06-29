@@ -3,7 +3,6 @@ from pathlib import Path
 from collections import defaultdict
 from deepmedic.config.model import ModelConfig, PathWayConfig, SubsampledPathwayConfig, FCLayersConfig
 from deepmedic.config.input.exceptions import ModelCfgListOfListException
-from deepmedic.config.input.assertion import assert_input_model_config
 
 
 class InputModelConfig:
@@ -208,4 +207,5 @@ class InputModelConfig:
         )
 
     def assert_config(self):
+        from deepmedic.config.input.assertion import assert_input_model_config
         assert_input_model_config(self)

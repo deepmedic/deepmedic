@@ -16,6 +16,7 @@ from deepmedic.frontEnd.configParsing.testSessionParams import TestSessionParame
 from deepmedic.frontEnd.sessHelpers import make_folders_for_test_session, handle_exception_tf_restore
 from deepmedic.neuralnet.cnn3d import Cnn3d
 from deepmedic.routines.testing import inference_on_whole_volumes
+from deepmedic.config.model import ModelConfig
 
 
 class TestSession(Session):
@@ -35,15 +36,14 @@ class TestSession(Session):
             self._main_out_folder_abs, self._session_name
         )
 
-    def compile_session_params_from_cfg(self, *args):
-        (model_params,) = args
+    def compile_session_params_from_cfg(self, model_config: ModelConfig):
 
         self._params = TestSessionParameters(
             self._log,
             self._main_out_folder_abs,
             self._out_folder_preds,
             self._out_folder_fms,
-            model_params.get_n_classes(),
+            model_config.n_classes,
             self._cfg,
         )
 
@@ -80,8 +80,7 @@ class TestSession(Session):
             print("Exiting as requested.")
             exit(0)
 
-    def run_session(self, *args):
-        (sess_device, model_params,) = args
+    def run_session(self, sess_device, model_config: ModelConfig):
 
         graphTf = tf.Graph()
 
@@ -90,9 +89,9 @@ class TestSession(Session):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model(*model_params.get_args_for_arch())  # Creates network's graph (no optimizer)
+                    cnn3d.make_cnn_model(model_config, self._log)  # Creates network's graph (no optimizer)
                     inp_plchldrs, inp_shapes_per_path = cnn3d.create_inp_plchldrs(
-                        model_params.get_inp_dims_hr_path("test"), "test"
+                        model_config.segment_dim_inference, "test"
                     )
                     p_y_given_x = cnn3d.apply(inp_plchldrs, "infer", "test", verbose=True, log=self._log)
 

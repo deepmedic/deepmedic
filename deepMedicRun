@@ -26,7 +26,9 @@ from deepmedic.frontEnd.testSession import TestSession
 from deepmedic.frontEnd.configParsing.modelParams import ModelParameters
 
 from tensorflow.python.client import device_lib
-
+from deepmedic.config.input import InputModelConfig
+# from deepmedic.config.model import ModelConfig
+from pathlib import Path
 
 OPT_MODEL = "-model"
 OPT_TRAIN = "-train"
@@ -139,6 +141,9 @@ if __name__ == '__main__':
     if args.model_cfg:
         abs_path_model_cfg = abs_from_rel_path(args.model_cfg, cwd)
         model_cfg = ModelConfig(abs_path_model_cfg)
+        input_model_config = InputModelConfig.from_cfg_file(Path(abs_path_model_cfg))
+        input_model_config.assert_config()
+        model_config = input_model_config.to_model_config()
         
     # Create session.
     if args.train_cfg:
@@ -165,19 +170,18 @@ if __name__ == '__main__':
     try:
         #Find out what session we are being asked to perform:
         if args.model_cfg: # Should be always true.
-            log.print3("CONFIG: The configuration file for the [model] given is: " + str(model_cfg.get_abs_path_to_cfg()))
-            model_params = ModelParameters(log, model_cfg)
-            model_params.print_params()
+            log.print3("CONFIG: The configuration file for the [model] given is: " + str(abs_path_model_cfg))
+            model_config.print_params(log)
             
         # Sessions
         log.print3("CONFIG: The configuration file for the [session] was loaded from: " + str(session.get_abs_path_to_cfg()))
         session.override_file_cfg_with_cmd_line_cfg(args)
-        _ = session.compile_session_params_from_cfg(model_params)
+        _ = session.compile_session_params_from_cfg(model_config)
         
         if args.train_cfg:
-            session.run_session(sess_device, model_params, args.reset_trainer)
+            session.run_session(sess_device, model_config, args.reset_trainer)
         elif args.test_cfg:
-            session.run_session(sess_device, model_params)
+            session.run_session(sess_device, model_config)
         # All done.
     except (Exception, KeyboardInterrupt) as e:
         log.print3("")

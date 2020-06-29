@@ -19,26 +19,28 @@ class PathwayWrapperForSampling(object):
 
     def pType(self):
         return self._pType
+
     def subs_factor(self):
         return self._subs_factor
-    def rec_field(self): # Used by sampling of low-res context (old version) during training.
+
+    def rec_field(self):
+        # Used by sampling of low-res context (old version) during training.
         return self._rec_field
+
 
 class CnnWrapperForSampling(object):
     # Only for the parallel process used during training. So that it won't re-load theano/tensorflow etc.
     # There was a problem with cnmem when reloading theano.
-    def __init__(self, cnn3d) :
+    def __init__(self, cnn3d):
         # Cnn
         self.num_classes = cnn3d.num_classes
         # Pathways related
         self._numPathwaysThatRequireInput = cnn3d.get_num_pathways_that_require_input()
-        self.numSubsPaths = cnn3d.numSubsPaths
+        self.numSubsPaths = cnn3d.num_subs_paths
         
         self.pathways = []
         for pathway_i in range(len(cnn3d.pathways)) :
             self.pathways.append( PathwayWrapperForSampling(cnn3d.pathways[pathway_i]) )
         
-    def getNumPathwaysThatRequireInput(self) :
+    def getNumPathwaysThatRequireInput(self):
         return self._numPathwaysThatRequireInput
-    
-    

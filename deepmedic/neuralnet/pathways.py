@@ -15,18 +15,19 @@ import tensorflow as tf
 from deepmedic.neuralnet.pathwayTypes import PathwayTypes
 from deepmedic.neuralnet.blocks import ConvBlock, LowRankConvBlock
 import deepmedic.neuralnet.ops as ops
-
+from deepmedic.config.model import PathWayConfig
 
 #################################################################
 #                        Classes of Pathways                    #
 #################################################################
 
-class Pathway(object):
+
+class Pathway:
     # This is a virtual class.
 
     def __init__(self, pName=None) :
         self._pName = pName
-        self._pType = None # Pathway Type.
+        self._pType = None  # Pathway Type.
 
         # === Input to the pathway ===
         self._n_fms_in = None
@@ -41,6 +42,7 @@ class Pathway(object):
     # Getters
     def get_n_fms_in(self):
         return self._n_fms_in
+
     def get_n_fms_out(self):
         return self._n_fms_out
 
@@ -96,81 +98,80 @@ class Pathway(object):
             inp_dims_deeper_block = block.calc_inp_dims_given_outp(inp_dims_deeper_block)
         return inp_dims_deeper_block
 
-    def build(self,
-              log,
-              rng,
-              n_input_channels,
-              num_kerns_per_layer,
-              conv_kernel_dims_per_layer,
-              conv_w_init_method,
-              conv_pad_mode_per_layer,
-              use_bn_per_layer, # As a flag for case that I want to apply BN on input image. I want to apply to input of FC.
-              moving_avg_length,
-              activ_func_per_layer,
-              dropout_rate_per_layer=[],
-              pool_prms_for_path = [],
-              inds_of_lower_rank_convs=[],
-              ranks_of_lower_rank_convs = [],
-              inds_of_blocks_for_res_conns_at_out=[]
-              ):
+    def build(self, log, rng, n_input_channels, conv_w_init_method, n_batches_for_bn_mov_avg, activation_function, pathway_config: PathWayConfig):
+        use_bn_per_layer = [n_batches_for_bn_mov_avg > 0] * len(pathway_config.n_FMs_per_layer)
+        use_bn_per_layer[0] = (
+            pathway_config.apply_bn if n_batches_for_bn_mov_avg > 0 else False
+        )  # For the 1st layer, ask specific flag.
+
+        activ_func_per_layer = [activation_function] * len(pathway_config.n_FMs_per_layer)
+        activ_func_per_layer[0] = (
+            "linear" if self.pType() != PathwayTypes.FC else activation_function
+        )  # To not apply activation on raw input. -1 is linear activation.
         log.print3("[Pathway_" + str(self.getStringType()) + "] is being built...")
 
         self._n_fms_in = n_input_channels
-        self._inds_of_blocks_for_res_conns_at_out = inds_of_blocks_for_res_conns_at_out
+        self._inds_of_blocks_for_res_conns_at_out = pathway_config.res_conn
 
         n_fms_input_to_prev_layer = None
         n_fms_input_to_next_layer = n_input_channels
-        n_blocks = len(num_kerns_per_layer)
+        n_blocks = len(pathway_config.n_FMs_per_layer)
         for layer_i in range(0, n_blocks) :
 
-            if layer_i in inds_of_lower_rank_convs :
-                block = LowRankConvBlock(ranks_of_lower_rank_convs[ inds_of_lower_rank_convs.index(layer_i) ])
-            else : # normal conv block
+            if layer_i in pathway_config.lower_rank :
+                block = LowRankConvBlock(pathway_config.rank_of_lower_rank)
+            else:  # normal conv block
                 block = ConvBlock()
 
             log.print3("\tBlock [" + str(layer_i) + "], FMs-In: " + str(n_fms_input_to_next_layer) +\
-                                               ", FMs-Out: " + str(num_kerns_per_layer[layer_i]) +\
-                                               ", Conv Filter dimensions: " + str(conv_kernel_dims_per_layer[layer_i]))
+                                               ", FMs-Out: " + str(pathway_config.n_FMs_per_layer[layer_i]) +\
+                                               ", Conv Filter dimensions: " + str(pathway_config.kernel_dims_per_layer[layer_i]))
             block.build(rng,
                         n_fms_in=n_fms_input_to_next_layer,
-                        n_fms_out=num_kerns_per_layer[layer_i],
-                        conv_kernel_dims=conv_kernel_dims_per_layer[layer_i],
-                        pool_prms=pool_prms_for_path[layer_i],
+                        n_fms_out=pathway_config.n_FMs_per_layer[layer_i],
+                        conv_kernel_dims=pathway_config.kernel_dims_per_layer[layer_i],
+                        pool_prms=pathway_config.mp_params[layer_i],
                         conv_w_init_method=conv_w_init_method,
-                        conv_pad_mode=conv_pad_mode_per_layer[layer_i] if len(conv_pad_mode_per_layer) > 0 else None,
+                        conv_pad_mode=pathway_config.pad_mode_per_layer[layer_i] if len(pathway_config.pad_mode_per_layer) > 0 else None,
                         use_bn=use_bn_per_layer[layer_i],
-                        moving_avg_length=moving_avg_length,
+                        moving_avg_length=n_batches_for_bn_mov_avg,
                         activ_func=activ_func_per_layer[layer_i],
-                        dropout_rate=dropout_rate_per_layer[layer_i] if len(dropout_rate_per_layer) > 0 else 0
+                        dropout_rate=pathway_config.dropout[layer_i] if len(pathway_config.dropout) > 0 else 0
                         )
             self._blocks.append(block)
 
             n_fms_input_to_prev_layer = n_fms_input_to_next_layer
-            n_fms_input_to_next_layer = num_kerns_per_layer[layer_i]
+            n_fms_input_to_next_layer = pathway_config.n_FMs_per_layer[layer_i]
 
         self._n_fms_out = n_fms_input_to_next_layer
-
 
     # Getters
     def pName(self):
         return self._pName
+
     def pType(self):
         return self._pType
+
     def get_blocks(self):
         return self._blocks
+
     def get_block(self, index):
         return self._blocks[index]
+
     def subs_factor(self):
         return self._subs_factor
 
     # Other API :
-    def getStringType(self) : raise NotImplementedMethod() # Abstract implementation. Children classes should implement this.
+    def getStringType(self):
+        # Abstract implementation. Children classes should implement this.
+        raise NotImplementedError()
 
 
 class NormalPathway(Pathway):
     def __init__(self, pName=None):
         Pathway.__init__(self, pName)
         self._pType = PathwayTypes.NORM
+
     # Override parent's abstract classes.
     def getStringType(self):
         return "NORMAL"
@@ -186,8 +187,8 @@ class SubsampledPathway(Pathway):
         # shape_to_match: list of dimensions x,y,z to match, eg by cropping after upsampling. [dimx, dimy, dimz]
         return ops.upsample_5D_tens_and_crop(input, self.subs_factor(), upsampl_type, shape_to_match)
 
-    # OVERRIDING parent's classes.
     def getStringType(self):
+        # OVERRIDING parent's classes.
         return "SUBSAMPLED" + str(self.subs_factor())
 
     def calc_inp_dims_given_outp_after_upsample(self, outp_dims_in_hr):
@@ -195,10 +196,12 @@ class SubsampledPathway(Pathway):
         inp_dims_req = self.calc_inp_dims_given_outp(outp_dims_in_lr)
         return inp_dims_req
 
+
 class FcPathway(Pathway):
     def __init__(self, pName=None):
         Pathway.__init__(self, pName)
         self._pType = PathwayTypes.FC
-    # Override parent's abstract classes.
+
     def getStringType(self):
+        # Override parent's abstract classes.
         return "FC"

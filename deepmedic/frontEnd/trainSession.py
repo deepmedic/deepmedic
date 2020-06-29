@@ -21,7 +21,8 @@ from deepmedic.neuralnet.trainer import Trainer
 from deepmedic.routines.training import do_training
 
 from deepmedic.logging.tensorboard_logger import TensorboardLogger
-
+from deepmedic.config.model import ModelConfig
+from deepmedic.logging.loggers import Logger
 import tensorflow as tf
 
 
@@ -74,8 +75,7 @@ class TrainSession(Session):
             self._log.print3(str(entry))
         self._log.print3("==== Done printing variables of collection. ====\n")
 
-    def compile_session_params_from_cfg(self, *args):
-        (model_params,) = args
+    def compile_session_params_from_cfg(self, model_config: ModelConfig):
 
         self._params = TrainSessionParameters(
             self._log,
@@ -83,8 +83,8 @@ class TrainSession(Session):
             self._out_folder_models,
             self._out_folder_preds,
             self._out_folder_fms,
-            model_params.get_n_classes(),
-            model_params.get_model_name(),
+            model_config.n_classes,
+            model_config.model_name,
             self._cfg,
         )
 
@@ -95,7 +95,7 @@ class TrainSession(Session):
 
         return self._params
 
-    def run_session(self, sess_device: str, model_params: ModelParameters, reset_trainer: bool):
+    def run_session(self, sess_device: str, model_config: ModelConfig, reset_trainer: bool):
         graphTf = tf.Graph()
 
         with graphTf.as_default():
@@ -104,16 +104,16 @@ class TrainSession(Session):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d()
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model(*model_params.get_args_for_arch())
+                    cnn3d.make_cnn_model(model_config, self._log)
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
                     inp_plchldrs_train, inp_shapes_per_path_train = cnn3d.create_inp_plchldrs(
-                        model_params.get_inp_dims_hr_path("train"), "train"
+                        model_config.segment_dim_train, "train"
                     )
                     inp_plchldrs_val, inp_shapes_per_path_val = cnn3d.create_inp_plchldrs(
-                        model_params.get_inp_dims_hr_path("val"), "val"
+                        model_config.segment_dim_val, "val"
                     )
                     inp_plchldrs_test, inp_shapes_per_path_test = cnn3d.create_inp_plchldrs(
-                        model_params.get_inp_dims_hr_path("test"), "test"
+                        model_config.segment_dim_inference, "test"
                     )
                     p_y_given_x_train = cnn3d.apply(inp_plchldrs_train, "train", "train", verbose=True, log=self._log)
                     p_y_given_x_val = cnn3d.apply(inp_plchldrs_val, "infer", "val", verbose=True, log=self._log)

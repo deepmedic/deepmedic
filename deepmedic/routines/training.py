@@ -53,7 +53,7 @@ def process_in_batches(log,
 
             feeds = cnn3d.get_main_feeds('train')
             feeds_dict = {feeds['x']: channs_samples_per_path[0][min_idx_batch: max_idx_batch]}
-            for subs_path_i in range(cnn3d.numSubsPaths):
+            for subs_path_i in range(cnn3d.num_subs_paths):
                 x_batch_sub_path = channs_samples_per_path[subs_path_i + 1][min_idx_batch: max_idx_batch]
                 feeds_dict.update({feeds['x_sub_' + str(subs_path_i)]: x_batch_sub_path})
             feeds_dict.update({feeds['y_gt']: lbls_samples_per_path[min_idx_batch: max_idx_batch]})
@@ -74,7 +74,7 @@ def process_in_batches(log,
 
             feeds = cnn3d.get_main_feeds('val')
             feeds_dict = {feeds['x']: channs_samples_per_path[0][min_idx_batch: max_idx_batch]}
-            for subs_path_i in range(cnn3d.numSubsPaths):
+            for subs_path_i in range(cnn3d.num_subs_paths):
                 x_batch_sub_path = channs_samples_per_path[subs_path_i + 1][min_idx_batch: max_idx_batch]
                 feeds_dict.update({feeds['x_sub_' + str(subs_path_i)]: x_batch_sub_path})
             feeds_dict.update({feeds['y_gt']: lbls_samples_per_path[min_idx_batch: max_idx_batch]})
