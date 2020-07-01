@@ -19,7 +19,7 @@ from deepmedic.logging.accuracyMonitor import AccuracyMonitorForEpSegm
 from deepmedic.neuralnet.wrappers import CnnWrapperForSampling
 from deepmedic.dataManagement.sampling import get_samples_for_subepoch
 from deepmedic.routines.testing import inference_on_whole_volumes
-
+from deepmedic.neuralnet.cnn3d import Cnn3d
 from deepmedic.logging.utils import datetime_now_str, print_progress_step_tr_val
 
 
@@ -109,7 +109,7 @@ def process_in_batches(log,
 # ------------------------------ MAIN TRAINING ROUTINE -------------------------------------
 def do_training(sessionTf,
                 saver_all,
-                cnn3d,
+                cnn3d: Cnn3d,
                 trainer,
                 tensorboard_loggers,
                 
