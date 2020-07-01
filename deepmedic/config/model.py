@@ -5,6 +5,90 @@ from deepmedic.config import BaseConfig
 from deepmedic.config.utils import calc_rec_field_of_path_assuming_strides_1
 
 
+class ConvBlockConfig(BaseConfig):
+    __slots__ = [
+        "n_fm_in",
+        "n_fm_out",
+        "kernel_dims",
+        "pool_params",
+        "pad_mode",
+        "apply_bn",
+        "bn_moving_avg_length",
+        "activation_function",
+        "dropout",
+        "w_init_type",
+    ]
+
+    def __init__(
+        self,
+        n_fm_in: int,
+        n_fm_out: int,
+        kernel_dims: List[int],
+        apply_bn: bool,
+        pad_mode: str = None,
+        pool_params: List = None,
+        dropout: float = None,
+        bn_moving_avg_length: int = None,
+        activation_function: str = None,
+        w_init_type: List = None
+    ):
+        self.n_fm_in = n_fm_in
+        self.n_fm_out = n_fm_out
+        self.kernel_dims = kernel_dims
+        self.apply_bn = apply_bn
+
+        self.activation_function = self._get_str(activation_function, default="prelu")
+        self.pool_params = self._get_list(pool_params, default=[])
+        self.dropout = self._get_float(dropout, default=None)
+        self.bn_moving_avg_length = self._get_int(bn_moving_avg_length, default=60)
+        self.pad_mode = self._get_str(pad_mode, default="VALID")
+        self.w_init_type = self._get_list(w_init_type, default=["fanIn", 2])
+
+
+class LowerRankConvBlockConfig(ConvBlockConfig):
+    __slots__ = [
+        "n_fm_in",
+        "n_fm_out",
+        "kernel_dims",
+        "pool_params",
+        "pad_mode",
+        "apply_bn",
+        "bn_moving_avg_length",
+        "activation_function",
+        "dropout",
+        "w_init_type",
+        "rank",
+    ]
+
+    def __init__(
+        self,
+        n_fm_in: int,
+        n_fm_out: int,
+        kernel_dims: List[int],
+        apply_bn: bool,
+        pad_mode: str = None,
+        pool_params: List = None,
+        dropout: float = None,
+        bn_moving_avg_length: int = None,
+        activation_function: str = None,
+        w_init_type: List = None,
+        rank: int = None
+    ):
+        super().__init__(
+            n_fm_in=n_fm_in,
+            n_fm_out=n_fm_out,
+            kernel_dims=kernel_dims,
+            apply_bn=apply_bn,
+            pad_mode=pad_mode,
+            pool_params=pool_params,
+            dropout=dropout,
+            bn_moving_avg_length=bn_moving_avg_length,
+            activation_function=activation_function,
+            w_init_type=w_init_type,
+        )
+        self.rank = self._get_int(rank, default=2)
+
+
 class PathWayConfig(BaseConfig):
     __slots__ = [
         "n_FMs_per_layer",
