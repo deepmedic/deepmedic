@@ -89,9 +89,9 @@ class TestSession(Session):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d(config=model_config, log=self._log)
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model()  # Creates network's graph (no optimizer)
+                    cnn3d.build()  # Creates network's graph (no optimizer)
                     input_placeholders, inp_shapes_per_path = cnn3d.create_input_placeholders("test")
-                    p_y_given_x = cnn3d.apply(input_placeholders, "infer", "test", verbose=True, log=self._log)
+                    p_y_given_x = cnn3d.apply(input_placeholders, "infer", "test", verbose=True)
 
             self._log.print3("=========== Compiling the Testing Function ============")
             self._log.print3("=======================================================\n")

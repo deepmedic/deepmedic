@@ -104,14 +104,14 @@ class TrainSession(Session):
                 self._log.print3("=========== Making the CNN graph... ===============")
                 cnn3d = Cnn3d(config=model_config, log=self._log)
                 with tf.compat.v1.variable_scope("net"):
-                    cnn3d.make_cnn_model()
+                    cnn3d.build()
                     # I have now created the CNN graph. But not yet the Optimizer's graph.
                     inp_plchldrs_train, inp_shapes_per_path_train = cnn3d.create_input_placeholders("train")
                     inp_plchldrs_val, inp_shapes_per_path_val = cnn3d.create_input_placeholders("val")
                     inp_plchldrs_test, inp_shapes_per_path_test = cnn3d.create_input_placeholders("test")
-                    p_y_given_x_train = cnn3d.apply(inp_plchldrs_train, "train", "train", verbose=True, log=self._log)
-                    p_y_given_x_val = cnn3d.apply(inp_plchldrs_val, "infer", "val", verbose=True, log=self._log)
-                    p_y_given_x_test = cnn3d.apply(inp_plchldrs_test, "infer", "test", verbose=True, log=self._log)
+                    p_y_given_x_train = cnn3d.apply(inp_plchldrs_train, "train", "train", verbose=True)
+                    p_y_given_x_val = cnn3d.apply(inp_plchldrs_val, "infer", "val", verbose=True)
+                    p_y_given_x_test = cnn3d.apply(inp_plchldrs_test, "infer", "test", verbose=True)
 
             # No explicit device assignment for the rest.
             # Because trained has piecewise_constant that is only on cpu, and so is saver.
@@ -129,7 +129,6 @@ class TrainSession(Session):
             self._log.print3("=========== Compiling the Training Function ===========")
             self._log.print3("=======================================================\n")
             cnn3d.setup_ops_n_feeds_to_train(
-                self._log,
                 inp_plchldrs_train,
                 p_y_given_x_train,
                 trainer.get_total_cost(),
@@ -137,12 +136,12 @@ class TrainSession(Session):
             )
 
             self._log.print3("=========== Compiling the Validation Function =========")
-            cnn3d.setup_ops_n_feeds_to_val(self._log, inp_plchldrs_val, p_y_given_x_val)
+            cnn3d.setup_ops_n_feeds_to_val(inp_plchldrs_val, p_y_given_x_val)
 
             self._log.print3("=========== Compiling the Testing Function ============")
             # For validation with full segmentation
             cnn3d.setup_ops_n_feeds_to_test(
-                self._log, inp_plchldrs_test, p_y_given_x_test, self._params.inds_fms_per_pathtype_per_layer_to_save
+                inp_plchldrs_test, p_y_given_x_test, self._params.inds_fms_per_pathtype_per_layer_to_save
             )
 
             # Create the savers
