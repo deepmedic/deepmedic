@@ -247,7 +247,6 @@ class ModelConfig(BaseConfig):
         n_classes: int,
         n_input_channels: int,
         normal_pathway_config: PathWayConfig,
-        use_subsampled_path: bool,
         subsampled_pathway_configs: List[SubsampledPathwayConfig],
         fc_layers_config: FCLayersConfig,
         segment_dim_train: List[int],
@@ -262,7 +261,6 @@ class ModelConfig(BaseConfig):
         self.n_classes = n_classes
         self.n_input_channels = n_input_channels
         self.normal_pathway_config = normal_pathway_config
-        self.use_subsampled_path = use_subsampled_path
         self.subsampled_pathway_configs = subsampled_pathway_configs
         self.fc_layers_config = fc_layers_config
         self.activation_function = self._get_str(activation_function, default="prelu")
@@ -305,7 +303,8 @@ class ModelConfig(BaseConfig):
         logger_print("Lower Rank layers will be made of rank = " + str(self.normal_pathway_config.rank_of_lower_rank))
 
         logger_print("~~Subsampled Pathway~~")
-        logger_print("Use subsampled Pathway = " + str(self.use_subsampled_path))
+        use_subsampled_path = self.subsampled_pathway_configs is not None
+        logger_print("Use subsampled Pathway = " + str(use_subsampled_path))
         logger_print("Number of subsampled pathways that will be built = " + str(len(self.subsampled_pathway_configs)))
         logger_print(
             "Number of Layers (per sub-pathway) = "

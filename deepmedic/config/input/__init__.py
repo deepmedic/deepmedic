@@ -195,7 +195,6 @@ class InputModelConfig:
             n_classes=self.n_classes,
             n_input_channels=self.n_input_channels,
             normal_pathway_config=normal_pathway_config,
-            use_subsampled_path=use_subs_paths,
             subsampled_pathway_configs=subsampled_pathway_configs,
             fc_layers_config=fc_layers_config,
             activation_function=self.activ_func,
