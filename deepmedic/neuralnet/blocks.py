@@ -6,7 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-from typing import List, Union
+from typing import List
 import tensorflow as tf
 import numpy as np
 import deepmedic.neuralnet.layers as dm_layers
@@ -311,11 +311,3 @@ class SoftmaxBlock(Block):
             return mean_error #The percentage of the predictions that is not the correct class.
         else:
             raise NotImplementedError("Not implemented behaviour for y_gt.dtype different than int.")
-
-
-class ConvBlockIterator:
-    def __init__(self, blocks: List[Union[ConvBlock, LowRankConvBlock]]):
-        self._blocks = iter(blocks)
-
-    def __next__(self) -> Union[ConvBlock, LowRankConvBlock]:
-        return next(self._blocks)

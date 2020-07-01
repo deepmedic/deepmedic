@@ -9,9 +9,7 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 
 import tensorflow as tf
-from typing import List
-from deepmedic.neuralnet.pathwayTypes import PathwayTypes as pt
-from deepmedic.neuralnet.pathways import NormalPathway, SubsampledPathway, FcPathway, Pathways
+from deepmedic.neuralnet.pathways import Pathways
 from deepmedic.neuralnet.blocks import SoftmaxBlock
 from deepmedic.config.model import ModelConfig
 from deepmedic.logging.loggers import Logger
@@ -49,7 +47,7 @@ class Cnn3d:
             rng=self._rng,
         )
         self.final_target_layer = SoftmaxBlock(
-            n_fms=self.pathways.get_fc_pathway().get_n_fms_out(),
+            n_fms=self.pathways.fc_pathway().get_n_fms_out(),
             temperature=self.config.fc_layers_config.softmax_temperature
         )
 
@@ -62,10 +60,10 @@ class Cnn3d:
         self._feeds_main = {"train": {}, "val": {}, "test": {}}
 
     def get_num_subs_pathways(self):
-        return self.pathways.get_num_subs_pathways()
+        return len(self.pathways.subsampled_pathways())
 
     def get_num_pathways_that_require_input(self):
-        return self.pathways.get_num_pathways_that_require_input()
+        return 1 + self.get_num_subs_pathways()
 
     def update_arrays_of_bn_moving_avg(self, sessionTf):
         """
@@ -211,7 +209,7 @@ class Cnn3d:
             inp_dims = self.config.segment_dim_inference
         else:
             raise ValueError('train_val_test must be in ["train", "val", "test"]')
-        inp_shapes_per_path = self.calc_inp_dims_of_paths_from_hr_inp(inp_dims)
+        inp_shapes_per_path = self.pathways.calc_inp_dims_of_paths_from_hr_inp(inp_dims)
         return self._setup_input_placeholders(train_val_test, inp_shapes_per_path), inp_shapes_per_path
 
     def _setup_input_placeholders(self, train_val_test, inp_shapes_per_path):  # TODO: REMOVE for eager
@@ -219,13 +217,13 @@ class Cnn3d:
         input_placeholders = {}
         input_placeholders["x"] = tf.compat.v1.placeholder(
             dtype="float32",
-            shape=[None, self.pathways[0].get_n_fms_in()] + inp_shapes_per_path[0],
+            shape=[None, self.pathways.normal_pathway().get_n_fms_in()] + inp_shapes_per_path[0],
             name="inp_x_" + train_val_test,
         )
         for subpath_i in range(self.num_subs_paths):  # if there are subsampled paths...
             input_placeholders["x_sub_" + str(subpath_i)] = tf.compat.v1.placeholder(
                 dtype="float32",
-                shape=[None, self.pathways[0].get_n_fms_in()] + inp_shapes_per_path[subpath_i + 1],
+                shape=[None, self.pathways.normal_pathway().get_n_fms_in()] + inp_shapes_per_path[subpath_i + 1],
                 name="inp_x_sub_" + str(subpath_i) + "_" + train_val_test,
             )
         return input_placeholders
@@ -242,7 +240,7 @@ class Cnn3d:
         # =========== Make the final Target Layer (softmax, regression, whatever) ==========
         log.print3("Adding the final Softmax layer...")
         self.final_target_layer.build()
-        self.pathways.get_fc_pathway().get_block(-1).connect_target_block(self.final_target_layer)
+        self.pathways.fc_pathway().get_block(-1).connect_target_block(self.final_target_layer)
 
         # =============== BUILDING FINISHED - BELOW IS TEMPORARY ========================
         self._output_gt_tensor_feeds["train"]["y_gt"] = tf.compat.v1.placeholder(
@@ -262,55 +260,29 @@ class Cnn3d:
             log = self.log
         # ===== Apply High-Res path =========
         input = inputs_per_pathw["x"]
-        out = self.pathways[0].apply(input, mode, train_val_test, verbose, log)
+        out = self.pathways.normal_pathway().apply(input, mode, train_val_test, verbose, log)
         dims_outp_pathway_hr = out.shape
         fms_from_paths_to_concat = [out]
 
         # === Subsampled pathways =========
-        for subpath_i in range(self.num_subs_paths):
+        for subpath_i, sub_pathway in enumerate(self.pathways.subsampled_pathways()):
             input = inputs_per_pathw["x_sub_" + str(subpath_i)]
-            this_pathway = self.pathways[subpath_i + 1]
-            out_lr = this_pathway.apply(input, mode, train_val_test, verbose, log)
+            out_lr = sub_pathway.apply(input, mode, train_val_test, verbose, log)
             # this creates essentially the "upsampling layer"
-            out = this_pathway.upsample_to_high_res(out_lr, shape_to_match=dims_outp_pathway_hr, upsampl_type="repeat")
+            out = sub_pathway.upsample_to_high_res(out_lr, shape_to_match=dims_outp_pathway_hr, upsampl_type="repeat")
             fms_from_paths_to_concat.append(out)
 
         # ===== Concatenate and final convs ========
         conc_inp_fms = tf.concat(fms_from_paths_to_concat, axis=1)
-        logits_no_bias = self.pathways[-1].apply(conc_inp_fms, mode, train_val_test, verbose, log)
+        logits_no_bias = self.pathways.fc_pathway().apply(conc_inp_fms, mode, train_val_test, verbose, log)
         # Softmax
         p_y_given_x = self.final_target_layer.apply(logits_no_bias, mode)
 
         return p_y_given_x
 
-    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims):
-        out_shape_of_hr_path = self.pathways[0].calc_outp_dims_given_inp(inp_hr_dims)
-        inp_shape_per_path = []
-        for pathway in self.pathways:
-            if pathway.pType() == pt.NORM:
-                inp_shape_per_path.append(inp_hr_dims)
-            elif pathway.pType() != pt.FC:  # it's a low-res pathway.
-                inp_shape_lr = pathway.calc_inp_dims_given_outp_after_upsample(out_shape_of_hr_path)
-                inp_shape_per_path.append(inp_shape_lr)
-            elif pathway.pType() == pt.FC:
-                inp_shape_per_path.append(out_shape_of_hr_path)
-            else:
-                raise NotImplementedError()
-
-        # [ [path0-in-dim-x, path0-in-dim-y, path0-in-dim-z],
-        #   [path1-in-dim-x, path1-in-dim-y, path1-in-dim-z],
-        #    ...
-        #   [pathFc-in-dim-x, pathFc-in-dim-y, pathFc-in-dim-z] ]
-        return inp_shape_per_path
-
-    def _calc_receptive_field_cnn_wrt_hr_inp(self):
-        rec_field_hr_path, strides_rf_at_end_of_hr_path = self.pathways[0].rec_field()
-        cnn_rf, _ = self.pathways[-1].rec_field(rec_field_hr_path, strides_rf_at_end_of_hr_path)
-        return cnn_rf
-
     def calc_outp_dims_given_inp(self, inp_dims_hr_path):
-        outp_dims_hr_path = self.pathways[0].calc_outp_dims_given_inp(inp_dims_hr_path)
-        return self.pathways[-1].calc_outp_dims_given_inp(outp_dims_hr_path)
+        outp_dims_hr_path = self.pathways.normal_pathway().calc_outp_dims_given_inp(inp_dims_hr_path)
+        return self.pathways.fc_pathway().calc_outp_dims_given_inp(outp_dims_hr_path)
 
     def calc_unpredicted_margin(self, inp_dims_hr_path):
         # unpred_margin: [[before-x, after-x], [before-y, after-y], [before-z, after-z]]

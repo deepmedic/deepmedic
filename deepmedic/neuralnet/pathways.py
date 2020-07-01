@@ -42,24 +42,18 @@ class Pathway:
         # === Input to the pathway ===
         self._n_fms_in = n_input_channels
         # === Basic architecture parameters ===
-        self._blocks = []
         self._subs_factor = [1, 1, 1]
         self._res_conn = self.config.res_conn
 
         # === Output of the block ===
         self._n_fms_out = self.config.n_FMs_per_layer[-1]
 
-        self._activ_func_per_layer = [activation_function] * len(self.config.n_FMs_per_layer)
-        # To not apply activation on raw input. -1 is linear activation.
-        self._activ_func_per_layer[0] = "linear" if self.pType() != PathwayTypes.FC else activation_function
-
-        self._use_bn_per_layer = [n_batches_for_bn_mov_avg > 0] * len(self.config.n_FMs_per_layer)
-        # For the 1st layer, ask specific flag.
-        self._use_bn_per_layer[0] = self.config.apply_bn if n_batches_for_bn_mov_avg > 0 else False
+        self._activation_function = activation_function
         self._n_batches_for_bn_mov_avg = n_batches_for_bn_mov_avg
 
         self._rng = rng
         self._conv_w_init_type = conv_w_init_type
+        self._blocks = self.__init_blocks()
 
     # Getters
     def get_n_fms_in(self):
@@ -86,7 +80,7 @@ class Pathway:
         input_to_prev_layer = None
         input_to_next_layer = input
 
-        for idx, block in enumerate(self._blocks):
+        for idx, block in enumerate(self.get_blocks()):
             if verbose:
                 log.print3(
                     "\tBlock [{idx}], Mode: [{mode}], Input's Shape: {shape}".format(
@@ -133,32 +127,37 @@ class Pathway:
             stride_rf_at_inp = [1, 1, 1]
         rf_prev_block = rf_at_inp
         stride_rf_prev_block = stride_rf_at_inp
-        for block in self._blocks:
+        for block in self.get_blocks():
             rf_prev_block, stride_rf_prev_block = block.rec_field(rf_prev_block, stride_rf_prev_block)
         return rf_prev_block, stride_rf_prev_block
 
     def calc_outp_dims_given_inp(self, inp_dims):
         outp_dims_prev_block = inp_dims
-        for block in self._blocks:
+        for block in self.get_blocks():
             outp_dims_prev_block = block.calc_outp_dims_given_inp(outp_dims_prev_block)
         return outp_dims_prev_block
 
     def calc_inp_dims_given_outp(self, outp_dims):
         inp_dims_deeper_block = outp_dims
-        for block in self._blocks:
+        for block in self.get_blocks():
             inp_dims_deeper_block = block.calc_inp_dims_given_outp(inp_dims_deeper_block)
         return inp_dims_deeper_block
 
-    def build(self, log: Logger = None):
-        if log is None:
-            log = self.log
-
-        log.print3("[Pathway_{ptype}] is being built...".format(ptype=(self.get_str_type())))
+    def __init_blocks(self) -> List[Union[ConvBlock, LowRankConvBlock]]:
+        blocks = []
         n_fms_input_to_next_layer = self._n_fms_in
         n_blocks = len(self.config.n_FMs_per_layer)
+        use_bn = self._n_batches_for_bn_mov_avg > 0
         for layer_i in range(0, n_blocks):
             pad_mode = self.config.pad_mode_per_layer[layer_i] if len(self.config.pad_mode_per_layer) > 0 else None
-
+            # To not apply activation on raw input. -1 is linear activation.
+            if layer_i == 0 and self.pType() != PathwayTypes.FC:
+                activation_function = "linear"
+            else:
+                activation_function = self._activation_function
+            # For the 1st layer, ask specific flag.
+            if layer_i == 0 and use_bn:
+                use_bn = self.config.apply_bn
             if layer_i in self.config.lower_rank:
                 block = LowRankConvBlock(
                     n_fms_in=n_fms_input_to_next_layer,
@@ -166,9 +165,9 @@ class Pathway:
                     conv_kernel_dims=self.config.kernel_dims_per_layer[layer_i],
                     pool_prms=self.config.mp_params[layer_i],
                     conv_pad_mode=pad_mode,
-                    use_bn=self._use_bn_per_layer[layer_i],
+                    use_bn=use_bn,
                     moving_avg_length=self._n_batches_for_bn_mov_avg,
-                    activ_func=self._activ_func_per_layer[layer_i],
+                    activ_func=activation_function,
                     dropout_rate=self.config.dropout[layer_i] if len(self.config.dropout) > 0 else 0,
                     rank=self.config.rank_of_lower_rank,
                     rng=self._rng,
@@ -181,14 +180,23 @@ class Pathway:
                     conv_kernel_dims=self.config.kernel_dims_per_layer[layer_i],
                     pool_prms=self.config.mp_params[layer_i],
                     conv_pad_mode=pad_mode,
-                    use_bn=self._use_bn_per_layer[layer_i],
+                    use_bn=use_bn,
                     moving_avg_length=self._n_batches_for_bn_mov_avg,
-                    activ_func=self._activ_func_per_layer[layer_i],
+                    activ_func=activation_function,
                     dropout_rate=self.config.dropout[layer_i] if len(self.config.dropout) > 0 else 0,
                     rng=self._rng,
                     conv_w_init_type=self._conv_w_init_type,
                 )
+            blocks.append(block)
+            n_fms_input_to_next_layer = self.config.n_FMs_per_layer[layer_i]
+        return blocks
 
+    def build(self, log: Logger = None):
+        if log is None:
+            log = self.log
+        log.print3("[Pathway_{ptype}] is being built...".format(ptype=(self.get_str_type())))
+        n_fms_input_to_next_layer = self._n_fms_in
+        for layer_i, block in enumerate(self.get_blocks()):
             log.print3(
                 "\tBlock [{idx}], FMs-In: {fm_in}, FMs_Out: {fm_out}, Conv Filter dimensions: {kern_dim}".format(
                     idx=layer_i,
@@ -198,7 +206,6 @@ class Pathway:
                 )
             )
             block.build()
-            self._blocks.append(block)
             n_fms_input_to_next_layer = self.config.n_FMs_per_layer[layer_i]
 
     # Getters
@@ -208,11 +215,14 @@ class Pathway:
     def pType(self):
         return self._pType
 
-    def get_blocks(self):
+    def get_blocks(self) -> List[Union[ConvBlock, LowRankConvBlock]]:
         return self._blocks
 
-    def get_block(self, index):
+    def get_block(self, index) -> Union[ConvBlock, LowRankConvBlock]:
         return self._blocks[index]
+
+    def append_block(self, block: Union[ConvBlock, LowRankConvBlock]):
+        self._blocks.append(block)
 
     def subs_factor(self):
         return self._subs_factor
@@ -338,8 +348,7 @@ class Pathways:
         rng: np.random.RandomState,
         log: Logger = None
     ):
-        pathways = []
-        pathway = NormalPathway(
+        self._normal_pathway = NormalPathway(
             n_input_channels=n_input_channels,
             activation_function=activation_function,
             n_batches_for_bn_mov_avg=n_batches_for_bn_mov_avg,
@@ -348,27 +357,28 @@ class Pathways:
             rng=rng,
             conv_w_init_type=conv_w_init_type,
         )
-        pathways.append(pathway)
-        for subpath_config in subsampled_pathway_configs:
-            pathway = SubsampledPathway(
-                n_input_channels=n_input_channels,
-                activation_function=activation_function,
-                n_batches_for_bn_mov_avg=n_batches_for_bn_mov_avg,
-                config=subpath_config,
-                log=log,
-                rng=rng,
-                conv_w_init_type=conv_w_init_type,
-            )
-            # There will be at least an entry as a secondary pathway.
-            # But it won't have any layers if it was not actually used.
-            pathways.append(pathway)
-        n_fms_inp_to_fc_path = 0
-        for path_i in range(len(pathways)):
-            n_fms_inp_to_fc_path += pathways[path_i].get_n_fms_out()
-
+        subsampled_pathways = []
+        if subsampled_pathway_configs is not None:
+            for subpath_config in subsampled_pathway_configs:
+                pathway = SubsampledPathway(
+                    n_input_channels=n_input_channels,
+                    activation_function=activation_function,
+                    n_batches_for_bn_mov_avg=n_batches_for_bn_mov_avg,
+                    config=subpath_config,
+                    log=log,
+                    rng=rng,
+                    conv_w_init_type=conv_w_init_type,
+                )
+                # There will be at least an entry as a secondary pathway.
+                # But it won't have any layers if it was not actually used.
+                subsampled_pathways.append(pathway)
+        self._subsampled_pathways = subsampled_pathways
         # ======================= Make the Fully Connected Layers =======================
+        n_fms_inp_to_fc_path = self._normal_pathway.get_n_fms_out()
+        for pathway in subsampled_pathways:
+            n_fms_inp_to_fc_path += pathway.get_n_fms_out()
         fc_pathway_config.n_FMs_per_layer += [n_classes]
-        pathway = FcPathway(
+        self._fc_pathway = FcPathway(
             n_input_channels=n_fms_inp_to_fc_path,
             activation_function=activation_function,
             n_batches_for_bn_mov_avg=n_batches_for_bn_mov_avg,
@@ -377,37 +387,34 @@ class Pathways:
             rng=rng,
             conv_w_init_type=conv_w_init_type,
         )
-        pathways.append(pathway)
-        self._pathways = pathways
 
     def build(self):
         for pathway in self:
             pathway.build()
 
-    def __iter__(self):
-        return PathwayIterator(self._pathways)
+    def to_list(self) -> List[Union[NormalPathway, SubsampledPathway, FcPathway]]:
+        pathways = [self._normal_pathway]
+        pathways.extend(self._subsampled_pathways)
+        pathways.append(self._fc_pathway)
+        return pathways
 
-    def append(self, item: Pathway):
-        self._pathways.append(item)
+    def __iter__(self):
+        return PathwayIterator(self.to_list())
 
     def __len__(self):
-        return len(self._pathways)
+        return len(self.to_list())
 
     def __getitem__(self, idx: int):
-        return self._pathways[idx]
+        return self.to_list()[idx]
 
-    def get_fc_pathway(self) -> Union[FcPathway, None]:
-        for pathway in self:
-            if pathway.pType() == PathwayTypes.FC:
-                return pathway
-        return None
+    def normal_pathway(self) -> NormalPathway:
+        return self._normal_pathway
 
-    def get_num_subs_pathways(self) -> int:
-        count = 0
-        for pathway in self:
-            if pathway.pType() == PathwayTypes.SUBS:
-                count += 1
-        return count
+    def fc_pathway(self) -> FcPathway:
+        return self._fc_pathway
+
+    def subsampled_pathways(self) -> List[SubsampledPathway]:
+        return self._subsampled_pathways
 
     def get_num_pathways_that_require_input(self) -> int:
         count = 0
@@ -426,3 +433,16 @@ class Pathways:
         for pathway in self:
             for block in pathway.get_blocks():
                 block.update_arrays_of_bn_moving_avg(sessionTf)  # Will do nothing if no BN.
+
+    def calc_inp_dims_of_paths_from_hr_inp(self, inp_hr_dims):
+        out_shape_of_hr_path = self._normal_pathway.calc_outp_dims_given_inp(inp_hr_dims)
+        inp_shape_per_path = [inp_hr_dims]
+        for subpath in self.subsampled_pathways():
+            inp_shape_lr = subpath.calc_inp_dims_given_outp_after_upsample(out_shape_of_hr_path)
+            inp_shape_per_path.append(inp_shape_lr)
+        inp_shape_per_path.append(out_shape_of_hr_path)
+        # [ [path0-in-dim-x, path0-in-dim-y, path0-in-dim-z],
+        #   [path1-in-dim-x, path1-in-dim-y, path1-in-dim-z],
+        #    ...
+        #   [pathFc-in-dim-x, pathFc-in-dim-y, pathFc-in-dim-z] ]
+        return inp_shape_per_path
