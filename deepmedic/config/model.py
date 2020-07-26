@@ -231,7 +231,6 @@ class ModelConfig(BaseConfig):
         "n_classes",
         "n_input_channels",
         "normal_pathway_config",
-        "use_subsampled_path",
         "subsampled_pathway_configs",
         "fc_layers_config",
         "activation_function",

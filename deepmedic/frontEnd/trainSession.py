@@ -181,7 +181,8 @@ class TrainSession(Session):
                 self._log.print3("Loading network parameters...")
                 try:
                     saver_net.restore(sessionTf, chkpt_fname)
-                    # TF2: status = ckpt_net.restore(chkpt_fname); #status.assert_consumed() # Passes if ckpt and program vars match exactly.
+                    # TF2: status = ckpt_net.restore(chkpt_fname)
+                    # TF2: status.assert_consumed()  # Passes if ckpt and program vars match exactly.
 
                     self._log.print3("Network parameters were loaded.")
                 except Exception as e:
@@ -190,7 +191,8 @@ class TrainSession(Session):
                 if not reset_trainer:
                     self._log.print3("Loading trainer parameters...")
                     saver_trainer.restore(sessionTf, chkpt_fname)
-                    # TF2: status = ckpt_trainer.restore(chkpt_fname); #status.assert_consumed() # Passes if ckpt and program vars match exactly.
+                    # TF2: status = ckpt_trainer.restore(chkpt_fname);
+                    # TF2: status.assert_consumed()  # Passes if ckpt and program vars match exactly.
                     self._log.print3("Trainer parameters were loaded.")
                 else:
                     self._log.print3("Reset of trainer parameters was requested. Re-initializing them...")

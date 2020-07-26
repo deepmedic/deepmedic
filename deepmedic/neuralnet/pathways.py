@@ -299,7 +299,7 @@ class SubsampledPathway(Pathway):
         return inp_dims_req
 
 
-class FcPathway(Pathway):
+class FCPathway(Pathway):
     _pType = PathwayTypes.FC
 
     def __init__(
@@ -327,10 +327,10 @@ class FcPathway(Pathway):
 
 
 class PathwayIterator:
-    def __init__(self, pathways: List[Union[NormalPathway, SubsampledPathway, FcPathway]]):
+    def __init__(self, pathways: List[Union[NormalPathway, SubsampledPathway, FCPathway]]):
         self._pathways = iter(pathways)
 
-    def __next__(self) -> Union[NormalPathway, SubsampledPathway, FcPathway]:
+    def __next__(self) -> Union[NormalPathway, SubsampledPathway, FCPathway]:
         return next(self._pathways)
 
 
@@ -378,7 +378,7 @@ class Pathways:
         for pathway in subsampled_pathways:
             n_fms_inp_to_fc_path += pathway.get_n_fms_out()
         fc_pathway_config.n_FMs_per_layer += [n_classes]
-        self._fc_pathway = FcPathway(
+        self._fc_pathway = FCPathway(
             n_input_channels=n_fms_inp_to_fc_path,
             activation_function=activation_function,
             n_batches_for_bn_mov_avg=n_batches_for_bn_mov_avg,
@@ -392,7 +392,7 @@ class Pathways:
         for pathway in self:
             pathway.build()
 
-    def to_list(self) -> List[Union[NormalPathway, SubsampledPathway, FcPathway]]:
+    def to_list(self) -> List[Union[NormalPathway, SubsampledPathway, FCPathway]]:
         pathways = [self._normal_pathway]
         pathways.extend(self._subsampled_pathways)
         pathways.append(self._fc_pathway)
@@ -410,7 +410,7 @@ class Pathways:
     def normal_pathway(self) -> NormalPathway:
         return self._normal_pathway
 
-    def fc_pathway(self) -> FcPathway:
+    def fc_pathway(self) -> FCPathway:
         return self._fc_pathway
 
     def subsampled_pathways(self) -> List[SubsampledPathway]:
