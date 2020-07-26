@@ -16,7 +16,7 @@ from deepmedic.config.input.exceptions import (
     ActivationFunctionInputException,
     ResConnectionInputException,
 )
-from deepmedic.logging import loggers
+from deepmedic.logging.loggers import Logger
 from deepmedic.controller.cfg import assert_input_model_config
 from deepmedic.config.input import InputModelConfig
 from deepmedic.config.model import ModelConfig, PathWayConfig, SubsampledPathwayConfig, FCLayersConfig
@@ -106,7 +106,6 @@ class InputModelConfigTest(unittest.TestCase):
             n_classes=5,
             n_input_channels=2,
             normal_pathway_config=normal_pathway_config,
-            use_subsampled_path=True,
             subsampled_pathway_configs=[sub_config1, sub_config2],
             fc_layers_config=fc_config,
             activation_function="prelu",
@@ -121,8 +120,9 @@ class InputModelConfigTest(unittest.TestCase):
 
         model_config = self.input_config.to_model_config()
         # assert model config print params
-        TEST_OUTPUT_DIR.joinpath("model_config_deep.txt").unlink()
-        logger = loggers.Logger(str(TEST_OUTPUT_DIR.joinpath("model_config_deep.txt")))
+        if TEST_OUTPUT_DIR.joinpath("model_config_deep.txt").exists():
+            TEST_OUTPUT_DIR.joinpath("model_config_deep.txt").unlink()
+        logger = Logger(str(TEST_OUTPUT_DIR.joinpath("model_config_deep.txt")))
         model_config.print_params(logger)
         self.assertTrue(TEST_OUTPUT_DIR.joinpath("model_config_deep.txt").exists())
         self.assertEqual(self.expected_model_config.normal_pathway_config, model_config.normal_pathway_config)
