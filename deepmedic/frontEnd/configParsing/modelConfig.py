@@ -11,24 +11,24 @@ from deepmedic.frontEnd.configParsing.config import Config
 
 
 class ModelConfig(Config):
-    
-    #Optional but highly suggested.
+
+    # Optional but highly suggested.
     MODEL_NAME = "modelName"
-    #[REQUIRED] Output:
-    FOLDER_OUTP = "folderForOutput" #MUST BE GIVEN
-    
-    #================ MODEL PARAMETERS =================
+    # [REQUIRED] Output:
+    FOLDER_OUTP = "folderForOutput"  # MUST BE GIVEN
+
+    # ================ MODEL PARAMETERS =================
     N_CLASSES = "numberOfOutputClasses"
     N_INP_CHANS = "numberOfInputChannels"
-    
-    #===Normal pathway===
+
+    # ===Normal pathway===
     N_FM_NORM = "numberFMsPerLayerNormal"
     KERN_DIM_NORM = "kernelDimPerLayerNormal"
     PAD_MODE_NORM = "padTypePerLayerNormal"
     RESID_CONN_LAYERS_NORM = "layersWithResidualConnNormal"
     LOWER_RANK_LAYERS_NORM = "lowerRankLayersNormal"
-    
-    #==Subsampled pathway==
+
+    # ==Subsampled pathway==
     USE_SUBSAMPLED = "useSubsampledPathway"
     N_FM_SUBS = "numberFMsPerLayerSubsampled"
     KERN_DIM_SUBS = "kernelDimPerLayerSubsampled"
@@ -36,31 +36,30 @@ class ModelConfig(Config):
     SUBS_FACTOR = "subsampleFactor"
     RESID_CONN_LAYERS_SUBS = "layersWithResidualConnSubsampled"
     LOWER_RANK_LAYERS_SUBS = "lowerRankLayersSubsampled"
-    
-    #==Extra hidden FC Layers. Final Classification layer is not included in here.
+
+    # ==Extra hidden FC Layers. Final Classification layer is not included in here.
     N_FM_FC = "numberFMsPerLayerFC"
     KERN_DIM_FC = "kernelDimPerLayerFC"
     PAD_MODE_FC = "padTypePerLayerFC"
     RESID_CONN_LAYERS_FC = "layersWithResidualConnFC"
-    
-    #Size of Image Segments
+
+    # Size of Image Segments
     SEG_DIM_TRAIN = "segmentsDimTrain"
     SEG_DIM_VAL = "segmentsDimVal"
     SEG_DIM_INFER = "segmentsDimInference"
-    
-    #Dropout Rates:
+
+    # Dropout Rates:
     DROP_NORM = "dropoutRatesNormal"
     DROP_SUBS = "dropoutRatesSubsampled"
     DROP_FC = "dropoutRatesFc"
-    
-    #Initialization method of the kernel weights.
+
+    # Initialization method of the kernel weights.
     CONV_W_INIT = "convWeightsInit"
-    #Activation Function for all convolutional layers:
+    # Activation Function for all convolutional layers:
     ACTIV_FUNC = "activationFunction"
-    
-    #Batch Normalization
+
+    # Batch Normalization
     BN_ROLL_AV_BATCHES = "rollAverageForBNOverThatManyBatches"
-    
 
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)
@@ -76,6 +75,3 @@ class ModelConfig(Config):
         if self.get("relu0orPrelu1") is not None:
             print(msg_part1 + "relu0orPrelu1" + msg_part2 + "activationFunction" + msg_part3)
             exit(1)
-    
-    
-
