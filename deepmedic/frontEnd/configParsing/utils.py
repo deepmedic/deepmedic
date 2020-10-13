@@ -123,7 +123,7 @@ def get_paths_from_df(log, df, abs_path, req_gt=True):
         log.print3('No roi masks column in dataframe. Column should be named "roi_mask".')
 
     try:
-        pred = [normfullpath(abs_path, p) for p in list(df['prediction_filename'])]
+        pred = [p for p in list(df['prediction_filename'])]
     except KeyError:
         pred = None
 
