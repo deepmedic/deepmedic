@@ -12,6 +12,26 @@ from scipy.ndimage.filters import gaussian_filter
 import SimpleITK as sitk
 
 
+def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
+    """
+    Apply augmentations to input image
+    Keyword arguments:
+    augs -- list of augmentations (parent RandomAugmentation)
+    image -- 4D array of image channels
+    target -- 3D array of segmentation target
+    mask -- 3D array of RoI mask
+    wmaps -- 3D array of wmaps
+    """
+    if augs is not None:
+        for aug in augs:
+            image, target, mask, wmaps = aug(image, target, mask, wmaps)
+
+    return image, target, mask, wmaps
+
+
+# --------------------
+# Augmentation Classes
+# --------------------
 class RandomAugmentation(object):
     """
     Abstract class for random patch augmentation, patch augmentation also works on full images
@@ -22,98 +42,18 @@ class RandomAugmentation(object):
     def __init__(self, prob):
         self.prob = prob
 
-    def __call__(self, image, target=None, mask=None):
+    def __call__(self, image, target=None, mask=None, wmaps=None):
         if np.random.choice((True, False), p=(self.prob, 1. - self.prob)):
-            return self.augment(image, target, mask)
+            return self.augment(image, target, mask, wmaps)
         else:
-            return image, target, mask
+            return image, target, mask, wmaps
 
-    def augment(self, image, target, mask):
+    def augment(self, image, target, mask, wmaps):
         raise NotImplementedError
 
-
-class RandomPatchRotation(RandomAugmentation):
-    def __init__(self, prob, allowed_planes, rotations=(1, 2, 3)):
-        super().__init__(prob)
-        self.allowed_planes = allowed_planes
-        self.rotations = rotations
-
-    def augment(self, image, target, mask):
-        k = np.random.choice(self.rotations, len(self.allowed_planes))
-        for i, axes in enumerate(self.allowed_planes):
-            axes = np.random.choice(axes, 2, replace=False)  # direction of rotation
-            image = np.rot90(image, k=k[i], axes=tuple(a + 1 for a in axes))
-            target = np.rot90(target, k=k[i], axes=axes) if target is not None else None
-            mask = np.rot90(mask, k=k[i], axes=axes) if mask is not None else None
-
-        return image, target, mask
-
-
-class RandomPatchFlip(RandomAugmentation):
-    def __init__(self, prob, allowed_axis):
-        super().__init__(prob)
-        self.allowed_axes = allowed_axis
-
-    def augment(self, image, target, mask):
-        for axis in self.allowed_axes:
-            image = np.flip(image, axis=axis + 1)
-            target = np.flip(target, axis=axis) if target is not None else None
-            mask = np.flip(mask, axis=axis) if mask is not None else None
-
-        return image, target, mask
-
-
-class RandomHistogramDeformation(RandomAugmentation):
-    def __init__(self, prob, shift_std=0.05, scale_std=0.01, allow_mirror=False):
-        super().__init__(prob)
-        self.shift_std = shift_std
-        self.scale_std = scale_std
-        self.allow_mirror = allow_mirror
-
-    def augment(self, image, target, mask):
-        num_channels = image.shape[0]
-        shift = np.random.uniform(0, self.shift_std, num_channels)
-        scale = np.random.normal(1, self.scale_std, num_channels)
-        if self.allow_mirror:
-            scale *= np.random.choice((-1, 1))
-        image = (image.T * scale).T
-        image = (image.T + shift).T
-        return image, target, mask
-
-
-class RandomGammaCorrection(RandomAugmentation):
-    def __init__(self, prob, range_min=-1., range_max=1., gamma_std=.1):
-        super().__init__(prob)
-        self.range_min = range_min
-        self.range_max = range_max
-        self.gamma_std = gamma_std
-
-    def augment(self, image, target, mask):
-        num_channels = image.shape[0]
-        # gamma correction must be performed in the range of 0 to 1
-        image = (image - self.range_min) / (self.range_max - self.range_min)
-        gamma = np.random.normal(1, self.gamma_std, num_channels)
-        image = np.power(image.T, gamma).T
-        image = image * (self.range_max - self.range_min) + self.range_min
-        return image, target, mask
-
-
-class NonLinearRandomHistogramDeformation(RandomHistogramDeformation):
-    def __init__(self, prob, range_min=-1., range_max=1., num_segments=5, shift_std=0.25, scale_std=0.25,
-                 allow_mirror=True):
-        super().__init__(prob, shift_std, scale_std, allow_mirror)
-        segments = np.linspace(range_min, range_max, num_segments + 1)
-        segments[-1] += 1  # ensure whole array gets distorted
-        self.segments = segments
-
-    def augment(self, image, target, mask):
-        new_image = np.zeros_like(image)
-        for i, _ in enumerate(self.segments[:-1]):
-            indices = np.logical_and(image >= self.segments[i], image < self.segments[i + 1])
-            image_segment, _, _ = super().augment(image, target, mask)
-            new_image[indices] = image_segment[indices]
-
-        return new_image, target, mask
+    def get_attrs_str(self):
+        attrs = vars(self)
+        return '\t' + self.__class__.__name__ + '\n\t\t' + '\n\t\t'.join("%s: %s" % item for item in attrs.items())
 
 
 class RandomElasticDeformation(RandomAugmentation):
@@ -143,9 +83,9 @@ class RandomElasticDeformation(RandomAugmentation):
         slices = [tuple(slice(s, s + ps, 1) for s, ps in zip(start, patch_shape)) for start in starts]
         return [dx[i][slices[i]] for i in range(3)]
 
-    def augment(self, image, target, mask):
+    def augment(self, image, target, mask, wmaps):
 
-        shape = image.shape[1:]
+        shape = image[0].shape[1:]
         if shape != self.patch_shape:
             self.grid = [g.astype(np.int32) for g in np.meshgrid(*[np.arange(s) for s in shape], indexing='ij')]
             self.patch_shape = shape
@@ -158,11 +98,13 @@ class RandomElasticDeformation(RandomAugmentation):
         try:
             target = target.ravel()[indices].reshape(shape) if target is not None else None
             mask = mask.ravel()[indices].reshape(shape) if mask is not None else None
-            image = np.stack([channel.ravel()[indices].reshape(shape) for channel in image])
+            wmaps.ravel()[indices].reshape(shape) if wmaps is not None else None
+            for i in range(len(image)):
+                image[i] = np.stack([channel.ravel()[indices].reshape(shape) for channel in image[i]])
         except IndexError:
-            return image, target, mask
+            return image, target, mask, wmaps
 
-        return image, target, mask
+        return image, target, mask, wmaps
 
 
 class RandomElasticDeformationSimard2003(RandomElasticDeformation):
@@ -265,181 +207,47 @@ class RandomElasticDeformationCoarsePerlinNoise(RandomElasticDeformation):
 
         return (1 - t[:, :, :, 2]) * n0 + t[:, :, :, 2] * n1
 
-# class RandomAffineTransformation(Augmentation):
-#     def __init__(self, prob, max_xy_rot=np.pi / 4, max_xz_rot=np.pi / 6, max_yz_rot=np.pi / 6, max_scaling=.1,
-#                  default_channel_value=-1., default_target_value=0., is_target_discrete=True):
-#         self.prob =  prob
-#         self.max_xy_rot = max_xy_rot
-#         self.max_xz_rot = max_xz_rot
-#         self.max_yz_rot = max_yz_rot
-#         self.max_scaling = max_scaling
-#         self.default_channel_value = default_channel_value
-#         self.default_target_value = default_target_value
-#         self.is_target_discrete = is_target_discrete
-#
-#     @staticmethod
-#     def resample(channel, transform, interpolation, default_value):
-#         im = sitk.GetImageFromArray(channel)
-#         return sitk.GetArrayFromImage(sitk.Resample(im, im, transform, interpolation, default_value))
-#
-#     def __call__(self, image, target=None, mask=None):
-#         if np.random.random_sample() > self.prob:
-#             return image, target, sampling_mask
-#
-#         transform = sitk.AffineTransform(3)
-#
-#         theta_xy = np.random.uniform(-self.max_xy_rot, self.max_xy_rot)
-#         rot_xy = np.array(
-#             [[np.cos(theta_xy), np.sin(theta_xy), 0], [-np.sin(theta_xy), np.cos(theta_xy), 0], [0, 0, 1]])
-#
-#         theta_xz = np.random.uniform(-self.max_xz_rot, self.max_xz_rot)
-#         rot_xz = np.array(
-#             [[np.cos(theta_xz), 0, np.sin(theta_xz)], [0, 1, 0], [-np.sin(theta_xy), 0, np.cos(theta_xy)]])
-#
-#         theta_yz = np.random.uniform(-self.max_yz_rot, self.max_yz_rot)
-#         rot_yz = np.array(
-#             [[1, 0, 0], [0, np.cos(theta_yz), np.sin(theta_yz)], [0, -np.sin(theta_yz), np.cos(theta_yz)]])
-#
-#         scale = np.eye(3, 3) * np.random.uniform(1 - self.max_scaling, 1 + self.max_scaling)
-#
-#         matrix = np.dot(scale, np.dot(np.dot(rot_xy, rot_xz), rot_yz))
-#         transform.SetMatrix(matrix.ravel())
-#
-#         image = np.array(
-#             [self.resample(channel, transform, sitk.sitkLinear, self.default_channel_value) for channel in image])
-#         target = np.array(self.resample(target, transform, sitk.sitkNearestNeighbor, self.default_target_value))
-#         sampling_mask = np.array(self.resample(sampling_mask.astype(np.uint8), transform, sitk.sitkNearestNeighbor, 0))
-#
-#         return image, target, sampling_mask
 
-
-# Main function to call:
-def augment_imgs_of_case(channels, gt_lbls, roi_mask, wmaps_per_cat, prms):
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # gt_lbls: np array of shape [x,y,z]. Can be None.
-    # roi_mask: np array of shape [x,y,z]. Can be None.
-    # wmaps_per_cat: List of np.arrays (floats or ints), weightmaps for sampling. Can be None.
-    # prms: None (for no augmentation) or Dictionary with parameters of each augmentation type. }
-    if prms is not None:
-        (channels,
-        gt_lbls,
-        roi_mask,
-        wmaps_per_cat) = random_affine_deformation( channels,
-                                                    gt_lbls,
-                                                    roi_mask,
-                                                    wmaps_per_cat,
-                                                    prms['affine'] )
-    return channels, gt_lbls, roi_mask, wmaps_per_cat
-
-
-def random_affine_deformation(channels, gt_lbls, roi_mask, wmaps_l, prms):
-    if prms is None:
-        return channels, gt_lbls, roi_mask, wmaps_l
-    
-    augm = AugmenterAffine(prob = prms['prob'],
-                           max_rot_xyz = prms['max_rot_xyz'],
-                           max_scaling = prms['max_scaling'],
-                           seed = prms['seed'])
-    transf_mtx = augm.roll_dice_and_get_random_transformation()
-    assert transf_mtx is not None
-    
-    channels  = augm(images_l = channels,
-                     transf_mtx = transf_mtx,
-                     interp_orders = prms['interp_order_imgs'],
-                     boundary_modes = prms['boundary_mode'])
-    (gt_lbls,
-    roi_mask) = augm(images_l = [gt_lbls, roi_mask],
-                     transf_mtx = transf_mtx,
-                     interp_orders = [prms['interp_order_lbls'], prms['interp_order_roi']],
-                     boundary_modes = prms['boundary_mode'])
-    wmaps_l   = augm(images_l = wmaps_l,
-                     transf_mtx = transf_mtx,
-                     interp_orders = prms['interp_order_wmaps'],
-                     boundary_modes = prms['boundary_mode'])
-
-    return channels, gt_lbls, roi_mask, wmaps_l
-
-
-class AugmenterParams(object):
-    # Parent class, for parameters of augmenters.
-    def __init__(self, prms):
-        # prms: dictionary
-        self._prms = collections.OrderedDict()
-        self._set_from_dict(prms)
-    
-    def __str__(self):
-        return str(self._prms)
-    
-    def __getitem__(self, key): # overriding the [] operator.
-        # key: string.
-        return self._prms[key] if key in self._prms else None
-    
-    def __setitem__(self, key, item): # For instance[key] = item assignment
-        self._prms[key] = item
-
-    def _set_from_dict(self, prms):
-        if prms is not None:
-            for key in prms.keys():
-                self._prms[key] = prms[key]
-                
-                
-class AugmenterAffineParams(AugmenterParams):
-    def __init__(self, prms):
-        # Default values.
-        self._prms = collections.OrderedDict([ ('prob', 0.0),
-                                               ('max_rot_xyz', (45., 45., 45.)),
-                                               ('max_scaling', .1),
-                                               ('seed', None),
-                                               # For calls.
-                                               ('interp_order_imgs', 1),
-                                               ('interp_order_lbls', 0),
-                                               ('interp_order_roi', 0),
-                                               ('interp_order_wmaps', 1),
-                                               ('boundary_mode', 'nearest'),
-                                               ('cval', 0.) ])
-        # Overwrite defaults with given.
-        self._set_from_dict(prms)
-    
-    def __str__(self):
-        return str(self._prms)
-
-
-class AugmenterAffine(object):
-    def __init__(self, prob, max_rot_xyz, max_scaling, seed=None):
-        self.prob = prob # Probability of applying the transformation.
+class RandomAffineTransformation(RandomAugmentation):
+    def __init__(self, prob, max_rot_xyz=(45., 45., 45.), max_scaling=.1, seed=None,
+                 interp_order_imgs=1, interp_order_lbls=0, interp_order_roi=0,
+                 interp_order_wmaps=1, boundary_mode='nearest', cval=0):
+        super().__init__(prob)
         self.max_rot_xyz = max_rot_xyz
         self.max_scaling = max_scaling
-        self.rng = np.random.RandomState(seed)
+        self.seed = seed
+        self.rng = np.random.RandomState(self.seed)
+        # For calls.
+        self.interp_order_imgs = interp_order_imgs
+        self.interp_order_lbls = interp_order_lbls
+        self.interp_order_roi = interp_order_roi
+        self.interp_order_wmaps = interp_order_wmaps
+        self.boundary_mode = boundary_mode
+        self.cval = cval
 
-    def roll_dice_and_get_random_transformation(self):
-        if self.rng.random_sample() > self.prob:
-            return -1 # No augmentation
-        else:
-            return self._get_random_transformation() #transformation for augmentation
-        
     def _get_random_transformation(self):
         theta_x = self.rng.uniform(-self.max_rot_xyz[0], self.max_rot_xyz[0]) * np.pi / 180.
-        rot_x = np.array([ [np.cos(theta_x), -np.sin(theta_x), 0.],
-                           [np.sin(theta_x), np.cos(theta_x), 0.],
-                           [0., 0., 1.]])
-        
+        rot_x = np.array([[np.cos(theta_x), -np.sin(theta_x), 0.],
+                          [np.sin(theta_x), np.cos(theta_x), 0.],
+                          [0., 0., 1.]])
+
         theta_y = self.rng.uniform(-self.max_rot_xyz[1], self.max_rot_xyz[1]) * np.pi / 180.
-        rot_y = np.array([ [np.cos(theta_y), 0., np.sin(theta_y)],
-                           [0., 1., 0.],
-                           [-np.sin(theta_y), 0., np.cos(theta_y)]])
-        
+        rot_y = np.array([[np.cos(theta_y), 0., np.sin(theta_y)],
+                          [0., 1., 0.],
+                          [-np.sin(theta_y), 0., np.cos(theta_y)]])
+
         theta_z = self.rng.uniform(-self.max_rot_xyz[2], self.max_rot_xyz[2]) * np.pi / 180.
-        rot_z = np.array([ [1., 0., 0.],
-                           [0., np.cos(theta_z), -np.sin(theta_z)],
-                           [0., np.sin(theta_z), np.cos(theta_z)]])
-        
+        rot_z = np.array([[1., 0., 0.],
+                          [0., np.cos(theta_z), -np.sin(theta_z)],
+                          [0., np.sin(theta_z), np.cos(theta_z)]])
+
         # Sample the scale (zoom in/out)
         # TODO: Non isotropic?
         scale = np.eye(3, 3) * self.rng.uniform(1 - self.max_scaling, 1 + self.max_scaling)
-        
+
         # Affine transformation matrix.
-        transformation_mtx = np.dot( scale, np.dot(rot_z, np.dot(rot_x, rot_y)) )
-        
+        transformation_mtx = np.dot(scale, np.dot(rot_z, np.dot(rot_x, rot_y)))
+
         return transformation_mtx
 
     def _apply_transformation(self, image, transf_mtx, interp_order=2., boundary_mode='nearest', cval=0.):
@@ -447,169 +255,150 @@ class AugmenterAffine(object):
         # interp_order: Integer. 1,2,3 for images, 0 for nearest neighbour on masks (GT & brainmasks)
         # boundary_mode = 'constant', 'min', 'nearest', 'mirror...
         # cval: float. value given to boundaries if mode is constant.
-        assert interp_order in [0,1,2,3]
-        
+        assert interp_order in [0, 1, 2, 3]
+
         mode = boundary_mode
         if mode == 'min':
             cval = np.min(image)
             mode = 'constant'
-        
+
+        new_image = np.array(image, copy=True)
+
         # For recentering
         centre_coords = 0.5 * np.asarray(image.shape, dtype=np.int32)
-        c_offset = centre_coords - centre_coords.dot( transf_mtx )
-        
-        new_image = scipy.ndimage.affine_transform( image,
-                                                    transf_mtx.T,
-                                                    c_offset,
-                                                    order=interp_order,
-                                                    mode=mode,
-                                                    cval=cval )
+        c_offset = centre_coords - centre_coords.dot(transf_mtx)
+
+        new_image = scipy.ndimage.affine_transform(image,
+                                                   transf_mtx.T,
+                                                   c_offset,
+                                                   order=interp_order,
+                                                   mode=mode,
+                                                   cval=cval)
+
         return new_image
-    
-    def __call__(self, images_l, transf_mtx, interp_orders, boundary_modes, cval=0.):
-        # images_l : List of images, or an array where first dimension is over images (eg channels).
-        #            An image (element of the var) can be None, and it will be returned unchanged.
-        #            If images_l is None, then returns None.
-        # transf_mtx: Given (from get_random_transformation), -1, or None.
-        #             If -1, no augmentation/transformation will be done.
-        #             If None, new random will be made.
-        # intrp_orders : Int or List of integers. Orders of bsplines for interpolation, one per image in images_l.
-        #                Suggested: 3 for images. 1 is like linear. 0 for masks/labels, like NN.
-        # boundary_mode = String or list of strings. 'constant', 'min', 'nearest', 'mirror...
-        # cval: single float value. Value given to boundaries if mode is 'constant'.
-        if images_l is None:
-            return None
-        if transf_mtx is None: # Get random transformation.
-            transf_mtx = self.roll_dice_and_get_random_transformation()
-        if not isinstance(transf_mtx, np.ndarray) and transf_mtx == -1: # Do not augment
-            return images_l
-        # If scalars/string was given, change it to list of scalars/strings, per image.
-        if isinstance(interp_orders, int):
-            interp_orders = [interp_orders] * len(images_l)
-        if isinstance(boundary_modes, str):
-            boundary_modes = [boundary_modes] * len(images_l)
-        
-        # Deform images.
-        for img_i, int_order, b_mode in zip(range(len(images_l)), interp_orders, boundary_modes):
-            if images_l[img_i] is None:
-                pass # Dont do anything. Let it be None.
-            else:
-                images_l[img_i] = self._apply_transformation(images_l[img_i],
-                                                             transf_mtx,
-                                                             int_order,
-                                                             b_mode,
-                                                             cval)
-        return images_l
+
+    def augment(self, image, target, mask, wmaps):
+        transf_mtx = self._get_random_transformation()
+
+        for img_i in range(len(image)):
+            image[img_i] = self._apply_transformation(image[img_i],
+                                                      transf_mtx,
+                                                      self.interp_order_imgs,
+                                                      self.boundary_mode,
+                                                      self.cval)
+
+        if mask is not None:
+            mask = self._apply_transformation(mask,
+                                              transf_mtx,
+                                              self.interp_order_roi,
+                                              self.boundary_mode,
+                                              self.cval)
+
+        if target is not None:
+            target = self._apply_transformation(target,
+                                                transf_mtx,
+                                                self.interp_order_lbls,
+                                                self.boundary_mode,
+                                                self.cval)
+
+        if wmaps is not None:
+            wmaps = self._apply_transformation(wmaps,
+                                               transf_mtx,
+                                               self.interp_order_wmaps,
+                                               self.boundary_mode,
+                                               self.cval)
+
+        return image, target, mask, wmaps
 
 
-############# Currently not used ####################
+class RandomHistogramDistortion(RandomAugmentation):
+    def __init__(self, prob, shift=None, scale=None):
+        super().__init__(prob)
+        self.shift = shift
+        self.scale = scale
 
-# DON'T use on patches. Only on images. Cause I ll need to find min and max intensities, to move to range [0,1]
-def random_gamma_correction(channels, gamma_std=0.05):
-    # Gamma correction: I' = I^gamma
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # IMPORTANT: Does not work if intensities go to negatives.
-    if gamma_std is None or gamma_std == 0.:
-        return channels
-    
-    n_channs = channels[0].shape[0]
-    gamma = np.random.normal(1, gamma_std, [n_channs,1,1,1])
-    for path_idx in range(len(channels)):
-        assert np.min(channels[path_idx]) >= 0.
-        channels[path_idx] = np.power(channels[path_idx], 1.5, dtype='float32')
-        
-    return channels
+    def augment(self, image, target, mask, wmaps):
+        n_channs = image[0].shape[0]
+        if self.shift is None:
+            shift_per_chan = 0.
+        elif self.shift['std'] != 0:  # np.random.normal does not work for an std==0.
+            shift_per_chan = np.random.normal(self.shift['mu'], self.shift['std'], [n_channs, 1, 1, 1])
+        else:
+            shift_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * self.shift['mu']
 
+        if self.scale is None:
+            scale_per_chan = 1.
+        elif self.scale['std'] != 0:
+            scale_per_chan = np.random.normal(self.scale['mu'], self.scale['std'], [n_channs, 1, 1, 1])
+        else:
+            scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * self.scale['mu']
 
-def augment_sample(channels, gt_lbls, prms):
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # gt_lbls: np array of shape [x,y,z]
-    # prms: None or Dictionary, with parameters of each augmentation type. }
-    if prms is not None:
-        channels = random_histogram_distortion(channels, prms['hist_dist'])
-        channels, gt_lbls = random_flip(channels, gt_lbls, prms['reflect'])
-        channels, gt_lbls = random_rotation_90(channels, gt_lbls, prms['rotate90'])
-        
-    return channels, gt_lbls
+        # Intensity augmentation
+        for path_idx in range(len(image)):
+            image[path_idx] = (image[path_idx] + shift_per_chan) * scale_per_chan
+
+        return image, target, mask, wmaps
 
 
-def random_histogram_distortion(channels, prms):
-    # Shift and scale the histogram of each channel.
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # prms: { 'shift': {'mu': 0.0, 'std':0.}, 'scale':{'mu': 1.0, 'std': '0.'} }
-    if prms is None:
-        return channels
-    
-    n_channs = channels[0].shape[0]
-    if prms['shift'] is None:
-        shift_per_chan = 0.
-    elif prms['shift']['std'] != 0: # np.random.normal does not work for an std==0.
-        shift_per_chan = np.random.normal( prms['shift']['mu'], prms['shift']['std'], [n_channs, 1, 1, 1])
-    else:
-        shift_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * prms['shift']['mu']
-    
-    if prms['scale'] is None:
-        scale_per_chan = 1.
-    elif prms['scale']['std'] != 0:
-        scale_per_chan = np.random.normal(prms['scale']['mu'], prms['scale']['std'], [n_channs, 1, 1, 1])
-    else:
-        scale_per_chan = np.ones([n_channs, 1, 1, 1], dtype="float32") * prms['scale']['mu']
-    
-    # Intensity augmentation
-    for path_idx in range(len(channels)):
-        channels[path_idx] = (channels[path_idx] + shift_per_chan) * scale_per_chan
-        
-    return channels
+class RandomFlip(RandomAugmentation):
+    def __init__(self, prob=1., prob_flip_axes=None):
+        super().__init__(prob)
+        if prob_flip_axes is None:
+            self.prob_flip_axes = tuple([1] * 3)
+        else:
+            self.prob_flip_axes = prob_flip_axes
+
+    def augment(self, image, target, mask, wmaps):
+        for axis_idx in range(len(image[0].shape) - 1):  # 3 dims ( -1 because dim [0] refers to the channels)
+            flip = np.random.choice(a=(True, False), size=1,
+                                    p=(self.prob_flip_axes[axis_idx], 1. - self.prob_flip_axes[axis_idx]))
+            if flip:
+                for path_idx in range(len(image)):
+                    image[path_idx] = np.flip(image[path_idx], axis=axis_idx + 1)  # + 1 because dim [0] is channels.
+                target = np.flip(target, axis=axis_idx) if target is not None else None
+                mask = np.flip(mask, axis=axis_idx) if mask is not None else None
+                wmaps = np.flip(wmaps, axis=axis_idx) if wmaps is not None else None
+
+        return image, target, mask, wmaps
 
 
-def random_flip(channels, gt_lbls, probs_flip_axes=[0.5, 0.5, 0.5]):
-    # Flip (reflect) along each axis.
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # gt_lbls: np array of shape [x,y,z]
-    # probs_flip_axes: list of probabilities, one per axis.
-    if probs_flip_axes is None:
-        return channels, gt_lbls
-    
-    for axis_idx in range(len(gt_lbls.shape)): # 3 dims
-        flip = np.random.choice(a=(True, False), size=1, p=(probs_flip_axes[axis_idx], 1. - probs_flip_axes[axis_idx]))
-        if flip:
-            for path_idx in range(len(channels)):
-                channels[path_idx] = np.flip(channels[path_idx], axis=axis_idx+1) # + 1 because dim [0] is channels.
-            gt_lbls = np.flip(gt_lbls, axis=axis_idx)
-            
-    return channels, gt_lbls
+class RandomRotation90(RandomAugmentation):
+    def __init__(self, prob=1., prob_rot_90=None):
+        super().__init__(prob)
+        if prob_rot_90 is None:
+            self.prob_rot_90 = {
+                'xy': {'0': 1, '90': 1, '180': 1, '270': 1},
+                'yz': {'0': 1, '90': 1, '180': 1, '270': 1},
+                'xz': {'0': 1, '90': 1, '180': 1, '270': 1}
+            }
+        else:
+            self.prob_rot_90 = prob_rot_90
 
+    def augment(self, image, target, mask, wmaps):
+        for key, plane_axes in zip(['xy', 'yz', 'xz'], [(0, 1), (1, 2), (0, 2)]):
+            probs_plane = self.prob_rot_90[key]
 
-def random_rotation_90(channels, gt_lbls, probs_rot_90=None):
-    # Rotate by 0/90/180/270 degrees.
-    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
-    # gt_lbls: np array of shape [x,y,z]
-    # probs_rot_90: {'xy': {'0': fl, '90': fl, '180': fl, '270': fl},
-    #                'yz': {'0': fl, '90': fl, '180': fl, '270': fl},
-    #                'xz': {'0': fl, '90': fl, '180': fl, '270': fl} }
-    if probs_rot_90 is None:
-        return channels, gt_lbls
-        
-    for key, plane_axes in zip( ['xy', 'yz', 'xz'], [(0,1), (1,2), (0,2)] ) :
-        probs_plane = probs_rot_90[key]
-        
-        if probs_plane is None:
-            continue
-        
-        assert len(probs_plane) == 4 # rotation 0, rotation 90 degrees, 180, 270.
-        assert channels[0].shape[1+plane_axes[0]] == channels[0].shape[1+plane_axes[1]] # +1 cause [0] is channel. Image/patch must be isotropic.
-        
-        # Normalize probs
-        sum_p = probs_plane['0'] + probs_plane['90'] + probs_plane['180'] + probs_plane['270']
-        if sum_p == 0:
-            continue
-        for rot_k in probs_plane:
-            probs_plane[rot_k] /= sum_p # normalize p to 1.
-            
-        p_rot_90_x0123 = ( probs_plane['0'], probs_plane['90'], probs_plane['180'], probs_plane['270'] )
-        rot_90_xtimes = np.random.choice(a=(0,1,2,3), size=1, p=p_rot_90_x0123)
-        for path_idx in range(len(channels)):
-            channels[path_idx] = np.rot90(channels[path_idx], k=rot_90_xtimes, axes = [axis+1 for axis in plane_axes]) # + 1 cause [0] is channels.
-        gt_lbls = np.rot90(gt_lbls, k=rot_90_xtimes, axes = plane_axes)
-        
-    return channels, gt_lbls
+            if probs_plane is None:
+                continue
+
+            assert len(probs_plane) == 4  # rotation 0, rotation 90 degrees, 180, 270.
+            # +1 cause [0] is channel. Image/patch must be isotropic.
+            # assert image.shape[1 + plane_axes[0]] == image.shape[1 + plane_axes[1]]
+
+            # Normalize probs
+            sum_p = probs_plane['0'] + probs_plane['90'] + probs_plane['180'] + probs_plane['270']
+            if sum_p == 0:
+                continue
+            for rot_k in probs_plane:
+                probs_plane[rot_k] /= sum_p  # normalize p to 1.
+
+            p_rot_90_x0123 = (probs_plane['0'], probs_plane['90'], probs_plane['180'], probs_plane['270'])
+            rot_90_xtimes = np.random.choice(a=(0, 1, 2, 3), size=1, p=p_rot_90_x0123)
+            for path_idx in range(len(image)):
+                image[path_idx] = np.rot90(image[path_idx], k=rot_90_xtimes,
+                                           axes=[axis + 1 for axis in plane_axes])  # + 1 cause [0] is channels.
+            target = np.rot90(target, k=rot_90_xtimes, axes=plane_axes) if target is not None else None
+            mask = np.rot90(mask, k=rot_90_xtimes, axes=plane_axes) if mask is not None else None
+            wmaps = np.rot90(wmaps, k=rot_90_xtimes, axes=plane_axes) if wmaps is not None else None
+
+        return image, target, mask, wmaps

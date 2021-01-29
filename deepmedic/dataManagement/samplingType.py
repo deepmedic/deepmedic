@@ -38,7 +38,6 @@ class SamplingType(object):
         if self._sampling_type in [0,3] and len(perc_of_samples_per_cat) != self.get_n_sampling_cats():
             self._log.print3("ERROR: The list perc_of_samples_per_cat had [" + str(len(perc_of_samples_per_cat)) + "] elements." +\
                              " For type [" + self._sampling_type_str + "], it requires [" + str(self.get_n_sampling_cats()) + "]! Exiting!"); exit(1)
-            
         if self._sampling_type == 0:
             self._perc_to_sample_per_cat = self._normalize_percentages(perc_of_samples_per_cat)
         elif self._sampling_type == 1:
@@ -49,7 +48,7 @@ class SamplingType(object):
             self._perc_to_sample_per_cat = self._normalize_percentages(perc_of_samples_per_cat)
         else:
             raise ValueError("Invalid value for sampling type.")
-            
+
     def _normalize_percentages(self, list_of_weights):
         array_of_weights = np.asarray(list_of_weights, dtype="float32")
         return array_of_weights / (1.0*np.sum(array_of_weights))
@@ -86,12 +85,12 @@ class SamplingType(object):
                 self._log.print3("ERROR: For sampling_type=[" + self._sampling_type_str + "], if weighted-maps are not provided, "+\
                                 "at least Ground Truth labels should be given to extract foreground! Exiting!"); exit(1)
             elif roi_mask is not None: # and provided GT
-                mask_to_sample_foregr = ( (gt_lbl_img>0)*(roi_mask>0) ).astype(int)
-                mask_to_sample_backgr = ( (mask_to_sample_foregr==0)*(roi_mask>0) ).astype(int) # ROI minus foregr.
+                mask_to_sample_foregr = ( (gt_lbl_img>0)*(roi_mask>0) ).astype("int8")
+                mask_to_sample_backgr = ( (mask_to_sample_foregr==0)*(roi_mask>0) ).astype("int8") # ROI minus foregr.
                 sampling_maps_per_cat = [ mask_to_sample_foregr, mask_to_sample_backgr ] #Foreground / Background (in sequence)
             else: # no weightmaps, gt provided and roi is not provided.
-                mask_to_sample_foregr = (gt_lbl_img>0).astype(int)
-                mask_to_sample_backgr = np.ones(dims_of_scan, dtype="int16") * (mask_to_sample_foregr==0)
+                mask_to_sample_foregr = (gt_lbl_img>0).astype("int8")
+                mask_to_sample_backgr = np.ones(dims_of_scan, dtype="int8") * (mask_to_sample_foregr==0)
                 sampling_maps_per_cat = [ mask_to_sample_foregr, mask_to_sample_backgr ] #Foreground / Background (in sequence)
         elif self._sampling_type == 1: # uniform
             if n_wmaps > 0:
@@ -102,7 +101,7 @@ class SamplingType(object):
             elif roi_mask is not None:
                 sampling_maps_per_cat = [ roi_mask ] #Be careful to not change either of the two arrays later or there'll be a problem.
             else:
-                sampling_maps_per_cat = [ np.ones(dims_of_scan, dtype="int16") ]
+                sampling_maps_per_cat = [ np.ones(dims_of_scan, dtype="int8") ]
         elif self._sampling_type == 2: # full image. SAME AS UNIFORM?
             if n_wmaps > 0:
                 if n_wmaps != 1:
@@ -112,7 +111,7 @@ class SamplingType(object):
             elif roi_mask is not None:
                 sampling_maps_per_cat = [ roi_mask ] #Be careful to not change either of the two arrays later or there'll be a problem.
             else:
-                sampling_maps_per_cat = [ np.ones(dims_of_scan, dtype="int16") ]
+                sampling_maps_per_cat = [ np.ones(dims_of_scan, dtype="int8") ]
         elif self._sampling_type == 3: # Targeted per class.
             if n_wmaps > 0:
                 if n_wmaps != self.get_n_sampling_cats():
@@ -124,11 +123,11 @@ class SamplingType(object):
             elif roi_mask is not None: # and provided GT
                 sampling_maps_per_cat = []
                 for cat_i in range( self.get_n_sampling_cats() ): # Should be same number as actual classes, including background.
-                    sampling_maps_per_cat.append( ( (gt_lbl_img==cat_i)*(roi_mask>0) ).astype(int) )
+                    sampling_maps_per_cat.append( ( (gt_lbl_img==cat_i)*(roi_mask>0) ).astype("int8") )
             else: # no weightmaps, gt provided and roi is not provided.
                 sampling_maps_per_cat = []
                 for cat_i in range( self.get_n_sampling_cats() ): # Should be same number as actual classes, including background.
-                    sampling_maps_per_cat.append( (gt_lbl_img==cat_i).astype(int) )
+                    sampling_maps_per_cat.append( (gt_lbl_img==cat_i).astype("int8") )
                 
         else:
             raise ValueError("Invalid value for sampling type.")
@@ -140,7 +139,7 @@ class SamplingType(object):
         # sampling_maps_per_cat: returned by self.derive_sampling_maps_per_cat(...)
         # The below is a list of booleans, where False if a sampling_map is all 0.
         valid_cats = [ np.sum(s_map) > 0 for s_map in sampling_maps_per_cat ]
-        
+
         # Set weight for sampling a category to 0 if it's not valid.
         perc_samples_per_valid_cat = [p if v else 0. for p,v in zip(self._perc_to_sample_per_cat, valid_cats) ]
         # Renormalize probabilities.

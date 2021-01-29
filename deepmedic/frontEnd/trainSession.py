@@ -35,7 +35,8 @@ class TrainSession(Session):
         Session.__init__(self, cfg)
 
     def _make_sess_name(self):
-        sess_name = TrainSessionParameters.getSessionName(self._cfg[self._cfg.SESSION_NAME])
+        sess_name = TrainSessionParameters.getSessionName(self._cfg[self._cfg.SESSION_NAME],
+                                                          os.path.splitext(os.path.basename(self.get_abs_path_to_cfg()))[0])
         return sess_name
 
     def make_output_folders(self):
@@ -62,7 +63,6 @@ class TrainSession(Session):
                 tensorboard_loggers[logger_type] = None
             self._log.print3("Config flag to log to tensorboard not present.")
             self._log.print3("Skipping...")
-
         self._log.print3("-----------=============================-----------")
 
         return tensorboard_loggers
@@ -209,8 +209,8 @@ class TrainSession(Session):
                 # TF2: ckpt_net.save(file_prefix = filename_to_save_with+".net.ckpt2")
                 # TF2: ckpt_trainer.save(file_prefix = filename_to_save_with+".trainer.ckpt2")
                 
-                # tf.train.write_graph( graph_or_graph_def=sessionTf.graph.as_graph_def(),
-                # logdir="", name=filename_to_save_with+".graph.pb", as_text=False)
+                # tf.train.write_graph(graph_or_graph_def=sessionTf.graph.as_graph_def(),
+                #                      logdir="", name=filename_to_save_with+".graph.pb", as_text=False)
 
             self._log.print3("")
             self._log.print3("=======================================================")
