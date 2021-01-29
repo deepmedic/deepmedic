@@ -3,8 +3,8 @@ DeepMedic
 
 ### News
 
-July 2020 (v0.8.4):
-* Input files (images, channels, ground truth, roi masks) can be defined in a csv dataframe.
+Jan 2021 (v0.8.4):
+* Backend capable of receiving input files (images, labels, roi masks) via csv dataframe. (not yet used though)
 * Refactored front end modules for easier readability.
 
 29 May 2020 (v0.8.3):
@@ -92,7 +92,7 @@ The system requires the following:
 - [scipy](http://www.scipy.org/) : Scientific packages. Used for image operations e.g. augmentation.
 
 #### Latest versions tested:  
-As of Apr 2020, v0.8.2 was tested on using Python 3.5.2, Tensorflow 2.0.0 and Tensorflow 1.15.0, nibabel 3.0.2, numpy 1.18.2.  
+As of Jan 2021, v0.8.4 was tested using Python 3.6.5, Tensorflow 2.0.0 and Tensorflow 1.15.0, nibabel 3.0.2, numpy 1.18.2.  
 
 #### 1.2. Installation
 (The below are for unix systems, but similar steps should be sufficient for Windows.)
@@ -103,14 +103,23 @@ git clone https://github.com/Kamnitsask/deepmedic/
 ```
 After cloning it, all dependencies can be installed as described below.
 
-#### Install using virtual environment (preferred)
+#### Install using Conda or a Virtual Environment
 
-If you do not have sudo/root privileges on a system, we suggest you install using a virtual environment.
-From a *bash* shell, create a virtual environment in a folder that you wish:
-```cshell
-virtualenv -p python3 FOLDER_FOR_ENVS/ve_tf_dmtf     # or python2
+If you do not have sudo/root privileges on a system, we suggest you install using Conda a Virtualenv.
+From a **bash shell**, create a virtual environment in a folder that you wish.
+
+Using **Conda**:
+```bash
+conda create -p FOLDER_FOR_ENVS/ve_tf_dmtf python=3.6.5 -y
+source activate FOLDER_FOR_ENVS/ve_tf_dmtf
+```
+
+Using **Virtualenv**:
+```bash
+virtualenv -p python3 FOLDER_FOR_ENVS/ve_tf_dmtf     # Use python up to 3.6
 source FOLDER_FOR_ENVS/ve_tf_dmtf/bin/activate       # If using csh, source ve_tf_dmtf/bin/activate.csh
 ```
+
 Then continue with the steps below.
 
 #### Install TensorFlow and DeepMedic
@@ -120,6 +129,9 @@ By consulting the previous link, ensure that your system has **CUDA** version an
 ```cshell
 $ pip install tensorflow==2.0               # or tensorflow-cpu==1.15 or tensorflow-gpu==1.15
 ```
+**Note:** There are no pre-compiled versions of TF2.0 for python >= 3.7.
+That's why when setting up the environment above, we use python 3.6.5.
+We have not yet tried DeepMedic for TF versions above 2.0.
 
 **Install DeepMedic** and rest of its dependencies:
 ```cshell
