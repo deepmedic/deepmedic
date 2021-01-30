@@ -30,15 +30,17 @@ def get_config_value(cfg, elem):
     return get_default(cfg[elem.name], elem.default, elem.required)
 
 
+# TODO: THIS SHOULD NOT BE HERE.
 def get_augmentation(cfg_entry):
     return [getattr(augmentation, name)(**kwargs) for name, kwargs in cfg_entry.items()]
 
 
-class TrainSessionParameters(object):
+class TrainSessionParams(object):
 
     # To be called from outside too.
     @staticmethod
     def get_session_name(session_name, abs_path_cfg):
+        # Below, the session name will be as given in the config. If not given, it will be the name of the config file.
         default = os.path.splitext(os.path.basename(abs_path_cfg))[0]
         return session_name if session_name is not None else default
 
@@ -290,11 +292,9 @@ class TrainSessionParameters(object):
 
         # ~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
         # Image level
-        self.augmentation_image = \
-            get_augmentation(cfg[cfg.AUGMENTATION_IMAGE]) if cfg[cfg.AUGMENTATION_IMAGE] is not None else []
+        self.augmentations_img = get_augmentation(cfg[cfg.AUGM_IMG]) if cfg[cfg.AUGM_IMG] is not None else []
         # Patch/Segment level
-        self.augmentation_sample = \
-            get_augmentation(cfg[cfg.AUGMENTATION_SAMPLE]) if cfg[cfg.AUGMENTATION_SAMPLE] is not None else []
+        self.augmentations_sample = get_augmentation(cfg[cfg.AUGM_SAMPLE]) if cfg[cfg.AUGM_SAMPLE] is not None else []
 
         # ===================VALIDATION========================
         self.val_on_samples_during_train = \
@@ -512,17 +512,7 @@ class TrainSessionParameters(object):
         """
 
     def _backwards_compat_with_deprecated_cfg(self, cfg):
-        # Augmentation
-        if cfg[cfg.REFL_AUGM_PER_AXIS] is not None:
-            self.augm_sample_prms_tr['reflect'] = [0.5 if bool else 0. for bool in cfg[cfg.REFL_AUGM_PER_AXIS]]
-        if cfg[cfg.PERF_INT_AUGM_BOOL] is True:
-            self.augm_sample_prms_tr['hist_dist'] = {
-                'shift': {'mu': cfg[cfg.INT_AUGM_SHIF_MUSTD][0], 'std': cfg[cfg.INT_AUGM_SHIF_MUSTD][1]},
-                'scale': {'mu': cfg[cfg.INT_AUGM_MULT_MUSTD][0], 'std': cfg[cfg.INT_AUGM_MULT_MUSTD][1]}}
-        if cfg[cfg.OLD_AUGM_SAMPLE_PRMS_TR] is not None:
-            self.log.print3(
-                "ERROR: In training's config, variable \'augm_params_tr\' is deprecated. "
-                "Replace it with \'augm_sample_prms_tr\'.")
+        pass
 
     def _make_fpaths_for_preds_and_fms(self, out_folder_preds, out_folder_fms):
         # TODO: Merge with same in testSessionParams
@@ -610,26 +600,16 @@ class TrainSessionParameters(object):
         logPrint("[Expon] (Deprecated) parameters = " + str(self.lr_sched_params['expon']))
 
         logPrint("~~Data Augmentation During Training~~")
-        logPrint("Image-level Augmentation (new):")
-        if self.augmentation_image == []:
-            logPrint("None")
+        logPrint("Image-level Augmentation:")
+        for aug in self.augmentations_img:
+            logPrint(aug.get_attrs_str())
         else:
-            for aug in self.augmentation_image:
-                logPrint(aug.get_attrs_str())
-        logPrint("Sample-level Augmentation (new):")
-        if self.augmentation_sample == []:
             logPrint("None")
+        logPrint("Sample-level Augmentation:")
+        for aug in self.augmentations_sample:
+            logPrint(aug.get_attrs_str())
         else:
-            for aug in self.augmentation_sample:
-                logPrint(aug.get_attrs_str())
-        logPrint("Image level augmentation:")
-        logPrint("Parameters for image-level augmentation: " + str(self.augm_img_prms_tr))
-        if self.augm_img_prms_tr is not None:
-            logPrint("\t affine: " + str(self.augm_img_prms_tr['affine']))
-        logPrint("Patch level augmentation:")
-        logPrint("Mu and std for shift and scale of histograms = " + str(self.augm_sample_prms_tr['hist_dist']))
-        logPrint("Probabilities of reflecting each axis = " + str(self.augm_sample_prms_tr['reflect']))
-        logPrint("Probabilities of rotating planes 0/90/180/270 degrees = " + str(self.augm_sample_prms_tr['rotate90']))
+            logPrint("None")
 
         logPrint("~~~~~~~~~~~~~~~~~~Validation parameters~~~~~~~~~~~~~~~~")
         logPrint("Perform Validation on Samples throughout training? = " + str(self.val_on_samples_during_train))
@@ -738,10 +718,8 @@ class TrainSessionParameters(object):
                 self.batchsize_val_whole,
                 
                 # -------Data Augmentation-------
-                # self.augm_img_prms_tr,
-                self.augmentation_image,
-                self.augmentation_sample,
-                # self.augm_sample_prms_tr,
+                self.augmentations_img,
+                self.augmentations_sample,
 
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,

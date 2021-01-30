@@ -53,8 +53,8 @@ class TrainConfig(Config):
     # Exponential
     EXPON_SCH = "paramsForExpSchedForLrAndMom"
     # ~~~~ Data Augmentation~~~
-    AUGMENTATION_SAMPLE = "augmentation_sample"
-    AUGMENTATION_IMAGE = "augmentation_image"
+    AUGM_SAMPLE = "augmentation_sample"
+    AUGM_IMG = "augmentation_image"
     
     # ============== VALIDATION ===================
     PERFORM_VAL_SAMPLES = "performValidationOnSamplesThroughoutTraining"
@@ -115,13 +115,9 @@ class TrainConfig(Config):
     PAD_INPUT = "padInputImagesBool"
     NORM_VERB_LVL = "norm_verbosity_lvl"
     NORM_ZSCORE_PRMS = "norm_zscore_prms"
-    
+
     # ======== DEPRECATED, backwards compatibility =======
-    REFL_AUGM_PER_AXIS = "reflectImagesPerAxis"
-    PERF_INT_AUGM_BOOL = "performIntAugm"
-    INT_AUGM_SHIF_MUSTD = "sampleIntAugmShiftWithMuAndStd"
-    INT_AUGM_MULT_MUSTD = "sampleIntAugmMultiWithMuAndStd"
-    OLD_AUGM_SAMPLE_PRMS_TR = "augm_params_tr"
+    # Nothing.
     
     def __init__(self, abs_path_to_cfg):
         Config.__init__(self, abs_path_to_cfg)

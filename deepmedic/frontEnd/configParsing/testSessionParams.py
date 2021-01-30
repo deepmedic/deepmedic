@@ -14,7 +14,7 @@ from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parse_file
     get_paths_from_df, parse_fpaths_of_channs_from_filelists
 
 
-class TestSessionParameters(object) :
+class TestSessionParams(object):
     #To be called from outside too.
     @staticmethod
     def get_session_name(sessionName) :

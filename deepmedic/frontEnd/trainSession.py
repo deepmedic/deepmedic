@@ -10,7 +10,7 @@ import os
 
 from deepmedic.frontEnd.session import Session
 from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
-from deepmedic.frontEnd.configParsing.trainSessionParams import TrainSessionParameters
+from deepmedic.frontEnd.configParsing.trainSessionParams import TrainSessionParams
 from deepmedic.frontEnd.sessHelpers import make_folders_for_train_session, handle_exception_tf_restore
 
 from deepmedic.logging.utils import datetime_now_str
@@ -33,8 +33,9 @@ class TrainSession(Session):
         Session.__init__(self, cfg)
 
     def _make_session_name(self):
-        session_name = TrainSessionParameters.get_session_name(self._cfg[self._cfg.SESSION_NAME])
-        return session_name
+        # Below, the session name will be as given in the config. If not given, it will be the name of the config file.
+        return TrainSessionParams.get_session_name(self._cfg[self._cfg.SESSION_NAME],
+                                                   os.path.splitext(os.path.basename(self.get_abs_path_to_cfg()))[0])
 
     def make_output_folders(self):
         self._main_out_folder_abs = abs_from_rel_path(self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg())
@@ -73,7 +74,7 @@ class TrainSession(Session):
     def compile_session_params_from_cfg(self, *args):
         (model_params,) = args
 
-        self._params = TrainSessionParameters(self._log,
+        self._params = TrainSessionParams(self._log,
                                               self._main_out_folder_abs,
                                               self._out_folder_models,
                                               self._out_folder_preds,

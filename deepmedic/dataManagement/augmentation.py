@@ -5,11 +5,9 @@
 from __future__ import absolute_import, print_function, division
 
 
-import collections
 import numpy as np
 import scipy.ndimage
 from scipy.ndimage.filters import gaussian_filter
-import SimpleITK as sitk
 
 
 def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
