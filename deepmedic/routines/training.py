@@ -150,8 +150,8 @@ def do_training(sessionTf,
                 batchsize_val_whole,
 
                 # -------Data Augmentation-------
-                augm_img_prms,
-                augm_sample_prms,
+                augmentations_img,
+                augmentations_samples,
 
                 # Validation
                 val_on_whole_volumes,
@@ -196,8 +196,8 @@ def do_training(sessionTf,
                             paths_to_wmaps_per_sampl_cat_per_subj_train,
                             pad_input,
                             norm_prms,
-                            augm_img_prms,
-                            augm_sample_prms
+                            augmentations_img,
+                            augmentations_samples
                             )
     args_for_sampling_val = (log,
                              "val",

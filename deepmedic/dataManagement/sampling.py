@@ -58,8 +58,8 @@ def get_samples_for_subepoch(log,
                              # Preprocessing & Augmentation
                              pad_input_imgs,
                              norm_prms,
-                             augm_img_prms,
-                             augm_sample_prms):
+                             augmentations_img,
+                             augmentations_samples):
     # train_val_or_test: 'train', 'val' or 'test'
     # Returns: channs_of_samples_arr_per_path - List of arrays [N_samples, Channs, R,C,Z], one per pathway.
     #          lbls_predicted_part_of_samples_arr - Array of shape: [N_samples, R_out, C_out, Z_out)
@@ -102,8 +102,8 @@ def get_samples_for_subepoch(log,
                          # Pre-processing:
                          pad_input_imgs,
                          norm_prms,
-                         augm_img_prms,
-                         augm_sample_prms,
+                         augmentations_img,
+                         augmentations_samples,
 
                          n_subjs_for_subep,
                          idxs_of_subjs_for_subep,
@@ -267,8 +267,8 @@ def load_subj_and_sample(job_idx,
                          # Pre-processing:
                          pad_input_imgs,
                          norm_prms,
-                         augm_img_prms,
-                         augm_sample_prms,
+                         augmentations_img,
+                         augmentations_samples,
                          n_subjs_for_subep,
                          idxs_of_subjs_for_subep,
                          n_samples_per_subj,
@@ -297,7 +297,8 @@ def load_subj_and_sample(job_idx,
     (channels,  # nparray [channels,dim0,dim1,dim2]
      gt_lbl_img,
      roi_mask,
-     wmaps_to_sample_per_cat) = load_imgs_of_subject(log, job_id,
+     wmaps_to_sample_per_cat) = load_imgs_of_subject(log,
+                                                     job_id,
                                                      idxs_of_subjs_for_subep[job_idx],
                                                      paths_per_chan_per_subj,
                                                      paths_to_lbls_per_subj,
@@ -308,14 +309,20 @@ def load_subj_and_sample(job_idx,
     time_load = time.time() - time_load_0
     time_prep_0 = time.time()
     (channels,
-    gt_lbl_img,
-    roi_mask,
-    wmaps_to_sample_per_cat,
-    pad_left_right_per_axis) = preproc_imgs_of_subj(log, job_id,
-                                                    channels, gt_lbl_img, roi_mask, wmaps_to_sample_per_cat,
-                                                    run_input_checks, cnn3d.num_classes, # checks
-                                                    pad_input_imgs, unpred_margin,
-                                                    norm_prms)
+     gt_lbl_img,
+     roi_mask,
+     wmaps_to_sample_per_cat,
+     pad_left_right_per_axis) = preproc_imgs_of_subj(log,
+                                                     job_id,
+                                                     channels,
+                                                     gt_lbl_img,
+                                                     roi_mask,
+                                                     wmaps_to_sample_per_cat,
+                                                     run_input_checks,
+                                                     cnn3d.num_classes,  # for checks
+                                                     pad_input_imgs,
+                                                     unpred_margin,
+                                                     norm_prms)
     time_prep = time.time() - time_prep_0
     
     # Augment at image level:
@@ -323,7 +330,7 @@ def load_subj_and_sample(job_idx,
     (channels,
      gt_lbl_img,
      roi_mask,
-     wmaps_to_sample_per_cat) = apply_augmentations(augm_img_prms,
+     wmaps_to_sample_per_cat) = apply_augmentations(augmentations_img,
                                                     channels,
                                                     gt_lbl_img,
                                                     roi_mask,
@@ -351,8 +358,8 @@ def load_subj_and_sample(job_idx,
         # Check if the class is valid for sampling.
         # Invalid if eg there is no such class in the subject's manual segmentation.
         if not valid_cats[cat_i]:
-            log.print3( job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_str +
-                        "] samples from this subject!")
+            log.print3(job_id + " WARN: Invalid sampling category! Sampling map just zeros! No [" + cat_str +
+                       "] samples from this subject!")
             assert n_samples_for_cat == 0
             continue  # This should not be needed, the next func should also handle it. But whatever.
             
@@ -382,9 +389,11 @@ def load_subj_and_sample(job_idx,
             # Augmentation of segments
             time_augm_sample_0 = time.time()
             (channs_of_sample_per_path,
-             lbls_predicted_part_of_sample, _, _) = apply_augmentations(augm_sample_prms,
-                                                                        channs_of_sample_per_path,
-                                                                        lbls_predicted_part_of_sample)
+             lbls_predicted_part_of_sample,
+             _,
+             _) = apply_augmentations(augmentations_samples,
+                                      channs_of_sample_per_path,
+                                      lbls_predicted_part_of_sample)
             time_augm_samples += time.time() - time_augm_sample_0
             
             for pathway_i in range(cnn3d.getNumPathwaysThatRequireInput()):
@@ -399,7 +408,8 @@ def load_subj_and_sample(job_idx,
                "[Sample Coords: {0:.1f}".format(time_sample_idxs) + "] " +
                "[Extract Sampl: {0:.1f}".format(time_extr_samples) + "] " +
                "[Augm-Samples: {0:.1f}".format(time_augm_samples) + "] secs")
-    return (channs_of_samples_per_path, lbls_predicted_part_of_samples)
+
+    return channs_of_samples_per_path, lbls_predicted_part_of_samples
 
 
 # roi_mask_filename and roiMinusLesion_mask_filename can be passed "no".

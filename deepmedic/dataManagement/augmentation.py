@@ -90,7 +90,7 @@ def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
     """
     Apply augmentations to input image
     Keyword arguments:
-    augs -- list of augmentations (parent RandomAugmentation)
+    augs -- list of augmentations (parent RandomAugmentation). Can be empty [] or None.
     image -- 4D array of image channels
     target -- 3D array of segmentation target
     mask -- 3D array of RoI mask
