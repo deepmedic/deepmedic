@@ -3,6 +3,20 @@ DeepMedic
 
 ### News
 
+Jan 2021 (v0.8.4):
+* Backend capable of receiving input files (images, labels, roi masks) via csv dataframe. (not yet used though)
+* Refactored front end modules for easier readability.
+
+29 May 2020 (v0.8.3):
+* Reverted back to old algorithm (pre-v0.8.2) for getting down-sampled context, to preserve exact behaviour. 
+* Models trained with v0.8.3 should now be fully compatible with versions v0.8.1 and before.
+
+26 Apr 2020 (v0.8.2):
+* Major codebase changes for compatibility with Tensorflow 2.0.0 (and TF1.15.0) (not Eager yet).
+* Redesign/refactor of ./deepmedic/neuralnet modules.
+* Improved sampling (faster when multiclass) and logging.
+* Changes to configs: ModelConfig: kernelDimFor1stFcLayer -> kernelDimPerLayerFC, new padTypePerLayerFC.
+
 14 Nov 2019 (v0.8.0):
 * Logging metrics to Tensorboard.
 * Capability to normalize input on-the-fly (Disabled by default). Only z-score norm for now.
@@ -77,8 +91,8 @@ The system requires the following:
 - [numpy](http://www.numpy.org/) : General purpose array-processing package.
 - [scipy](http://www.scipy.org/) : Scientific packages. Used for image operations e.g. augmentation.
 
-Latest versions tested:  
-As of Feb 2019, testing of v0.7.1 was done using Python 3.5.2, Tensorflow 1.12.0, nibabel 2.3.3, numpy 1.16.1.  
+#### Latest versions tested:  
+As of Jan 2021, v0.8.4 was tested using Python 3.6.5, Tensorflow 2.0.0 and Tensorflow 1.15.0, nibabel 3.0.2, numpy 1.18.2.  
 
 #### 1.2. Installation
 (The below are for unix systems, but similar steps should be sufficient for Windows.)
@@ -89,14 +103,23 @@ git clone https://github.com/Kamnitsask/deepmedic/
 ```
 After cloning it, all dependencies can be installed as described below.
 
-#### Install using virtual environment (preferred)
+#### Install using Conda or a Virtual Environment
 
-If you do not have sudo/root privileges on a system, we suggest you install using a virtual environment.
-From a *bash* shell, create a virtual environment in a folder that you wish:
-```cshell
-virtualenv -p python3 FOLDER_FOR_ENVS/ve_tf_dmtf     # or python2
+If you do not have sudo/root privileges on a system, we suggest you install using Conda a Virtualenv.
+From a **bash shell**, create a virtual environment in a folder that you wish.
+
+Using **Conda**:
+```bash
+conda create -p FOLDER_FOR_ENVS/ve_tf_dmtf python=3.6.5 -y
+source activate FOLDER_FOR_ENVS/ve_tf_dmtf
+```
+
+Using **Virtualenv**:
+```bash
+virtualenv -p python3 FOLDER_FOR_ENVS/ve_tf_dmtf     # Use python up to 3.6
 source FOLDER_FOR_ENVS/ve_tf_dmtf/bin/activate       # If using csh, source ve_tf_dmtf/bin/activate.csh
 ```
+
 Then continue with the steps below.
 
 #### Install TensorFlow and DeepMedic
@@ -104,14 +127,11 @@ Then continue with the steps below.
 **Install TensorFlow** (TF): Please follow instructions on (https://www.tensorflow.org/install/).
 By consulting the previous link, ensure that your system has **CUDA** version and **cuDNN** versions compatible with the tensorflow version you are installing.
 ```cshell
-$ pip install --upgrade tensorflow-gpu               # or plain tensorflow, if you dont have a capable GPU.2
+$ pip install tensorflow==2.0               # or tensorflow-cpu==1.15 or tensorflow-gpu==1.15
 ```
-**Problem installing TF on MacOS**: Seems there is often a problem installing TF on MacOS.
-If the above fails, eg giving a `Could not find version that satisfies requirement tensorflow`, see the appropriate documentation for MacOS of TF in the above link.
-Something I've found working on Macs is installing TF with the following:
-```
-pip install --upgrade https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.8.0-py3-none-any.whl # adapt py3 to py2, or version of TF as required.
-```
+**Note:** There are no pre-compiled versions of TF2.0 for python >= 3.7.
+That's why when setting up the environment above, we use python 3.6.5.
+We have not yet tried DeepMedic for TF versions above 2.0.
 
 **Install DeepMedic** and rest of its dependencies:
 ```cshell

@@ -77,10 +77,10 @@ class PoolingLayer(Layer):
         raise NotImplementedError()
     
     def calc_outp_dims_given_inp(self, inp_dims): # Same as conv.
-        if np.any([inp_dims[d] < self._window_size[d] for d in range(3)]):
+        padding = self._n_padding()
+        if np.any([inp_dims[d] + padding[d] < self._window_size[d] for d in range(3)]):
             return [0,0,0]
         else:
-            padding = self._n_padding()
             return [1 + (inp_dims[d] + padding[d] - self._window_size[d]) // self._strides[d] for d in range(3)]
     
     def calc_inp_dims_given_outp(self, outp_dims):
@@ -116,24 +116,24 @@ class ConvolutionalLayer(Layer):
     
     def _n_padding(self):
         # Returns [padx,pady,padz], how much pad would have been added to preserve dimensions ('SAME' or 'MIRROR').
-        return [0,0,0] if self._pad_mode == 'VALID' else [self._w.shape[2+d] - 1 for d in range(3)]
+        return [0,0,0] if self._pad_mode == 'VALID' else [self._w.shape.as_list()[2+d] - 1 for d in range(3)]
     
     def rec_field(self, rf_at_inp, stride_rf_at_inp):
-        rf_out = [rf_at_inp[d] + (self._w.shape[2+d]-1)*stride_rf_at_inp[d] for d in range(3)]
+        rf_out = [rf_at_inp[d] + (self._w.shape.as_list()[2+d]-1)*stride_rf_at_inp[d] for d in range(3)]
         stride_rf = [stride_rf_at_inp[d]*self._strides[d] for d in range(3)]
         return rf_out, stride_rf
     
     def calc_outp_dims_given_inp(self, inp_dims):
-        if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
+        padding = self._n_padding()
+        if np.any([inp_dims[d] + padding[d] < self._w.shape.as_list()[2+d] for d in range(3)]):
             return [0,0,0]
         else:
-            padding = self._n_padding()
-            return [1 + (inp_dims[d] + padding[d] - self._w.shape[2+d]) // self._strides[d] for d in range(3)]
+            return [1 + (inp_dims[d] + padding[d] - self._w.shape.as_list()[2+d]) // self._strides[d] for d in range(3)]
     
     def calc_inp_dims_given_outp(self, outp_dims):
         assert np.all([outp_dims[d] > 0 for d in range(3)])
         padding = self._n_padding()
-        return [(outp_dims[d]-1)*self._strides[d] + self._w.shape[2+d] - padding[d] for d in range(3)]
+        return [(outp_dims[d]-1)*self._strides[d] + self._w.shape.as_list()[2+d] - padding[d] for d in range(3)]
     
     
 class LowRankConvolutionalLayer(ConvolutionalLayer):
@@ -209,20 +209,20 @@ class LowRankConvolutionalLayer(ConvolutionalLayer):
         return rf_out, stride_rf
     
     def calc_outp_dims_given_inp(self, inp_dims):
-        if np.any([inp_dims[d] < self._w.shape[2+d] for d in range(3)]):
+        padding = self._n_padding()
+        if np.any([inp_dims[d] + padding[d] < self._w.shape.as_list()[2+d] for d in range(3)]):
             return [0,0,0]
         else:
-            padding = self._n_padding()
-            return [1 + (inp_dims[0] + padding[0] - self._w_x.shape[2]) // self._strides[0],
-                    1 + (inp_dims[1] + padding[1] - self._w_y.shape[3]) // self._strides[1],
-                    1 + (inp_dims[2] + padding[2] - self._w_z.shape[4]) // self._strides[2]]
+            return [1 + (inp_dims[0] + padding[0] - self._w_x.shape.as_list()[2]) // self._strides[0],
+                    1 + (inp_dims[1] + padding[1] - self._w_y.shape.as_list()[3]) // self._strides[1],
+                    1 + (inp_dims[2] + padding[2] - self._w_z.shape.as_list()[4]) // self._strides[2]]
                
     def calc_inp_dims_given_outp(self, outp_dims):
         assert np.all([outp_dims[d] > 0 for d in range(3)])
         padding = self._n_padding()
-        return [(outp_dims[0]-1)*self._strides[0] + self._w_x.shape[2] - padding[0],
-                (outp_dims[1]-1)*self._strides[1] + self._w_y.shape[3] - padding[1],
-                (outp_dims[2]-1)*self._strides[2] + self._w_z.shape[4] - padding[2]]
+        return [(outp_dims[0]-1)*self._strides[0] + self._w_x.shape.as_list()[2] - padding[0],
+                (outp_dims[1]-1)*self._strides[1] + self._w_y.shape.as_list()[3] - padding[1],
+                (outp_dims[2]-1)*self._strides[2] + self._w_z.shape.as_list()[4] - padding[2]]
     
 class DropoutLayer(Layer):
     def __init__(self, dropout_rate, rng):
@@ -278,10 +278,7 @@ class BatchNormLayer(Layer):
         self._op_update_mtrx_bn_inf_mu = tf.compat.v1.assign( self._array_mus_for_moving_avg[self._tf_plchld_int32], self._new_mu_batch ) # Cant it just take tensor? self._latest_mu_batch?
         self._op_update_mtrx_bn_inf_var = tf.compat.v1.assign( self._array_vars_for_moving_avg[self._tf_plchld_int32], self._new_var_batch )
         
-        self._latest_mu_batch = None # I think this is useless
-        self._latest_var_batch = None # I think this is useless
-        
-        self._idx_where_moving_avg_is = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch.
+        self._idx_where_moving_avg_is = 0 #Index in the rolling-average matrices of the layers, of the entry to update in the next batch. Could be tf.Var.
 
     def trainable_params(self):
         return [self._g, self._b]

@@ -378,7 +378,7 @@ class Cnn3d(object):
             fms_from_paths_to_concat.append(out)
             
         # ===== Concatenate and final convs ========
-        conc_inp_fms =  tf.concat(fms_from_paths_to_concat, axis=1)
+        conc_inp_fms = tf.concat(fms_from_paths_to_concat, axis=1)
         logits_no_bias = self.pathways[-1].apply(conc_inp_fms, mode, train_val_test, verbose, log)
         # Softmax
         p_y_given_x = self.finalTargetLayer.apply(logits_no_bias, mode)

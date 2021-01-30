@@ -201,7 +201,7 @@ def get_samples_for_subepoch(log,
 
 def init_sampling_proc():
     # This will make child-processes ignore the KeyboardInterupt (sigInt). Parent will handle it.
-    # See: http://stackoverflow.com/questions/11312525/catch-ctrlc-sigint-and-exit-multiprocesses-gracefully-in-python/35134329#35134329
+    # See: http://stackoverflow.com/questions/11312525/catch-ctrlc-sigint-and-exit-multiprocesses-gracefully-in-python/
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
@@ -243,7 +243,7 @@ def get_n_samples_per_subj(n_samples, n_subjects):
 
 def constrain_sampling_maps_near_edges(sample_maps_per_cat, dims_sample):
     # We wish to sample pixels around which the samples we will extract will be centered.
-    # But we need to be CAREFUL and get only pixels that are NOT closer to the image boundaries than the dimensions of the
+    # But we need to be CAREFUL and get only pixels that are NOT closer to image boundaries than the dimensions of the
     # samples we wish to extract permit.
     constrained_maps = []
     mask_excl_edges = comp_valid_sampling_mask_excluding_edges(dims_sample, sample_maps_per_cat[0].shape)
@@ -336,7 +336,7 @@ def load_subj_and_sample(job_idx,
                                                                        roi_mask,
                                                                        dims_of_scan)
     sampling_maps_per_cat = constrain_sampling_maps_near_edges(sampling_maps_per_cat, dims_hres_segment)
-   
+
     # Get number of samples per sampling-category for the specific subject (class, foregr/backgr, etc)
     (n_samples_per_cat, valid_cats) = sampling_type.distribute_n_samples_to_categs(n_samples_per_subj[job_idx],
                                                                                    sampling_maps_per_cat)
@@ -419,30 +419,30 @@ def load_imgs_of_subject(log,
     
     log.print3(job_id + " Loading subject with 1st channel at: " + str(paths_per_chan_per_subj[subj_i][0]))
     
-    numberOfNormalScaleChannels = len(paths_per_chan_per_subj[0])
+    n_channels = len(paths_per_chan_per_subj[0])
         
     # Load the channels of the patient.
     inp_chan_dims = None  # Dimensions of the (padded) input channels.
     channels = None
-    for channel_i in range(numberOfNormalScaleChannels):
-        fullFilenamePathOfChannel = paths_per_chan_per_subj[subj_i][channel_i]
-        if fullFilenamePathOfChannel != "-":  # normal case, filepath was given.
-            channelData = load_volume(fullFilenamePathOfChannel)
+    for channel_i in range(n_channels):
+        path_to_chan = paths_per_chan_per_subj[subj_i][channel_i]
+        if path_to_chan != "-":  # normal case, filepath was given.
+            channel = load_volume(path_to_chan)
             
             if channels is None:
                 # Initialize the array in which all the channels for the patient will be placed.
-                inp_chan_dims = list(channelData.shape)
-                channels = np.zeros((numberOfNormalScaleChannels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
+                inp_chan_dims = list(channel.shape)
+                channels = np.zeros((n_channels, inp_chan_dims[0], inp_chan_dims[1], inp_chan_dims[2]))
 
-            channels[channel_i] = channelData
+            channels[channel_i] = channel
         else:  # "-" was given in the config-listing file. Do Min-fill!
             log.print3(job_id + " WARN: No modality #" + str(channel_i) + " given. Will make zero-filled channel.")
             channels[channel_i] = 0.0
     
     # Load the class labels.
     if paths_to_lbls_per_subj is not None:
-        fullFilenamePathOfGtLabels = paths_to_lbls_per_subj[subj_i]
-        gt_lbl_img = load_volume(fullFilenamePathOfGtLabels)
+        path_to_lbl = paths_to_lbls_per_subj[subj_i]
+        gt_lbl_img = load_volume(path_to_lbl)
 
         if gt_lbl_img.dtype.kind not in ['i', 'u']:
             dtype_gt_lbls = 'int16'
@@ -453,8 +453,8 @@ def load_imgs_of_subject(log,
         gt_lbl_img = None  # For validation and testing
 
     if paths_to_masks_per_subj is not None:
-        fullFilenamePathOfRoiMask = paths_to_masks_per_subj[subj_i]
-        roi_mask = load_volume(fullFilenamePathOfRoiMask)
+        path_to_roi_mask = paths_to_masks_per_subj[subj_i]
+        roi_mask = load_volume(path_to_roi_mask)
         
         if roi_mask.dtype.kind not in ['i','u']:
             dtype_roi_mask = 'int16'
@@ -469,13 +469,12 @@ def load_imgs_of_subject(log,
         n_sampl_categs = len(paths_to_wmaps_per_sampl_cat_per_subj)
         wmaps_to_sample_per_cat = np.zeros([n_sampl_categs] + list(channels[0].shape), dtype="float32")
         for cat_i in range(n_sampl_categs):
-            filepathsToTheWeightMapsOfAllPatientsForThisCategory = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
-            filepathToTheWeightMapOfThisPatientForThisCategory = filepathsToTheWeightMapsOfAllPatientsForThisCategory[
-                subj_i]
-            weightedMapForThisCatData = load_volume(filepathToTheWeightMapOfThisPatientForThisCategory)
-            if not np.all(weightedMapForThisCatData >= 0):
+            path_to_wmaps_for_this_cat_per_subj = paths_to_wmaps_per_sampl_cat_per_subj[cat_i]
+            path_to_wmap_for_this_cat = path_to_wmaps_for_this_cat_per_subj[subj_i]
+            wmap_for_this_cat = load_volume(path_to_wmap_for_this_cat)
+            if not np.all(wmap_for_this_cat >= 0):
                 raise ValueError("Negative values found in weightmap. Unexpected. Zero or positives allowed.")
-            wmaps_to_sample_per_cat[cat_i] = weightedMapForThisCatData
+            wmaps_to_sample_per_cat[cat_i] = wmap_for_this_cat
     else:
         wmaps_to_sample_per_cat = None
 
@@ -544,7 +543,7 @@ def comp_valid_sampling_mask_excluding_edges(dims_of_segment, shape):
 def sampling_cumsum(p_1darr, n_samples):
     p_cumsum = p_1darr.cumsum(dtype='float64') # This is dangerous, final elements go below or beyond 1.
     p_cumsum = np.clip(p_cumsum, a_min=None, a_max=1., out=p_cumsum)
-    #p_cumsum[p_cumsum>1.] = 1.
+    # p_cumsum[p_cumsum>1.] = 1.
     p_cumsum[-1] = 1.
     random_ps = np.random.random(size=n_samples)
     idxs_sampled = np.searchsorted(p_cumsum, random_ps)
@@ -555,7 +554,7 @@ def sample_with_appropriate_algorithm(n_samples, sampling_map, sum_sampl_map):
     p_sampling_flat = sampling_map.ravel() # Unnormalized
     is_0 = p_sampling_flat == 0. # np.isclose(p_sampling_flat, 0.)
     is_1 = p_sampling_flat == 1. # np.isclose(p_sampling_flat, 1.)
-    if np.all(np.logical_or(is_0, is_1)): # Whole sampling map is either 0 or 1. Do faster sampling only under valid idxs.
+    if np.all(np.logical_or(is_0, is_1)):  # Whole sampling map is 0 or 1. Do faster sampling only under valid idxs.
         idxs = np.arange(p_sampling_flat.size, dtype='int32') # Unlikely large image size will need int64
         valid_idxs = idxs[is_1>0]
         idxs_sampled = np.random.choice(valid_idxs, size=n_samples, replace=True)
@@ -581,10 +580,10 @@ def sample_idxs_of_segments(log,
     """
     sampling_map: np.array of shape (H,W,D), dtype="int16" or potentially float if weightmaps given by user.
     Returns: idxs_of_sampled_centers
-             Coordinates (xyz indices) of the "central" voxel of sampled segments (1 voxel to the left if dimension is even).
+             Coordinates (xyz indices) of "central" voxel of sampled segments (1 voxel to the left if even dimension).
     
     > idxs_of_sampled_centers: array with shape: 3(xyz) x n_samples.
-        Example: [ xCoordsForCentralVoxelOfEachPart, yCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart ]
+        Example: [xCoordsForCentralVoxelOfEachPart, yCoordsForCentralVoxelOfEachPart, zCoordsForCentralVoxelOfEachPart]
         >> x/y/z-CoordsForCentralVoxelOfEachPart: 1-dim array with n_samples, holding the x-indices of samples in image.
     """
     # Check if the weight map is fully-zeros. In this case, return no element.
@@ -602,54 +601,75 @@ def sample_idxs_of_segments(log,
     return idxs_of_sampled_centers
 
 
-def get_subsampl_segment(channels, segment_hr_slice_coords, subs_factor, segment_lr_dims):
+def get_subsampl_segment(rec_field_hr_path, channels, segment_hr_slice_coords, subs_factor, dims_lr_segm):
     """
-    This returns an image part from the sampled data, given the segment_hr_slice_coords,
-    which has the coordinates where the normal-scale image part starts and ends (inclusive).
-    (Actually, in this case, the right (end) part of segment_hr_slice_coords is not used.)
-    
-    The way it works is NOT optimal. From the beginning of the normal-resolution part,
-    it goes further to the left 1 receptive-field and then forward xsubs_factor receptive-fields.
+    Given the segment_hr_slice_coords, which has the coordinates where the high-resolution image segment starts and
+    ends (inclusive), this returns the corresponding image segment of down-sampled context for the parallel path(s).
+
+    (Actually, in this implementation, the right (end) part of segment_hr_slice_coords is not used.)
+    The way it works is NOT optimal. It ASSUMES that receptive field or high res and low-res paths are the same size.
+    From the beginning of the high-resolution segment,
+    it goes further to the left 1 receptive-field and then forward subs_factor * receptive-fields.
     This stops it from being used with arbitrary size of subsampled segment (decoupled by the high-res segment).
-    Now, the subsampled patch has to be of the same size as the normal-scale.
-    To change this, I should find where THE FIRST TOP LEFT CENTRAL (predicted) VOXEL is, 
-    and do the back-one-(sub)patch + front-3-(sub)patches from there, not from the begining of the patch.
-    
+    Now, the subsampled receptive-field has to be of the same size as the normal-scale.
+    To change this, I should find where THE FIRST TOP LEFT CENTRAL (predicted) VOXEL is, <=================
+    and do the back-one-(sub)rec_field + front-3-(sub)ref_fields from there, not from the beginning of the patch.
+
     Current way it works (correct):
-    If I have eg subsample factor=3 and 9 central-pred-voxels, I get 3 "central" voxels/patches for the
-    subsampled-part. Straightforward. If I have a number of central voxels that is not an exact multiple of
-    the subfactor, eg 10 central-voxels, I get 3+1 central voxels in the subsampled-part. 
-    When the cnn is convolving them, they will get repeated to 4(last-layer-neurons)*3(factor) = 12, 
+    If I have eg subsample factor=3 and 9 central-pred-voxels, I get 3 "central" voxels for the
+    subsampled-segment. Straightforward. If I have a number of central voxels that is not an exact multiple of
+    the subfactor, eg 10 central-voxels, I get 3+1 central voxels in the subsampled-segment.
+    When the cnn is convolving them, they will get repeated to 4(last-layer-neurons)*3(factor) = 12,
     and will get sliced down to 10, in order to have same dimension with the 1st pathway.
     """
-    img_dims = channels[0].shape
+    dims_hr_segm = [segment_hr_slice_coords[d][1] - segment_hr_slice_coords[d][0] + 1 for d in range(3)]
+    dims_outp_hr_path = [dims_hr_segm[d] - rec_field_hr_path[d] + 1 for d in range(3)] # Assumes no stride.
+    dims_img = channels.shape[1:] # Channels: [batch, X, Y, Z]
 
-    segment_lr = np.ones((len(channels), segment_lr_dims[0], segment_lr_dims[1], segment_lr_dims[2]), dtype='float32')
-    
-    # Central voxel of input:
-    central_vox = [segment_hr_slice_coords[d][0] + (segment_hr_slice_coords[d][1]-segment_hr_slice_coords[d][0])//2 for d in range(3)]
-    low = [central_vox[d] - (segment_lr_dims[d]-1)//2 * subs_factor[d] for d in range(3)] # -1 to to deal with even sizes.
-    high_non_incl = [low[d] + subs_factor[d] * (segment_lr_dims[d]-1) + 1 for d in range(3)] # +1 to make it non inclusive
-    
+    segment_lr = np.ones((channels.shape[0], dims_lr_segm[0], dims_lr_segm[1], dims_lr_segm[2]), dtype='float32')
+
+    n_vox_before = [None, None, None]
+    centre_of_downsampl_kernel = [None, None, None]
+    for d in range(3):
+        if subs_factor[d] % 2 == 1: # Odd
+            n_vox_before[d] = ((subs_factor[d] - 1) // 2) * rec_field_hr_path[d] # TODO: Should be rec_field_lr_path
+            centre_of_downsampl_kernel[d] = subs_factor[d] // 2 # 3 ==> 1
+        else:
+            n_vox_before[d] = (subs_factor[d] - 2) // 2 * rec_field_hr_path[d] + rec_field_hr_path[d] // 2
+            centre_of_downsampl_kernel[d] = subs_factor[d] // 2 - 1 # One pixel closer to the beginning of dim.
+
+    # This is where to start taking voxels from the subsampled image: From the beginning of the hr_segment...
+    # ... go forward a few steps to the voxel that is like the "central" in this subsampled (eg 3x3) area.
+    # ...Then go backwards -Patchsize to find the first voxel of the subsampled.
+
+    # These indices can run out of image boundaries. I ll correct them afterwards.
+    low = [segment_hr_slice_coords[d][0] + centre_of_downsampl_kernel[d] - n_vox_before[d] for d in range(3)]
+    # If the rec_field is 17x17, I want a 17x17 subsampled Patch. BUT if the segment is 25x25 (9voxClass),
+    # I want 3 voxels in my subsampled-segment to cover this area!
+    # That is what the last term below is taking care of.
+    high_non_incl = [int(low[d] + subs_factor[d] * rec_field_hr_path[d] + (
+            math.ceil(dims_outp_hr_path[d] / subs_factor[d]) - 1) * subs_factor[d]) for d in range(3)]
+
     low_corrected = [max(low[d], 0) for d in range(3)]
-    high_non_incl_corrected = [min(high_non_incl[d], img_dims[d]) for d in range(3)]
+    high_non_incl_corrected = [min(high_non_incl[d], dims_img[d]) for d in range(3)]
 
     low_to_put_slice_in_segm = [0 if low[d] >= 0 else abs(low[d]) // subs_factor[d] for d in range(3)]
-    dims_of_slice_not_padded = [int(math.ceil((high_non_incl_corrected[d] - low_corrected[d]) / subs_factor[0])) for d in range(3)]
-    
+    dims_of_slice_not_padded = [int(math.ceil((high_non_incl_corrected[d] - low_corrected[d]) * 1.0 / subs_factor[d])) for d in range(3)]
+    # dims_of_slice_not_padded =! dims_lr_segm when sampling at borders.
+
     # I now have exactly where to get the slice from and where to put it in the new array.
     for channel_i in range(len(channels)):
-        black_int_for_chan = calc_border_int_of_3d_img(channels[channel_i])
-        segment_lr[channel_i] *= black_int_for_chan
-        # Can be smaller than that appropriate segment dimensions, due to sampling near boundary.
-        chan_slice_lr = channels[channel_i][low_corrected[0]: high_non_incl_corrected[0]: subs_factor[0],
-                                            low_corrected[1]: high_non_incl_corrected[1]: subs_factor[1],
-                                            low_corrected[2]: high_non_incl_corrected[2]: subs_factor[2]]
+        segment_lr[channel_i] *= calc_border_int_of_3d_img(channels[channel_i]) # Make black
+
+        chan_slice_lr = channels[channel_i,
+                                 low_corrected[0]: high_non_incl_corrected[0]: subs_factor[0],
+                                 low_corrected[1]: high_non_incl_corrected[1]: subs_factor[1],
+                                 low_corrected[2]: high_non_incl_corrected[2]: subs_factor[2]]
         segment_lr[channel_i,
                    low_to_put_slice_in_segm[0]: low_to_put_slice_in_segm[0] + dims_of_slice_not_padded[0],
                    low_to_put_slice_in_segm[1]: low_to_put_slice_in_segm[1] + dims_of_slice_not_padded[1],
                    low_to_put_slice_in_segm[2]: low_to_put_slice_in_segm[2] + dims_of_slice_not_padded[2]
-                   ] = chan_slice_lr
+                  ] = chan_slice_lr
 
     return segment_lr
 
@@ -711,11 +731,10 @@ def extractSegmentGivenSliceCoords(train_val_or_test,
             continue
         # this datastructure is similar to channelsForThisImagePart, but contains voxels from the subsampled image.
         segment_hr_dims = inp_shapes_per_path[pathway_i]
-                                
-        # rightmost  are placeholders here.
+
         slicesCoordsOfSegmForPrimaryPathway = [[leftBoundaryRcz[d], rightBoundaryRcz[d]] for d in range(3)]
-        
-        channsForThisSubsampledPartAndPathway = get_subsampl_segment(channels,
+        channsForThisSubsampledPartAndPathway = get_subsampl_segment(cnn3d.pathways[0].rec_field()[0],
+                                                                     channels,
                                                                      slicesCoordsOfSegmForPrimaryPathway,
                                                                      cnn3d.pathways[pathway_i].subs_factor(),
                                                                      inp_shapes_per_path[pathway_i])
@@ -788,14 +807,14 @@ def get_slice_coords_of_all_img_tiles(log,
                 # In case I pass a brain-mask, I ll use it to only predict inside it. Otherwise, whole image.
                 if isinstance(roi_mask, np.ndarray):
                     if not np.any(roi_mask[rLowBoundary:rFarBoundary,
-                                  cLowBoundary:cFarBoundary,
-                                  zLowBoundary:zFarBoundary]
+                                           cLowBoundary:cFarBoundary,
+                                           zLowBoundary:zFarBoundary]
                                   ):  # all of it is out of the brain so skip it.
                         continue
 
-                sliceCoordsOfSegmentsToReturn.append(
-                    [[rLowBoundary, rFarBoundary - 1], [cLowBoundary, cFarBoundary - 1],
-                     [zLowBoundary, zFarBoundary - 1]])
+                sliceCoordsOfSegmentsToReturn.append([[rLowBoundary, rFarBoundary - 1],
+                                                      [cLowBoundary, cFarBoundary - 1],
+                                                      [zLowBoundary, zFarBoundary - 1]])
 
     # I need to have a total number of image-parts that can be exactly-divided by the 'batch_size'.
     # For this reason, I add in the far end of the list multiple copies of the last element.
@@ -822,12 +841,14 @@ def extractSegmentsGivenSliceCoords(cnn3d,
                                     channelsOfImageNpArray,
                                     inp_shapes_per_path,
                                     outp_pred_dims):
+    # sliceCoordsOfSegmentsToExtract: list of length num_segments. Each elem: [[r_low, r_high], [c_l, c_h], [z_l, z_h]]
     # channelsOfImageNpArray: numpy array [ n_channels, x, y, z ]
+    # Returns: list with length [num_pathways], where each element is a list of length [num_segments],
+    #          of arrays [channels, r, c, z]
+    # TODO: Change result to a list of arrays [num_segments, channs, r, c, z]
+
     numberOfSegmentsToExtract = len(sliceCoordsOfSegmentsToExtract)
-    channsForSegmentsPerPathToReturn = [[] for i in range(
-        cnn3d.getNumPathwaysThatRequireInput())]  # [pathway, image parts, channels, r, c, z]
-    # RCZ dims of input to primary pathway (NORMAL). Which should be the first one in .pathways.
-    segment_hr_dims = inp_shapes_per_path[0]
+    channsForSegmentsPerPathToReturn = [[] for i in range(cnn3d.getNumPathwaysThatRequireInput())]
     
     for segment_i in range(numberOfSegmentsToExtract):
         rLowBoundary = sliceCoordsOfSegmentsToExtract[segment_i][0][0]
@@ -848,16 +869,13 @@ def extractSegmentsGivenSliceCoords(cnn3d,
         for pathway_i in range(len(cnn3d.pathways)):  # Except Normal 1st, cause that was done already.
             if cnn3d.pathways[pathway_i].pType() == pt.FC or cnn3d.pathways[pathway_i].pType() == pt.NORM:
                 continue
-            # the right hand values are placeholders in this case.
-            slicesCoordsOfSegmForPrimaryPathway = [[rLowBoundary, rFarBoundary],
-                                                   [cLowBoundary, cFarBoundary],
-                                                   [zLowBoundary, zFarBoundary]]
-            
-            channsForThisSubsPathForThisSegm = get_subsampl_segment(channelsOfImageNpArray,
-                                                                    slicesCoordsOfSegmForPrimaryPathway,
+
+            channsForThisSubsPathForThisSegm = get_subsampl_segment(cnn3d.pathways[0].rec_field()[0],
+                                                                    channelsOfImageNpArray,
+                                                                    sliceCoordsOfSegmentsToExtract[segment_i],
                                                                     cnn3d.pathways[pathway_i].subs_factor(),
                                                                     inp_shapes_per_path[pathway_i])
-            
+
             channsForSegmentsPerPathToReturn[pathway_i].append(channsForThisSubsPathForThisSegm)
 
     return channsForSegmentsPerPathToReturn

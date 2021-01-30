@@ -9,16 +9,14 @@ from __future__ import absolute_import, print_function, division
 import os
 
 from deepmedic.frontEnd.session import Session
-from deepmedic.frontEnd.configParsing.utils import getAbsPathEvenIfRelativeIsGiven
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.trainSessionParams import TrainSessionParameters
-from deepmedic.frontEnd.sessHelpers import makeFoldersNeededForTrainingSession, handle_exception_tf_restore
+from deepmedic.frontEnd.sessHelpers import make_folders_for_train_session, handle_exception_tf_restore
 
 from deepmedic.logging.utils import datetime_now_str
 from deepmedic.neuralnet.cnn3d import Cnn3d
 from deepmedic.neuralnet.trainer import Trainer
-
 from deepmedic.routines.training import do_training
-
 from deepmedic.logging.tensorboard_logger import TensorboardLogger
 
 import tensorflow as tf
@@ -34,19 +32,17 @@ class TrainSession(Session):
         self._params = None  # Compiled from cfg. Required for run()
         Session.__init__(self, cfg)
 
-    def _make_sess_name(self):
-        sess_name = TrainSessionParameters.getSessionName(self._cfg[self._cfg.SESSION_NAME],
-                                                          os.path.splitext(os.path.basename(self.get_abs_path_to_cfg()))[0])
-        return sess_name
+    def _make_session_name(self):
+        session_name = TrainSessionParameters.get_session_name(self._cfg[self._cfg.SESSION_NAME])
+        return session_name
 
     def make_output_folders(self):
-        self._main_out_folder_abs = getAbsPathEvenIfRelativeIsGiven(self._cfg[self._cfg.FOLDER_OUTP],
-                                                                    self.get_abs_path_to_cfg())
-        [self._log_folder_abs,
+        self._main_out_folder_abs = abs_from_rel_path(self._cfg[self._cfg.FOLDER_OUTP], self.get_abs_path_to_cfg())
+        [self._out_folder_logs,
          self._out_folder_models,
          self._out_folder_preds,
          self._out_folder_fms,
-         self._out_folder_tensorboard] = makeFoldersNeededForTrainingSession(self._main_out_folder_abs, self._sess_name)
+         self._out_folder_tensorboard] = make_folders_for_train_session(self._main_out_folder_abs, self._session_name)
 
     def create_tensorboard_loggers(self, logger_types, tf_graph, create_log=False):
         tensorboard_loggers = {}
@@ -77,18 +73,17 @@ class TrainSession(Session):
     def compile_session_params_from_cfg(self, *args):
         (model_params,) = args
 
-        self._params = TrainSessionParameters(
-                                    log=self._log,
-                                    mainOutputAbsFolder=self._main_out_folder_abs,
-                                    folderForSessionCnnModels=self._out_folder_models,
-                                    folderForPredictionsVal=self._out_folder_preds,
-                                    folderForFeaturesVal=self._out_folder_fms,
-                                    num_classes=model_params.numberClasses,
-                                    model_name=model_params.cnnModelName,
-                                    cfg=self._cfg)
+        self._params = TrainSessionParameters(self._log,
+                                              self._main_out_folder_abs,
+                                              self._out_folder_models,
+                                              self._out_folder_preds,
+                                              self._out_folder_fms,
+                                              model_params.get_n_classes(),
+                                              model_params.get_model_name(),
+                                              self._cfg)
 
         self._log.print3("")
-        self._log.print3("=============   NEW TRAINING SESSION     ==============\n")
+        self._log.print3("=============    NEW TRAINING SESSION    ==============\n")
         self._params.print_params()
         self._log.print3("=======================================================\n")
 
@@ -143,18 +138,18 @@ class TrainSession(Session):
 
             self._log.print3("=========== Compiling the Testing Function ============")
             # For validation with full segmentation
-            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, p_y_given_x_test, self._params.indices_fms_per_pathtype_per_layer_to_save)
+            cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, p_y_given_x_test, self._params.inds_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers
             saver_all = tf.compat.v1.train.Saver()  # Will be used during training for saving everything.
             # Alternative: tf.train.Saver([v for v in tf.all_variables() if v.name.startswith("net"])
-            collection_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
-            saver_net = tf.compat.v1.train.Saver(var_list=collection_vars_net)  # Used to load the net's parameters.
-            collection_vars_trainer = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
-            saver_trainer = tf.compat.v1.train.Saver(var_list=collection_vars_trainer)  # Used to load the trainer's parameters.
+            coll_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
+            saver_net = tf.compat.v1.train.Saver(var_list=coll_vars_net)  # Used to load the net's parameters.
+            coll_vars_trainer = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="trainer")
+            saver_trainer = tf.compat.v1.train.Saver(var_list=coll_vars_trainer)  # to load the trainer's params
             
-            # TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(collection_vars_net)}
-            # TF2: dict_vars_trainer = {'trainer_var'+str(i): v for i, v in enumerate(collection_vars_trainer)}
+            # TF2: dict_vars_net = {'net_var'+str(i): v for i, v in enumerate(coll_vars_net)}
+            # TF2: dict_vars_trainer = {'trainer_var'+str(i): v for i, v in enumerate(coll_vars_trainer)}
             # TF2: dict_vars_all = dict_vars_net.copy()
             # TF2: for key in dict_vars_trainer:
             # TF2:     dict_vars_all[key] = dict_vars_trainer[key]
@@ -162,8 +157,8 @@ class TrainSession(Session):
             # TF2: ckpt_net = tf.train.Checkpoint(**dict_vars_net)
             # TF2: ckpt_trainer = tf.train.Checkpoint(**dict_vars_trainer)
             
-        # self._print_vars_in_collection(collection_vars_net, "net")
-        # self._print_vars_in_collection(collection_vars_trainer, "trainer")
+        # self._print_vars_in_collection(coll_vars_net, "net")
+        # self._print_vars_in_collection(coll_vars_trainer, "trainer")
 
         with tf.compat.v1.Session(graph=graphTf,
                         config=tf.compat.v1.ConfigProto(log_device_placement=False,
@@ -191,15 +186,15 @@ class TrainSession(Session):
                     self._log.print3("Trainer parameters were loaded.")
                 else:
                     self._log.print3("Reset of trainer parameters was requested. Re-initializing them...")
-                    tf.compat.v1.variables_initializer(var_list=collection_vars_trainer).run()
+                    tf.compat.v1.variables_initializer(var_list=coll_vars_trainer).run()
                     self._log.print3("Trainer parameters re-initialized.")
             else:
                 self._log.print3("=========== Initializing network and trainer variables  ===============")
                 # Initializes all.
                 # tf.variables_initializer(var_list = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES) ).run()
                 # Initialize separate as below, so that in case I miss a variable, I will get an error and I will know.
-                tf.compat.v1.variables_initializer(var_list=collection_vars_net).run()
-                tf.compat.v1.variables_initializer(var_list=collection_vars_trainer).run()
+                tf.compat.v1.variables_initializer(var_list=coll_vars_net).run()
+                tf.compat.v1.variables_initializer(var_list=coll_vars_trainer).run()
                 self._log.print3("All variables were initialized.")
 
                 filename_to_save_with = self._params.filepath_to_save_models + ".initial." + datetime_now_str()
@@ -217,8 +212,8 @@ class TrainSession(Session):
             self._log.print3("============== Training the CNN model =================")
             self._log.print3("=======================================================")
 
-            do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] +\
-                          self._params.get_args_for_train_routine() +\
+            do_training(*([sessionTf, saver_all, cnn3d, trainer, tensorboard_loggers] +
+                          self._params.get_args_for_train_routine() +
                           [inp_shapes_per_path_train, inp_shapes_per_path_val, inp_shapes_per_path_test]))
 
             # TF2: ckpt_all.save(file_prefix = filename_to_save_with+".all.FINAL.ckpt2")

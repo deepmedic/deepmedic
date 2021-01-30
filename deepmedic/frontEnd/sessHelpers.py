@@ -34,7 +34,7 @@ def createFolderForFeatures(folderForFeatures) :
         os.mkdir(folderForFeatures)
         print("\t>>Created folder for features: ", folderForFeatures)
 
-def makeFoldersNeededForTestingSession(absMainOutputFolder, sessionName):
+def make_folders_for_test_session(absMainOutputFolder, sessionName):
     #Create folders for saving the prediction images:
     print("Creating necessary folders for testing session...")
     createMainOutputFolder(absMainOutputFolder)
@@ -78,7 +78,7 @@ def createFolderForSessionTensorboard(folderForSessionTensorboard) :
         os.mkdir(folderForSessionTensorboard)
         print("\t>>Created folder to log session's tensorboard metrics/events: ", folderForSessionTensorboard)
         
-def makeFoldersNeededForTrainingSession(absMainOutputFolder, sessionName):
+def make_folders_for_train_session(absMainOutputFolder, sessionName):
     #Create folders for saving the prediction images:
     print("Creating necessary folders for training session...")
     createMainOutputFolder(absMainOutputFolder)

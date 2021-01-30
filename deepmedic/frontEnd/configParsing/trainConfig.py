@@ -6,8 +6,9 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
+import os
 
-from deepmedic.frontEnd.configParsing.utils import *
+from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path
 from deepmedic.frontEnd.configParsing.config import Config
 
 
@@ -21,9 +22,10 @@ class TrainConfig(Config):
     TENSORBOARD_LOG = "tensorboard_log"
 
     # =============TRAINING========================
+    DATAFRAME_TR = "dataframe_train"
     CHANNELS_TR = "channelsTraining"
-    GT_LABELS_TR = "gtLabelsTraining"
-    ROI_MASKS_TR = "roiMasksTraining"
+    GT_LBLS_TR = "gtLabelsTraining"
+    ROIS_TR = "roiMasksTraining"
     
     # ~~~~ Sampling (training) ~~~~~
     TYPE_OF_SAMPLING_TR = "typeOfSamplingForTraining"
@@ -57,9 +59,10 @@ class TrainConfig(Config):
     # ============== VALIDATION ===================
     PERFORM_VAL_SAMPLES = "performValidationOnSamplesThroughoutTraining"
     PERFORM_VAL_INFERENCE = "performFullInferenceOnValidationImagesEveryFewEpochs"
+    DATAFRAME_VAL = "dataframe_val"
     CHANNELS_VAL = "channelsValidation"
-    GT_LABELS_VAL = "gtLabelsValidation"
-    ROI_MASKS_VAL = "roiMasksValidation"
+    GT_LBLS_VAL = "gtLabelsValidation"
+    ROIS_VAL = "roiMasksValidation"
     NUM_VAL_SEGMS_LOADED_PERSUB = "numberValidationSegmentsLoadedOnGpuPerSubep"  # For val on samples.
     BATCHSIZE_VAL_SAMPL = "batchsize_val_samples"
     
@@ -71,7 +74,7 @@ class TrainConfig(Config):
     # ~~~~~~~~~ Validation by fully inferring whole validation cases ~~~~~~~~
     NUM_EPOCHS_BETWEEN_VAL_INF = "numberOfEpochsBetweenFullInferenceOnValImages"
     BATCHSIZE_VAL_WHOLE = "batchsize_val_whole"
-    NAMES_FOR_PRED_PER_CASE_VAL = "namesForPredictionsPerCaseVal"
+    FNAMES_PREDS_VAL = "namesForPredictionsPerCaseVal"
     SAVE_SEGM_VAL = "saveSegmentationVal"
     SAVE_PROBMAPS_PER_CLASS_VAL = "saveProbMapsForEachClassVal"
     SUFFIX_SEGM_PROB_VAL = "suffixForSegmAndProbsDictVal"
@@ -126,7 +129,7 @@ class TrainConfig(Config):
     # If certain config args are given in command line, completely override the corresponding ones in the config files.
     def override_file_cfg_with_cmd_line_cfg(self, log, args):
         if args.saved_model is not None:
-            abs_path_model_cmd_line = getAbsPathEvenIfRelativeIsGiven(args.saved_model, os.getcwd())
+            abs_path_model_cmd_line = abs_from_rel_path(args.saved_model, os.getcwd())
             if self.get(self.SAVED_MODEL) is not None:
                 log.print3("WARN: A model to load was specified both in the command line and in the train-config file!"
                            "\n\t The input by the command line will be used: " + str(abs_path_model_cmd_line))

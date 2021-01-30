@@ -6,9 +6,7 @@
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
 
 from __future__ import absolute_import, print_function, division
-import os
 
-from deepmedic.frontEnd.configParsing.utils import *
 from deepmedic.frontEnd.configParsing.config import Config
 
 
@@ -20,11 +18,11 @@ class ModelConfig(Config):
     FOLDER_OUTP = "folderForOutput" #MUST BE GIVEN
     
     #================ MODEL PARAMETERS =================
-    NUM_CLASSES = "numberOfOutputClasses"
-    NUM_INPUT_CHANS = "numberOfInputChannels"
+    N_CLASSES = "numberOfOutputClasses"
+    N_INP_CHANS = "numberOfInputChannels"
     
     #===Normal pathway===
-    N_FMS_NORM = "numberFMsPerLayerNormal"
+    N_FM_NORM = "numberFMsPerLayerNormal"
     KERN_DIM_NORM = "kernelDimPerLayerNormal"
     PAD_MODE_NORM = "padTypePerLayerNormal"
     RESID_CONN_LAYERS_NORM = "layersWithResidualConnNormal"
@@ -32,8 +30,7 @@ class ModelConfig(Config):
     
     #==Subsampled pathway==
     USE_SUBSAMPLED = "useSubsampledPathway"
-    #The below should be mirroring the pathway, otherwise let them specify them but throw warning all around that receptive field should stay the same!
-    N_FMS_SUBS = "numberFMsPerLayerSubsampled"
+    N_FM_SUBS = "numberFMsPerLayerSubsampled"
     KERN_DIM_SUBS = "kernelDimPerLayerSubsampled"
     PAD_MODE_SUBS = "padTypePerLayerSubsampled"
     SUBS_FACTOR = "subsampleFactor"
@@ -41,7 +38,7 @@ class ModelConfig(Config):
     LOWER_RANK_LAYERS_SUBS = "lowerRankLayersSubsampled"
     
     #==Extra hidden FC Layers. Final Classification layer is not included in here.
-    N_FMS_FC = "numberFMsPerLayerFC"
+    N_FM_FC = "numberFMsPerLayerFC"
     KERN_DIM_FC = "kernelDimPerLayerFC"
     PAD_MODE_FC = "padTypePerLayerFC"
     RESID_CONN_LAYERS_FC = "layersWithResidualConnFC"
@@ -74,9 +71,11 @@ class ModelConfig(Config):
         msg_part2 = "]. Please update config and use the new corresponding variable "
         msg_part3 = "]. Exiting."
         if self.get("initializeClassic0orDelving1") is not None:
-            print(msg_part1 + "initializeClassic0orDelving1" + msg_part2 + "convWeightsInit" + msg_part3); exit(1)
+            print(msg_part1 + "initializeClassic0orDelving1" + msg_part2 + "convWeightsInit" + msg_part3)
+            exit(1)
         if self.get("relu0orPrelu1") is not None:
-            print(msg_part1 + "relu0orPrelu1" + msg_part2 + "activationFunction" + msg_part3); exit(1)
+            print(msg_part1 + "relu0orPrelu1" + msg_part2 + "activationFunction" + msg_part3)
+            exit(1)
     
     
 
