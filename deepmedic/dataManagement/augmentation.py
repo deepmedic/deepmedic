@@ -1,3 +1,6 @@
+# Copyright (c) 2016, Konstantinos Kamnitsas
+# All rights reserved.
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the BSD license. See the accompanying LICENSE file
 # or read the terms at https://opensource.org/licenses/BSD-3-Clause.
@@ -8,6 +11,79 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 import scipy.ndimage
 from scipy.ndimage.filters import gaussian_filter
+
+
+AUGMS_FOR_IMAGES = ['RandomElasticDeformation',
+                    'RandomElasticDeformationSimard2003',
+                    'RandomElasticDeformationCoarsePerlinNoise',
+                    'RandomElasticDeformationCoarse',
+                    'RandomAffineTransformation',
+                    'RandomHistogramDistortion',
+                    'RandomFlip',
+                    'RandomRotation90']
+
+AUGMS_FOR_SAMPLES = ['RandomHistogramDistortion',
+                     'RandomFlip',
+                     'RandomRotation90']
+
+
+def get_augmentations(augms_prms, image_or_sample=None):
+    """
+    Factory-like method.
+    augms_prms: Dictionary with which augmentation(s) to instantiate, and parameters. Read from config.
+        For example: For augmentation on images:
+                    {
+                        "RandomAffineTransformation": {
+                            'prob': 0.7,
+                            'max_rot_xyz': (45., 45., 45.),
+                            'max_scaling': 0.1,
+                            'interp_order_imgs': 1
+                        }
+                    }
+                    or for augmentation on samples:
+                    {
+                        'RandomHistogramDistortion': {
+                            'prob': 0.7,
+                            'shift': {'mu': 0., 'std': 0.05},
+                            'scale': {'mu': 1., 'std': 0.01}
+                        },
+                        'RandomFlip': {
+                            'prob': 1.0,
+                            'prob_flip_axes': (0.5, 0., 0.)
+                        },
+                        'RandomRotation90':  {
+                            'prob' : 1.0,
+                            'prob_rot_90': {
+                                'xy': {'0': 0.8, '90': 0.1, '180': 0., '270': 0.1},
+                                'yz': {'0': 0., '90': 0., '180': 0., '270': 0.},
+                                'xz': {'0': 0., '90': 0., '180': 0., '270': 0.}
+                            }
+                        }
+                    }
+    image_or_sample: String, 'image' or 'sample'. Specifies whether augm will be applied on whole images or samples.
+    Returns: List of augmentations. Each is an instance of RandomAugmentation (parent).
+            Returns [] if augms_prms is None.
+    """
+    if augms_prms is None:
+        return []
+
+    if image_or_sample is None:
+        pass  # No check
+    elif image_or_sample in ['image', 'img']:
+        assert all([augm_name in AUGMS_FOR_IMAGES for augm_name in augms_prms.keys()]), 'Not  allowed augmentation'
+    elif image_or_sample == 'sample':
+        assert all([augm_name in AUGMS_FOR_SAMPLES for augm_name in augms_prms.keys()]), 'Not  allowed augmentation'
+    else:
+        raise ValueError("image_or_sample given [" + image_or_sample + "]. Should be 'image', 'img', or 'sample'.")
+
+    funcs_and_classes = globals()  # Returns Dictionary func_names=>func_pointers of all in this module.
+    augmentations = []
+    for augm_name, kwargs in augms_prms.items():
+        augm_class = funcs_and_classes[augm_name]  # Pointer
+        augm_instance = augm_class(**kwargs)
+        augmentations.append(augm_instance)
+
+    return augmentations
 
 
 def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
@@ -27,9 +103,10 @@ def apply_augmentations(augs, image, target=None, mask=None, wmaps=None):
     return image, target, mask, wmaps
 
 
-# --------------------
-# Augmentation Classes
-# --------------------
+# --------------------------------------------------------
+#                  Augmentation Classes
+# --------------------------------------------------------
+
 class RandomAugmentation(object):
     """
     Abstract class for random patch augmentation, patch augmentation also works on full images
@@ -400,3 +477,25 @@ class RandomRotation90(RandomAugmentation):
             wmaps = np.rot90(wmaps, k=rot_90_xtimes, axes=plane_axes) if wmaps is not None else None
 
         return image, target, mask, wmaps
+
+
+############# Currently not used ####################
+
+# TODO: Revisit this and start using it?
+# DON'T use on patches. Only on images. Cause I ll need to find min and max intensities, to move to range [0,1]
+def random_gamma_correction(channels, gamma_std=0.05):
+    # Gamma correction: I' = I^gamma
+    # channels: list (x pathways) of np arrays [channels, x, y, z]. Whole volumes, channels of a case.
+    # IMPORTANT: Does not work if intensities go to negatives.
+    if gamma_std is None or gamma_std == 0.:
+        return channels
+
+    n_channs = channels[0].shape[0]
+    gamma = np.random.normal(1, gamma_std, [n_channs, 1, 1, 1])
+    for path_idx in range(len(channels)):
+        assert np.min(channels[path_idx]) >= 0.
+        channels[path_idx] = np.power(channels[path_idx], 1.5, dtype='float32')
+
+    return channels
+
+

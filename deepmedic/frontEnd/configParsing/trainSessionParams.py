@@ -13,7 +13,7 @@ import pandas as pd
 from deepmedic.frontEnd.configParsing.utils import abs_from_rel_path, parse_filelist, check_and_adjust_path_to_ckpt, \
     get_paths_from_df, parse_fpaths_of_channs_from_filelists
 from deepmedic.dataManagement import samplingType
-import deepmedic.dataManagement.augmentation as augmentation
+from deepmedic.dataManagement.augmentation import get_augmentations
 
 
 def get_default(value, default, required=False):
@@ -28,12 +28,6 @@ def get_default(value, default, required=False):
 
 def get_config_value(cfg, elem):
     return get_default(cfg[elem.name], elem.default, elem.required)
-
-
-# TODO: THIS SHOULD NOT BE HERE.
-def get_augmentation(cfg_entry):
-    return [getattr(augmentation, name)(**kwargs) for name, kwargs in cfg_entry.items()]
-
 
 class TrainSessionParams(object):
 
@@ -292,9 +286,9 @@ class TrainSessionParams(object):
 
         # ~~~~~~~~~~~~~~ Augmentation~~~~~~~~~~~~~~
         # Image level
-        self.augmentations_img = get_augmentation(cfg[cfg.AUGM_IMG]) if cfg[cfg.AUGM_IMG] is not None else []
+        self.augms_img = get_augmentations(cfg[cfg.AUGM_IMG], 'img')  # Returns [] if given None.
         # Patch/Segment level
-        self.augmentations_sample = get_augmentation(cfg[cfg.AUGM_SAMPLE]) if cfg[cfg.AUGM_SAMPLE] is not None else []
+        self.augms_sample = get_augmentations(cfg[cfg.AUGM_SAMPLE], 'sample')  # Returns [] if given None.
 
         # ===================VALIDATION========================
         self.val_on_samples_during_train = \
@@ -601,12 +595,12 @@ class TrainSessionParams(object):
 
         logPrint("~~Data Augmentation During Training~~")
         logPrint("Image-level Augmentation:")
-        for aug in self.augmentations_img:
+        for aug in self.augms_img:
             logPrint(aug.get_attrs_str())
-        else:
+        else:  # If nothing to iterate on, e.g. empty list [].
             logPrint("None")
         logPrint("Sample-level Augmentation:")
-        for aug in self.augmentations_sample:
+        for aug in self.augms_sample:
             logPrint(aug.get_attrs_str())
         else:
             logPrint("None")
@@ -718,8 +712,8 @@ class TrainSessionParams(object):
                 self.batchsize_val_whole,
                 
                 # -------Data Augmentation-------
-                self.augmentations_img,
-                self.augmentations_sample,
+                self.augms_img,
+                self.augms_sample,
 
                 # --- Validation on whole volumes ---
                 self.val_on_whole_volumes,
