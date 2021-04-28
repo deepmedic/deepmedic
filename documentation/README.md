@@ -127,7 +127,7 @@ Then continue with the steps below.
 **Install TensorFlow** (TF): Please follow instructions on (https://www.tensorflow.org/install/).
 By consulting the previous link, ensure that your system has **CUDA** version and **cuDNN** versions compatible with the tensorflow version you are installing.
 ```cshell
-$ pip install tensorflow==2.0               # or tensorflow-cpu==1.15 or tensorflow-gpu==1.15
+$ pip install tensorflow-gpu==2.0
 ```
 **Note:** There are no pre-compiled versions of TF2.0 for python >= 3.7.
 That's why when setting up the environment above, we use python 3.6.5.
