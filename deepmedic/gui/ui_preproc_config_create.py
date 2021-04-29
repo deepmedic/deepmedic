@@ -60,9 +60,9 @@ class UiPreprocConfig(UiConfig):
         self.resample_text = QtWidgets.QLabel(self.scrollAreaWidgetContents)
         self.resample_text.setObjectName("resample_text")
         self.gridLayout.addWidget(self.resample_text, widget_num, LABEL_COL, 1, SAVE_BUTTON_SIZE)
-        self.resample_progress = QtWidgets.QProgressBar(self.scrollAreaWidgetContents)
-        self.resample_progress.setObjectName("resample_progress")
-        self.gridLayout.addWidget(self.resample_progress, widget_num + 1, LABEL_COL, 1, SAVE_BUTTON_SIZE)
+        self.preproc_progress = QtWidgets.QProgressBar(self.scrollAreaWidgetContents)
+        self.preproc_progress.setObjectName("preproc_progress")
+        self.gridLayout.addWidget(self.preproc_progress, widget_num + 1, LABEL_COL, 1, SAVE_BUTTON_SIZE)
         widget_num += 2
 
         spacerItem = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)

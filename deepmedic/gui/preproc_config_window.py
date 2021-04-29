@@ -8,9 +8,12 @@ import os
 
 from PySide2 import QtWidgets, QtGui, QtCore
 
+import datetime  # debugging
+
 TARGET = 'ground_truth'
 MASK = 'roi_mask'
 CHANNEL = 'channel'
+IMAGE = 'Image'
 
 
 def add_sufix(name, suffix):
@@ -48,7 +51,7 @@ def get_save_name(image_path, output_dir, image_extension, base_dir=None, subj_i
 def get_channel_names(data_columns):
     channels = []
     for col in data_columns:
-        if col.startswith(CHANNEL + '_') or col == 'Image':
+        if col.startswith(CHANNEL + '_') or col == IMAGE:
             channels += [col]
     if not channels:
         channels = None
@@ -102,18 +105,21 @@ class ProgressBar(object):
 
 
 class PreprocConfigWindow(ConfigWindow):
+    """
+    Main class. The GUI window for the preprocessor.
+    """
     def __init__(self, parent=None):
         super(PreprocConfigWindow, self).__init__(PreprocConfig, 'Preprocess Data', parent,
                                                   UiConfigClass=UiPreprocConfig)
 
-        self.ui.data_checks_button.clicked.connect(self.run_data_checks)
-        self.ui.preprocess_button.clicked.connect(self.preprocess)
+        self.ui.data_checks_button.clicked.connect(self.run_data_checks)  # Run checks on the data
+        self.ui.preprocess_button.clicked.connect(self.preprocess)  # Run preprocessing
         self.data_checks_progress = ProgressBar(self.ui.data_checks_progress)
         self.data_checks_progress.hide()
-        self.progress_text = 'Preprocessing data...'
-        self.resample_progress = ProgressBar(self.ui.resample_progress, self.ui.resample_text,
-                                             self.progress_text)
-        self.resample_progress.hide()
+        self.preproc_progress_text = 'Preprocessing data...'
+        self.preproc_progress = ProgressBar(self.ui.preproc_progress, self.ui.resample_text,
+                                            self.preproc_progress_text)
+        self.preproc_progress.hide()
 
         self.dchecks_sug = None
         self.data_cols = None
@@ -122,21 +128,31 @@ class PreprocConfigWindow(ConfigWindow):
 
         self.fill_in_defaults()
 
-    def reset_progress_text(self):
-        self.resample_progress.hide()
-        self.resample_progress.set_text(self.progress_text)
+    def reset_preproc_progress_text(self):
+        """
+        Resents the text that appears over the progress bar for the preprocessing.
+        """
+        self.preproc_progress.hide()
+        self.preproc_progress.set_text(self.preproc_progress_text)
 
     def fill_in_defaults(self):
         self.findChild(QtWidgets.QCheckBox, 'output_saveCsv_checkbox').setChecked(True)
 
     def run_data_checks(self):
+        """
+        Checks if the data given in the CSV fulfill certain criteria.
+        """
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         self.data_checks_progress.show()
-        check_text, self.dchecks_sug = run_checks(csv, csv=True,
-                                                  pixs=True, dims=True, dtypes=True, dirs=True, sizes=True,
-                                                  intra_dims=True, intra_sizes=True,
-                                                  disable_tqdm=False, html=True, progress=self.data_checks_progress)
-        self.ui.data_checks_text.setText(check_text)
+        # The below parses the given CSV, and does the data checks.
+        try:
+            check_text, self.dchecks_sug = run_checks(csv, csv=True,
+                                                      pixs=True, dims=True, dtypes=True, dirs=True, sizes=True,
+                                                      intra_dims=True, intra_sizes=True,
+                                                      disable_tqdm=False, html=True, progress=self.data_checks_progress)
+            self.ui.data_checks_text.setText(check_text)  # Printed after running the tests. Resets when re-push button
+        except Exception as e:
+            self.ui.data_checks_text.setText("ERROR: Caught following exception. Please fix and try again:\n" + str(e))
         self.ui.suggested_button.show()
 
     def fill_in_sug(self):
@@ -175,7 +191,9 @@ class PreprocConfigWindow(ConfigWindow):
                                'output_baseDir_lineedit').setText(str(self.dchecks_sug['base_dir']))
 
     def preprocess(self):
-
+        """
+        The below happens when you press the "Preprocess Data" button.
+        """
         # Get parameters from forms
         csv = self.findChild(QtWidgets.QLineEdit, 'data_inputCsv_lineedit').text()
         output_dir = self.get_text_value('output_outputDir_lineedit', self.findChild(QtWidgets.QLineEdit, 'output_outputDir_lineedit'))
@@ -216,7 +234,7 @@ class PreprocConfigWindow(ConfigWindow):
         low_range_target = self.get_text_value('preproc_lowRangeTarget_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_lowRangeTarget_lineedit'))
         high_range_target = self.get_text_value('preproc_highRangeTarget_lineedit', self.findChild(QtWidgets.QLineEdit, 'preproc_highRangeTarget_lineedit'))
 
-        self.reset_progress_text()
+        self.reset_preproc_progress_text()
 
         # check output
         if not output_dir:
@@ -224,11 +242,12 @@ class PreprocConfigWindow(ConfigWindow):
             text = output_dir_label.text()
             output_dir_label.setText(get_html_colour(text, colour='red'))
 
-            current_text = self.resample_progress.label.text()
+            current_text = self.preproc_progress.label.text()
             new_text = 'ERROR: No ' + get_bold_text('Output Directory') + ' was given.'
             current_text += '\n' + get_html_colour(new_text, colour='red')
-            self.resample_progress.set_text(text_to_html(current_text))
-            self.resample_progress.show()
+
+            self.preproc_progress.set_text(text_to_html(current_text))
+            self.preproc_progress.show()
 
         # # check csv
         # if save_csv:
@@ -252,9 +271,9 @@ class PreprocConfigWindow(ConfigWindow):
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
 
-        if self.resample_progress is not None:
-            self.resample_progress.show()
-            self.resample_progress.bar.setMaximum(len(image_list))
+        if self.preproc_progress is not None:
+            self.preproc_progress.show()
+            self.preproc_progress.bar.setMaximum(len(image_list))
 
         suffix = ''
         if not suffix == '':
@@ -266,7 +285,7 @@ class PreprocConfigWindow(ConfigWindow):
             mask_suffix = '_' + mask_suffix
 
         channel_names = get_channel_names(image_list.columns)
-        print('names: ' + str(channel_names))
+        print('INFO: Names of channels read from CSV columns list: ' + str(channel_names))
 
         for i, row in image_list.iterrows():
 
@@ -363,8 +382,8 @@ class PreprocConfigWindow(ConfigWindow):
                     save_nifti(image.target.open(), new_target_name)
                     image_list.at[i, TARGET] = new_target_name
 
-            if self.resample_progress is not None:
-                self.resample_progress.increase_value()
+            if self.preproc_progress is not None:
+                self.preproc_progress.increase_value()
 
         if save_csv:
             if not out_csv_dir:
