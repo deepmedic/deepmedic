@@ -592,7 +592,7 @@ def sample_idxs_of_segments(log,
     # Check if the weight map is fully-zeros. In this case, return no element.
     # Note: Currently, the caller function is checking this case already and does not let this being called.
     # Which is still fine.
-    sum_sampl_map = np.sum(sampling_map)
+    sum_sampl_map = np.sum(sampling_map, dtype='float64')
     if np.isclose(sum_sampl_map, 0.) : # is zero
         log.print3(job_id + " WARN: Sampling map for category (after excluding near edges) is just zeros! " +\
                    " No samples for category from subject!")
