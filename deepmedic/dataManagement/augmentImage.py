@@ -155,7 +155,7 @@ class AugmenterAffine(object):
             mode = 'constant'
         
         # For recentering
-        centre_coords = 0.5 * np.asarray(image.shape, dtype=np.int32)
+        centre_coords = np.floor(0.5 * np.asarray(image.shape, dtype=np.int32))
         c_offset = centre_coords - centre_coords.dot( transf_mtx )
         
         new_image = scipy.ndimage.affine_transform( image,
