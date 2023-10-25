@@ -143,7 +143,7 @@ class TrainSession(Session):
             cnn3d.setup_ops_n_feeds_to_test(self._log, inp_plchldrs_test, p_y_given_x_test, self._params.inds_fms_per_pathtype_per_layer_to_save)
 
             # Create the savers
-            saver_all = tf.compat.v1.train.Saver()  # Will be used during training for saving everything.
+            saver_all = tf.compat.v1.train.Saver(max_to_keep=999)  # Will be used during training for saving everything.
             # Alternative: tf.train.Saver([v for v in tf.all_variables() if v.name.startswith("net"])
             coll_vars_net = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="net")
             saver_net = tf.compat.v1.train.Saver(var_list=coll_vars_net)  # Used to load the net's parameters.
