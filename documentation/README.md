@@ -120,7 +120,7 @@ source activate FOLDER_FOR_ENVS/ve_dm_tf
 By consulting the previous link, ensure that your system has **CUDA** version and **cuDNN** versions compatible with the tensorflow version you are installing.
 ```cshell
 $ pip install tensorflow-gpu==2.6.2
-$ pip install cudnn=8.2.1
+$ pip install cudnn==8.2.1
 ```
 
 **Install DeepMedic** and rest of its dependencies:
