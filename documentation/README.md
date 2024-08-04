@@ -128,6 +128,16 @@ $ pip install .
 ```
 This will grab rest of dependencies described in Sec.1.
 
+#### Install libraries for DeepMedic-GUI
+
+```cshell
+$ pip install PySide2==5.15.2.1
+$ pip install pillow==8.4.0
+$ pip install simpleitk==2.0.2      --> 2.1.1.2 was not working for non-orthonormal(?)-cases. Replaced with 2.0.2 -> Works without issues
+$ pip install tqdm==4.64.1
+```
+
+
 #### 1.3. GPU Processing
 
 #### Install CUDA:
