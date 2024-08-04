@@ -103,35 +103,25 @@ git clone https://github.com/Kamnitsask/deepmedic/
 ```
 After cloning it, all dependencies can be installed as described below.
 
-#### Install using Conda or a Virtual Environment
+#### Install using a Conda Environment
 
-If you do not have sudo/root privileges on a system, we suggest you install using Conda a Virtualenv.
-From a **bash shell**, create a virtual environment in a folder that you wish.
+If you do not have sudo/root privileges on a system, we suggest you install using Conda.
+From a **bash shell**, create a conda environment in a folder that you wish.
 
-Using **Conda**:
 ```bash
-conda create -p FOLDER_FOR_ENVS/ve_tf_dmtf python=3.6.5 -y
-source activate FOLDER_FOR_ENVS/ve_tf_dmtf
+conda create -p FOLDER_FOR_ENVS/ve_dm_tf python=3.6.5 -y
+source activate FOLDER_FOR_ENVS/ve_dm_tf
 ```
 
-Using **Virtualenv**:
-```bash
-virtualenv -p python3 FOLDER_FOR_ENVS/ve_tf_dmtf     # Use python up to 3.6
-source FOLDER_FOR_ENVS/ve_tf_dmtf/bin/activate       # If using csh, source ve_tf_dmtf/bin/activate.csh
-```
-
-Then continue with the steps below.
 
 #### Install TensorFlow and DeepMedic
 
 **Install TensorFlow** (TF): Please follow instructions on (https://www.tensorflow.org/install/).
 By consulting the previous link, ensure that your system has **CUDA** version and **cuDNN** versions compatible with the tensorflow version you are installing.
 ```cshell
-$ pip install tensorflow-gpu==2.0
+$ pip install tensorflow-gpu==2.6.2
+$ pip install cudnn=8.2.1
 ```
-**Note:** There are no pre-compiled versions of TF2.0 for python >= 3.7.
-That's why when setting up the environment above, we use python 3.6.5.
-We have not yet tried DeepMedic for TF versions above 2.0.
 
 **Install DeepMedic** and rest of its dependencies:
 ```cshell
@@ -140,12 +130,22 @@ $ pip install .
 ```
 This will grab rest of dependencies described in Sec.1.
 
+**Note:** The most common installation issue is when users do not install compatible versions of **Python**, **TF**, and **cudnn**.
+You need versions that are compatible with each other:
+Each Python version has specific pre-compiled TF versions. We need TF version 2.0+, and each TF versionis compatible with 
+specific cudnn versions (see TF docs). We need Cudnn that is compatible with TF and your system's Nvidia drivers.
+We have tested DeepMedic for **Python=3.6.5**, **TF=2.6.2**, and **cudnn=8.2.1**, which should work in **2024**.
+
 #### 1.3. GPU Processing
 
-#### Install CUDA:
-Small networks can be run on the cpu. But 3D CNNs of considerable size require processing on the GPU. For this, an installation of [Nvidia’s CUDA](https://developer.nvidia.com/cuda-toolkit) is n
-eeded. Make sure to acquire a version compatible with your GPU drivers. TensorFlow needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **c
-ublas.so** libraries, which need to be visible in the environment’s.
+#### Install CUDA: (Deprecated)
+
+**Note:** This step may not be required anymore, because recent cudnn versions (installed via conda above) install rest
+ of the required libraries. As long as you have installed GPU drivers, cudnn tends to install the rest. 
+ But in case this is not true, have a look at the following.
+
+Small networks can be run on the cpu. But 3D CNNs of considerable size require processing on the GPU. For this, an installation of [Nvidia’s CUDA](https://developer.nvidia.com/cuda-toolkit) is
+ needed. Make sure to acquire a version compatible with your GPU drivers. TensorFlow needs to be able to find CUDA’s compiler, the **nvcc**, in the environment’s path. It also dynamically links to **cublas.so** libraries, which need to be visible in the environment’s.
 
 Prior to running DeepMedic on the GPU, you must manually add the paths to the folders containing these files in your environment's variables. As an example in a *bash* shell:
 
@@ -154,11 +154,6 @@ $ export CUDA_HOME=/path/to/cuda                   # If using cshell instead of 
 $ export LD_LIBRARY_PATH=/path/to/cuda/lib64
 $ export PATH=/path/to/cuda/bin:$PATH
 ```
-
-#### Install cuDNN:
-We highly suggest you also install cuDNN ([link to instructions](http://docs.nvidia.com/deeplearning/sdk/cudnn-install/index.html#download)).
-It is easy (simply copy cuDNN files in your Cuda folders in unix) and really offers high acceleration (eg a full MR brain volume segmentation in under 20 secs, in comparison to 1.40 mins without).
-
 
 
 #### 1.4. Required Data Pre-Processing
